@@ -1,0 +1,474 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> #remove everything in the working environment.
+> rm(list =ls())
+> cat("\14") #clears console
+> 
+> 
+> #To install packages simply type install.packages("packageName")
+> #library loads installed packages  
+> library(ggplot2)  #Data Visualisations
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> #set working directory 
+> #setwd("D:\\Projects\\Titanic") #specify path where you have your data
+> 
+> # read.csv reads a file in table format and creates a data frame from it 
+> # the default for stringsAsFactors is true, as we do not wish to convert character vectors to factors we make it false 
+> 
+> train <- read.csv("../input/train.csv", stringsAsFactors = FALSE)  
+> test <- read.csv("../input/test.csv",stringsAsFactors = FALSE)
+> 
+> #view data 
+> head(train) 
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> head(test)
+  PassengerId Pclass                                         Name    Sex  Age
+1         892      3                             Kelly, Mr. James   male 34.5
+2         893      3             Wilkes, Mrs. James (Ellen Needs) female 47.0
+3         894      2                    Myles, Mr. Thomas Francis   male 62.0
+4         895      3                             Wirz, Mr. Albert   male 27.0
+5         896      3 Hirvonen, Mrs. Alexander (Helga E Lindqvist) female 22.0
+6         897      3                   Svensson, Mr. Johan Cervin   male 14.0
+  SibSp Parch  Ticket    Fare Cabin Embarked
+1     0     0  330911  7.8292              Q
+2     1     0  363272  7.0000              S
+3     0     0  240276  9.6875              Q
+4     0     0  315154  8.6625              S
+5     1     1 3101298 12.2875              S
+6     0     0    7538  9.2250              S
+> 
+> #adding survived variable to test set 
+> test$Survived <- NA
+> #combining both test and train dataframe by rows
+> fullset <- rbind(train,test)
+> 
+> #get the basic structure and description of fullset  
+> str(fullset) 
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> summary(fullset) 
+  PassengerId      Survived          Pclass          Name          
+ Min.   :   1   Min.   :0.0000   Min.   :1.000   Length:1309       
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median : 655   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295                     
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :1309   Max.   :1.0000   Max.   :3.000                     
+                NA's   :418                                        
+     Sex                 Age            SibSp            Parch      
+ Length:1309        Min.   : 0.17   Min.   :0.0000   Min.   :0.000  
+ Class :character   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000  
+ Mode  :character   Median :28.00   Median :0.0000   Median :0.000  
+                    Mean   :29.88   Mean   :0.4989   Mean   :0.385  
+                    3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000  
+                    Max.   :80.00   Max.   :8.0000   Max.   :9.000  
+                    NA's   :263                                     
+    Ticket               Fare            Cabin             Embarked        
+ Length:1309        Min.   :  0.000   Length:1309        Length:1309       
+ Class :character   1st Qu.:  7.896   Class :character   Class :character  
+ Mode  :character   Median : 14.454   Mode  :character   Mode  :character  
+                    Mean   : 33.295                                        
+                    3rd Qu.: 31.275                                        
+                    Max.   :512.329                                        
+                    NA's   :1                                              
+> 
+> fullset$Pclass <- as.factor(fullset$Pclass) #converting to factor
+>  #Visualizing Pclass 
+> ggplot(fullset[1:891,], aes(x = Pclass, fill = factor(Survived))) +   
++   geom_bar() +  
++   ggtitle("Impact of Class on Survival")
+> 
+> fullset$Sex <- as.factor(fullset$Sex) 
+> summary(fullset$Sex)
+female   male 
+   466    843 
+>  
+> ggplot(fullset[1:891,], aes(x = Sex, fill = factor(Survived))) +  
++  geom_bar() + 
++  ggtitle("Do females have higher survival rate?")
+> 
+> 
+> ggplot(fullset[1:891,], aes(Sex)) +
++   facet_wrap(~Pclass) +
++   geom_bar(aes(y = (..count..)/sum(..count..), fill=factor(Survived)), stat= "count")+
++   geom_text(aes(label = scales::percent(round((..count..)/sum(..count..),2)),
++                 y= ((..count..)/sum(..count..))), stat="count",
++             vjust = -.25) +
++   ggtitle("Class") + labs(y = "percent")
+> 
+> head(fullset$Name)
+[1] "Braund, Mr. Owen Harris"                            
+[2] "Cumings, Mrs. John Bradley (Florence Briggs Thayer)"
+[3] "Heikkinen, Miss. Laina"                             
+[4] "Futrelle, Mrs. Jacques Heath (Lily May Peel)"       
+[5] "Allen, Mr. William Henry"                           
+[6] "Moran, Mr. James"                                   
+> 
+> #creating new title variable from Name  
+> fullset$Title <- sapply(fullset$Name,FUN = function(x){strsplit(x,"[,.]")[[1]][2]}) 
+> fullset$Title <- sub(' ', '', fullset$Title) 
+> fullset$Title <- as.factor(fullset$Title) 
+> 
+> summary(fullset$Title)
+        Capt          Col          Don         Dona           Dr     Jonkheer 
+           1            4            1            1            8            1 
+        Lady        Major       Master         Miss         Mlle          Mme 
+           1            2           61          260            2            1 
+          Mr          Mrs           Ms          Rev          Sir the Countess 
+         757          197            2            8            1            1 
+> 
+> table(fullset$Sex,fullset$Title)
+        
+         Capt Col Don Dona  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs
+  female    0   0   0    1   1        0    1     0      0  260    2   1   0 197
+  male      1   4   1    0   7        1    0     2     61    0    0   0 757   0
+        
+          Ms Rev Sir the Countess
+  female   2   0   0            1
+  male     0   8   1            0
+> 
+> # There are many titles having less frequency and they can be grouped.
+> fullset$Title <- as.character(fullset$Title) 
+> fullset$Title[fullset$Title %in% c("Mlle","Ms")] <- "Miss" 
+> fullset$Title[fullset$Title == "Mme"] <- "Mrs" 
+> fullset$Title[fullset$Title %in% c( "Don", "Sir", "Jonkheer","Rev","Dr")] <- "Sir" 
+> fullset$Title[fullset$Title %in% c("Dona", "Lady", "the Countess")] <- "Lady" 
+> fullset$Title[fullset$Title %in% c("Capt","Col", "Major")] <- "Officer" 
+> fullset$Title <- as.factor(fullset$Title) 
+> 
+> summary(fullset$Title) 
+   Lady  Master    Miss      Mr     Mrs Officer     Sir 
+      3      61     264     757     198       7      19 
+> 
+> ggplot(fullset[1:891,], aes(x = Age)) +  
++  geom_histogram(aes(y = ..density.., color = Title, fill = Title), alpha = 0.4, position = "identity") + 
++   geom_density(aes(color = Title), size =1)
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+Warning messages:
+1: Removed 177 rows containing non-finite values (stat_bin). 
+2: Removed 177 rows containing non-finite values (stat_density). 
+> 
+> fullset$FamSize <- fullset$SibSp + fullset$Parch + 1
+> 
+> ggplot(fullset[1:891,], aes(x = FamSize, fill = factor(Survived))) +
++  geom_bar(stat='count', position='dodge') +
++  scale_x_continuous(breaks=c(1:11)) +
++  labs(x = 'Family Size')+ ggtitle("Family")
+> 
+> fullset$FamGroup[fullset$FamSize == 1] <- 'Individual' 
+> fullset$FamGroup[fullset$FamSize < 5 & fullset$FamSize > 1] <- 'small' 
+> fullset$FamGroup[fullset$FamSize > 4] <- 'large' 
+> fullset$FamGroup <- as.factor(fullset$FamGroup)
+> 
+> sum(is.na(fullset$Fare))
+[1] 1
+> 
+> which(is.na(fullset$Fare))
+[1] 1044
+> 
+> #Imputing median Fare value of Pclass = 3 and Emabrked = S 
+> fullset$Fare[1044] <- median(fullset[fullset$Pclass == '3' & fullset$Embarked == 'S', ]$Fare, na.rm = TRUE)
+> 
+> n <- data.frame(table(fullset$Ticket))
+> fullset <- merge(fullset,n, by.x="Ticket", by.y="Var1", x.all=T) # Assign the frequency of each ticket appearance
+> fullset$Fare2 <- fullset$Fare / fullset$Freq
+> 
+> fullset <- fullset[order(fullset$PassengerId),]
+> 
+> which(fullset$Cabin == '')
+   [1]    1    3    5    6    8    9   10   13   14   15   16   17   18   19
+  [15]   20   21   23   25   26   27   29   30   31   33   34   35   36   37
+  [29]   38   39   40   41   42   43   44   45   46   47   48   49   50   51
+  [43]   52   54   57   58   59   60   61   64   65   66   68   69   70   71
+  [57]   72   73   74   75   77   78   79   80   81   82   83   84   85   86
+  [71]   87   88   90   91   92   94   95   96   99  100  101  102  104  105
+  [85]  106  107  108  109  110  112  113  114  115  116  117  118  120  121
+  [99]  122  123  126  127  128  130  131  132  133  134  135  136  139  141
+ [113]  142  143  144  145  146  147  148  150  151  153  154  155  156  157
+ [127]  158  159  160  161  162  163  164  165  166  168  169  170  172  173
+ [141]  174  176  177  179  180  181  182  183  185  187  188  189  190  191
+ [155]  192  193  197  198  199  200  201  202  203  204  205  207  208  209
+ [169]  211  212  213  214  215  217  218  220  221  222  223  224  226  227
+ [183]  228  229  230  232  233  234  235  236  237  238  239  240  241  242
+ [197]  243  244  245  247  248  250  251  254  255  256  257  259  260  261
+ [211]  262  265  266  267  268  271  272  273  275  277  278  279  280  281
+ [225]  282  283  284  286  287  288  289  290  291  294  295  296  297  301
+ [239]  302  303  305  307  309  313  314  315  316  317  318  321  322  323
+ [253]  324  325  327  329  331  334  335  336  339  343  344  345  347  348
+ [267]  349  350  351  353  354  355  356  358  359  360  361  362  363  364
+ [281]  365  366  368  369  372  373  374  375  376  377  379  380  381  382
+ [295]  383  384  385  386  387  388  389  390  392  393  396  397  398  399
+ [309]  400  401  402  403  404  405  406  407  408  409  410  411  412  414
+ [323]  415  416  417  418  419  420  421  422  423  424  425  426  427  428
+ [337]  429  432  433  434  437  438  440  441  442  443  444  445  447  448
+ [351]  449  451  452  455  456  459  460  462  464  465  466  467  468  469
+ [365]  470  471  472  473  475  477  478  479  480  481  482  483  484  486
+ [379]  489  490  491  492  494  495  496  498  500  501  502  503  504  507
+ [393]  508  509  510  511  512  514  515  518  519  520  522  523  525  526
+ [407]  527  529  530  531  532  533  534  535  536  538  539  542  543  544
+ [421]  546  547  548  549  550  552  553  554  555  556  558  560  561  562
+ [435]  563  564  565  566  567  568  569  570  571  574  575  576  577  579
+ [449]  580  581  583  585  587  589  590  591  593  594  595  596  597  598
+ [463]  599  601  602  603  604  605  606  607  608  609  611  612  613  614
+ [477]  615  616  617  618  620  621  623  624  625  627  629  630  632  634
+ [491]  635  636  637  638  639  640  641  643  644  645  647  649  650  651
+ [505]  652  653  654  655  656  657  658  659  661  662  664  665  666  667
+ [519]  668  669  671  673  674  675  676  677  678  679  681  683  684  685
+ [533]  686  687  688  689  692  693  694  695  696  697  698  703  704  705
+ [547]  706  707  709  710  714  715  719  720  721  722  723  724  726  727
+ [561]  728  729  730  732  733  734  735  736  737  739  740  744  745  747
+ [575]  748  750  751  753  754  755  756  757  758  759  761  762  763  765
+ [589]  767  768  769  770  771  772  774  775  776  778  779  781  784  785
+ [603]  786  787  788  789  791  792  793  794  795  796  798  799  800  801
+ [617]  802  804  805  806  808  809  811  812  813  814  815  817  818  819
+ [631]  820  822  823  825  826  827  828  829  831  832  833  834  835  837
+ [645]  838  839  841  842  843  844  845  846  847  848  849  851  852  853
+ [659]  855  856  857  859  860  861  862  864  865  866  867  869  870  871
+ [673]  874  875  876  877  878  879  881  882  883  884  885  886  887  889
+ [687]  891  892  893  894  895  896  897  898  899  900  901  902  903  905
+ [701]  907  908  909  910  911  912  913  914  915  917  919  921  922  923
+ [715]  924  925  927  928  929  930  931  932  934  935  937  939  941  943
+ [729]  944  946  947  948  950  952  953  954  955  957  958  959  962  963
+ [743]  964  968  970  971  972  974  975  976  977  978  979  980  981  982
+ [757]  983  985  986  987  989  990  991  993  994  995  996  997  998  999
+ [771] 1000 1002 1003 1005 1007 1008 1011 1012 1013 1015 1016 1017 1018 1019
+ [785] 1020 1021 1022 1024 1025 1026 1027 1028 1029 1030 1031 1032 1033 1035
+ [799] 1036 1037 1039 1040 1041 1043 1044 1045 1046 1047 1049 1051 1052 1053
+ [813] 1054 1055 1056 1057 1059 1060 1061 1062 1063 1064 1065 1066 1067 1068
+ [827] 1072 1075 1077 1078 1079 1080 1081 1082 1083 1084 1085 1086 1087 1089
+ [841] 1090 1091 1092 1093 1095 1096 1097 1098 1099 1101 1102 1103 1104 1105
+ [855] 1106 1108 1109 1111 1112 1113 1115 1116 1117 1118 1119 1120 1121 1122
+ [869] 1123 1124 1125 1127 1129 1130 1132 1133 1135 1136 1138 1139 1140 1141
+ [883] 1142 1143 1145 1146 1147 1148 1149 1150 1151 1152 1153 1154 1155 1156
+ [897] 1157 1158 1159 1160 1161 1163 1165 1166 1167 1168 1169 1170 1171 1172
+ [911] 1173 1174 1175 1176 1177 1178 1181 1182 1183 1184 1186 1187 1188 1189
+ [925] 1190 1191 1192 1194 1195 1196 1199 1201 1202 1203 1204 1205 1207 1209
+ [939] 1210 1211 1212 1215 1216 1217 1219 1220 1221 1222 1224 1225 1226 1228
+ [953] 1229 1230 1231 1232 1233 1234 1236 1237 1238 1239 1240 1241 1243 1244
+ [967] 1245 1246 1249 1250 1251 1252 1253 1254 1255 1257 1258 1259 1260 1261
+ [981] 1262 1265 1267 1268 1269 1271 1272 1273 1274 1275 1276 1277 1278 1279
+ [995] 1280 1281 1284 1285 1286 1288 1290 1291 1293 1294 1295 1298 1300 1301
+[1009] 1302 1304 1305 1307 1308 1309
+> 
+> which(fullset$Embarked == '')
+[1]  62 830
+> 
+> fullset[c(62,830),]
+   Ticket PassengerId Survived Pclass                                      Name
+59 113572          62        1      1                       Icard, Miss. Amelie
+60 113572         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+      Sex Age SibSp Parch Fare Cabin Embarked Title FamSize   FamGroup Freq
+59 female  38     0     0   80   B28           Miss       1 Individual    2
+60 female  62     0     0   80   B28            Mrs       1 Individual    2
+   Fare2
+59    40
+60    40
+> 
+> fullset$Embarked <- as.factor(fullset$Embarked) 
+> fullset[fullset$Fare2 >= 39 & fullset$Fare2 <= 41 & fullset$Pclass == 1,]
+       Ticket PassengerId Survived Pclass
+59     113572          62        1      1
+1133 PC 17593         140        0      1
+1127 PC 17585         257        1      1
+855     36947         497        1      1
+109     11755         557        1      1
+133     13049         584        0      1
+149     13567         588        1      1
+856     36947         592        1      1
+34     112379         767        0      1
+1132 PC 17593         790        0      1
+60     113572         830        1      1
+1150 PC 17607        1182       NA      1
+1126 PC 17585        1219       NA      1
+148     13567        1289       NA      1
+                                                                  Name    Sex
+59                                                 Icard, Miss. Amelie female
+1133                                                Giglio, Mr. Victor   male
+1127                                    Thorne, Mrs. Gertrude Maybelle female
+855                                     Eustis, Miss. Elizabeth Mussey female
+109  Duff Gordon, Lady. (Lucille Christiana Sutherland) ("Mrs Morgan") female
+133                                                Ross, Mr. John Hugo   male
+149                                   Frolicher-Stehli, Mr. Maxmillian   male
+856                    Stephenson, Mrs. Walter Bertram (Martha Eustis) female
+34                                           Brewe, Dr. Arthur Jackson   male
+1132                                          Guggenheim, Mr. Benjamin   male
+60                           Stone, Mrs. George Nelson (Martha Evelyn) female
+1150                               Rheims, Mr. George Alexander Lucien   male
+1126                       Rosenshine, Mr. George (Mr George Thorne")"   male
+148    Frolicher-Stehli, Mrs. Maxmillian (Margaretha Emerentia Stehli) female
+     Age SibSp Parch    Fare   Cabin Embarked Title FamSize   FamGroup Freq
+59    38     0     0 80.0000     B28           Miss       1 Individual    2
+1133  24     0     0 79.2000     B86        C    Mr       1 Individual    2
+1127  NA     0     0 79.2000                C   Mrs       1 Individual    2
+855   54     1     0 78.2667     D20        C  Miss       2      small    2
+109   48     1     0 39.6000     A16        C  Lady       2      small    1
+133   36     0     0 40.1250     A10        C    Mr       1 Individual    1
+149   60     1     1 79.2000     B41        C    Mr       3      small    2
+856   52     1     0 78.2667     D20        C   Mrs       2      small    2
+34    NA     0     0 39.6000                C   Sir       1 Individual    1
+1132  46     0     0 79.2000 B82 B84        C    Mr       1 Individual    2
+60    62     0     0 80.0000     B28            Mrs       1 Individual    2
+1150  NA     0     0 39.6000                S    Mr       1 Individual    1
+1126  46     0     0 79.2000                C    Mr       1 Individual    2
+148   48     1     1 79.2000     B41        C   Mrs       3      small    2
+        Fare2
+59   40.00000
+1133 39.60000
+1127 39.60000
+855  39.13335
+109  39.60000
+133  40.12500
+149  39.60000
+856  39.13335
+34   39.60000
+1132 39.60000
+60   40.00000
+1150 39.60000
+1126 39.60000
+148  39.60000
+> 
+> summary(fullset[fullset$Fare2 >= 39 & fullset$Fare2 <= 41 & fullset$Pclass == 1,"Embarked"])
+    C  Q  S 
+ 2 11  0  1 
+> 
+> fullset$Embarked <- as.character(fullset$Embarked) 
+> fullset$Embarked[fullset$Embarked %in% c("","")] <- "C" 
+> fullset$Embarked <- as.factor(fullset$Embarked)
+> 
+> sum(is.na(fullset$Age)) 
+[1] 263
+> 
+> title.age <- aggregate(fullset$Age,by = list(fullset$Title), FUN = function(x) median(x, na.rm = T)) 
+> fullset[is.na(fullset$Age), "Age"] <- apply(fullset[is.na(fullset$Age), ] , 1, function(x) title.age[title.age[, 1]==x["Title"], 2])
+> 
+> sum(is.na(fullset$Age))
+[1] 0
+> 
+> ggplot(fullset[1:891,], aes(Age, fill = factor(Survived))) +  
++  facet_grid(.~Sex) + 
++  geom_dotplot(binwidth = 2)
+> 
+> fullset$Title <- as.character(fullset$Title) 
+> fullset[fullset$Sex == "female" & fullset$Age < 18,"Title"] <- "Miss2" 
+> fullset$Title <- as.factor(fullset$Title)
+> 
+> summary(fullset$Title)
+   Lady  Master    Miss   Miss2      Mr     Mrs Officer     Sir 
+      3      61     197      72     757     193       7      19 
+> 
+> fullset$isMinor[fullset$Age < 18] <- 'Minor' 
+> fullset$isMinor[fullset$Age >= 18] <- 'Adult' 
+> fullset$isMinor <- as.factor(fullset$isMinor)
+> fullset$Survived <- as.factor(fullset$Survived) 
+> 
+> #We will again split the data to train and test set
+> train <- fullset[1:891,] 
+> test <- fullset[892:1309,]
+> 
+> set.seed(786) # to get a reproducible random result.
+> model <- randomForest(factor(Survived) ~ Pclass + Fare + Title + Embarked + FamGroup + Sex + isMinor,
++  data = train, importance = TRUE, ntree = 1000,mtry=2)
+> #ntree is number of trees to grow. 
+> #mtry is number of variables randomly sampled as candidates at each split.
+> #importance: importance of predictors
+> 
+> model
+
+Call:
+ randomForest(formula = factor(Survived) ~ Pclass + Fare + Title +      Embarked + FamGroup + Sex + isMinor, data = train, importance = TRUE,      ntree = 1000, mtry = 2) 
+               Type of random forest: classification
+                     Number of trees: 1000
+No. of variables tried at each split: 2
+
+        OOB estimate of  error rate: 16.72%
+Confusion matrix:
+    0   1 class.error
+0 505  44  0.08014572
+1 105 237  0.30701754
+> 
+> varImpPlot(model)
+> 
+> importance(model)
+                 0        1 MeanDecreaseAccuracy MeanDecreaseGini
+Pclass   28.410171 38.06332             46.22641         31.25980
+Fare     23.093709 31.54658             40.32033         50.21766
+Title    35.837532 36.39452             42.86502         78.85752
+Embarked  3.705090 19.72734             19.34690          8.34403
+FamGroup 29.275481 23.08499             40.82653         23.34531
+Sex      35.663236 26.54728             37.67352         53.06457
+isMinor   9.398443 16.87308             19.74582          5.48653
+> 
+> #predicting on test data
+> prediction <- predict(model,test) 
+> #creating a submission data frame of required format
+> submission <- data.frame(PassengerID = test$PassengerId, Survived = prediction) 
+> #write a csv output file
+> write.csv(submission, file = 'Submission.csv', row.names = F)
+> 
+> proc.time()
+   user  system elapsed 
+  2.610   0.107   2.724 

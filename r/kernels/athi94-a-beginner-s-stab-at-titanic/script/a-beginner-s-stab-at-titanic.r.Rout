@@ -1,0 +1,640 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> fr_train = read.csv('../input/train.csv', na.strings='')
+> fr_test = read.csv('../input/test.csv', na.strings='')
+> 
+> fr_test$Survived = rep(NA, nrow(fr_test))
+> fr_train$Set = rep("train", nrow(fr_train))
+> fr_test$Set = rep("test", nrow(fr_test))
+> 
+> fr_titanic = rbind(fr_train, fr_test)
+> 
+> dim(fr_train)
+[1] 891  13
+> head(fr_train)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked   Set
+1        A/5 21171  7.2500  <NA>        S train
+2         PC 17599 71.2833   C85        C train
+3 STON/O2. 3101282  7.9250  <NA>        S train
+4           113803 53.1000  C123        S train
+5           373450  8.0500  <NA>        S train
+6           330877  8.4583  <NA>        Q train
+> 
+> summary(fr_train)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked       Set           
+ B96 B98    :  4   C   :168   Length:891        
+ C23 C25 C27:  4   Q   : 77   Class :character  
+ G6         :  4   S   :644   Mode  :character  
+ C22 C26    :  3   NA's:  2                     
+ D          :  3                                
+ (Other)    :186                                
+ NA's       :687                                
+> 
+> naSummary = function(df) {
++     naCount = sapply(df, function(col) {
++         sum(is.na(col))
++     })
++     
++     return (data.frame(naCount, naPc=naCount/nrow(df)))
++ }
+> 
+> naSummary(fr_titanic)
+            naCount         naPc
+PassengerId       0 0.0000000000
+Survived        418 0.3193277311
+Pclass            0 0.0000000000
+Name              0 0.0000000000
+Sex               0 0.0000000000
+Age             263 0.2009167303
+SibSp             0 0.0000000000
+Parch             0 0.0000000000
+Ticket            0 0.0000000000
+Fare              1 0.0007639419
+Cabin          1014 0.7746371276
+Embarked          2 0.0015278839
+Set               0 0.0000000000
+> 
+> str(fr_titanic)
+'data.frame':	1309 obs. of  13 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 186 levels "A10","A14","A16",..: NA 82 NA 56 NA NA 130 NA NA NA ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+ $ Set        : chr  "train" "train" "train" "train" ...
+> 
+> fr_titanic$Survived = as.factor(fr_titanic$Survived)
+> fr_titanic = subset(fr_titanic, select=-c(PassengerId))
+> 
+> str(fr_titanic)
+'data.frame':	1309 obs. of  12 variables:
+ $ Survived: Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass  : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name    : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age     : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp   : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch   : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket  : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare    : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin   : Factor w/ 186 levels "A10","A14","A16",..: NA 82 NA 56 NA NA 130 NA NA NA ...
+ $ Embarked: Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+ $ Set     : chr  "train" "train" "train" "train" ...
+> 
+> mcl = fr_titanic$Embarked[which.max(fr_titanic$Embarked)]
+> fr_titanic$Embarked[which(is.na(fr_train$Embarked))] = mcl
+> 
+> naSummary(fr_titanic)
+         naCount         naPc
+Survived     418 0.3193277311
+Pclass         0 0.0000000000
+Name           0 0.0000000000
+Sex            0 0.0000000000
+Age          263 0.2009167303
+SibSp          0 0.0000000000
+Parch          0 0.0000000000
+Ticket         0 0.0000000000
+Fare           1 0.0007639419
+Cabin       1014 0.7746371276
+Embarked       0 0.0000000000
+Set            0 0.0000000000
+> 
+> fr_titanic$Fare[which(is.na(fr_titanic$Fare))] = mean(fr_titanic$Fare, na.rm=TRUE)
+> naSummary(fr_titanic)
+         naCount      naPc
+Survived     418 0.3193277
+Pclass         0 0.0000000
+Name           0 0.0000000
+Sex            0 0.0000000
+Age          263 0.2009167
+SibSp          0 0.0000000
+Parch          0 0.0000000
+Ticket         0 0.0000000
+Fare           0 0.0000000
+Cabin       1014 0.7746371
+Embarked       0 0.0000000
+Set            0 0.0000000
+> 
+> getTitle = function(name) {
++     postcom = trimws(strsplit(as.character(name), ',')[[1]][2])
++     title = strsplit(postcom, ' ')[[1]][1]
++     return (substr(title, 1, nchar(title)-1))
++ }
+> 
+> fr_titanic$Title = as.factor(sapply(fr_titanic$Name, getTitle))
+> fr_titanic = fr_titanic[c("Survived", 
++                         "Pclass",  
++                         "Name",
++                         "Title",
++                         "Sex", 
++                         "Age", 
++                         "SibSp", 
++                         "Parch", 
++                         "Ticket", 
++                         "Fare", 
++                         "Cabin", 
++                         "Embarked",
++                         "Set")]
+> 
+> head(fr_titanic)
+  Survived Pclass                                                Name Title
+1        0      3                             Braund, Mr. Owen Harris    Mr
+2        1      1 Cumings, Mrs. John Bradley (Florence Briggs Thayer)   Mrs
+3        1      3                              Heikkinen, Miss. Laina  Miss
+4        1      1        Futrelle, Mrs. Jacques Heath (Lily May Peel)   Mrs
+5        0      3                            Allen, Mr. William Henry    Mr
+6        0      3                                    Moran, Mr. James    Mr
+     Sex Age SibSp Parch           Ticket    Fare Cabin Embarked   Set
+1   male  22     1     0        A/5 21171  7.2500  <NA>        S train
+2 female  38     1     0         PC 17599 71.2833   C85        C train
+3 female  26     0     0 STON/O2. 3101282  7.9250  <NA>        S train
+4 female  35     1     0           113803 53.1000  C123        S train
+5   male  35     0     0           373450  8.0500  <NA>        S train
+6   male  NA     0     0           330877  8.4583  <NA>        Q train
+> 
+> table(fr_titanic$Title)
+
+    Capt      Col      Don     Dona       Dr Jonkheer     Lady    Major 
+       1        4        1        1        8        1        1        2 
+  Master     Miss     Mlle      Mme       Mr      Mrs       Ms      Rev 
+      61      260        2        1      757      197        2        8 
+     Sir       th 
+       1        1 
+> 
+> mr_alias = c('Dr', 'Rev', 'Major', 'Col', 'Jonkheer', 'Don', 'Sir', 'Capt')
+> mrs_alias = c('Dona', 'Lady', 'Mme', 'th')
+> miss_alias = c('Mlle', 'Ms')
+> 
+> fr_titanic$Title[which(fr_titanic$Title %in% mr_alias)] = 'Mr'
+> fr_titanic$Title[which(fr_titanic$Title %in% mrs_alias)] = 'Mrs'
+> fr_titanic$Title[which(fr_titanic$Title %in% miss_alias)] = 'Miss'
+> 
+> fr_titanic$Title = droplevels(fr_titanic$Title)
+> summary(fr_titanic$Title)
+Master   Miss     Mr    Mrs 
+    61    264    783    201 
+> 
+> rr_train = subset(fr_titanic, select=-c(Survived, Name, Ticket, Cabin, Set))
+> rr_train = na.omit(rr_train) # Omits test data as Survived values are all NA's
+> 
+> head(rr_train)
+  Pclass Title    Sex Age SibSp Parch    Fare Embarked
+1      3    Mr   male  22     1     0  7.2500        S
+2      1   Mrs female  38     1     0 71.2833        C
+3      3  Miss female  26     0     0  7.9250        S
+4      1   Mrs female  35     1     0 53.1000        S
+5      3    Mr   male  35     0     0  8.0500        S
+7      1    Mr   male  54     0     0 51.8625        S
+> 
+> lm.fit = lm(Age ~ ., data=rr_train)
+> summary(lm.fit)
+
+Call:
+lm(formula = Age ~ ., data = rr_train)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-27.211  -7.836  -1.402   6.464  45.442 
+
+Coefficients:
+             Estimate Std. Error t value Pr(>|t|)    
+(Intercept) 30.109627  11.272866   2.671  0.00768 ** 
+Pclass      -6.228928   0.521007 -11.956  < 2e-16 ***
+TitleMiss    3.894527  11.247229   0.346  0.72921    
+TitleMr     23.250445   1.795410  12.950  < 2e-16 ***
+TitleMrs    17.790986  11.243479   1.582  0.11388    
+Sexmale     -7.810124  11.107834  -0.703  0.48214    
+SibSp       -1.341378   0.434950  -3.084  0.00210 ** 
+Parch       -0.149300   0.473547  -0.315  0.75261    
+Fare         0.009604   0.008008   1.199  0.23069    
+EmbarkedQ    8.010292   1.826357   4.386 1.27e-05 ***
+EmbarkedS    1.619822   0.921048   1.759  0.07893 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 11.08 on 1035 degrees of freedom
+Multiple R-squared:  0.4151,	Adjusted R-squared:  0.4095 
+F-statistic: 73.46 on 10 and 1035 DF,  p-value: < 2.2e-16
+
+> 
+> plot(as.factor(rr_train$Pclass), rr_train$Age, xlab="Passenger Class", ylab="Age")
+> 
+> plot(as.factor(rr_train$SibSp), rr_train$Age, xlab="# siblings + spouses", ylab="Age")
+> 
+> lm.fit = lm(Age ~ Pclass + Title + SibSp + Embarked, data=rr_train)
+> 
+> summary(lm.fit)
+
+Call:
+lm(formula = Age ~ Pclass + Title + SibSp + Embarked, data = rr_train)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-26.831  -7.910  -1.282   6.597  45.571 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  23.4214     2.0771  11.276  < 2e-16 ***
+Pclass       -6.5796     0.4393 -14.978  < 2e-16 ***
+TitleMiss    11.8549     1.8147   6.533 1.01e-10 ***
+TitleMr      23.3244     1.7540  13.298  < 2e-16 ***
+TitleMrs     25.6259     1.8536  13.825  < 2e-16 ***
+SibSp        -1.2878     0.4167  -3.091  0.00205 ** 
+EmbarkedQ     7.8567     1.8149   4.329 1.64e-05 ***
+EmbarkedS     1.4224     0.9025   1.576  0.11529    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 11.07 on 1038 degrees of freedom
+Multiple R-squared:  0.414,	Adjusted R-squared:  0.4101 
+F-statistic: 104.8 on 7 and 1038 DF,  p-value: < 2.2e-16
+
+> 
+> missing_age_masters = which(fr_titanic$Title == 'Master' & is.na(fr_titanic$Age))
+> fr_titanic[missing_age_masters, ]
+     Survived Pclass                                              Name  Title
+66          1      3                          Moubarek, Master. Gerios Master
+160         0      3                        Sage, Master. Thomas Henry Master
+177         0      3                     Lefebre, Master. Henry Forbes Master
+710         1      3 Moubarek, Master. Halim Gonios ("William George") Master
+1136     <NA>      3         Johnston, Master. William Arthur Willie"" Master
+1231     <NA>      3                             Betros, Master. Seman Master
+1236     <NA>      3               van Billiard, Master. James William Master
+1309     <NA>      3                          Peter, Master. Michael J Master
+      Sex Age SibSp Parch     Ticket    Fare Cabin Embarked   Set
+66   male  NA     1     1       2661 15.2458  <NA>        C train
+160  male  NA     8     2   CA. 2343 69.5500  <NA>        S train
+177  male  NA     3     1       4133 25.4667  <NA>        S train
+710  male  NA     1     1       2661 15.2458  <NA>        C train
+1136 male  NA     1     2 W./C. 6607 23.4500  <NA>        S  test
+1231 male  NA     0     0       2622  7.2292  <NA>        C  test
+1236 male  NA     1     1   A/5. 851 14.5000  <NA>        S  test
+1309 male  NA     1     1       2668 22.3583  <NA>        C  test
+> 
+> set.seed(10) # this makes the kernel results reproducible
+> 
+> det_imputed = predict(lm.fit, fr_titanic[which(is.na(fr_titanic$Age)), ])
+> random_imputed = rnorm(length(det_imputed), det_imputed, abs(residuals(lm.fit)))
+> 
+> # We need to round the values to integers and floor them at a value of 1
+> det_imputed[which(det_imputed < 0)] = 1
+> det_imputed = round(det_imputed)
+> 
+> random_imputed[which(random_imputed < 0)] = 1
+> random_imputed = round(random_imputed)
+> 
+> par(mfrow=c(3,1))
+> hist(rr_train$Age, breaks=10, freq=F)
+> hist(det_imputed, breaks=10, freq=F)
+> hist(random_imputed, breaks=10, freq=F)
+> 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> 
+> kde_mat = rbind(cbind(rr_train$Age, rep("Original", length(rr_train$Age))),
++         cbind(det_imputed, rep("Deterministic Imputation", length(det_imputed))),
++         cbind(random_imputed, rep("Randomised Imputation", length(random_imputed))))
+> 
+> kde_df = data.frame(Age=as.numeric(kde_mat[,1]), Source=as.factor(kde_mat[,2]))
+> 
+> ggplot(kde_df, aes(x=Source, y=Age, fill=Source)) + geom_violin()
+> 
+> fr_titanic$Age[which(is.na(fr_titanic$Age))] = random_imputed
+> naSummary(fr_titanic)
+         naCount      naPc
+Survived     418 0.3193277
+Pclass         0 0.0000000
+Name           0 0.0000000
+Title          0 0.0000000
+Sex            0 0.0000000
+Age            0 0.0000000
+SibSp          0 0.0000000
+Parch          0 0.0000000
+Ticket         0 0.0000000
+Fare           0 0.0000000
+Cabin       1014 0.7746371
+Embarked       0 0.0000000
+Set            0 0.0000000
+> 
+> fr_titanic[missing_age_masters,]
+     Survived Pclass                                              Name  Title
+66          1      3                          Moubarek, Master. Gerios Master
+160         0      3                        Sage, Master. Thomas Henry Master
+177         0      3                     Lefebre, Master. Henry Forbes Master
+710         1      3 Moubarek, Master. Halim Gonios ("William George") Master
+1136     <NA>      3         Johnston, Master. William Arthur Willie"" Master
+1231     <NA>      3                             Betros, Master. Seman Master
+1236     <NA>      3               van Billiard, Master. James William Master
+1309     <NA>      3                          Peter, Master. Michael J Master
+      Sex Age SibSp Parch     Ticket    Fare Cabin Embarked   Set
+66   male   1     1     1       2661 15.2458  <NA>        C train
+160  male   1     8     2   CA. 2343 69.5500  <NA>        S train
+177  male   1     3     1       4133 25.4667  <NA>        S train
+710  male  12     1     1       2661 15.2458  <NA>        C train
+1136 male   4     1     2 W./C. 6607 23.4500  <NA>        S  test
+1231 male   1     0     0       2622  7.2292  <NA>        C  test
+1236 male   4     1     1   A/5. 851 14.5000  <NA>        S  test
+1309 male   1     1     1       2668 22.3583  <NA>        C  test
+> 
+> library(reshape2)
+Warning message:
+package ‘reshape2’ was built under R version 3.6.2 
+> 
+> fr_titanic$hasCabin = as.factor(!is.na(fr_titanic$Cabin))
+> 
+> # Make a convenience feature which is directly descriptive
+> Survived_Desc = ifelse(fr_titanic$Survived == 1, "Survived", "Died")
+> 
+> freq = table(fr_titanic$hasCabin, Survived_Desc)
+> freq_df = as.data.frame.matrix(freq)
+> 
+> freq_df = data.frame(Cabin=row.names(freq_df), freq_df)
+> freq_df = melt(freq_df, id.vars="Cabin")
+> 
+> ggplot(freq_df, aes(x=Cabin, y=value)) + geom_bar(aes(fill = variable), position = "dodge", stat="identity")
+> 
+> fr_titanic$Deck = sapply(fr_titanic$Cabin, function(cabin) {
++     substr(as.character(cabin), 1, 1)
++ })
+> 
+> fr_titanic$Deck[which(is.na(fr_titanic$Deck))] = "None"
+> fr_titanic$Deck = as.factor(fr_titanic$Deck)
+> 
+> summary(fr_titanic$Deck)
+   A    B    C    D    E    F    G None    T 
+  22   65   94   46   41   21    5 1014    1 
+> 
+> fr_titanic$Deck[which(fr_titanic$Deck == 'T')] = as.factor('None')
+> fr_titanic$Deck = droplevels(fr_titanic$Deck)
+> 
+> freq = table(fr_titanic$Deck, Survived_Desc)
+> freq_df = as.data.frame.matrix(freq)
+> freq_df = data.frame(Deck=row.names(freq_df), freq_df)
+> 
+> freq_df = melt(freq_df, id.vars="Deck")
+> 
+> ggplot(freq_df, aes(x=Deck, y=value)) + geom_bar(aes(fill = variable), position = "dodge", stat="identity")
+> 
+> inGroup = as.factor(duplicated(fr_titanic$Ticket))
+> 
+> freq_df = as.data.frame.matrix(table(inGroup, Survived_Desc))
+> freq_df = data.frame(inGroup=row.names(freq_df), freq_df)
+> 
+> freq_df = melt(freq_df, id.vars="inGroup")
+> 
+> ggplot(freq_df, aes(x=inGroup, y=value)) + geom_bar(aes(fill = variable), position = "dodge", stat="identity")
+> 
+> fr_titanic$inGroup = inGroup
+> 
+> fr_train = fr_titanic[which(fr_titanic$Set == 'train'), ]
+> 
+> uniq_ages = sort(unique(fr_train$Age))
+> 
+> survival_rates_by_age = sapply(uniq_ages, function(age) {
++     mean(fr_train[which(fr_train$Age == age), ]$Survived == 1)
++ })
+> 
+> uniq_ages
+ [1]  0.42  0.67  0.75  0.83  0.92  1.00  2.00  3.00  4.00  5.00  6.00  7.00
+[13]  8.00  9.00 10.00 11.00 12.00 13.00 14.00 14.50 15.00 16.00 17.00 18.00
+[25] 19.00 20.00 20.50 21.00 22.00 23.00 23.50 24.00 24.50 25.00 26.00 27.00
+[37] 28.00 28.50 29.00 30.00 30.50 31.00 32.00 32.50 33.00 34.00 34.50 35.00
+[49] 36.00 36.50 37.00 38.00 39.00 40.00 40.50 41.00 42.00 43.00 44.00 45.00
+[61] 45.50 46.00 47.00 48.00 49.00 50.00 51.00 52.00 53.00 54.00 55.00 55.50
+[73] 56.00 57.00 58.00 59.00 60.00 61.00 62.00 63.00 64.00 65.00 66.00 70.00
+[85] 70.50 71.00 74.00 80.00
+> 
+> fr_train$Age = round(fr_train$Age)
+> uniq_ages = sort(unique(fr_train$Age))
+> 
+> survival_rates_by_age = sapply(uniq_ages, function(age) {
++     selection = fr_train[which(fr_train$Age == age), ]$Survived
++     mean(selection == 1)
++ })
+> 
+> age_surv_rate_df = data.frame(Age=uniq_ages, SurvivalRate=survival_rates_by_age)
+> ggplot(age_surv_rate_df, aes(x=Age, y=SurvivalRate)) + geom_col()
+> 
+> age_bins = split(uniq_ages, ceiling(seq_along(uniq_ages)/5))
+> binned_surv_rate = sapply(age_bins, function(bin) {
++     mean(age_surv_rate_df[which(age_surv_rate_df$Age %in% bin), ]$SurvivalRate)
++ })
+> 
+> binned_age_surv_df = data.frame(AgeBin=factor(names(age_bins), levels=names(age_bins)), SurvivalRate=binned_surv_rate)
+> ggplot(binned_age_surv_df, aes(x=AgeBin, y=SurvivalRate)) + geom_col()
+> 
+> fr_titanic$AgeGroup = sapply(fr_titanic$Age, function(age) {
++     if (age < 5) {
++         return (1)
++     } else if (age >= 5 && age < 18) {
++         return (2)
++     } else {
++         return (3)
++     }
++ })
+> 
+> table(as.factor(fr_titanic$AgeGroup))
+
+   1    2    3 
+  67  133 1109 
+> 
+> fr_train = fr_titanic[which(fr_titanic$Set == 'train'),]
+> fr_test = fr_titanic[which(fr_titanic$Set == 'test'),]
+> 
+> fr_train = subset(fr_train, select=-c(Name, Ticket, Set, Cabin))
+> fr_test = subset(fr_test, select=-c(Name, Ticket, Set, Cabin, Survived))
+> 
+> head(fr_train)
+  Survived Pclass Title    Sex Age SibSp Parch    Fare Embarked hasCabin Deck
+1        0      3    Mr   male  22     1     0  7.2500        S    FALSE None
+2        1      1   Mrs female  38     1     0 71.2833        C     TRUE    C
+3        1      3  Miss female  26     0     0  7.9250        S    FALSE None
+4        1      1   Mrs female  35     1     0 53.1000        S     TRUE    C
+5        0      3    Mr   male  35     0     0  8.0500        S    FALSE None
+6        0      3    Mr   male  35     0     0  8.4583        Q    FALSE None
+  inGroup AgeGroup
+1   FALSE        3
+2   FALSE        3
+3   FALSE        3
+4   FALSE        3
+5   FALSE        3
+6   FALSE        3
+> str(fr_train)
+'data.frame':	891 obs. of  13 variables:
+ $ Survived: Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass  : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Title   : Factor w/ 4 levels "Master","Miss",..: 3 4 2 4 3 3 3 1 4 4 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age     : num  22 38 26 35 35 35 54 2 27 14 ...
+ $ SibSp   : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch   : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Fare    : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked: Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+ $ hasCabin: Factor w/ 2 levels "FALSE","TRUE": 1 2 1 2 1 1 2 1 1 1 ...
+ $ Deck    : Factor w/ 8 levels "A","B","C","D",..: 8 3 8 3 8 8 5 8 8 8 ...
+ $ inGroup : Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
+ $ AgeGroup: num  3 3 3 3 3 3 3 1 3 2 ...
+> str(fr_test)
+'data.frame':	418 obs. of  12 variables:
+ $ Pclass  : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Title   : Factor w/ 4 levels "Master","Miss",..: 3 4 3 3 4 3 2 3 4 3 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age     : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp   : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch   : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Fare    : num  7.83 7 9.69 8.66 12.29 ...
+ $ Embarked: Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+ $ hasCabin: Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 1 1 1 1 1 1 ...
+ $ Deck    : Factor w/ 8 levels "A","B","C","D",..: 8 8 8 8 8 8 8 8 8 8 ...
+ $ inGroup : Factor w/ 2 levels "FALSE","TRUE": 1 1 1 1 2 1 1 2 1 2 ...
+ $ AgeGroup: num  3 3 3 3 3 2 3 3 3 3 ...
+> 
+> library(e1071)
+> 
+> set.seed(7)
+> 
+> tuned = tune(svm, Survived ~ ., data=fr_train, kernel="linear", scale=TRUE, 
++              ranges=list(cost=seq(0.3, 0.6, length=20)))
+> 
+> summary(tuned)
+
+Parameter tuning of ‘svm’:
+
+- sampling method: 10-fold cross validation 
+
+- best parameters:
+      cost
+ 0.3631579
+
+- best performance: 0.1739326 
+
+- Detailed performance results:
+        cost     error dispersion
+1  0.3000000 0.1750562 0.04699979
+2  0.3157895 0.1750562 0.04699979
+3  0.3315789 0.1750562 0.04699979
+4  0.3473684 0.1750562 0.04699979
+5  0.3631579 0.1739326 0.04640811
+6  0.3789474 0.1739326 0.04640811
+7  0.3947368 0.1761798 0.04544292
+8  0.4105263 0.1761798 0.04544292
+9  0.4263158 0.1761798 0.04544292
+10 0.4421053 0.1784270 0.04826900
+11 0.4578947 0.1784270 0.04826900
+12 0.4736842 0.1784270 0.04495880
+13 0.4894737 0.1784270 0.04495880
+14 0.5052632 0.1784270 0.04495880
+15 0.5210526 0.1784270 0.04495880
+16 0.5368421 0.1784270 0.04495880
+17 0.5526316 0.1784270 0.04495880
+18 0.5684211 0.1806742 0.04497128
+19 0.5842105 0.1806742 0.04497128
+20 0.6000000 0.1806742 0.04497128
+
+> svm.fit = tuned$best.model
+> 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> set.seed(7)
+> rf.fit = randomForest(Survived ~ ., data=fr_train)
+> summary(rf.fit$err.rate)
+      OOB               0                 1         
+ Min.   :0.1605   Min.   :0.08743   Min.   :0.2690  
+ 1st Qu.:0.1650   1st Qu.:0.09290   1st Qu.:0.2778  
+ Median :0.1672   Median :0.09654   Median :0.2778  
+ Mean   :0.1678   Mean   :0.09657   Mean   :0.2823  
+ 3rd Qu.:0.1695   3rd Qu.:0.10018   3rd Qu.:0.2807  
+ Max.   :0.2328   Max.   :0.12000   Max.   :0.4135  
+> 
+> # Thanks to Megan Risdal's excellent Titanic kernel for this little error rate graph
+> plot(rf.fit, ylim=c(0,0.36))
+> legend('top', colnames(rf.fit$err.rate), col=1:3, fill=1:3, bty="n")
+> 
+> varImpPlot(rf.fit)
+> 
+> rf.preds = predict(rf.fit, fr_test)
+> rf.submission = data.frame(PassengerId=names(rf.preds), Survived=rf.preds)
+> write.csv(rf.submission, file="rf_submission.csv", row.names=FALSE)
+> 
+> svm.preds = predict(svm.fit, fr_test)
+> svm.submission = data.frame(PassengerId=names(svm.preds), Survived=svm.preds)
+> write.csv(svm.submission, file="svm_submission.csv", row.names=FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+ 10.896   0.284  11.260 

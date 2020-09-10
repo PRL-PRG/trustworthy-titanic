@@ -1,0 +1,48 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> library(dplyr,quietly = T,warn.conflicts = F)
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(lattice,quietly = T,warn.conflicts = F)
+> library(ggplot2,quietly = T,warn.conflicts = F)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(corrplot,quietly = T,warn.conflicts = F)
+corrplot 0.84 loaded
+> library(MASS,quietly = T,warn.conflicts = F)
+> library(Matrix,quietly = T,warn.conflicts = F)
+> library(foreach,quietly = T,warn.conflicts = F)
+Warning message:
+package ‘foreach’ was built under R version 3.6.2 
+> library(glmnet,quietly = T,warn.conflicts = F)
+Loaded glmnet 4.0-2
+Warning message:
+package ‘glmnet’ was built under R version 3.6.2 
+> library(rpart,quietly = T,warn.conflicts = F)
+> library(randomForest,quietly = T,warn.conflicts = F)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> library(klaR,quietly = T,warn.conflicts = F)
+> library(kernlab,quietly = T,warn.conflicts = F)
+> library(lda,quietly = T,warn.conflicts = F)
+Error in library(lda, quietly = T, warn.conflicts = F) : 
+  there is no package called ‘lda’
+Execution halted

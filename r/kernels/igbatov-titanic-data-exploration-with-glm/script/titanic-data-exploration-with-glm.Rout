@@ -1,0 +1,36 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ----message=F, warning=F--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # for glmnet()
+> library(glmnet)
+Loading required package: Matrix
+Loaded glmnet 4.0-2
+Warning message:
+package ‘glmnet’ was built under R version 3.6.2 
+> 
+> # cv.glm (cross-validation of GLM)
+> library(boot)
+Warning message:
+package ‘boot’ was built under R version 3.6.2 
+> 
+> # logistf()
+> library(logistf)
+Error in library(logistf) : there is no package called ‘logistf’
+Execution halted

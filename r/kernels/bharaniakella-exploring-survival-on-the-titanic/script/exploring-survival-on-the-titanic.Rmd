@@ -1,0 +1,167 @@
+## Session-2 ##
+wc.at<-read.csv("wc-at.csv",header=T)
+attach(wc.at)
+library("lattice")
+dotplot(wc.at$Waist, main="Dot Plot of Waist Circumferences")
+dotplot(wc.at$AT, main="Dot Plot of Adipose Tissue Areas")
+boxplot(wc.at$Waist,col="dodgerblue4")
+boxplot(wc.at$AT,col="dodgerblue4")
+plot(wc.at$Waist,wc.at$AT,main="Scatter Plot ", col="Dodgerblue4", col.main="Dodgerblue4", col.lab="Dodgerblue4", xlab="Waist Ciscumference", ylab="Adipose Tissue area", pch=20)
+reg<-lm(AT~Waist, data=wc.at)
+reg_sqrt<-lm(AT~sqrt(Waist), data=wc.at)
+reg_log<-lm(AT~log(Waist), data=wc.at)
+summary(reg)
+summary(reg_sqrt)
+summary(reg_log)
+
+confint(reg,level=0.95)
+predict(reg,interval="predict")
+
+confint(reg_sqrt,level=0.95)
+predict(reg_sqrt,interval="predict")
+
+confint(reg_log,level=0.95)
+predict(reg_log,interval="predict")
+
+
+
+reg1<-lm(log(AT)~Waist + I(Waist*Waist), data=wc.at)
+reg_sqrt1<-lm(sqrt(AT)~Waist, data=wc.at)
+reg_log1<-lm(log(AT)~Waist, data=wc.at)
+summary(reg1)
+summary(reg_sqrt1)
+summary(reg_log1)
+
+
+
+
+newspaper_data<-read.csv("NewspaperData.csv", header=TRUE)
+attach(newspaper_data)
+dotplot(sunday, main="Dot Plot of Sunday Circulations",col="dodgerblue4")
+dotplot(daily, main="Dot Plot of Daily Circulations", col="dodgerblue4")
+boxplot(sunday,col="dodgerblue4")
+boxplot(daily,col="dodgerblue4")
+plot(daily,sunday,main="Scatter Plot ", col="Dodgerblue4", col.main="Dodgerblue4", col.lab="Dodgerblue4", xlab="Daily Circulations", ylab="Sunday Circulations", pch=20)
+reg.model<-lm(sunday~daily)
+summary(reg.model)
+anova(reg.model)
+plot(reg.model)
+layout(matrix(c(1,2,3,4),2,2))
+plot(reg.model)
+confint(reg.model,level=0.95)
+predict(reg.model,interval="predict")
+
+plot(daily,sunday,main="Scatter Plot ", col="Dodgerblue4", col.main="Dodgerblue4", col.lab="Dodgerblue4", xlab="Daily Circulations", ylab="Sunday Circulations", pch=20)
+segments(daily, sunday, daily, 100+daily*1.3)
+abline(coef=c(100,1.3), col="red")
+
+plot(daily,sunday,main="Line of Best Fit", col="Dodgerblue4", col.main="Dodgerblue4", col.lab="Dodgerblue4", xlab="Daily Circulations", ylab="Sunday Circulations", pch=20)
+abline(reg.model, col="red")
+segments(daily, sunday, daily,predict(reg.model))
+
+predict(reg.model,newdata= data.frame(daily=c(500000,2000000)),interval="predict")
+
+## Session-2 ##
+library("car")
+cigarette_consumption<-read.csv("CigaretteConsumption.csv",header=T)
+attach(cigarette_consumption)
+pairs(cigarette_consumption[,2:8],col="dodgerblue4",pch=20)
+reg.model<-lm(Sales~Age+HS+Income+Black+Female+Price)
+summary(reg.model)
+layout(matrix(c(1,2,3,4),2,2))
+plot(reg.model)
+confint(reg.model,level=0.95)
+
+reg.reduced<-lm(Sales~Age+Income+Black+Price)
+summary(reg.model)
+summary(reg.reduced)
+anova(reg.model)
+anova(reg.reduced)
+
+f=((34960-34926)/(6-4))/(34926/(51-6-1))
+pf(f,2,(51-6-1))
+
+
+car<-read.csv("Cars.csv",header=T)
+attach(car)
+
+# The Linear Model of interest
+model.car<-lm(MPG~VOL+HP+SP+WT)
+summary(model.car)
+
+model.carV<-lm(MPG~VOL)
+summary(model.carV)
+
+
+#### Session 3 #####
+## Read in data
+car<-read.csv("Cars.csv",header=T)
+attach(car)
+
+### Statter plot matrix with Correlations inserted in graph
+panel.cor <- function(x, y, digits=2, prefix="", cex.cor)
+{
+  usr <- par("usr"); on.exit(par(usr))
+  par(usr = c(0, 1, 0, 1))
+  r = (cor(x, y))
+  txt <- format(c(r, 0.123456789), digits=digits)[1]
+  txt <- paste(prefix, txt, sep="")
+  if(missing(cex.cor)) cex <- 0.4/strwidth(txt)
+  text(0.5, 0.5, txt, cex = cex)
+}
+pairs(car, upper.panel=panel.cor,main="Scatter Plot Matrix with Correlation Coefficients")
+
+# The Linear Model of interest
+model.car<-lm(MPG~VOL+HP+SP+WT)
+summary(model.car)
+
+### Linear Models with few variables taken together
+model.car1<-lm(MPG~VOL+WT)
+summary(model.car1)
+
+model.car2<-lm(MPG~WT)
+summary(model.car2)
+
+### Partial Correlation matrix
+library(corpcor)
+cor2pcor(cor(car))
+
+# Deletion Diagnostics
+influence.measures(model.car)
+influenceIndexPlot(model.car, id.n=3) # Index Plots of the influence measures
+influencePlot(model.car, id.n=3) # A user friendly representation of the above
+
+## Regression after deleting the 77th observation
+model.car<-lm(MPG~VOL+HP+SP+WT, data=car[-77,])
+summary(model.car)
+
+## Regression after deleting the 77thand 79th observations
+
+model.car<-lm(MPG~VOL+HP+SP+WT, data=car[-c(77,79),])
+summary(model.car)
+
+# Diagnostic Plots
+plot(model.car) # Residual Plots, QQ-Plos, Std. Residuals vs Fitted
+plot(model.car) # Residuals vs Regressors
+avPlots(model.car, id.n=2, id.cex=0.7) # Added Variable Plots
+qqPlot(model.car, id.n=5) # QQ plots of studentized residuals, helps identify outliers
+
+### Variance Inflation Factors
+vif(reg.model)
+plot(VOL,WT, col="dodgerblue4",pch=20)
+plot(HP,SP, col="dodgerblue4",pch=20)
+layout(matrix(c(1,2,3,4),2,2))
+plot(reg.model)
+
+influence.measures(reg.model)
+hat.values<-hatvalues(reg.model)
+plot(reg.model)
+#### Added Variable Plots ######
+avPlots(reg.model, id.n=2, id.cex=0.8, col="red")
+
+## Diagnostic Plots ###
+influenceIndexPlot(reg.model, id.n=3)
+influencePlot(reg.model, id.n=3)
+
+library("MASS")
+stepAIC(reg.model)

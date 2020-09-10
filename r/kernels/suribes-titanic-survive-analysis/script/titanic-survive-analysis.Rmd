@@ -1,0 +1,180 @@
+---
+title: "Titanic Survive Analysis"
+author: "Sergio Uribe"
+date: "5 januar 2017"
+output: 
+  html_document:
+    number_sections: true
+    toc: true
+    fig_width: 7
+    fig_height: 4.5
+    theme: readable
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Synopsis
+
+This is my first script at a Kaggle competition.
+
+## Competition Description
+Source: https://www.kaggle.com/c/titanic
+
+The sinking of the RMS Titanic is one of the most infamous shipwrecks in history.  On April 15, 1912, during her maiden voyage, the Titanic sank after colliding with an iceberg, killing 1502 out of 2224 passengers and crew. This sensational tragedy shocked the international community and led to better safety regulations for ships.
+One of the reasons that the shipwreck led to such loss of life was that there were not enough lifeboats for the passengers and crew. Although there was some element of luck involved in surviving the sinking, some groups of people were more likely to survive than others, such as women, children, and the upper-class.
+
+## Variable Description
+Source: https://www.kaggle.com/c/titanic/data
+
+VARIABLE DESCRIPTIONS:
+survival        Survival
+                (0 = No; 1 = Yes)
+pclass          Passenger Class
+                (1 = 1st; 2 = 2nd; 3 = 3rd)
+name            Name
+sex             Sex
+age             Age
+sibsp           Number of Siblings/Spouses Aboard
+parch           Number of Parents/Children Aboard
+ticket          Ticket Number
+fare            Passenger Fare
+cabin           Cabin
+embarked        Port of Embarkation
+                (C = Cherbourg; Q = Queenstown; S = Southampton)
+
+SPECIAL NOTES:
+Pclass is a proxy for socio-economic status (SES)
+ 1st ~ Upper; 2nd ~ Middle; 3rd ~ Lower
+
+Age is in Years; Fractional if Age less than One (1)
+ If the Age is Estimated, it is in the form xx.5
+
+With respect to the family relation variables (i.e. sibsp and parch)
+some relations were ignored.  The following are the definitions used
+for sibsp and parch.
+
+Sibling:  Brother, Sister, Stepbrother, or Stepsister of Passenger Aboard Titanic
+Spouse:   Husband or Wife of Passenger Aboard Titanic (Mistresses and Fiances Ignored)
+Parent:   Mother or Father of Passenger Aboard Titanic
+Child:    Son, Daughter, Stepson, or Stepdaughter of Passenger Aboard Titanic
+
+Other family relatives excluded from this study include cousins,
+nephews/nieces, aunts/uncles, and in-laws.  Some children travelled
+only with a nanny, therefore parch=0 for them.  As well, some
+travelled with very close friends or neighbors in a village, however,
+the definitions do not support such relations.
+
+## Questions to be asked
+1. What sorts of people were likely to survive?
+
+# Load and clean the data
+
+## Load the libraries
+```{r, message = FALSE}
+library(ggplot2)
+library(caret)
+library(randomForest)
+library(FSelector)
+library(dplyr)
+library(data.table)
+
+```
+
+## Load the data
+
+Import training and testing data to variables training and testing.
+
+```{r}
+# Getting data
+
+set.seed(1)
+#training = data.table(read.csv("train.csv", stringsAsFactors = F))
+#testing = data.table(read.csv("test.csv", stringsAsFactors = F))
+training = data.table(read.csv('../input/train.csv', stringsAsFactors = F))
+testing = data.table(read.csv('../input/test.csv', stringsAsFactors = F))
+
+str(training)
+str(testing)
+```
+
+## 1.2 Clean the data
+
+Replacing NA values
+
+```{r}
+## Replace Age NA values with -1
+training[is.na(Age), Age := -1]
+testing[is.na(Age), Age := -1]
+
+## Replace Embarked NA values with S
+training[Embarked == "", Embarked := "S"]
+testing[Embarked == "", Embarked := "S"]
+
+## Replace Fare NA values with 0
+training[is.na(Fare), Fare := 0]
+testing[is.na(Fare), Fare := 0]
+```
+
+Remove unnecessary columns
+
+```{r}
+training[, PassengerId := NULL][, Name := NULL][, Cabin := NULL][, Ticket := NULL]
+```
+
+Factor the goal column
+
+```{r}
+training[, Survived := as.factor(Survived)]
+```
+
+
+# Model Training
+
+## Model Selection
+
+The model shall classify "What sorts of people were likely to survive?"
+
+The learning model selected is a Random Forest.
+
+### 5 Top features. Select the 5 best features using the FSelector package
+
+```{r warning=FALSE}
+
+# Train the model with the best 5 features
+
+weights <- random.forest.importance(Survived ~ ., training, importance.type = 1)
+print(weights)
+subsetWeights <- cutoff.k(weights, 5)
+modelFormula <- as.simple.formula(subsetWeights, "Survived")
+modelFormula
+
+tControl <- trainControl(method = "cv", number = 5)
+modelrfWeights <- train(form = modelFormula, data = training, method = "rf", trControl = tControl, verbose = FALSE)
+
+```
+
+# Prediction
+
+## What sorts of people were likely to survive?
+
+```{r warning=FALSE}
+# Predict the results and check accuracy
+resultrfWeights <- predict(modelrfWeights, testing)
+
+# Save the solution to a dataframe with two columns: PassengerId and Survived (prediction)
+solution <- data.frame(PassengerID = testing$PassengerId, Survived = resultrfWeights)
+
+# Write the solution to file
+write.csv(solution, file = 'rf_mod_Solution.csv', row.names = F)
+
+```
+
+# Conclusion
+
+## What sorts of people were likely to survive?
+
+* <TBD>
+

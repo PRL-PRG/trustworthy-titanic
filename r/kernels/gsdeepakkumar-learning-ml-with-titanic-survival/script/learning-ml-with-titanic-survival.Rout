@@ -1,0 +1,80 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE,message=FALSE,warning=FALSE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(dplyr) # Data Munging
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(ggplot2) # Data Visualisation
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(ggthemes) #Themes
+> library(corrplot) #Correlation
+corrplot 0.84 loaded
+> library(rpart) #Data modelling
+> library(randomForest) #Data modelling
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> library(pscl)
+Classes and Methods for R developed in the
+Political Science Computational Laboratory
+Department of Political Science
+Stanford University
+Simon Jackman
+hurdle and zeroinfl functions by Achim Zeileis
+> library(Deducer) # Modelling
+Loading required package: JGR
+Loading required package: rJava
+Loading required package: JavaGD
+Error: package or namespace load failed for ‘JavaGD’ in dyn.load(file, DLLpath = DLLpath, ...):
+ unable to load shared object '/Library/Frameworks/R.framework/Versions/3.6/Resources/library/JavaGD/libs/JavaGD.so':
+  dlopen(/Library/Frameworks/R.framework/Versions/3.6/Resources/library/JavaGD/libs/JavaGD.so, 6): Library not loaded: /Library/Java/JavaVirtualMachines/jdk-11.0.1.jdk/Contents/Home/lib/server/libjvm.dylib
+  Referenced from: /Library/Frameworks/R.framework/Versions/3.6/Resources/library/JavaGD/libs/JavaGD.so
+  Reason: image not found
+Error: package ‘JavaGD’ could not be loaded
+In addition: Warning messages:
+1: package ‘JGR’ was built under R version 3.6.2 
+2: package ‘JavaGD’ was built under R version 3.6.2 
+Execution halted

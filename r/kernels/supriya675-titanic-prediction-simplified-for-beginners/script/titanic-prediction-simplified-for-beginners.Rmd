@@ -1,0 +1,225 @@
+
+---
+title: 'Hands on case study in simple steps using R'
+author: 'Supriya Rani'
+date: '22 July 2018'
+output:
+  html_document:
+    number_sections: true
+    toc: true
+    fig_width: 7
+    fig_height: 4.5
+    theme: readable
+    highlight: tango
+---
+
+
+# Introduction
+This is my first case study on kaggle. After spending hours for almost a month I am presenting my work here. My main purpose behind this script is to guide and inspire new kgglers.
+
+## Understanding dataset
+Titanic dataset is a tiny dataset for a beginner to start with. Here training dataset is provided to train a model and predict survivals on test dataset. General subbmission dataset is given as sample submission file. So let's start.
+
+Main focus will be on the following topics:
+
+* Feature Engineering (Applied machine learning)
+* Data preparation
+* Data Visualisation
+* Modeling and Prediction
+
+loading R packages as per need
+```{r, message = FALSE}
+# Loading library packages needed
+library('randomForest') # classification algorithm
+```
+
+## Importing data files
+Import dataset and assign it to new dataset.
+
+```{r, message = FALSE, warning=FALSE}
+# Import
+titanic.train <- read.csv(file = "../input/train.csv", header = T, stringsAsFactors = F)
+titanic.test <- read.csv(file = "../input/test.csv", header = T, stringsAsFactors = F)
+```
+
+## Exploring variables
+
+```{r, message=FALSE, warning=FALSE}
+# View data in different ways
+str(titanic.train)
+head(titanic.train)
+tail(titanic.train)
+
+str(titanic.test)
+head(titanic.test)
+tail(titanic.test)
+```
+We have details of datasets from which we can conclude the following:
+
+Variable Name | Description
+--------------|-------------
+Passenger Id  | Unique identification Number of every passerger
+Pclass        | Class of Passenger's traveling in 
+Name          | Name of Passenger's
+Sex           | Passenger's Sex
+Age           | Age of Passenger's
+SibSp         | Number of siblings/spouses present on that ship
+Parch         | Number of parents/children present on that ship
+Ticket        | Ticket number 
+Fare          | Fare
+Cabin         | Cabin Number
+Embarked      | Port of embarkation
+Survived      | For Survived (1) or for died (0)
+
+We can see that titanic.train data have 891 observation and 12 variables. Where as titanic.test 418 observations and 11 variables. Survival variable is not present in titanic.test dataset. Also records are present in serial numbers divided in training and test dataset.
+
+# Data preparation
+
+## combining two files
+To do feature engineering on both datasets we will combine them in a new dataset.
+Since 'Survive' variable is missing in titanic.test dataset so we will add this variable with na values.
+
+```{r, message=FALSE, warning=FALSE}
+# creating variable 
+titanic.test$Survived <- NA
+
+# binding data row wise
+titanic.combined <- rbind(titanic.train, titanic.test)
+
+# check whether data ia bined correctly or not
+head(titanic.combined)
+tail(titanic.combined)
+```
+So 'titanic.combined' is new dataset with all the rows and top 891 rows are from titanic.train dataset and the bottom rest are from titanic.test dataset.
+
+## Feature Engineering
+### Data insights
+This is very likely to happen that families might have survived or sinked together. So lets create a family variable to store family size.
+
+```{r, message=FALSE, warning=FALSE}
+# Create a new variable which contains siblings, spouse and individuals
+titanic.combined$Family.size <- titanic.combined$SibSp + titanic.combined$Parch + 1
+```
+
+### Handeling missing values
+
+```{r, message=FALSE, warning=FALSE}
+# Check missing values
+sapply(titanic.combined, function(x) {sum(is.na(x))})
+```
+
+-> Embarked variable
+
+As only two value are missing so they are not going to effect our prediction model. Hence as 'S' has comparatively high presence so we can assign 'S' to those missing place.
+
+```{r, message=FALSE, warning=FALSE}
+# fill blan rows with 'S'
+
+titanic.combined[titanic.combined$Embarked == '', "Embarked"] <- 'S' 
+```
+-> Age variable
+
+We will apply simple linear regression model.
+
+```{r, message=FALSE, warning=FALSE}
+# modeling for age
+age.formula <- "Age ~ Pclass + Sex"
+age.model <- lm(
+  formula = age.formula,
+  data = titanic.combined
+)
+age.row <- titanic.combined[is.na(titanic.combined$Age), c("Pclass", "Sex")]
+
+# predict age for NA filled rows
+age.predict <-predict(age.model, newdata = age.row)
+
+# assign value of age into combined dataset
+titanic.combined[is.na(titanic.combined$Age), "Age"] <- age.predict
+```
+-> Fare variable
+Since only one row has missing value so we will fill it with median
+
+```{r, message=FALSE, warning=FALSE}
+# find median of fare
+fare.median <- median(titanic.combined$Fare, na.rm = T)
+
+# assign value to blank rows
+titanic.combined[is.na(titanic.combined$Fare), "Fare"] <- fare.median
+```
+## factoring character variables
+So that we can use them later
+
+```{r, message=FALSE, warning=FALSE}
+titanic.combined$Pclass <- as.factor(titanic.combined$Pclass)
+titanic.combined$Sex <- as.factor(titanic.combined$Sex)
+titanic.combined$Embarked <- as.factor(titanic.combined$Embarked)
+```
+
+## Separate train and test data set
+Now we have to split data so that we can use train dataset to *train* our model and to predict survivals for *test* dataset.
+```{r, message=FALSE, warning=FALSE}
+# split dataset
+titanic.train <- titanic.combined[1:891,]
+titanic.test <- titanic.combined[892:1309,]
+```
+
+# Modeling and Prediction  
+## Preparing model
+Now we are ready to train our model. Just to keep this script simple we will not include *Name* variable in our model, As here Name is a character variable so we have to apply feature enginering to break it in different buckets.
+
+```{r, message=FALSE, warning=FALSE}
+# To get Survived data in levels
+titanic.train$Survived <- as.factor(titanic.train$Survived)
+
+# Set a random seed
+set.seed(675)
+
+# Modeling data 
+survived.formula <- as.formula("Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Family.size")
+survive.model <- randomForest(formula = survived.formula, data = titanic.train, ntree = 500, mtry = 3, nodesize = 0.01 * nrow(titanic.test),  keep.forest = TRUE)
+```
+
+## Prediction
+For prediction of survivals we will proceed with *Test* dataset
+
+```{r, message=FALSE, warning=FALSE}
+# Prediction 
+Survived <- predict(survive.model, newdata = titanic.test)
+```
+
+## Creating new data set for submission
+As per given instructions we have to submit file in csv format which will only include *PassengerId* and *Survival* from *Test* dataset.
+```{r, message=FALSE, warning=FALSE}
+# new data set with two variables
+PassengerId <- titanic.test$PassengerId
+output.df <- as.data.frame(PassengerId)
+output.df$Survived <- Survived
+table(output.df$Survived)
+# write csv file
+
+write.csv(output.df, file = "titanic_submission.csv", row.names = FALSE)
+```
+
+# Visualisation of final dataset 
+```{r, message=FALSE, warning=FALSE}
+# error visuals
+plot(survive.model, ylim=c(0,0.40))
+legend('topright', colnames(survive.model$err.rate), col=1:3, fill=1:3)
+  ```
+  
+  Here Green and red lines shows survived and died respectively. Black line shows error which is near to 20%. Hence our model is good enough to go. 
+  
+# Conclusion
+This is my first exploration of a Kaggle dataset. I look forward to doing more. Comments and feedbacks are welcome!
+
+
+
+
+
+
+
+
+
+
+
+

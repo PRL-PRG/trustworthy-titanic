@@ -1,0 +1,124 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(stringr)
+> library(ggthemes)
+> library(scales)
+
+Attaching package: ‘scales’
+
+The following object is masked from ‘package:readr’:
+
+    col_factor
+
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> system("ls ../input")
+gender_submission.csv
+test.csv
+train.csv
+> test<-read.csv("../input/test.csv")
+> train<-read.csv("../input/train.csv")
+> 
+> # Any results you write to the current directory are saved as output.
+> full<-bind_rows(train,test)
+> full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+> table(full$Sex,full$Title)
+        
+         Capt Col Don Dona  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs
+  female    0   0   0    1   1        0    1     0      0  260    2   1   0 197
+  male      1   4   1    0   7        1    0     2     61    0    0   0 757   0
+        
+          Ms Rev Sir the Countess
+  female   2   0   0            1
+  male     0   8   1            0
+> table(full$Survived,full$Title)
+   
+    Capt Col Don Dona  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs  Ms
+  0    1   1   1    0   4        1    0     1     17   55    0   0 436  26   0
+  1    0   1   0    0   3        0    1     1     23  127    2   1  81  99   1
+   
+    Rev Sir the Countess
+  0   6   0            0
+  1   0   1            1
+> 
+> ###grouping less frequent titles are rare title####
+> rare_title=c("Capt","Col","Don","Dona","Dr","Jonkheer","Lady","Major","Rev",
++              "Sir","the Countess")
+> 
+> full$Title[full$Title=='Mme']<-"Mrs"
+> full$Title[full$Title=='Mlle']<-"Miss"
+> full$Title[full$Title=='Ms']<-"Miss"
+> full$Title[full$Title %in% rare_title]<-"Rare Title"
+> 
+> full$Surname <- sapply(full$Name,  
++                        function(x) strsplit(x, split = '[,.]')[[1]][1])
+Error in strsplit(x, split = "[,.]") : non-character argument
+Calls: sapply -> lapply -> FUN -> strsplit
+Execution halted

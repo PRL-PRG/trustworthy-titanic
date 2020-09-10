@@ -1,0 +1,359 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE)
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Load packages
+> library(ggplot2) # visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(ggthemes) # visualization
+> library(dplyr) # data manipulation
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(rpart) # prediction
+> library(rpart.plot)
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> test$Survived <- NA
+> combo  <- rbind(train, test) # bind training & test data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> str(combo)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(combo)
+  PassengerId      Survived          Pclass     
+ Min.   :   1   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000  
+ Median : 655   Median :0.0000   Median :3.000  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295  
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :1309   Max.   :1.0000   Max.   :3.000  
+                NA's   :418                     
+                               Name          Sex           Age       
+ Connolly, Miss. Kate            :   2   female:466   Min.   : 0.17  
+ Kelly, Mr. James                :   2   male  :843   1st Qu.:21.00  
+ Abbing, Mr. Anthony             :   1                Median :28.00  
+ Abbott, Mr. Rossmore Edward     :   1                Mean   :29.88  
+ Abbott, Mrs. Stanton (Rosa Hunt):   1                3rd Qu.:39.00  
+ Abelson, Mr. Samuel             :   1                Max.   :80.00  
+ (Other)                         :1301                NA's   :263    
+     SibSp            Parch            Ticket          Fare        
+ Min.   :0.0000   Min.   :0.000   CA. 2343:  11   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.000   1601    :   8   1st Qu.:  7.896  
+ Median :0.0000   Median :0.000   CA 2144 :   8   Median : 14.454  
+ Mean   :0.4989   Mean   :0.385   3101295 :   7   Mean   : 33.295  
+ 3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7   3rd Qu.: 31.275  
+ Max.   :8.0000   Max.   :9.000   347082  :   7   Max.   :512.329  
+                                  (Other) :1261   NA's   :1        
+             Cabin      Embarked
+                :1014    :  2   
+ C23 C25 C27    :   6   C:270   
+ B57 B59 B63 B66:   5   Q:123   
+ G6             :   5   S:914   
+ B96 B98        :   4           
+ C22 C26        :   4           
+ (Other)        : 271           
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combo$Name<- as.character(combo$Name)
+> strsplit(combo$Name[1],split = '[,.]')[[1]][2]
+[1] " Mr"
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combo$Title<- sapply(strsplit(combo$Name, split='[,.]'), function(x) (x[2]))
+> combo$Title <- sub(' ','',combo$Title) 
+> table(combo$Title)
+
+        Capt          Col          Don         Dona           Dr     Jonkheer 
+           1            4            1            1            8            1 
+        Lady        Major       Master         Miss         Mlle          Mme 
+           1            2           61          260            2            1 
+          Mr          Mrs           Ms          Rev          Sir the Countess 
+         757          197            2            8            1            1 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combo$Title[combo$Title %in% c('Mme','Mlle')] <- 'Miss'
+> unique_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
++                 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+> combo$Title[combo$Title %in% unique_title]  <- 'Unique Title'
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(combo$Title, combo$Sex)
+              
+               female male
+  Master            0   61
+  Miss            263    0
+  Mr                0  757
+  Mrs             197    0
+  Ms                2    0
+  Unique Title      4   25
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combo$Fsize<- combo$SibSp + combo$Parch + 1
+> table(combo$Fsize)
+
+  1   2   3   4   5   6   7   8  11 
+790 235 159  43  22  25  16   8  11 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combo$Famcat <- case_when(
++    combo$Fsize >=  0 & combo$Fsize <2   ~ "Single",
++    combo$Fsize >=  2 & combo$Fsize <4   ~ "Small Family",
++    combo$Fsize >=  4  ~ "Large Family"
++ )
+> 
+> combo$Famcat<- as.factor(combo$Famcat)
+> table(combo$Famcat)
+
+Large Family       Single Small Family 
+         125          790          394 
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+>  combo$Agecat <- case_when(
++     combo$Age >=  0 & combo$Age <18   ~ "Child",
++     combo$Age >=  18 & combo$Age <30   ~ "Under 30",
++     combo$Age >=  30 & combo$Age <60  ~ "30-60",
++  combo$Age >=  60~ "Senior"
++  )
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combo$Agecat<- factor(combo$Agecat, levels=c("Child", "Under 30", "30-60", "Senior"))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> is.na(combo) <- combo == ""
+> sapply(combo, function(x) sum(is.na(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1        1014           2 
+      Title       Fsize      Famcat      Agecat 
+          0           0           0         263 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combo %>% filter(is.na(Fare)) %>% head
+  PassengerId Survived Pclass               Name  Sex  Age SibSp Parch Ticket
+1        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0   3701
+  Fare Cabin Embarked Title Fsize Famcat Agecat
+1   NA  <NA>        S    Mr     1 Single Senior
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combo %>%
++    group_by(Embarked, Pclass) %>%
++    na.omit() %>%    
++    summarize(mean_fare = mean(Fare, na.rm = TRUE), n=n())
+`summarise()` regrouping output by 'Embarked' (override with `.groups` argument)
+[90m# A tibble: 6 x 4[39m
+[90m# Groups:   Embarked [3][39m
+  Embarked Pclass mean_fare     n
+  [3m[90m<fct>[39m[23m     [3m[90m<int>[39m[23m     [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m
+[90m1[39m C             1     106.     63
+[90m2[39m C             2      13.3     2
+[90m3[39m Q             1      90       2
+[90m4[39m S             1      76.8    93
+[90m5[39m S             2      19.2    13
+[90m6[39m S             3      11.0    10
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combo$Fare[1044]<- 11.02
+> combo[1044,]
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket  Fare Cabin Embarked Title Fsize Famcat Agecat
+1044   3701 11.02  <NA>        S    Mr     1 Single Senior
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combo %>% filter(is.na(Embarked)) %>% head
+  PassengerId Survived Pclass                                      Name    Sex
+1          62        1      1                       Icard, Miss. Amelie female
+2         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn) female
+  Age SibSp Parch Ticket Fare Cabin Embarked Title Fsize Famcat Agecat
+1  38     0     0 113572   80   B28     <NA>  Miss     1 Single  30-60
+2  62     0     0 113572   80   B28     <NA>   Mrs     1 Single Senior
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> k <- ggplot(na.omit(combo), aes(x=factor(Embarked), fill=factor(Pclass)))
+> k + geom_bar( position="dodge")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combo$Embarked[c(62,830)]<- "C"
+> table(combo$Embarked)
+
+      C   Q   S 
+  0 272 123 914 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> Agefit <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + Fsize, data = combo[!is.na(combo$Age),], method = 'anova')
+> combo$Age[is.na(combo$Age)] <- predict(Agefit, combo[is.na(combo$Age),])
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(na.omit(combo), aes(x=Sex, fill=factor(Survived))) +geom_bar(position="dodge")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(na.omit(combo), aes(x=Sex, fill=factor(Survived))) +geom_bar(position="dodge")  + facet_grid(".~Pclass")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> m <- ggplot(na.omit(combo), aes(x = Agecat, fill=factor(Survived)))
+> m + geom_bar(position = "stack")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> c1<- combo %>%
++     group_by (Pclass, Agecat) %>%
++      summarise(survived_ratio=mean(Survived,na.rm=TRUE))  %>%
++      arrange(desc(survived_ratio))
+`summarise()` regrouping output by 'Pclass' (override with `.groups` argument)
+> c1
+[90m# A tibble: 15 x 3[39m
+[90m# Groups:   Pclass [3][39m
+   Pclass Agecat   survived_ratio
+    [3m[90m<int>[39m[23m [3m[90m<fct>[39m[23m             [3m[90m<dbl>[39m[23m
+[90m 1[39m      1 Child             0.917
+[90m 2[39m      2 Child             0.913
+[90m 3[39m      1 Under 30          0.698
+[90m 4[39m      1 30-60             0.667
+[90m 5[39m      1 [31mNA[39m                0.467
+[90m 6[39m      2 30-60             0.420
+[90m 7[39m      2 Under 30          0.415
+[90m 8[39m      3 Child             0.372
+[90m 9[39m      2 [31mNA[39m                0.364
+[90m10[39m      1 Senior            0.294
+[90m11[39m      2 Senior            0.25 
+[90m12[39m      3 [31mNA[39m                0.25 
+[90m13[39m      3 Under 30          0.233
+[90m14[39m      3 Senior            0.2  
+[90m15[39m      3 30-60             0.156
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train1<- combo[1:891,]
+> test1<- combo[892:1309,]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train1$Pclass<- as.factor(train1$Pclass)
+> log3<- glm(data=train1, Survived ~ Pclass + Sex +Fare + Embarked + Title + Fsize +Agecat + Sex*Pclass, family="binomial")
+> summary(log3)
+
+Call:
+glm(formula = Survived ~ Pclass + Sex + Fare + Embarked + Title + 
+    Fsize + Agecat + Sex * Pclass, family = "binomial", data = train1)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6976  -0.5110  -0.4134   0.3870   2.4310  
+
+Coefficients:
+                    Estimate Std. Error z value Pr(>|z|)    
+(Intercept)        2.029e+01  8.397e+02   0.024 0.980721    
+Pclass2           -6.236e-01  7.894e-01  -0.790 0.429546    
+Pclass3           -3.056e+00  7.060e-01  -4.329 1.50e-05 ***
+Sexmale           -1.582e+01  8.397e+02  -0.019 0.984968    
+Fare               3.238e-03  2.967e-03   1.091 0.275180    
+EmbarkedQ         -1.031e+00  5.833e-01  -1.768 0.077144 .  
+EmbarkedS         -5.077e-01  2.910e-01  -1.745 0.080995 .  
+TitleMiss         -1.538e+01  8.397e+02  -0.018 0.985383    
+TitleMr           -3.172e+00  5.958e-01  -5.325 1.01e-07 ***
+TitleMrs          -1.474e+01  8.397e+02  -0.018 0.985991    
+TitleMs           -2.408e+00  1.680e+03  -0.001 0.998857    
+TitleUnique Title -3.004e+00  8.356e-01  -3.595 0.000324 ***
+Fsize             -4.681e-01  9.988e-02  -4.687 2.77e-06 ***
+AgecatUnder 30    -7.597e-01  3.984e-01  -1.907 0.056542 .  
+Agecat30-60       -9.200e-01  4.334e-01  -2.122 0.033802 *  
+AgecatSenior      -1.575e+00  7.143e-01  -2.206 0.027419 *  
+Pclass2:Sexmale   -1.058e+00  8.521e-01  -1.242 0.214353    
+Pclass3:Sexmale    1.494e+00  7.149e-01   2.089 0.036690 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 964.52  on 713  degrees of freedom
+Residual deviance: 568.50  on 696  degrees of freedom
+  (177 observations deleted due to missingness)
+AIC: 604.5
+
+Number of Fisher Scoring iterations: 14
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> test1$Pclass<- as.factor(test1$Pclass)
+> pred1 <- predict(log3, newdata = test1, type = "response")
+> survival1 = ifelse(pred1 > 0.5, 1, 0)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  1.463   0.103   1.575 

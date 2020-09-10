@@ -1,0 +1,90 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> #Read data into R enviorment 
+> titanicData<-read.csv(file="../input/train.csv",header = TRUE,sep = "," )
+> #explicitly declare atribute "survived" as factor, by default R treats this as numeric
+> titanicData$Survived<-factor(titanicData$Survived)
+> #set libary randomforest to access built in functions
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> #perform missing value treatment on the data
+> titanicData2<-na.roughfix(titanicData)
+> #slit the data into test and evaluation set
+> ind <- sample(2, nrow(titanicData2),replace = TRUE,prob = c(0.8,0.2))
+> #test data - 80% sample of the orginal data
+> tdata <-titanicData2[ind==1,]
+> #validation data - 20% sample of the orginal data
+> vdata <-titanicData2[ind==2,]
+> #declare prediction variable to train on the test data
+> #assumption has been made that pclass, age and sex are important attributes that helped survive
+> fcn=randomForest(Survived~Pclass+Sex+Age ,data=tdata,mtry=3,ntree=100)
+> #make the preiction on validation set based on learning from test data
+> predicted<- predict(fcn,newdata=vdata,type="class")
+> #convert predicted from atomic vector  into data frame 
+> predicted <- as.data.frame(predicted)
+> #add predicted column to vdata to compare the prediction with actuals
+> vdata <- cbind(vdata, predicted)
+> #compute accurcy as no. of coorect prediction to total number of predcitions
+> accuracy_rf <- sum(predicted$predicted == vdata$Survived)/NROW(vdata)
+> accuracy_rf
+[1] 0.8125
+> #identify the important factors that helped in survival
+> importance(fcn)
+       MeanDecreaseGini
+Pclass         39.88646
+Sex           104.82769
+Age           103.27392
+> 
+> #the accuracy was 72.88% and the most important factors helping in survival
+> #was identified to be "sex" followed by "age" and "Pclass"
+> 
+> #Approach2 -since the accuracy was only 72.88% lets try adding 
+> #more attributes to the above to make the predictions more accuarte
+> 
+> #define  variable fmem as numebr of family members(siblings+parents) 
+> #add it to test and validation sets
+> tdata2<-cbind(tdata,fmem=tdata$SibSp+tdata$Parch)
+> vdata2<-cbind(vdata,fmem=vdata$SibSp+vdata$Parch)
+> #define prediction variable as 
+> fcn2=randomForest(Survived~Pclass+Sex+Age+fmem ,data=tdata2,mtry=4,ntree=100)
+> 
+> predicted2<- predict(fcn2,newdata=vdata2,type="class")
+> predicted2 <- as.data.frame(predicted2)
+> vdata2 <- cbind(vdata2, predicted2)
+> accuracy_rf2 <- sum(predicted2$predicted2 == vdata2$Survived)/NROW(vdata2)
+> accuracy_rf2
+[1] 0.8295455
+> importance(fcn2)
+       MeanDecreaseGini
+Pclass         34.26397
+Sex           106.33939
+Age            95.92850
+fmem           42.87872
+> #the accuracy improved slightly from 72.88% tp 74% by adding
+> #family member attribute to prediction 
+> #the most important factors helping in survival
+> #was identified to be "sex" followed by "age", "Pclass" and fmem
+> 
+> proc.time()
+   user  system elapsed 
+  0.259   0.044   0.300 

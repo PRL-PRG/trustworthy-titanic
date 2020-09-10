@@ -1,0 +1,1200 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE)
+> 
+> 
+> ## ----ini-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Informs the process start date/time
+> dateIni <- Sys.time()
+> cat("\n Start of execution: ", as.character(dateIni))
+
+ Start of execution:  2020-09-10 14:15:31> 
+> 
+> ## ----libraries, include=FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Lists the libraries that will be used
+> libs = c("data.table","ggplot2","randomForest","ROSE","DMwR","corrplot","caret",
++          "xgboost","e1071","PRROC","klaR","dplyr","tidyr")
+> # Loads or installs the package
+> for(i in libs)
++ {
++   if(i %in% row.names(installed.packages()) == FALSE){
++     cat("Load/install the library: ", i, "\n\n")
++     install.packages(i, repos = "http://cran.us.r-project.org")
++     library(i, character.only = TRUE)
++   } else {
++     cat("Load the library: ", i, "\n\n")
++     library(i, character.only = TRUE)
++   }
++ }
+Load the library:  data.table 
+
+Load the library:  ggplot2 
+
+Load the library:  randomForest 
+
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+Load the library:  ROSE 
+
+Loaded ROSE 0.0-3
+
+Load the library:  DMwR 
+
+Loading required package: lattice
+Loading required package: grid
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+Load the library:  corrplot 
+
+corrplot 0.84 loaded
+Load the library:  caret 
+
+Load the library:  xgboost 
+
+Load the library:  e1071 
+
+Load the library:  PRROC 
+
+
+Attaching package: ‘PRROC’
+
+The following object is masked from ‘package:ROSE’:
+
+    roc.curve
+
+Load the library:  klaR 
+
+Loading required package: MASS
+Load the library:  dplyr 
+
+
+Attaching package: ‘dplyr’
+
+The following object is masked from ‘package:MASS’:
+
+    select
+
+The following object is masked from ‘package:xgboost’:
+
+    slice
+
+The following object is masked from ‘package:randomForest’:
+
+    combine
+
+The following objects are masked from ‘package:data.table’:
+
+    between, first, last
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Load the library:  tidyr 
+
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘xgboost’ was built under R version 3.6.2 
+3: package ‘dplyr’ was built under R version 3.6.2 
+4: package ‘tidyr’ was built under R version 3.6.2 
+> 
+> 
+> ## ----load------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainPath <- "../input/train.csv"
+> testPath  <- "../input/test.csv"
+> trainOri <- read.csv(trainPath, na.strings = c("NA","NaN", ""))
+> testOri <- read.csv(testPath, na.strings = c("NA","NaN", ""))
+> 
+> 
+> ## ----createModels, include=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> createModels <- function(formula, 
++                          data, 
++                          methods, 
++                          ctrl, 
++                          preProcess = NULL,
++                          tuneLength = 1) {
++   
++   # Suppresses the warning messages
++   options(warn=-1)
++   
++   # Sets metric and seed
++   metric <- "ROC"
++   seed   <- 54321
++   
++   # Transforms the variable into type formula
++   formula <- as.formula(formula)
++   
++   # Creates lists to store models
++   modelsOri    <- list()
++   modelsUp     <- list()  
++   modelsDown   <- list()
++   modelsRose   <- list()
++   modelsSmote  <- list()
++   
++   # Creates a dataframe to store the performances
++   score <- data.frame(method=character(),
++                       score=numeric(),
++                       model=character(), 
++                       stringsAsFactors=FALSE)
++   
++   # Generates 5 models (original, up, down, ROSE and SMOTE) for each informed method
++   for (i in methods) {
++     
++     tryCatch({
++       
++       cat("METHOD: ", i, '\n\n')
++       
++       #################################################################
++       #         MODEL 1 - Original - No resampling technique          #
++       #################################################################
++       ctrl$sampling <- NULL
++       nameOri <- paste0(i,".ori")
++       set.seed(seed)
++       modelsOri[[nameOri]] <- train(form = formula, 
++                                     data = data, 
++                                     method = i, 
++                                     metric = metric,
++                                     preProcess = preProcess,
++                                     tuneLength = tuneLength,
++                                     trControl = ctrl)
++       cat('Importance of variables \n\n')
++       tryCatch({
++         importanceOri <- varImp(modelsOri[[nameOri]], scale=FALSE)
++         print(importanceOri)
++         # Displays the plot with the importance of the variables
++         print(plot(importanceOri))
++       }, error=function(e){
++         cat("It wasn't possible to verify the importance of the variables: ",i, " - ERROR :",conditionMessage(e),"\n")})
++       # Print the score
++       cat("\n\n PERFORMANCE - ORIGINAL MODEL: \n\n")
++       print(getTrainPerf(modelsOri[[nameOri]]))
++       
++       # Save the model
++       nameFile <- paste0(nameOri,".model.rds")
++       saveRDS(modelsOri[[nameOri]],paste0("./",nameFile))
++       
++       # Store the score in the dataframe
++       score[nrow(score) + 1,] = list(nameOri,
++                                      getTrainPerf(modelsOri[[nameOri]])[, "TrainROC"],
++                                      nameFile)
++       
++       #################################################################
++       #              MODEL 2 - UP (Oversampling)                      #
++       #################################################################
++       ctrl$sampling <- "up"
++       
++       nameUp <- paste0(i,".up")
++       set.seed(seed)
++       modelsUp[[nameUp]] <- train(form = formula, 
++                                   data = data, 
++                                   method = i, 
++                                   metric = metric,
++                                   preProcess = preProcess,
++                                   tuneLength = tuneLength,
++                                   trControl = ctrl)
++       
++       # Print the score
++       cat("\n\n PERFORMANCE - UP MODEL: \n\n")
++       print(getTrainPerf(modelsUp[[nameUp]]))
++       
++       # Save the model
++       nameFile <- paste0(nameUp,".model.rds")
++       saveRDS(modelsUp[[nameUp]],paste0("./",nameFile))
++       
++       # Store the score in the dataframe
++       score[nrow(score) + 1,] = list(nameUp,
++                                      getTrainPerf(modelsUp[[nameUp]])[, "TrainROC"],
++                                      nameFile)
++       
++       #################################################################
++       #                 MODEL 3 - DOWN (Undersampling)                #
++       #################################################################
++       ctrl$sampling <- "down"
++       
++       nameDown <- paste0(i,".down")
++       set.seed(seed)
++       modelsDown[[nameDown]] <- train(form = formula, 
++                                       data = data, 
++                                       method = i,
++                                       metric = metric,
++                                       preProcess = preProcess,
++                                       tuneLength = tuneLength,
++                                       trControl = ctrl)
++       
++       # Print the score
++       cat("\n\n PERFORMANCE - DOWN MODEL: \n\n")
++       print(getTrainPerf(modelsDown[[nameDown]]))
++       
++       # Save the model
++       nameFile <- paste0(nameDown,".model.rds")
++       saveRDS(modelsDown[[nameDown]],paste0("./",nameFile))
++       
++       # Store the score in the dataframe
++       score[nrow(score) + 1,] = list(nameDown,
++                                      getTrainPerf(modelsDown[[nameDown]])[, "TrainROC"],
++                                      nameFile)
++       
++       
++       ##########################################################################
++       #              MODEL 4 - ROSE (Random Over-Sampling Examples)            #
++       ##########################################################################
++       ctrl$sampling <- "rose"
++       
++       nameRose <- paste0(i,".rose")
++       set.seed(seed)
++       modelsRose[[nameRose]] <- train(form = formula, 
++                                       data = data, 
++                                       method = i, 
++                                       metric = metric,
++                                       preProcess = preProcess,
++                                       tuneLength = tuneLength,
++                                       trControl = ctrl)
++       
++       # Print the score
++       cat("\n\n PERFORMANCE - ROSE MODEL: \n\n")
++       print(getTrainPerf(modelsRose[[nameRose]]))
++       
++       # Save the model
++       nameFile <- paste0(nameRose,".model.rds")
++       saveRDS(modelsRose[[nameRose]],paste0("./",nameFile))
++       
++       # Store the score in the dataframe
++       score[nrow(score) + 1,] = list(nameRose,
++                                      getTrainPerf(modelsRose[[nameRose]])[, "TrainROC"],
++                                      nameFile)
++       
++       #######################################################################################
++       #             MODEL 5 - SMOTE (Synthetic Minority Oversampling Technique)             #
++       #######################################################################################
++       ctrl$sampling <- "smote"
++       
++       nameSmote <- paste0(i,".smote")
++       set.seed(seed)
++       modelsSmote[[nameSmote]] <- train(form = formula, 
++                                         data = data, 
++                                         method = i, 
++                                         metric = metric,
++                                         preProcess = preProcess,
++                                         tuneLength = tuneLength,
++                                         trControl = ctrl)
++       
++       # Print the score
++       cat("\n\n PERFORMANCE - SMOTE MODEL: \n\n")
++       print(getTrainPerf(modelsSmote[[nameSmote]]))
++       
++       # Save the model
++       nameFile <- paste0(nameSmote,".model.rds")
++       saveRDS(modelsSmote[[nameSmote]],paste0("./",nameFile))
++       
++       # Store the score in the dataframe
++       score[nrow(score) + 1,] = list(nameSmote,
++                                      getTrainPerf(modelsSmote[[nameSmote]])[, "TrainROC"],
++                                      nameFile)
++       
++       ###################################################################
++       #  Evaluates the result of the original model and the resamplings #
++       ###################################################################
++       models <- list(original = modelsOri[[nameOri]],
++                      down = modelsDown[[nameDown]],
++                      up = modelsUp[[nameUp]],
++                      smote = modelsSmote[[nameSmote]],
++                      rose = modelsRose[[nameRose]])
++       
++       #Remove null values, if exists
++       models[sapply(models, is.null)] <- NULL
++       
++       cat("EVALUATE THE MODELS USING THE ROC METRIC \n\n")
++       resampling <- resamples(models)
++       print(summary(resampling, metric = metric))
++       
++       cat("DOTPLOT \n\n")
++       scales <- list(x=list(relation="free"), y=list(relation="free"))
++       print(dotplot(resampling, scales=scales, main=paste("Evaluating all models of the method",i)))
++       
++     }, error=function(e){
++       cat("It wasn't possible to train the model ", i, " - ERROR :",conditionMessage(e), "\n")          
++       
++     })
++     
++   }
++   
++   ################################################################
++   #                   Evaluate all models                        #
++   ################################################################
++   
++   # Concatenates all generated models
++   modelsList <- c(modelsOri,modelsDown,modelsUp,modelsSmote,modelsRose)
++   
++   # Only if you have more than one method does the overall evaluation
++   if(length(modelsOri) > 1){
++     
++     cat("\n\n EVALUATING THE RESULT OF ALL METHODS AND MODELS \n\n")
++     
++     resampling <- resamples(modelsList)
++     print(summary(resampling, metric = metric))
++     
++     scales <- list(x=list(relation="free"), y=list(relation="free"))
++     print(dotplot(resampling, scales=scales, main="Evaluating all methods used"))
++   }
++   
++   cat("\n\n MODEL WITH THE BEST PERFORMANCE: \n\n")
++   best <- score %>% top_n(1, score) %>% head(1)
++   print(best)
++   
++   # Delete all models except winner
++   rdsFiles = list.files(pattern='.rds')
++   rdsFiles <- rdsFiles [! rdsFiles %in% best$model]
++   file.remove(rdsFiles)
++   # Returns the name of the best model
++   return(best$model)
++   
++ }
+> 
+> 
+> ## ----strTrain--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ## Train
+> glimpse(trainOri)
+Rows: 891
+Columns: 12
+$ PassengerId [3m[90m<int>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+$ Survived    [3m[90m<int>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+$ Pclass      [3m[90m<int>[39m[23m 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+$ Name        [3m[90m<fct>[39m[23m "Braund, Mr. Owen Harris", "Cumings, Mrs. John Bradley (F…
+$ Sex         [3m[90m<fct>[39m[23m male, female, female, female, male, male, male, male, fem…
+$ Age         [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+$ SibSp       [3m[90m<int>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+$ Parch       [3m[90m<int>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+$ Ticket      [3m[90m<fct>[39m[23m A/5 21171, PC 17599, STON/O2. 3101282, 113803, 373450, 33…
+$ Fare        [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+$ Cabin       [3m[90m<fct>[39m[23m NA, C85, NA, C123, NA, NA, E46, NA, NA, NA, G6, C103, NA,…
+$ Embarked    [3m[90m<fct>[39m[23m S, C, S, S, S, Q, S, S, S, C, S, S, S, S, S, S, Q, S, S, …
+> sapply(trainOri, class)
+PassengerId    Survived      Pclass        Name         Sex         Age 
+  "integer"   "integer"   "integer"    "factor"    "factor"   "numeric" 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+  "integer"   "integer"    "factor"   "numeric"    "factor"    "factor" 
+> head(trainOri,5)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500  <NA>        S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250  <NA>        S
+4           113803 53.1000  C123        S
+5           373450  8.0500  <NA>        S
+> ## Test
+> glimpse(testOri)
+Rows: 418
+Columns: 11
+$ PassengerId [3m[90m<int>[39m[23m 892, 893, 894, 895, 896, 897, 898, 899, 900, 901, 902, 90…
+$ Pclass      [3m[90m<int>[39m[23m 3, 3, 2, 3, 3, 3, 3, 2, 3, 3, 3, 1, 1, 2, 1, 2, 2, 3, 3, …
+$ Name        [3m[90m<fct>[39m[23m "Kelly, Mr. James", "Wilkes, Mrs. James (Ellen Needs)", "…
+$ Sex         [3m[90m<fct>[39m[23m male, female, male, male, female, male, female, male, fem…
+$ Age         [3m[90m<dbl>[39m[23m 34.5, 47.0, 62.0, 27.0, 22.0, 14.0, 30.0, 26.0, 18.0, 21.…
+$ SibSp       [3m[90m<int>[39m[23m 0, 1, 0, 0, 1, 0, 0, 1, 0, 2, 0, 0, 1, 1, 1, 1, 0, 0, 1, …
+$ Parch       [3m[90m<int>[39m[23m 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+$ Ticket      [3m[90m<fct>[39m[23m 330911, 363272, 240276, 315154, 3101298, 7538, 330972, 24…
+$ Fare        [3m[90m<dbl>[39m[23m 7.8292, 7.0000, 9.6875, 8.6625, 12.2875, 9.2250, 7.6292, …
+$ Cabin       [3m[90m<fct>[39m[23m NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, B45, NA, …
+$ Embarked    [3m[90m<fct>[39m[23m Q, S, Q, S, S, S, Q, S, C, S, S, S, S, S, S, C, Q, C, S, …
+> sapply(testOri, class)
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+  "integer"   "integer"    "factor"    "factor"   "numeric"   "integer" 
+      Parch      Ticket        Fare       Cabin    Embarked 
+  "integer"    "factor"   "numeric"    "factor"    "factor" 
+> head(testOri,5)
+  PassengerId Pclass                                         Name    Sex  Age
+1         892      3                             Kelly, Mr. James   male 34.5
+2         893      3             Wilkes, Mrs. James (Ellen Needs) female 47.0
+3         894      2                    Myles, Mr. Thomas Francis   male 62.0
+4         895      3                             Wirz, Mr. Albert   male 27.0
+5         896      3 Hirvonen, Mrs. Alexander (Helga E Lindqvist) female 22.0
+  SibSp Parch  Ticket    Fare Cabin Embarked
+1     0     0  330911  7.8292  <NA>        Q
+2     1     0  363272  7.0000  <NA>        S
+3     0     0  240276  9.6875  <NA>        Q
+4     0     0  315154  8.6625  <NA>        S
+5     1     1 3101298 12.2875  <NA>        S
+> 
+> 
+> ## ----summary---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(trainOri)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked  
+ B96 B98    :  4   C   :168  
+ C23 C25 C27:  4   Q   : 77  
+ G6         :  4   S   :644  
+ C22 C26    :  3   NA's:  2  
+ D          :  3             
+ (Other)    :186             
+ NA's       :687             
+> summary(testOri)
+  PassengerId         Pclass     
+ Min.   : 892.0   Min.   :1.000  
+ 1st Qu.: 996.2   1st Qu.:1.000  
+ Median :1100.5   Median :3.000  
+ Mean   :1100.5   Mean   :2.266  
+ 3rd Qu.:1204.8   3rd Qu.:3.000  
+ Max.   :1309.0   Max.   :3.000  
+                                 
+                                        Name         Sex           Age       
+ Abbott, Master. Eugene Joseph            :  1   female:152   Min.   : 0.17  
+ Abelseth, Miss. Karen Marie              :  1   male  :266   1st Qu.:21.00  
+ Abelseth, Mr. Olaus Jorgensen            :  1                Median :27.00  
+ Abrahamsson, Mr. Abraham August Johannes :  1                Mean   :30.27  
+ Abrahim, Mrs. Joseph (Sophie Halaut Easu):  1                3rd Qu.:39.00  
+ Aks, Master. Philip Frank                :  1                Max.   :76.00  
+ (Other)                                  :412                NA's   :86     
+     SibSp            Parch             Ticket         Fare        
+ Min.   :0.0000   Min.   :0.0000   PC 17608:  5   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.0000   113503  :  4   1st Qu.:  7.896  
+ Median :0.0000   Median :0.0000   CA. 2343:  4   Median : 14.454  
+ Mean   :0.4474   Mean   :0.3923   16966   :  3   Mean   : 35.627  
+ 3rd Qu.:1.0000   3rd Qu.:0.0000   220845  :  3   3rd Qu.: 31.500  
+ Max.   :8.0000   Max.   :9.0000   347077  :  3   Max.   :512.329  
+                                   (Other) :396   NA's   :1        
+             Cabin     Embarked
+ B57 B59 B63 B66:  3   C:102   
+ A34            :  2   Q: 46   
+ B45            :  2   S:270   
+ C101           :  2           
+ C116           :  2           
+ (Other)        : 80           
+ NA's           :327           
+> 
+> 
+> ## ----checkNA---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Train
+> sapply(trainOri, function(x) round(sum(is.na(x))/nrow(trainOri) * 100,1))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+        0.0         0.0         0.0         0.0         0.0        19.9 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+        0.0         0.0         0.0         0.0        77.1         0.2 
+> # Test
+> sapply(testOri, function(x) round(sum(is.na(x))/nrow(testOri) * 100,1))
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+        0.0         0.0         0.0         0.0        20.6         0.0 
+      Parch      Ticket        Fare       Cabin    Embarked 
+        0.0         0.0         0.2        78.2         0.0 
+> 
+> 
+> ## ----balanc----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> cbind(freq=table(trainOri$Survived), percent=round(prop.table(table(trainOri$Survived))*100,1))
+  freq percent
+0  549    61.6
+1  342    38.4
+> 
+> 
+> ## ----unique----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Train
+> apply(trainOri,2,function(x) length(unique(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+        891           2           3         891           2          89 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          7           7         681         248         148           4 
+> # Test
+> apply(trainOri,2,function(x) length(unique(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+        891           2           3         891           2          89 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          7           7         681         248         148           4 
+> 
+> 
+> ## ----fullData--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> testOri$Survived <- NA;
+> fullData <- rbind(trainOri, testOri)
+> trainIdx <- seq(nrow(trainOri)) #Training data index
+> 
+> 
+> ## ----plotSexSurvived-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(fullData[trainIdx,], aes(Sex, fill = factor(Survived))) + 
++   geom_bar(stat = "count", position = 'dodge')+
++   xlab("Sex") +
++   ylab("Count") +
++   scale_fill_discrete(name = "Survived") + 
++   ggtitle("Sex X Survived")
+> 
+> 
+> ## ----plotPclassSurvived----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(fullData[trainIdx,], aes(Pclass, fill = factor(Survived))) + 
++   geom_bar(stat = "count")+
++   xlab("Pclass") +
++   ylab("Count") +
++   scale_fill_discrete(name = "Survived") + 
++   ggtitle("Pclass X Survived")
+> 
+> 
+> ## ----hist------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> numberCols <- dplyr::select_if(trainOri, is.numeric)
+> par(mfrow=c(2,2))
+> for(i in 1:7) {
++   hist(numberCols[,i], main=names(numberCols)[i], xlab = "")
++ }
+> 
+> 
+> ## ----boxplot---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> par(mfrow=c(2,2))
+> for(i in 1:7) {
++   boxplot(numberCols[,i], main=names(numberCols)[i])
++ }
+> 
+> 
+> ## ----barplot---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> par(mfrow=c(2,2))
+> for(i in 1:7) {
++   barplot(table(numberCols$Survived,numberCols[,i]), 
++           main=names(numberCols)[i], 
++           legend.text=unique(numberCols$Survived))
++ }
+> 
+> 
+> ## ----removeNAs-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Age and Fare
+> fullTemp <- fullData %>% 
++             group_by(Pclass) %>%
++             mutate(Age = ifelse(is.na(Age), round(mean(Age, na.rm = TRUE)), Age)) %>%
++             mutate(Fare = ifelse(is.na(Fare), round(mean(Fare, na.rm = TRUE)), Fare))
+> fullData$Age <- fullTemp$Age
+> fullData$Fare <- fullTemp$Fare
+> #Embarked 
+> maxEmbarked <- names(sort(table(fullData$Embarked),decreasing = T)[1])
+> fullData$Embarked[is.na(fullData$Embarked)] <- maxEmbarked
+> 
+> 
+> ## ----ohe-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Sex
+> dummies <- predict(dummyVars(~ Sex, data = fullData), newdata = fullData)
+> fullData <- cbind(fullData,dummies)
+> # Embarked
+> dummies <- predict(dummyVars(~ Embarked, data = fullData), newdata = fullData)
+> fullData <- cbind(fullData,dummies)
+> # Pclass
+> fullData$Pclass <- factor(fullData$Pclass)
+> dummies <- predict(dummyVars(~ Pclass, data = fullData), newdata = fullData)
+> fullData <- cbind(fullData,dummies)
+> 
+> 
+> ## ----newVars---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Title
+> fullData$Title <- gsub('(.*, )|(\\..*)', '', fullData$Name)
+> ## Create only one category for similar titles
+> officer <- c('Capt', 'Col', 'Don', 'Dr', 'Major', 'Rev')
+> royalty <- c('Dona', 'Lady', 'the Countess','Sir', 'Jonkheer')
+> fullData$Title[fullData$Title == 'Mlle'] <- 'Miss' 
+> fullData$Title[fullData$Title == 'Ms']   <- 'Miss' 
+> fullData$Title[fullData$Title == 'Mme']  <- 'Mrs' 
+> fullData$Title[fullData$Title %in% royalty]  <- 'Royalty'
+> fullData$Title[fullData$Title %in% officer]  <- 'Officer'
+> ## One-hot-enconding
+> fullData$Title <- factor(fullData$Title)
+> dummies <- predict(dummyVars(~ Title, data = fullData), newdata = fullData)
+> fullData <- cbind(fullData,dummies)
+> #FamilyType
+> fullData$FamilySize <- fullData$SibSp + fullData$Parch + 1
+> fullData$FamilyType[fullData$FamilySize == 1] <- 'A' #Alone
+> fullData$FamilyType[fullData$FamilySize > 1 & fullData$FamilySize < 5] <- 'S' #Small
+> fullData$FamilyType[fullData$FamilySize >= 5] <- 'B' #Big
+> ## One-hot-enconding
+> fullData$FamilyType <- factor(fullData$FamilyType)
+> dummies <- predict(dummyVars(~ FamilyType, data = fullData), newdata = fullData)
+> fullData <- cbind(fullData,dummies)
+> 
+> 
+> ## ----plotTitleSurvived-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(fullData[trainIdx,], aes(Title,fill = factor(Survived))) +
++   geom_bar(stat = "count")+
++   xlab('Title') +
++   ylab("Count") +
++   scale_fill_discrete(name = " Survived") + 
++   ggtitle("Title X Survived")
+> 
+> 
+> ## ----plotFamilyTypeSurvived------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(fullData[trainIdx,], aes(FamilyType,fill = factor(Survived))) +
++   geom_bar(stat = "count")+
++   xlab('FamilyType') +
++   ylab("Count") +
++   scale_fill_discrete(name = " Survived") + 
++   ggtitle("FamilyType X Survived")
+> 
+> 
+> ## ----removeColumns---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fullData$Ticket <- NULL
+> fullData$Cabin <- NULL
+> fullData$Sex <- NULL
+> fullData$Embarked <- NULL
+> fullData$Pclass <- NULL
+> fullData$Title <- NULL
+> fullData$Name <- NULL
+> fullData$FamilyType <- NULL
+> fullData$FamilySize <- NULL
+> glimpse(fullData)
+Rows: 1,309
+Columns: 23
+$ PassengerId   [3m[90m<int>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, …
+$ Survived      [3m[90m<int>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0…
+$ Age           [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, 25, 54, 2, 27, 14, 4, 58, 20, 39, 1…
+$ SibSp         [3m[90m<int>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1…
+$ Parch         [3m[90m<int>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0…
+$ Fare          [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.86…
+$ Sex.female    [3m[90m<dbl>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 0, 1…
+$ Sex.male      [3m[90m<dbl>[39m[23m 1, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 1, 0…
+$ Embarked.C    [3m[90m<dbl>[39m[23m 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+$ Embarked.Q    [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0…
+$ Embarked.S    [3m[90m<dbl>[39m[23m 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 0, 1, 1…
+$ Pclass.1      [3m[90m<dbl>[39m[23m 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0…
+$ Pclass.2      [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0…
+$ Pclass.3      [3m[90m<dbl>[39m[23m 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1…
+$ Title.Master  [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0…
+$ Title.Miss    [3m[90m<dbl>[39m[23m 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 0, 0…
+$ Title.Mr      [3m[90m<dbl>[39m[23m 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0…
+$ Title.Mrs     [3m[90m<dbl>[39m[23m 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1…
+$ Title.Officer [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+$ Title.Royalty [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+$ FamilyType.A  [3m[90m<dbl>[39m[23m 0, 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 0, 1, 0…
+$ FamilyType.B  [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0…
+$ FamilyType.S  [3m[90m<dbl>[39m[23m 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1…
+> 
+> 
+> ## ----correlacao, fig.width = 17, fig.height = 15, fig.align = "center"-----------------------------------------------------------------------------------------------------------------------------------------------------------
+> cor(fullData[trainIdx,]) %>% corrplot(addCoef.col = "grey", number.cex = 1.4)
+> 
+> 
+> ## ----split-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Selecting the training variables, the "PassengerId" will not be used because it is just a ID
+> trainData <- subset(fullData[trainIdx, ], select=-PassengerId) 
+> # Changing the target variable to factor
+> trainData$Survived <- factor(trainData$Survived)
+> levels(trainData$Survived) <- c("no", "yes")
+> print(table(trainData$Survived, useNA = "always"))
+
+  no  yes <NA> 
+ 549  342    0 
+> # Divide data into training and validation
+> index <- createDataPartition(y = trainData$Survived, p = 0.7, list = FALSE)
+> train <- trainData[index,]
+> valid <- trainData[-index,]
+> 
+> 
+> ## ----train-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Choose the models that will be trained
+> methods <- list("knn","nb","glmboost")
+> # Set the variables for the function "createModels"
+> formula <- "Survived ~ ."
+> preProcess <- c("center", "scale")          
+> tuneLength <- 25                             
+> ctrl <- trainControl(method = "repeatedcv",
++                      number = 10,
++                      repeats = 3, 
++                      allowParallel = TRUE,
++                      summaryFunction = twoClassSummary,
++                      classProbs = TRUE)
+> # Train the models
+> nameModel <- createModels(formula,train,methods,ctrl,preProcess)
+METHOD:  knn 
+
+Importance of variables 
+
+ROC curve variable importance
+
+  only 20 most important variables shown (out of 21)
+
+              Importance
+Title.Mr          0.7758
+Sex.female        0.7627
+Sex.male          0.7627
+Fare              0.6952
+Pclass.3          0.6590
+Title.Miss        0.6361
+Title.Mrs         0.6245
+FamilyType.S      0.6170
+Pclass.1          0.6111
+FamilyType.A      0.5913
+Embarked.S        0.5758
+Embarked.C        0.5741
+Parch             0.5588
+Pclass.2          0.5479
+SibSp             0.5433
+FamilyType.B      0.5257
+Title.Master      0.5190
+Title.Officer     0.5047
+Embarked.Q        0.5017
+Title.Royalty     0.5008
+
+
+ PERFORMANCE - ORIGINAL MODEL: 
+
+   TrainROC TrainSens TrainSpec method
+1 0.8562603 0.8789249 0.7041667    knn
+
+
+ PERFORMANCE - UP MODEL: 
+
+   TrainROC TrainSens TrainSpec method
+1 0.8472761 0.7889114    0.7625    knn
+Warning in preProcess.default(thresh = 0.95, k = 5, freqCut = 19, uniqueCut = 10,  :
+  These variables have zero variances: Title.Royalty
+Warning in preProcess.default(thresh = 0.95, k = 5, freqCut = 19, uniqueCut = 10,  :
+  These variables have zero variances: Title.Royalty
+
+
+ PERFORMANCE - DOWN MODEL: 
+
+   TrainROC TrainSens TrainSpec method
+1 0.8519414 0.8208277 0.7583333    knn
+
+
+ PERFORMANCE - ROSE MODEL: 
+
+   TrainROC TrainSens TrainSpec method
+1 0.8165758 0.9006973      0.65    knn
+
+
+ PERFORMANCE - SMOTE MODEL: 
+
+   TrainROC TrainSens TrainSpec method
+1 0.8244803  0.868511 0.6791667    knn
+EVALUATE THE MODELS USING THE ROC METRIC 
+
+
+Call:
+summary.resamples(object = resampling, metric = metric)
+
+Models: original, down, up, smote, rose 
+Number of resamples: 30 
+
+ROC 
+              Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+original 0.7435897 0.8183761 0.8581731 0.8562603 0.8818531 0.9551282    0
+down     0.7168803 0.8226496 0.8581731 0.8519414 0.8847946 0.9473684    0
+up       0.7110043 0.8168649 0.8520299 0.8472761 0.8731022 0.9605263    0
+smote    0.7242325 0.7905983 0.8255876 0.8244803 0.8550945 0.9610043    0
+rose     0.7083333 0.7917897 0.8330592 0.8165758 0.8525641 0.8985043    0
+
+DOTPLOT 
+
+METHOD:  nb 
+
+Importance of variables 
+
+ROC curve variable importance
+
+  only 20 most important variables shown (out of 21)
+
+              Importance
+Title.Mr          0.7758
+Sex.male          0.7627
+Sex.female        0.7627
+Fare              0.6952
+Pclass.3          0.6590
+Title.Miss        0.6361
+Title.Mrs         0.6245
+FamilyType.S      0.6170
+Pclass.1          0.6111
+FamilyType.A      0.5913
+Embarked.S        0.5758
+Embarked.C        0.5741
+Parch             0.5588
+Pclass.2          0.5479
+SibSp             0.5433
+FamilyType.B      0.5257
+Title.Master      0.5190
+Title.Officer     0.5047
+Embarked.Q        0.5017
+Title.Royalty     0.5008
+
+
+ PERFORMANCE - ORIGINAL MODEL: 
+
+   TrainROC TrainSens TrainSpec method
+1 0.8336993 0.9273504    0.4875     nb
+
+
+ PERFORMANCE - UP MODEL: 
+
+   TrainROC TrainSens TrainSpec method
+1 0.8344818 0.8796446 0.6222222     nb
+Warning in preProcess.default(thresh = 0.95, k = 5, freqCut = 19, uniqueCut = 10,  :
+  These variables have zero variances: Title.Royalty
+Warning in preProcess.default(thresh = 0.95, k = 5, freqCut = 19, uniqueCut = 10,  :
+  These variables have zero variances: Title.Royalty
+Timing stopped at: 0.021 0.001 0.022
+It wasn't possible to train the model  nb  - ERROR : Zero variances for at least one class in variables: Title.Royalty 
+METHOD:  glmboost 
+
+Importance of variables 
+
+
+NOTE: Coefficients from a Binomial model are half the size of coefficients
+ from a model fitted via glm(... , family = 'binomial').
+See Warning section in ?coef.mboost
+
+glmboost variable importance
+
+  only 20 most important variables shown (out of 21)
+
+              Overall
+Title.Mr      0.36285
+Sex.male      0.17812
+FamilyType.B  0.14889
+Pclass.3      0.13471
+Pclass.1      0.06517
+Title.Officer 0.04748
+Fare          0.04272
+Title.Master  0.03273
+Embarked.C    0.02686
+Sex.female    0.01783
+Title.Mrs     0.00000
+Parch         0.00000
+Embarked.S    0.00000
+Title.Royalty 0.00000
+FamilyType.S  0.00000
+Embarked.Q    0.00000
+Title.Miss    0.00000
+Age           0.00000
+FamilyType.A  0.00000
+Pclass.2      0.00000
+
+
+ PERFORMANCE - ORIGINAL MODEL: 
+
+   TrainROC TrainSens TrainSpec   method
+1 0.8499217 0.8753486 0.7291667 glmboost
+
+
+ PERFORMANCE - UP MODEL: 
+
+   TrainROC TrainSens TrainSpec   method
+1 0.8492873 0.8640126 0.7402778 glmboost
+Warning in preProcess.default(thresh = 0.95, k = 5, freqCut = 19, uniqueCut = 10,  :
+  These variables have zero variances: Title.Royalty
+Warning in preProcess.default(thresh = 0.95, k = 5, freqCut = 19, uniqueCut = 10,  :
+  These variables have zero variances: Title.Royalty
+
+
+ PERFORMANCE - DOWN MODEL: 
+
+   TrainROC TrainSens TrainSpec   method
+1 0.8482287  0.857175 0.7430556 glmboost
+
+
+ PERFORMANCE - ROSE MODEL: 
+
+   TrainROC TrainSens TrainSpec   method
+1 0.8403443 0.8330409 0.7333333 glmboost
+
+
+ PERFORMANCE - SMOTE MODEL: 
+
+  TrainROC TrainSens TrainSpec   method
+1 0.846375 0.8762033 0.7305556 glmboost
+EVALUATE THE MODELS USING THE ROC METRIC 
+
+
+Call:
+summary.resamples(object = resampling, metric = metric)
+
+Models: original, down, up, smote, rose 
+Number of resamples: 30 
+
+ROC 
+              Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+original 0.7203947 0.8211806 0.8441998 0.8499217 0.8876096 0.9519231    0
+down     0.7258772 0.8076923 0.8470395 0.8482287 0.8892122 0.9551282    0
+up       0.7225877 0.8129006 0.8376209 0.8492873 0.8905407 0.9551282    0
+smote    0.7313596 0.8097553 0.8429276 0.8463750 0.8847946 0.9551282    0
+rose     0.7247807 0.8042763 0.8376068 0.8403443 0.8903509 0.9348291    0
+
+DOTPLOT 
+
+
+
+ EVALUATING THE RESULT OF ALL METHODS AND MODELS 
+
+
+Call:
+summary.resamples(object = resampling, metric = metric)
+
+Models: knn.ori, nb.ori, glmboost.ori, knn.down, glmboost.down, knn.up, nb.up, glmboost.up, knn.smote, glmboost.smote, knn.rose, glmboost.rose 
+Number of resamples: 30 
+
+ROC 
+                    Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+knn.ori        0.7435897 0.8183761 0.8581731 0.8562603 0.8818531 0.9551282    0
+nb.ori         0.7061404 0.8062233 0.8355263 0.8336993 0.8665022 0.9243421    0
+glmboost.ori   0.7203947 0.8211806 0.8441998 0.8499217 0.8876096 0.9519231    0
+knn.down       0.7168803 0.8226496 0.8581731 0.8519414 0.8847946 0.9473684    0
+glmboost.down  0.7258772 0.8076923 0.8470395 0.8482287 0.8892122 0.9551282    0
+knn.up         0.7110043 0.8168649 0.8520299 0.8472761 0.8731022 0.9605263    0
+nb.up          0.7072368 0.8046137 0.8366228 0.8344818 0.8707827 0.9232456    0
+glmboost.up    0.7225877 0.8129006 0.8376209 0.8492873 0.8905407 0.9551282    0
+knn.smote      0.7242325 0.7905983 0.8255876 0.8244803 0.8550945 0.9610043    0
+glmboost.smote 0.7313596 0.8097553 0.8429276 0.8463750 0.8847946 0.9551282    0
+knn.rose       0.7083333 0.7917897 0.8330592 0.8165758 0.8525641 0.8985043    0
+glmboost.rose  0.7247807 0.8042763 0.8376068 0.8403443 0.8903509 0.9348291    0
+
+
+
+ MODEL WITH THE BEST PERFORMANCE: 
+
+   method     score             model
+1 knn.ori 0.8562603 knn.ori.model.rds
+> cat("Best model: ",nameModel)
+Best model:  knn.ori.model.rds> 
+> 
+> ## ----valid-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Recover saved model
+> bestModel <- readRDS(paste0("./",nameModel))
+> # Check the best of the hyperparameters
+> print(bestModel$bestTune)
+  k
+1 5
+> # Testing the model in the validation data
+> xValid <- subset(valid, select=-Survived)
+> yValid <- valid$Survived
+> predValues <- predict(object = bestModel, 
++                        newdata = xValid, 
++                        type = "raw")
+> head(predValues,5)
+[1] yes no  no  no  yes
+Levels: no yes
+> # Generates confusion matrix with positive class (yes)
+> confusionMatrix(predValues,yValid,positive = "yes")
+Confusion Matrix and Statistics
+
+          Reference
+Prediction  no yes
+       no  144  33
+       yes  20  69
+                                         
+               Accuracy : 0.8008         
+                 95% CI : (0.7476, 0.847)
+    No Information Rate : 0.6165         
+    P-Value [Acc > NIR] : 7.74e-11       
+                                         
+                  Kappa : 0.5682         
+                                         
+ Mcnemar's Test P-Value : 0.09929        
+                                         
+            Sensitivity : 0.6765         
+            Specificity : 0.8780         
+         Pos Pred Value : 0.7753         
+         Neg Pred Value : 0.8136         
+             Prevalence : 0.3835         
+         Detection Rate : 0.2594         
+   Detection Prevalence : 0.3346         
+      Balanced Accuracy : 0.7773         
+                                         
+       'Positive' Class : yes            
+                                         
+> # Returns the probability of the positive class (yes)
+> predProbs <- predict(object = bestModel, newdata = xValid, type="prob")[,2] 
+> head(predProbs)
+[1] 1.0 0.4 0.4 0.2 0.6 0.4
+> predPos <- predProbs[yValid=="yes"]  #prediction for true positives
+> predNeg <- predProbs[yValid=="no"]   #prediction for true negatives
+> # Generates a plot showing the ROC curve and PR
+> # ROC Curve    
+> roc <- PRROC::roc.curve(scores.class0 = predPos, 
++                         scores.class1 = predNeg, 
++                         curve = T)
+> print(roc)
+
+  ROC curve
+
+    Area under curve:
+     0.8690519 
+
+    Curve for scores from  0  to  1 
+    ( can be plotted with plot(x) )
+
+> plot(roc)
+> # PR Curve
+> pr <- PRROC::pr.curve(scores.class0 = predPos, 
++                       scores.class1 = predNeg, 
++                       curve = T)
+> print(pr)
+
+  Precision-recall curve
+
+    Area under curve (Integral):
+     0.8167403 
+
+    Area under curve (Davis & Goadrich):
+     0.816771 
+
+    Curve for scores from  0  to  1 
+    ( can be plotted with plot(x) )
+
+> plot(pr)
+> 
+> 
+> ## ----test------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Selects the columns of the dataframe that will be used
+> testData <- subset(fullData[-trainIdx, ], select=-Survived) 
+> print(head(testData,5))
+    PassengerId  Age SibSp Parch    Fare Sex.female Sex.male Embarked.C
+892         892 34.5     0     0  7.8292          0        1          0
+893         893 47.0     1     0  7.0000          1        0          0
+894         894 62.0     0     0  9.6875          0        1          0
+895         895 27.0     0     0  8.6625          0        1          0
+896         896 22.0     1     1 12.2875          1        0          0
+    Embarked.Q Embarked.S Pclass.1 Pclass.2 Pclass.3 Title.Master Title.Miss
+892          1          0        0        0        1            0          0
+893          0          1        0        0        1            0          0
+894          1          0        0        1        0            0          0
+895          0          1        0        0        1            0          0
+896          0          1        0        0        1            0          0
+    Title.Mr Title.Mrs Title.Officer Title.Royalty FamilyType.A FamilyType.B
+892        1         0             0             0            1            0
+893        0         1             0             0            0            0
+894        1         0             0             0            1            0
+895        1         0             0             0            1            0
+896        0         1             0             0            0            0
+    FamilyType.S
+892            0
+893            1
+894            0
+895            0
+896            1
+> print(str(testData))
+'data.frame':	418 obs. of  22 variables:
+ $ PassengerId  : int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Age          : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp        : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch        : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Fare         : num  7.83 7 9.69 8.66 12.29 ...
+ $ Sex.female   : num  0 1 0 0 1 0 1 0 1 0 ...
+ $ Sex.male     : num  1 0 1 1 0 1 0 1 0 1 ...
+ $ Embarked.C   : num  0 0 0 0 0 0 0 0 1 0 ...
+ $ Embarked.Q   : num  1 0 1 0 0 0 1 0 0 0 ...
+ $ Embarked.S   : num  0 1 0 1 1 1 0 1 0 1 ...
+ $ Pclass.1     : num  0 0 0 0 0 0 0 0 0 0 ...
+ $ Pclass.2     : num  0 0 1 0 0 0 0 1 0 0 ...
+ $ Pclass.3     : num  1 1 0 1 1 1 1 0 1 1 ...
+ $ Title.Master : num  0 0 0 0 0 0 0 0 0 0 ...
+ $ Title.Miss   : num  0 0 0 0 0 0 1 0 0 0 ...
+ $ Title.Mr     : num  1 0 1 1 0 1 0 1 0 1 ...
+ $ Title.Mrs    : num  0 1 0 0 1 0 0 0 1 0 ...
+ $ Title.Officer: num  0 0 0 0 0 0 0 0 0 0 ...
+ $ Title.Royalty: num  0 0 0 0 0 0 0 0 0 0 ...
+ $ FamilyType.A : num  1 0 1 1 0 1 1 0 1 0 ...
+ $ FamilyType.B : num  0 0 0 0 0 0 0 0 0 0 ...
+ $ FamilyType.S : num  0 1 0 0 1 0 0 1 0 1 ...
+NULL
+> # Testing the model in test data
+> predTestValues <- predict(object = bestModel, 
++                           newdata = testData[,-1], #The PassengerId will not be used
++                           type = "raw")
+> print(head(predTestValues,5))
+[1] no  yes no  yes yes
+Levels: no yes
+> # Converts data to a dataframe
+> predTest <- as.data.frame(predTestValues)
+> print(head(predTest,10))
+   predTestValues
+1              no
+2             yes
+3              no
+4             yes
+5             yes
+6              no
+7             yes
+8              no
+9             yes
+10             no
+> 
+> 
+> ## ----submit----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Creates the object that will store the data that will be submitted
+> sub <- data.table(PassengerId = testData$PassengerId, Survived = NA)
+> sub$Survived = as.numeric(ifelse(predTest == "no", 0, 1))
+> print(head(sub,10))
+    PassengerId Survived
+ 1:         892        0
+ 2:         893        1
+ 3:         894        0
+ 4:         895        1
+ 5:         896        1
+ 6:         897        0
+ 7:         898        1
+ 8:         899        0
+ 9:         900        1
+10:         901        0
+> # Save the CSV file
+> nameFile <- paste0(nameModel,".submission.csv")
+> fwrite(sub, nameFile)
+> # Informs the end date/time of the process
+> dateFin <- Sys.time()
+> cat("\n End of execution: ", as.character(dateFin))
+
+ End of execution:  2020-09-10 14:16:24> 
+> 
+> proc.time()
+   user  system elapsed 
+ 54.399   2.318  55.297 

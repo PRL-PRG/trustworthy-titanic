@@ -1,0 +1,340 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> ###Importing the necesscary libraries.
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(plyr)
+> library(MASS)
+> 
+> ## Reading in files
+> list.files(path = "../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> trainset <- read.csv("../input/train.csv")
+> testset <- read.csv("../input/test.csv")
+> 
+> ## colnames 
+> print("The colnames of trainset")
+[1] "The colnames of trainset"
+> colnames(trainset)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"   
+> head(trainset)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> print("There are 12 columns in trainset.\n")
+[1] "There are 12 columns in trainset.\n"
+> print("____________________________________")
+[1] "____________________________________"
+> 
+> print("The colnames of testset")
+[1] "The colnames of testset"
+> colnames(testset)
+ [1] "PassengerId" "Pclass"      "Name"        "Sex"         "Age"        
+ [6] "SibSp"       "Parch"       "Ticket"      "Fare"        "Cabin"      
+[11] "Embarked"   
+> head(testset)
+  PassengerId Pclass                                         Name    Sex  Age
+1         892      3                             Kelly, Mr. James   male 34.5
+2         893      3             Wilkes, Mrs. James (Ellen Needs) female 47.0
+3         894      2                    Myles, Mr. Thomas Francis   male 62.0
+4         895      3                             Wirz, Mr. Albert   male 27.0
+5         896      3 Hirvonen, Mrs. Alexander (Helga E Lindqvist) female 22.0
+6         897      3                   Svensson, Mr. Johan Cervin   male 14.0
+  SibSp Parch  Ticket    Fare Cabin Embarked
+1     0     0  330911  7.8292              Q
+2     1     0  363272  7.0000              S
+3     0     0  240276  9.6875              Q
+4     0     0  315154  8.6625              S
+5     1     1 3101298 12.2875              S
+6     0     0    7538  9.2250              S
+> print("It has the same same columns to trainset except for Survived")
+[1] "It has the same same columns to trainset except for Survived"
+> 
+> ##Clearning train data
+> #1. Survived(Nominal)
+> Hmisc::describe(trainset$Survived)
+trainset$Survived 
+       n  missing distinct     Info      Sum     Mean      Gmd 
+     891        0        2     0.71      342   0.3838   0.4735 
+
+> print("______________________________________________")
+[1] "______________________________________________"
+> 
+> #2. Pclass(Ordinal)
+> Hmisc::describe(trainset$Pclass)
+trainset$Pclass 
+       n  missing distinct     Info     Mean      Gmd 
+     891        0        3     0.81    2.309   0.8631 
+                            
+Value          1     2     3
+Frequency    216   184   491
+Proportion 0.242 0.207 0.551
+> print("______________________________________________")
+[1] "______________________________________________"
+> 
+> #3. Name(Nominal)
+> Hmisc::describe(trainset$Name)
+trainset$Name 
+       n  missing distinct 
+     891        0      891 
+
+lowest : Abbing, Mr. Anthony                    Abbott, Mr. Rossmore Edward            Abbott, Mrs. Stanton (Rosa Hunt)       Abelson, Mr. Samuel                    Abelson, Mrs. Samuel (Hannah Wizosky) 
+highest: Yousseff, Mr. Gerious                  Yrois, Miss. Henriette ("Mrs Harbeck") Zabour, Miss. Hileni                   Zabour, Miss. Thamine                  Zimmerman, Mr. Leo                    
+> print("______________________________________________")
+[1] "______________________________________________"
+> 
+> #4. Sex(Nominal)
+> Hmisc::describe(trainset$Sex)
+trainset$Sex 
+       n  missing distinct 
+     891        0        2 
+                        
+Value      female   male
+Frequency     314    577
+Proportion  0.352  0.648
+> print("______________________________________________")
+[1] "______________________________________________"
+> 
+> #5. Age(Discrete)
+> Hmisc::describe(trainset$Age)
+trainset$Age 
+       n  missing distinct     Info     Mean      Gmd      .05      .10 
+     714      177       88    0.999     29.7    16.21     4.00    14.00 
+     .25      .50      .75      .90      .95 
+   20.12    28.00    38.00    50.00    56.00 
+
+lowest :  0.42  0.67  0.75  0.83  0.92, highest: 70.00 70.50 71.00 74.00 80.00
+> ggplot(data = trainset , na.rm = TRUE) +
++   geom_boxplot(color = "blue",aes(x= 1, y=Age), outlier.colour = "red", outlier.shape = 1)
+Warning message:
+Removed 177 rows containing non-finite values (stat_boxplot). 
+> print("Missing Value : 177")
+[1] "Missing Value : 177"
+> print("______________________________________________")
+[1] "______________________________________________"
+> 
+> #6. SibSp(Discrete)
+> Hmisc::describe(trainset$SibSp)
+trainset$SibSp 
+       n  missing distinct     Info     Mean      Gmd 
+     891        0        7    0.669    0.523    0.823 
+
+lowest : 0 1 2 3 4, highest: 2 3 4 5 8
+                                                    
+Value          0     1     2     3     4     5     8
+Frequency    608   209    28    16    18     5     7
+Proportion 0.682 0.235 0.031 0.018 0.020 0.006 0.008
+> ggplot(data = trainset , na.rm = TRUE) +
++   geom_boxplot(color = "blue",aes(x= 1, y=SibSp), outlier.colour = "red", outlier.shape = 1)
+> print("______________________________________________")
+[1] "______________________________________________"
+> 
+> #7. Parch(Discrete)
+> Hmisc::describe(trainset$Parch)
+trainset$Parch 
+       n  missing distinct     Info     Mean      Gmd 
+     891        0        7    0.556   0.3816   0.6259 
+
+lowest : 0 1 2 3 4, highest: 2 3 4 5 6
+                                                    
+Value          0     1     2     3     4     5     6
+Frequency    678   118    80     5     4     5     1
+Proportion 0.761 0.132 0.090 0.006 0.004 0.006 0.001
+> ggplot(data = trainset , na.rm = TRUE) +
++   geom_boxplot(color = "blue",aes(x= 1, y= Parch), outlier.colour = "red", outlier.shape = 1)
+> print("______________________________________________")
+[1] "______________________________________________"
+> 
+> #8. Ticket(Nominal) (Useless)
+> Hmisc::describe(trainset$Ticket)
+trainset$Ticket 
+       n  missing distinct 
+     891        0      681 
+
+lowest : 110152      110413      110465      110564      110813     
+highest: W./C. 6608  W./C. 6609  W.E.P. 5734 W/C 14208   WE/P 5735  
+> print("______________________________________________")
+[1] "______________________________________________"
+> 
+> #9. Fare(Continous)
+> Hmisc::describe(trainset$Fare)
+trainset$Fare 
+       n  missing distinct     Info     Mean      Gmd      .05      .10 
+     891        0      248        1     32.2    36.78    7.225    7.550 
+     .25      .50      .75      .90      .95 
+   7.910   14.454   31.000   77.958  112.079 
+
+lowest :   0.0000   4.0125   5.0000   6.2375   6.4375
+highest: 227.5250 247.5208 262.3750 263.0000 512.3292
+> ggplot(data = trainset , na.rm = TRUE) +
++   geom_boxplot(color = "blue",aes(x= 1, y= Fare), outlier.colour = "red", outlier.shape = 1)
+> print("______________________________________________")
+[1] "______________________________________________"
+> 
+> #10. Cabin(Nominal)
+> Hmisc::describe(trainset$Cabin)
+trainset$Cabin 
+       n  missing distinct 
+     891        0      148 
+
+lowest :     A10 A14 A16 A19, highest: F33 F38 F4  G6  T  
+> print("______________________________________________")
+[1] "______________________________________________"
+> 
+> #11. Embarked(Nominal)
+> Hmisc::describe(trainset$Embarked)
+trainset$Embarked 
+       n  missing distinct 
+     891        0        4 
+                                  
+Value                C     Q     S
+Frequency      2   168    77   644
+Proportion 0.002 0.189 0.086 0.723
+> print("______________________________________________")
+[1] "______________________________________________"
+> 
+> 
+> ### Complete the data
+> #Age
+> trainset[is.na(trainset$Age), 6] = median(trainset$Age, na.rm = TRUE)
+> 
+> ##convert the Survived column as facotr variable
+> trainset$Survived <- as.factor(trainset$Survived)
+> 
+> ###EDA(Explanatory Data analysis)
+> ##distribution of variables(charastics of people who board the Titanic)
+> 
+> ##convert the Survived column as facotr variable
+> trainset$Survived <- as.factor(trainset$Survived)
+> 
+> #1. Pclass
+> ggplot(data = trainset, aes(x =Pclass, fill = Survived))+
++   geom_histogram(stat = "count" )
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> #2. Sex
+> ggplot(data = trainset, aes(x = Sex, fill = Survived))+
++   geom_histogram(stat = "count")
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> #3. Age
+> ggplot(data = trainset, aes(x =Age, fill = Survived))+
++   geom_density(binwidth =5, na.rm = TRUE, alpha = 0.3)
+Warning message:
+Ignoring unknown parameters: binwidth 
+> 
+> #4. SibSp
+> ggplot(data = trainset, aes(x =SibSp, fill = Survived))+
++   geom_density(binwidth =5, na.rm = TRUE, alpha = 0.3)
+Warning message:
+Ignoring unknown parameters: binwidth 
+> 
+> #5. Parch
+> ggplot(data = trainset, aes(x = Parch, fill = Survived))+
++   geom_density(binwidth =5, na.rm = TRUE, alpha = 0.3)
+Warning message:
+Ignoring unknown parameters: binwidth 
+> 
+> #6. Fare
+> ggplot(data = trainset, aes(x = Fare, fill = Survived))+
++   geom_density(binwidth =5, na.rm = TRUE, alpha = 0.3)
+Warning message:
+Ignoring unknown parameters: binwidth 
+> 
+> #7. Embarked
+> ggplot(data = trainset, aes(x = Embarked, fill = Survived))+
++   geom_histogram(stat = "count")
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> 
+> ##Select Inputs and turn the vairiables into count data
+> #Kids (over 10 years old and under 10 years old)
+> trainset[trainset$Age <= 10, "Kids"] <- 1
+> trainset[trainset$Age > 10, "Kids"] <- 0
+> 
+> ##converting data to count data
+> #trainset -> traincount
+> trainset$one <- 1
+> trainset$Survived <- as.numeric(as.character(trainset$Survived))
+> trainset$Survived <- as.numeric(trainset$Survived)
+> GroupColumns <- c("Pclass", "Sex", "Embarked", "Kids")
+> DataColumns <- c("Survived" ,"one")
+> traincounts <- ddply(trainset, GroupColumns, function(x) colSums(x[DataColumns]))
+> colnames(traincounts)[6] <- "Total"
+> traincounts$SurvivalRate <- traincounts$Survived / traincounts$Total
+>                                         
+> ###Building the Negative Binorminal Regression
+> Nb_model <- glm.nb(formula =  SurvivalRate ~ Pclass + Sex + Embarked  +  Kids, data = traincounts)
+There were 18 warnings (use warnings() to see them)
+> Nb_model
+
+Call:  glm.nb(formula = SurvivalRate ~ Pclass + Sex + Embarked + Kids, 
+    data = traincounts, init.theta = 44879.28507, link = log)
+
+Coefficients:
+(Intercept)       Pclass      Sexmale    EmbarkedC    EmbarkedQ    EmbarkedS  
+    0.21307     -0.21307     -0.68478      0.01943     -0.39960     -0.34196  
+       Kids  
+    0.40320  
+
+Degrees of Freedom: 29 Total (i.e. Null);  23 Residual
+Null Deviance:	    18.86 
+Residual Deviance: 15.24 	AIC: 63.87
+> confint(Nb_model)
+Waiting for profiling to be done...
+                 2.5 %    97.5 %
+(Intercept) -2.6997873 1.8574307
+Pclass      -0.8603620 0.4195248
+Sexmale     -1.7761939 0.3004545
+EmbarkedC   -1.9448291 3.0259359
+EmbarkedQ   -2.6343539 2.6764099
+EmbarkedS   -2.2973262 2.6634634
+Kids        -0.6637869 1.4856531
+> 
+> proc.time()
+   user  system elapsed 
+  3.110   0.190   3.358 

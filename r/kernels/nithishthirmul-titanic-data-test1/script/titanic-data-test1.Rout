@@ -1,0 +1,92 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> 
+> # We can inspect the train data. The results of this are printed in the log tab below
+> train$Title <- gsub('(.*, )|(\\..*)', '', train$Name)
+> 
+> # Show title counts by sex
+> table(train$Sex, train$Title)
+        
+         Capt Col Don  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs  Ms
+  female    0   0   0   1        0    1     0      0  182    2   1   0 125   1
+  male      1   2   1   6        1    0     2     40    0    0   0 517   0   0
+        
+         Rev Sir the Countess
+  female   0   0            1
+  male     6   1            0
+> 
+> rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
++                 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+> 
+> # Also reassign mlle, ms, and mme accordingly
+> train$Title[train$Title == 'Mlle']        <- 'Miss' 
+> train$Title[train$Title == 'Ms']          <- 'Miss'
+> train$Title[train$Title == 'Mme']         <- 'Mrs' 
+> train$Title[train$Title %in% rare_title]  <- 'Rare Title'
+> 
+> table(train$Sex, train$Title)
+        
+         Master Miss  Mr Mrs Rare Title
+  female      0  185   0 126          3
+  male       40    0 517   0         20
+> 
+> 
+> train$Age[is.na(train$Age) & train$Title == 'Mr'] <- mean(train$Age[train$Title=="Mr"], na.rm = T)
+> train$Age[is.na(train$Age) & train$Title == 'Miss'] <- mean(train$Age[train$Title=="Miss"], na.rm = T)
+> train$Age[is.na(train$Age) & train$Title == 'Mrs'] <- mean(train$Age[train$Title=="Mrs"], na.rm = T)
+> train$Age[is.na(train$Age) & train$Title == 'Master'] <- mean(train$Age[train$Title=="Master"], na.rm = T)
+> train$Age[is.na(train$Age) & train$Title == 'Rare Title'] <- mean(train$Age[train$Title=="Rare Title"], na.rm = T)
+> 
+> levels(test$Sex) <- levels(train$Sex)
+> levels(test$Age) <- levels(train$Age)
+> levels(test$Embarked) <- levels(train$Embarked)
+> 
+> extractFeatures <- function(data) {
++   features <- c("Sex",
++                 "Embarked")
++   ftr <- data[,features]
++   ftr$Embarked[ftr$Embarked==""] = "S"
++   ftr$Sex      <- as.factor(ftr$Sex)
++   ftr$Embarked <- as.factor(ftr$Embarked)
++   return(ftr)
++ }
+> rf <- randomForest(extractFeatures(train), as.factor(train$Survived), ntree=100, importance=TRUE)
+> 
+> 
+> submission <- data.frame(PassengerId = test$PassengerId)
+> submission$Survived <- predict(rf, extractFeatures(test))
+> write.csv(submission, file = "submission.csv", row.names=FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  0.187   0.037   0.218 

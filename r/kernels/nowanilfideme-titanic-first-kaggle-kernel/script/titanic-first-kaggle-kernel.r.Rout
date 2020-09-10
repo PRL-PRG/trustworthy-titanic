@@ -1,0 +1,68 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> library(mice) #filling missing values
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library(ROCR) #ROC curves
+Warning message:
+package ‘ROCR’ was built under R version 3.6.2 
+> 
+> system("ls ../input")
+gender_submission.csv
+test.csv
+train.csv
+> 
+> TRAIN <- read.csv("../input/train.csv")
+> TEST  <- read.csv("../input/test.csv")
+> 
+> features <- c("Pclass","Sex","Age","SibSp","Parch","Fare","Embarked")
+> 
+> N.train <- (dim(TRAIN)[1])
+> pct1 <- 0.9
+> 
+> set.seed(110)                           #for reproducability
+> idx1 <- sample(1:N.train, N.train*pct1) #training set
+> #idx1 <- 1:N.train*pct1                  #reproducable, non-random training set...
+> idx2 <- setdiff(1:N.train, idx1)        #cv set
+> 
+> #training
+> D <- TRAIN[,features]
+> L <- TRAIN$Survived
+> 
+> log.model <- glm(formula=L[idx1]~.,data=D[idx1,],family=binomial(link="logit"))
+> 
+> 
+> #cross-validation
+> L0.predict <- unname(predict(log.model,newdata=D[idx2,],type="response"))
+> cv.pred <- prediction(L0.predict,L[idx2])
+Error: 'predictions' contains NA.
+Execution halted

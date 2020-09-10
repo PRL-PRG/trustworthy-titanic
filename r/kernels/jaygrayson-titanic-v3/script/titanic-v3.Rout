@@ -1,0 +1,112 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> ## Exploratory analysis of Titanic data set
+> ## Jason M. Grayson
+> ## Started April 24, 2017
+> 
+> ## This is analysis of Titanic survival. Prior biases come mainly from movies and books I have read about the sinking of Titanic (Titanic, A Night To Remember). My hypothesis  is that survival is a function ultimately of distance to the lifeboats and then some admission criteria, essentially it was a race to the lifeboats and then there was a decision point at the boat. Everything else relates to those two things.
+> 
+> ## First clear up workspace so only Titanic data is present
+> rm(list=ls())
+> 
+> ## Set working directory
+> setwd("../input")
+> 
+> ## Load up some libraries that may be used for analysis
+> library(Hmisc)
+Loading required package: lattice
+Loading required package: survival
+Loading required package: Formula
+Loading required package: ggplot2
+
+Attaching package: ‘Hmisc’
+
+The following objects are masked from ‘package:base’:
+
+    format.pval, units
+
+Warning messages:
+1: package ‘survival’ was built under R version 3.6.2 
+2: package ‘ggplot2’ was built under R version 3.6.2 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> 
+> ## Lets read in the training and test data
+> titanic_kaggle<-read.csv(file="train.csv")
+> titanic_test<-read.csv(file = "test.csv")
+> 
+> ## We need to check for gaps throughout the data
+> md.pattern(titanic_kaggle)
+    PassengerId Survived Pclass Name Sex SibSp Parch Ticket Fare Cabin Embarked
+714           1        1      1    1   1     1     1      1    1     1        1
+177           1        1      1    1   1     1     1      1    1     1        1
+              0        0      0    0   0     0     0      0    0     0        0
+    Age    
+714   1   0
+177   0   1
+    177 177
+> md.pattern(titanic_test)
+    PassengerId Pclass Name Sex SibSp Parch Ticket Cabin Embarked Fare Age   
+331           1      1    1   1     1     1      1     1        1    1   1  0
+86            1      1    1   1     1     1      1     1        1    1   0  1
+1             1      1    1   1     1     1      1     1        1    0   1  1
+              0      0    0   0     0     0      0     0        0    1  86 87
+> 
+> ## I am not going to impute Embarkment, it is 2 out of 891. Maybe you could look at fares but that seems spurious. So I will cut out 2.
+> titanic_kaggle<-subset(titanic_kaggle, Embarked !="")
+> 
+> 
+> ## Because test lacks survived add it as NA
+> titanic_test$Survived<-NA
+> 
+> ## Now lets link it up
+> tt_full<-rbind(titanic_kaggle,titanic_test)
+> 
+> ## Lets examine the full data for NAs
+> md.pattern(tt_full)
+    PassengerId Pclass Name Sex SibSp Parch Ticket Cabin Embarked Fare Age
+712           1      1    1   1     1     1      1     1        1    1   1
+331           1      1    1   1     1     1      1     1        1    1   1
+177           1      1    1   1     1     1      1     1        1    1   0
+86            1      1    1   1     1     1      1     1        1    1   0
+1             1      1    1   1     1     1      1     1        1    0   1
+              0      0    0   0     0     0      0     0        0    1 263
+    Survived    
+712        1   0
+331        0   1
+177        1   1
+86         0   2
+1          0   2
+         418 682
+> 
+> ## Because of Kaggle rules, we need all 418 entries, so will impute Age and Fare gaps as median
+> tt_full$Fare<-impute.default(tt_full$Fare,fun=median)
+Error in impute.default(tt_full$Fare, fun = median) : 
+  could not find function "impute.default"
+Execution halted

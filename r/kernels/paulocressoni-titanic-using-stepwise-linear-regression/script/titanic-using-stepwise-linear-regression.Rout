@@ -1,0 +1,216 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # Stepwise Regression
+> library('MASS')
+> library('ggplot2')
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library('ggthemes') # visualization
+> 
+> # input dataset
+> train <- read.csv("../input/train.csv")
+> test <- read.csv("../input/test.csv")
+> #str(train)
+> #str(test)
+> 
+> ### data cleaning and preparation ###
+> # converting the types
+> train$Pclass <- as.factor(train$Pclass)
+> train$Name <- as.character(train$Name)
+> train$SibSp <- as.factor(train$SibSp)
+> train$Parch <- as.factor(train$Parch)
+> train$Cabin <- as.character(train$Cabin)
+> 
+> test$Pclass <- as.factor(test$Pclass)
+> test$Name <- as.character(test$Name)
+> test$SibSp <- as.factor(test$SibSp)
+> test$Parch <- as.factor(test$Parch)
+> test$Cabin <- as.character(test$Cabin)
+> 
+> # adding family name
+> train$FamilyName <- sub("^(.*),.*", "\\1", train$Name)
+> test$FamilyName <- sub("^(.*),.*", "\\1", test$Name)
+> 
+> # adding title
+> # problem when the name has multiple period (dots, points)
+> #train$Title <- as.factor(sub("^(.*),\\s(.*)\\.\\s.*","\\2", train$Name))
+> #test$Title <- as.factor(sub("^(.*),\\s(.*)\\.\\s.*","\\2", test$Name))
+> train$Title <- as.character(gsub('(.*, )|(\\..*)', '', train$Name))
+> test$Title <- as.character(gsub('(.*, )|(\\..*)', '', test$Name))
+> 
+> # fixing titles
+> rare_titles <- c('Capt', 'Col', 'Don', 'Dona', 'Dr', 'Jonkheer', 'Lady', 'Major', 'Rev', 'the Countess', 'Sir')
+> 
+> train$Title[train$Title == 'Mlle'] <- 'Miss'
+> train$Title[train$Title == 'Ms'] <- 'Miss'
+> train$Title[train$Title == 'Mme'] <- 'Miss'
+> train$Title[train$Title %in% rare_titles] <- 'Rare Title'
+> train$Title <- as.factor(train$Title)
+> 
+> test$Title[test$Title == 'Mlle'] <- 'Miss'
+> test$Title[test$Title == 'Ms'] <- 'Miss'
+> test$Title[test$Title == 'Mme'] <- 'Miss'
+> test$Title[test$Title %in% rare_titles] <- 'Rare Title'
+> test$Title <- as.factor(test$Title)
+> 
+> # plot the Survivors per Title
+> #ggplot(train, aes(x = Title, fill = factor(Survived))) + 
+> #  geom_bar(stat = 'count', position = 'dodge') + 
+> #  labs(x = 'Title') + 
+> #  theme_few()
+> 
+> # function to infer the missing Ages according to the mean age from each Title
+> fill_age_by_title <- function(title, dataset) {
++   mean(dataset$Age[dataset$Title == title & !is.na(dataset$Age)])
++ }
+> 
+> train$Age[is.na(train$Age) & train$Title == 'Master'] <- round(fill_age_by_title('Master', train))
+> train$Age[is.na(train$Age) & train$Title == 'Miss'] <- round(fill_age_by_title('Miss', train))
+> train$Age[is.na(train$Age) & train$Title == 'Mr'] <- round(fill_age_by_title('Mr', train))
+> train$Age[is.na(train$Age) & train$Title == 'Mrs'] <- round(fill_age_by_title('Mrs', train))
+> train$Age[is.na(train$Age) & train$Title == 'Rare Title'] <- round(fill_age_by_title('Rare Title', train))
+> 
+> test$Age[is.na(test$Age) & test$Title == 'Master'] <- round(fill_age_by_title('Master', test))
+> test$Age[is.na(test$Age) & test$Title == 'Miss'] <- round(fill_age_by_title('Miss', test))
+> test$Age[is.na(test$Age) & test$Title == 'Mr'] <- round(fill_age_by_title('Mr', test))
+> test$Age[is.na(test$Age) & test$Title == 'Mrs'] <- round(fill_age_by_title('Mrs', test))
+> test$Age[is.na(test$Age) & test$Title == 'Rare Title'] <- round(fill_age_by_title('Rare Title', test))
+> 
+> # adding the family size
+> train$FamilySize <- as.factor(as.numeric(as.character(train$Parch)) + as.numeric(as.character(train$SibSp)))
+> test$FamilySize <- as.factor(as.numeric(as.character(test$Parch)) + as.numeric(as.character(test$SibSp)))
+> 
+> # treating Age as factor
+> train$Age <- as.factor(train$Age)
+> test$Age <- as.factor(test$Age)
+> 
+> # assume zero for missing Fares
+> train$Fare[is.na(train$Fare)] <- 0
+> test$Fare[is.na(test$Fare)] <- 0
+> 
+> # using Stepwise to identify the variables to be used
+> fit <- lm(Survived ~ Sex + Pclass + Age + FamilySize + Fare + Embarked + Title, data = train)
+> step <- stepAIC(fit, direction="both")
+Start:  AIC=-1705.8
+Survived ~ Sex + Pclass + Age + FamilySize + Fare + Embarked + 
+    Title
+
+             Df Sum of Sq    RSS     AIC
+- Age        87   10.3958 113.70 -1794.4
+- Embarked    3    0.2951 103.60 -1709.3
+<none>                    103.31 -1705.8
+- Fare        1    0.4172 103.72 -1704.2
+- Sex         1    0.6230 103.93 -1702.4
+- Title       4    4.3566 107.66 -1677.0
+- Pclass      2    5.9013 109.21 -1660.3
+- FamilySize  8    7.7347 111.04 -1657.5
+
+Step:  AIC=-1794.36
+Survived ~ Sex + Pclass + FamilySize + Fare + Embarked + Title
+
+             Df Sum of Sq    RSS     AIC
+- Embarked    3    0.3784 114.08 -1797.4
+<none>                    113.70 -1794.4
+- Fare        1    0.5435 114.25 -1792.1
+- Sex         1    1.2557 114.96 -1786.6
+- Pclass      2    5.4221 119.12 -1756.9
+- FamilySize  8   10.3315 124.03 -1732.9
+- Title       4   12.1452 125.85 -1711.9
++ Age        87   10.3958 103.31 -1705.8
+
+Step:  AIC=-1797.4
+Survived ~ Sex + Pclass + FamilySize + Fare + Title
+
+             Df Sum of Sq    RSS     AIC
+<none>                    114.08 -1797.4
++ Embarked    3    0.3784 113.70 -1794.4
+- Fare        1    0.6684 114.75 -1794.2
+- Sex         1    1.2347 115.31 -1789.8
+- Pclass      2    5.5596 119.64 -1759.0
+- FamilySize  8   11.1945 125.27 -1730.0
+- Title       4   12.3595 126.44 -1713.8
++ Age        87   10.4791 103.60 -1709.3
+> step$anova # display results 
+Stepwise Model Path 
+Analysis of Deviance Table
+
+Initial Model:
+Survived ~ Sex + Pclass + Age + FamilySize + Fare + Embarked + 
+    Title
+
+Final Model:
+Survived ~ Sex + Pclass + FamilySize + Fare + Title
+
+
+        Step Df   Deviance Resid. Df Resid. Dev       AIC
+1                                784   103.3053 -1705.798
+2      - Age 87 10.3958137       871   113.7011 -1794.365
+3 - Embarked  3  0.3783961       874   114.0795 -1797.405
+> 
+> # linear regression
+> model <- lm(Survived ~ Sex + Pclass + FamilySize + Fare + Title, data = train)
+> summary(model)
+
+Call:
+lm(formula = Survived ~ Sex + Pclass + FamilySize + Fare + Title, 
+    data = train)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-1.06846 -0.19533 -0.08818  0.20698  0.94336 
+
+Coefficients:
+                  Estimate Std. Error t value Pr(>|t|)    
+(Intercept)      1.6743322  0.2352024   7.119 2.27e-12 ***
+Sexmale         -0.6897491  0.2242667  -3.076 0.002166 ** 
+Pclass2         -0.1351077  0.0421650  -3.204 0.001403 ** 
+Pclass3         -0.2479335  0.0390380  -6.351 3.43e-10 ***
+FamilySize1     -0.0315708  0.0359349  -0.879 0.379883    
+FamilySize2     -0.0039725  0.0422801  -0.094 0.925164    
+FamilySize3      0.0166176  0.0720850   0.231 0.817736    
+FamilySize4     -0.5138145  0.0978057  -5.253 1.88e-07 ***
+FamilySize5     -0.5316792  0.0862446  -6.165 1.08e-09 ***
+FamilySize6     -0.3183219  0.1088305  -2.925 0.003534 ** 
+FamilySize7     -0.6398157  0.1535085  -4.168 3.38e-05 ***
+FamilySize10    -0.4690255  0.1399320  -3.352 0.000837 ***
+Fare             0.0007339  0.0003243   2.263 0.023887 *  
+TitleMiss       -0.7791626  0.2341326  -3.328 0.000912 ***
+TitleMr         -0.6541480  0.0678050  -9.647  < 2e-16 ***
+TitleMrs        -0.7337200  0.2346601  -3.127 0.001826 ** 
+TitleRare Title -0.7010017  0.1053807  -6.652 5.09e-11 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.3613 on 874 degrees of freedom
+Multiple R-squared:  0.4586,	Adjusted R-squared:  0.4487 
+F-statistic: 46.28 on 16 and 874 DF,  p-value: < 2.2e-16
+
+> 
+> test$Survived <- round(predict(model, test))
+> test$Survived[test$Survived < 0] <- 0
+> test$Survived[test$Survived > 1] <- 1
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+> write.csv(submit, file = "gender_submission.csv", row.names = F)
+> 
+> proc.time()
+   user  system elapsed 
+  0.629   0.070   0.694 

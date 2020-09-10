@@ -1,0 +1,81 @@
+
+library(ggplot2) 
+library(dplyr) 
+
+col.classes <- c('numeric', #PassengerId
+                 'numeric', #Survived
+                 'numeric', #Pclass
+                 'character', #Name
+                 'factor', #Sex
+                 'numeric', #Age
+                 'integer', #SibSp
+                 'integer', #Parch
+                 'character', #Ticket
+                 'numeric', #Fare
+                 'character', #Cabin
+                 'factor') #Embarked
+d.train.raw <- read.csv('../input/train.csv',  
+                       colClasses = col.classes,
+                       row.names = 1,
+                       header = TRUE)
+sapply(d.train.raw, class)
+
+
+d.train.df <- mutate(d.train.raw,
+                     Class = factor(Pclass, levels = as.character(1:3), labels = "class"),
+                     Survived = factor(Survived, levels = c(0, 1), labels = c('No', 'Yes')))
+summary(select(d.train.df, Class, Survived))
+
+extractTitle <- function(v_names) {
+  pattern <- ",\\s*([\\w\\s]+\\.*)"
+  matches <- regexpr(pattern, v_names, perl = TRUE)
+  res <- regmatches(v_names, matches)
+  res <- substring(res, 3, nchar(res) - 1)
+  res <- factor(res)
+}
+d.train.df$Title <- extractTitle(d.train.df$Name)
+summary(d.train.df$Title)
+
+d.train.df <- mutate(d.train.df,
+                     Deck = factor(ifelse(nchar(Cabin) > 0, substring(Cabin, 1, 1), "X")))
+summary(d.train.df$Deck)
+                     
+
+d.train.df <- select(d.train.df, -Name, -Cabin, -Ticket, -Pclass)
+summary(d.train.df)
+
+ggplot(d.train.df, aes(x = 1, y = Fare)) + geom_boxplot()
+
+library(corrgram)
+library(plyr)
+d.train.cf <- mutate(d.train.df,
+                     Survived = as.numeric(Survived),
+                     Sex = as.numeric(Sex),
+                     Class = as.numeric(Class),
+                     Embarked = revalue(Embarked, c("C" = 1, "Q" = 2, "S" = 3)))
+corrgram(d.train.cf, upper.panel = panel.pts, lower.panel = panel.shade)
+
+library(caret)
+
+split <- createDataPartition(d.train.df$Survived, p = .8, list = FALSE)
+d.train.val <- d.train.df[-split, ]
+d.train.train <- d.train.df[split, ]
+
+
+dim(d.train.val)
+dim(d.train.train)
+
+suppressWarnings(model <- train(Survived ~ ., 
+               data = d.train.train,
+               method = "svmRadialCost",
+               preProcess = c('center', 'scale'),
+               trainControl = trainControl(method = 'cv', repeats = 3, p = .8),
+               tuneGrid = data.frame(.C = 5:8/8)))
+
+model
+
+predicted <- predict(model, select(d.train.val, -Survived))
+
+length(predicted)
+length(d.train.val$Survived)
+#confusionMatrix(predicted, d.train.val$Survived)

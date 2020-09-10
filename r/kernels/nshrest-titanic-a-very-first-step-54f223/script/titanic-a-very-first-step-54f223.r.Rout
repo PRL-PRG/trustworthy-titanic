@@ -1,0 +1,131 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(corrplot)
+corrplot 0.84 loaded
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> train<- read.csv("../input/train.csv", stringsAsFactors = FALSE, header = TRUE, na.strings = c("NA",""))
+> test<- read.csv("../input/test.csv", stringsAsFactors = FALSE, header = TRUE, na.strings = c("NA",""))
+> 
+> alldata<- bind_rows(train, test)
+> 
+> alldata$Survived<- as.factor(alldata$Survived)
+> alldata$Pclass<- as.factor(alldata$Pclass)
+> alldata$Sex<- as.factor(alldata$Sex)
+> alldata$Embarked<- as.factor(alldata$Embarked)
+> 
+> sapply(alldata, function(x) sum(is.na(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1        1014           2 
+> 
+> cordata<- cbind(alldata$Pclass, alldata$Sex, alldata$Age, alldata$SibSp, alldata$Parch, alldata$Fare, alldata$Embarked, alldata$Survived)
+> 
+> corrplot(cor(cordata, use="complete.obs"), type="lower",addCoef.col="grey")
+> 
+> alldata[is.na(alldata$Fare)==TRUE, ]
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044     <NA>      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked
+1044   3701   NA  <NA>        S
+> 
+> mean(alldata$Fare[alldata$Pclass==3 & alldata$Embarked=='S'], na.rm = TRUE)
+[1] 14.43542
+> 
+> alldata$Fare[1044]<- mean(alldata$Fare[alldata$Pclass==3 & alldata$Embarked=='S'], na.rm = TRUE)
+> 
+> alldata[is.na(alldata$Embarked)==TRUE, ]
+    PassengerId Survived Pclass                                      Name
+62           62        1      1                       Icard, Miss. Amelie
+830         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Cabin Embarked
+62  female  38     0     0 113572   80   B28     <NA>
+830 female  62     0     0 113572   80   B28     <NA>
+> 
+> ggplot(data = alldata, aes(x=Embarked, y=Fare))+
++   geom_boxplot()+
++   facet_grid(~Pclass)+
++   geom_hline(aes(yintercept=80), colour="#990000", linetype="dashed")
+> 
+> alldata$Embarked[c(62,830)]<- 'C'
+> 
+> traindata<- alldata[1:891, ]
+> testdata<- alldata[892:1309, ]
+> 
+> rf.fit <- randomForest(Survived ~ Pclass + Sex + Fare + Embarked, data=traindata, importance=TRUE, proximity=TRUE)
+> 
+> print(rf.fit)
+
+Call:
+ randomForest(formula = Survived ~ Pclass + Sex + Fare + Embarked,      data = traindata, importance = TRUE, proximity = TRUE) 
+               Type of random forest: classification
+                     Number of trees: 500
+No. of variables tried at each split: 2
+
+        OOB estimate of  error rate: 18.74%
+Confusion matrix:
+    0   1 class.error
+0 522  27  0.04918033
+1 140 202  0.40935673
+> 
+> prediction.rf <- predict(rf.fit, testdata)
+> solution <- data.frame(PassengerID = testdata$PassengerId, Survived = prediction.rf)
+> write.csv(solution, file = 'Solution_rf.csv', row.names = F)
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  1.516   0.096   1.615 

@@ -1,0 +1,1542 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----message=FALSE, warning=TRUE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(naivebayes)
+naivebayes 0.9.7 loaded
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> library(rpart)
+> library(rpart.plot)
+> library(caTools)
+> library(corrplot)
+corrplot 0.84 loaded
+> library(tidyr)
+Warning message:
+package ‘tidyr’ was built under R version 3.6.2 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library(caret)
+Loading required package: lattice
+> library(pROC)
+Type 'citation("pROC")' for a citation.
+
+Attaching package: ‘pROC’
+
+The following objects are masked from ‘package:stats’:
+
+    cov, smooth, var
+
+> library(ROCR)
+Warning message:
+package ‘ROCR’ was built under R version 3.6.2 
+> library(klaR)
+Loading required package: MASS
+
+Attaching package: ‘MASS’
+
+The following object is masked from ‘package:dplyr’:
+
+    select
+
+> library(neuralnet)
+
+Attaching package: ‘neuralnet’
+
+The following object is masked from ‘package:ROCR’:
+
+    prediction
+
+The following object is masked from ‘package:dplyr’:
+
+    compute
+
+> library(dummies)
+dummies-1.5.6 provided by Decision Patterns
+
+> 
+> 
+> 
+> ## ----pressure, echo=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train = read.csv("../input/train.csv")
+> test = read.csv("../input/test.csv")
+> example = read.csv("../input/gender_submission.csv")
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #look at the training data
+> head(train)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> summary(train)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked
+            :687    :  2   
+ B96 B98    :  4   C:168   
+ C23 C25 C27:  4   Q: 77   
+ G6         :  4   S:644   
+ C22 C26    :  3           
+ D          :  3           
+ (Other)    :186           
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #look at testing data
+> head(test)
+  PassengerId Pclass                                         Name    Sex  Age
+1         892      3                             Kelly, Mr. James   male 34.5
+2         893      3             Wilkes, Mrs. James (Ellen Needs) female 47.0
+3         894      2                    Myles, Mr. Thomas Francis   male 62.0
+4         895      3                             Wirz, Mr. Albert   male 27.0
+5         896      3 Hirvonen, Mrs. Alexander (Helga E Lindqvist) female 22.0
+6         897      3                   Svensson, Mr. Johan Cervin   male 14.0
+  SibSp Parch  Ticket    Fare Cabin Embarked
+1     0     0  330911  7.8292              Q
+2     1     0  363272  7.0000              S
+3     0     0  240276  9.6875              Q
+4     0     0  315154  8.6625              S
+5     1     1 3101298 12.2875              S
+6     0     0    7538  9.2250              S
+> str(test)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : Factor w/ 418 levels "Abbott, Master. Eugene Joseph",..: 210 409 273 414 182 370 85 58 5 104 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : Factor w/ 77 levels "","A11","A18",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+> summary(test)
+  PassengerId         Pclass     
+ Min.   : 892.0   Min.   :1.000  
+ 1st Qu.: 996.2   1st Qu.:1.000  
+ Median :1100.5   Median :3.000  
+ Mean   :1100.5   Mean   :2.266  
+ 3rd Qu.:1204.8   3rd Qu.:3.000  
+ Max.   :1309.0   Max.   :3.000  
+                                 
+                                        Name         Sex           Age       
+ Abbott, Master. Eugene Joseph            :  1   female:152   Min.   : 0.17  
+ Abelseth, Miss. Karen Marie              :  1   male  :266   1st Qu.:21.00  
+ Abelseth, Mr. Olaus Jorgensen            :  1                Median :27.00  
+ Abrahamsson, Mr. Abraham August Johannes :  1                Mean   :30.27  
+ Abrahim, Mrs. Joseph (Sophie Halaut Easu):  1                3rd Qu.:39.00  
+ Aks, Master. Philip Frank                :  1                Max.   :76.00  
+ (Other)                                  :412                NA's   :86     
+     SibSp            Parch             Ticket         Fare        
+ Min.   :0.0000   Min.   :0.0000   PC 17608:  5   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.0000   113503  :  4   1st Qu.:  7.896  
+ Median :0.0000   Median :0.0000   CA. 2343:  4   Median : 14.454  
+ Mean   :0.4474   Mean   :0.3923   16966   :  3   Mean   : 35.627  
+ 3rd Qu.:1.0000   3rd Qu.:0.0000   220845  :  3   3rd Qu.: 31.500  
+ Max.   :8.0000   Max.   :9.0000   347077  :  3   Max.   :512.329  
+                                   (Other) :396   NA's   :1        
+             Cabin     Embarked
+                :327   C:102   
+ B57 B59 B63 B66:  3   Q: 46   
+ A34            :  2   S:270   
+ B45            :  2           
+ C101           :  2           
+ C116           :  2           
+ (Other)        : 80           
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #remove Survived column from train and combined with test to make a full data set
+> train2 = train[,-2]
+> train2$train_or_test = "train"
+> test = test %>%
++   mutate(train_or_test = "test")
+> full = rbind(train2, test)
+> head(full)
+  PassengerId Pclass                                                Name    Sex
+1           1      3                             Braund, Mr. Owen Harris   male
+2           2      1 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female
+3           3      3                              Heikkinen, Miss. Laina female
+4           4      1        Futrelle, Mrs. Jacques Heath (Lily May Peel) female
+5           5      3                            Allen, Mr. William Henry   male
+6           6      3                                    Moran, Mr. James   male
+  Age SibSp Parch           Ticket    Fare Cabin Embarked train_or_test
+1  22     1     0        A/5 21171  7.2500              S         train
+2  38     1     0         PC 17599 71.2833   C85        C         train
+3  26     0     0 STON/O2. 3101282  7.9250              S         train
+4  35     1     0           113803 53.1000  C123        S         train
+5  35     0     0           373450  8.0500              S         train
+6  NA     0     0           330877  8.4583              Q         train
+> 
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #look at missing values
+> missing_values = colSums(is.na(full))
+> missing_values
+  PassengerId        Pclass          Name           Sex           Age 
+            0             0             0             0           263 
+        SibSp         Parch        Ticket          Fare         Cabin 
+            0             0             0             1             0 
+     Embarked train_or_test 
+            0             0 
+> nrow(full)
+[1] 1309
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #delete record with missing Fare value
+> which(is.na(full$Fare))
+[1] 1044
+> full[1044,]$Fare = 14.45
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> which(full$Embarked == "")
+[1]  62 830
+> #rows 62 and 830 are missing
+> full[62,]$Embarked = "S"
+> full[830,]$Embarked = "S"
+> full$Embarked = droplevels(full$Embarked)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Break up Name column in First, Last, and Title
+> full$Name = as.character(full$Name)
+> full2 = separate(full, Name, into=c("LastName", "Rest"), sep=", ")
+> full2 = separate(full2, Rest, into=c("title", "First"), sep="\\. ")
+Warning message:
+Expected 2 pieces. Additional pieces discarded in 1 rows [514]. 
+> as.list(table(full2$title))
+$Capt
+[1] 1
+
+$Col
+[1] 4
+
+$Don
+[1] 1
+
+$Dona
+[1] 1
+
+$Dr
+[1] 8
+
+$Jonkheer
+[1] 1
+
+$Lady
+[1] 1
+
+$Major
+[1] 2
+
+$Master
+[1] 61
+
+$Miss
+[1] 260
+
+$Mlle
+[1] 2
+
+$Mme
+[1] 1
+
+$Mr
+[1] 757
+
+$Mrs
+[1] 197
+
+$Ms
+[1] 2
+
+$Rev
+[1] 8
+
+$Sir
+[1] 1
+
+$`the Countess`
+[1] 1
+
+> barplot(table(full2$title))
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> royal_mask = full2$title %in% c("Don", "Dona", "Lady", "Jonkheer", "the Countess", "Sir")
+> officer_mask = full2$title %in%  c("Col", "Major", "Capt")
+> miss_mask =  full2$title %in% c("Ms", "Mlle")
+> dr_mask = full2$title == "Dr"
+> rev_mask = full2$title == "Rev"
+> mme_mask = full2$title == "Mme"
+> 
+> #change Don, Dona, Lady, Jonkheer, Countess and Sir to Royal
+> full2[royal_mask,]$title = "Royal"
+> 
+> #change Col, Maj, and Capt to Officer
+> full2[officer_mask,]$title = "Officer"
+> 
+> #change Ms, Mlle to Miss
+> full2[miss_mask,]$title= "Miss"
+> 
+> #change Mme to Mr
+> full2[mme_mask,]$title = "Mr"
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full2[rev_mask,]
+     PassengerId Pclass   LastName title                 First  Sex Age SibSp
+150          150      2      Byles   Rev Thomas Roussel Davids male  42     0
+151          151      2    Bateman   Rev          Robert James male  51     0
+250          250      2     Carter   Rev      Ernest Courtenay male  54     1
+627          627      2   Kirkland   Rev       Charles Leonard male  57     0
+849          849      2     Harper   Rev                  John male  28     0
+887          887      2   Montvila   Rev                Juozas male  27     0
+1041        1041      2   Lahtinen   Rev               William male  30     1
+1056        1056      2 Peruschitz   Rev          Joseph Maria male  41     0
+     Parch      Ticket   Fare Cabin Embarked train_or_test
+150      0      244310 13.000              S         train
+151      0 S.O.P. 1166 12.525              S         train
+250      0      244252 26.000              S         train
+627      0      219533 12.350              Q         train
+849      1      248727 33.000              S         train
+887      0      211536 13.000              S         train
+1041     1      250651 26.000              S          test
+1056     0      237393 13.000              S          test
+> full2[dr_mask,]
+     PassengerId Pclass         LastName title           First    Sex Age SibSp
+246          246      1          Minahan    Dr  William Edward   male  44     2
+318          318      2         Moraweck    Dr          Ernest   male  54     0
+399          399      2             Pain    Dr          Alfred   male  23     0
+633          633      1 Stahelin-Maeglin    Dr             Max   male  32     0
+661          661      1       Frauenthal    Dr   Henry William   male  50     2
+767          767      1            Brewe    Dr  Arthur Jackson   male  NA     0
+797          797      1           Leader    Dr Alice (Farnham) female  49     0
+1185        1185      1            Dodge    Dr      Washington   male  53     1
+     Parch   Ticket     Fare Cabin Embarked train_or_test
+246      0    19928  90.0000   C78        Q         train
+318      0    29011  14.0000              S         train
+399      0   244278  10.5000              S         train
+633      0    13214  30.5000   B50        C         train
+661      0 PC 17611 133.6500              S         train
+767      0   112379  39.6000              C         train
+797      0    17465  25.9292   D17        S         train
+1185     1    33638  81.8583   A34        S          test
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #change Rev and Dr to Mr
+> full2[rev_mask,]$title = "Mr"
+> full2[dr_mask,]$title = "Mr"
+> 
+> #change female doctor back to Mrs
+> full2[797,]$title = "Mrs"
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #look at titles again after all changes
+> as.list(table(full2$title))
+$Master
+[1] 61
+
+$Miss
+[1] 264
+
+$Mr
+[1] 773
+
+$Mrs
+[1] 198
+
+$Officer
+[1] 7
+
+$Royal
+[1] 6
+
+> barplot(table(full2$title))
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #remove variables that are not useful
+> no_use = c("Ticket", "Cabin")
+> full3=full2
+> full3[,no_use] = NULL
+> head(full3)
+  PassengerId Pclass  LastName title                                 First
+1           1      3    Braund    Mr                           Owen Harris
+2           2      1   Cumings   Mrs John Bradley (Florence Briggs Thayer)
+3           3      3 Heikkinen  Miss                                 Laina
+4           4      1  Futrelle   Mrs         Jacques Heath (Lily May Peel)
+5           5      3     Allen    Mr                         William Henry
+6           6      3     Moran    Mr                                 James
+     Sex Age SibSp Parch    Fare Embarked train_or_test
+1   male  22     1     0  7.2500        S         train
+2 female  38     1     0 71.2833        C         train
+3 female  26     0     0  7.9250        S         train
+4 female  35     1     0 53.1000        S         train
+5   male  35     0     0  8.0500        S         train
+6   male  NA     0     0  8.4583        Q         train
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #create a dummy variable called MissingAge: 0 if Age is NA, Else 1
+> full3$MissingAge = 1
+> missing_age_mask = is.na(full3$Age)
+> full3[missing_age_mask,]$MissingAge = 0
+> full3$Pclass = as.factor(full3$Pclass)
+> head(full3, 25)
+   PassengerId Pclass      LastName  title
+1            1      3        Braund     Mr
+2            2      1       Cumings    Mrs
+3            3      3     Heikkinen   Miss
+4            4      1      Futrelle    Mrs
+5            5      3         Allen     Mr
+6            6      3         Moran     Mr
+7            7      1      McCarthy     Mr
+8            8      3       Palsson Master
+9            9      3       Johnson    Mrs
+10          10      2        Nasser    Mrs
+11          11      3     Sandstrom   Miss
+12          12      1       Bonnell   Miss
+13          13      3   Saundercock     Mr
+14          14      3     Andersson     Mr
+15          15      3       Vestrom   Miss
+16          16      2       Hewlett    Mrs
+17          17      3          Rice Master
+18          18      2      Williams     Mr
+19          19      3 Vander Planke    Mrs
+20          20      3    Masselmani    Mrs
+21          21      2        Fynney     Mr
+22          22      2       Beesley     Mr
+23          23      3       McGowan   Miss
+24          24      1        Sloper     Mr
+25          25      3       Palsson   Miss
+                                   First    Sex Age SibSp Parch    Fare
+1                            Owen Harris   male  22     1     0  7.2500
+2  John Bradley (Florence Briggs Thayer) female  38     1     0 71.2833
+3                                  Laina female  26     0     0  7.9250
+4          Jacques Heath (Lily May Peel) female  35     1     0 53.1000
+5                          William Henry   male  35     0     0  8.0500
+6                                  James   male  NA     0     0  8.4583
+7                              Timothy J   male  54     0     0 51.8625
+8                          Gosta Leonard   male   2     3     1 21.0750
+9    Oscar W (Elisabeth Vilhelmina Berg) female  27     0     2 11.1333
+10                Nicholas (Adele Achem) female  14     1     0 30.0708
+11                        Marguerite Rut female   4     1     1 16.7000
+12                             Elizabeth female  58     0     0 26.5500
+13                         William Henry   male  20     0     0  8.0500
+14                          Anders Johan   male  39     1     5 31.2750
+15                 Hulda Amanda Adolfina female  14     0     0  7.8542
+16                    (Mary D Kingcome)  female  55     0     0 16.0000
+17                                Eugene   male   2     4     1 29.1250
+18                        Charles Eugene   male  NA     0     0 13.0000
+19   Julius (Emelia Maria Vandemoortele) female  31     1     0 18.0000
+20                                Fatima female  NA     0     0  7.2250
+21                              Joseph J   male  35     0     0 26.0000
+22                              Lawrence   male  34     0     0 13.0000
+23                          Anna "Annie" female  15     0     0  8.0292
+24                      William Thompson   male  28     0     0 35.5000
+25                        Torborg Danira female   8     3     1 21.0750
+   Embarked train_or_test MissingAge
+1         S         train          1
+2         C         train          1
+3         S         train          1
+4         S         train          1
+5         S         train          1
+6         Q         train          0
+7         S         train          1
+8         S         train          1
+9         S         train          1
+10        C         train          1
+11        S         train          1
+12        S         train          1
+13        S         train          1
+14        S         train          1
+15        S         train          1
+16        S         train          1
+17        Q         train          1
+18        S         train          0
+19        S         train          1
+20        C         train          0
+21        S         train          1
+22        S         train          1
+23        Q         train          1
+24        S         train          1
+25        S         train          1
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #split full data frame in missing age and not missing
+> split_mask = full3$MissingAge == 1
+> full3_has_age = full3[split_mask,]
+> full3_no_age = full3[!split_mask,]
+> summary(full3_has_age)
+  PassengerId     Pclass    LastName            title          
+ Min.   :   1.0   1:284   Length:1046        Length:1046       
+ 1st Qu.: 326.2   2:261   Class :character   Class :character  
+ Median : 662.5   3:501   Mode  :character   Mode  :character  
+ Mean   : 655.4                                                
+ 3rd Qu.: 973.8                                                
+ Max.   :1307.0                                                
+    First               Sex           Age            SibSp       
+ Length:1046        female:388   Min.   : 0.17   Min.   :0.0000  
+ Class :character   male  :658   1st Qu.:21.00   1st Qu.:0.0000  
+ Mode  :character                Median :28.00   Median :0.0000  
+                                 Mean   :29.88   Mean   :0.5029  
+                                 3rd Qu.:39.00   3rd Qu.:1.0000  
+                                 Max.   :80.00   Max.   :8.0000  
+     Parch             Fare        Embarked train_or_test        MissingAge
+ Min.   :0.0000   Min.   :  0.00   C:212    Length:1046        Min.   :1   
+ 1st Qu.:0.0000   1st Qu.:  8.05   Q: 50    Class :character   1st Qu.:1   
+ Median :0.0000   Median : 15.75   S:784    Mode  :character   Median :1   
+ Mean   :0.4207   Mean   : 36.66                               Mean   :1   
+ 3rd Qu.:1.0000   3rd Qu.: 35.50                               3rd Qu.:1   
+ Max.   :6.0000   Max.   :512.33                               Max.   :1   
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(full3_no_age)
+  PassengerId     Pclass    LastName            title          
+ Min.   :   6.0   1: 39   Length:263         Length:263        
+ 1st Qu.: 335.5   2: 16   Class :character   Class :character  
+ Median : 630.0   3:208   Mode  :character   Mode  :character  
+ Mean   : 653.6                                                
+ 3rd Qu.: 999.5                                                
+ Max.   :1309.0                                                
+                                                               
+    First               Sex           Age          SibSp       
+ Length:263         female: 78   Min.   : NA   Min.   :0.0000  
+ Class :character   male  :185   1st Qu.: NA   1st Qu.:0.0000  
+ Mode  :character                Median : NA   Median :0.0000  
+                                 Mean   :NaN   Mean   :0.4829  
+                                 3rd Qu.: NA   3rd Qu.:0.0000  
+                                 Max.   : NA   Max.   :8.0000  
+                                 NA's   :263                   
+     Parch             Fare        Embarked train_or_test        MissingAge
+ Min.   :0.0000   Min.   :  0.00   C: 58    Length:263         Min.   :0   
+ 1st Qu.:0.0000   1st Qu.:  7.75   Q: 73    Class :character   1st Qu.:0   
+ Median :0.0000   Median :  8.05   S:132    Mode  :character   Median :0   
+ Mean   :0.2433   Mean   : 19.82                               Mean   :0   
+ 3rd Qu.:0.0000   3rd Qu.: 22.80                               3rd Qu.:0   
+ Max.   :9.0000   Max.   :227.53                               Max.   :0   
+                                                                           
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(full3_has_age, aes(x=Age, fill=Pclass))+
++   geom_density(alpha=.3)+
++   facet_wrap(Sex~.)
+> 
+> 
+> 
+> ## ----message=FALSE, results= 'hide'----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #perfom imputation on the full3 data set
+> set.seed(99)
+> full_imputed = complete(mice(full3, m=10, method = "cart"))
+
+ iter imp variable
+  1   1  Age
+  1   2  Age
+  1   3  Age
+  1   4  Age
+  1   5  Age
+  1   6  Age
+  1   7  Age
+  1   8  Age
+  1   9  Age
+  1   10  Age
+  2   1  Age
+  2   2  Age
+  2   3  Age
+  2   4  Age
+  2   5  Age
+  2   6  Age
+  2   7  Age
+  2   8  Age
+  2   9  Age
+  2   10  Age
+  3   1  Age
+  3   2  Age
+  3   3  Age
+  3   4  Age
+  3   5  Age
+  3   6  Age
+  3   7  Age
+  3   8  Age
+  3   9  Age
+  3   10  Age
+  4   1  Age
+  4   2  Age
+  4   3  Age
+  4   4  Age
+  4   5  Age
+  4   6  Age
+  4   7  Age
+  4   8  Age
+  4   9  Age
+  4   10  Age
+  5   1  Age
+  5   2  Age
+  5   3  Age
+  5   4  Age
+  5   5  Age
+  5   6  Age
+  5   7  Age
+  5   8  Age
+  5   9  Age
+  5   10  Age
+Warning message:
+Number of logged events: 54 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #check for na values
+> sum(is.na(full_imputed))
+[1] 0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #check the density plots of imputed DF
+> ggplot(full_imputed, aes(x=Age, fill=Pclass))+
++   geom_density(alpha=.3)+
++   facet_wrap(Sex~.)+
++   ggtitle("imputed")
+> 
+> ggplot(full3_has_age, aes(x=Age, fill=Pclass))+
++   geom_density(alpha=.3)+
++   facet_wrap(Sex~.)+
++   ggtitle("missing Age values ommited")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #split back into train and test
+> train_clean = full_imputed[full_imputed$train_or_test == "train",]
+> test_clean = full_imputed[full_imputed$train_or_test == "test",]
+> train_clean$train_or_test = NULL
+> test_clean$train_or_test = NULL
+> train_clean$MissingAge = NULL
+> test_clean$MissingAge = NULL
+> 
+> #add survivability back into train
+> train_clean$Survived = as.factor(train$Survived)
+> #check for NAs 
+> sum(is.na(train_clean))
+[1] 0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #survivability vs Passenger Class
+> ggplot(train_clean, aes(x = Pclass, fill = Survived))+
++   geom_bar(position = "dodge")+
++   labs(title = "Passenger Class Survivability", x = "Passenger Class")
+> 
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #survivability vs Title
+> ggplot(train_clean, aes(x=as.factor(title), fill=Survived))+
++   geom_bar(position = "dodge")+
++   labs(title="Title Survivability", x="Title")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #survivability vs Age
+> p1 = ggplot(train_clean, aes(Age, fill=Survived))+
++   geom_histogram()+
++   facet_wrap(~Sex)
+> p2 = ggplot(train_clean, aes(Age, fill=Survived))+
++   geom_histogram()
+> library(gridExtra)
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:randomForest’:
+
+    combine
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> library(grid)
+> grid.arrange(p2,p1, ncol=1)
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #survivability vs Sibling or Spouse
+> ggplot(train_clean, aes(fill=Survived, x=as.factor(SibSp)))+
++   geom_bar(position="dodge")+
++   labs(title = "Having a sibling or spouse aboard", x="# of siblings or spouse")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #survivability vs Embarked City
+> ggplot(train_clean, aes(fill=Survived, x=Embarked))+
++   geom_bar(position="dodge")+
++   labs(title = "Embarked City vs Survivability")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(train_clean, aes(fill=Survived, x=Embarked))+
++   geom_bar(position="dodge")+
++   facet_wrap(Sex~Pclass)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #survivability vs Parch
+> ggplot(train_clean, aes(fill=Survived, x=Parch))+
++   geom_bar(position = "dodge")+
++   labs(title="Parent/Children size group vs Survivability")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # split the training set 80/20
+> set.seed(100)
+> train_clean$Survived  = as.factor(train_clean$Survived)
+> splitter = sample.split(train_clean$Survived, SplitRatio = .8)
+> train80 = train_clean[splitter,]
+> train20 = train_clean[!splitter,]
+> 
+> 
+> ## ----message=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #set control parameters for training function
+> rf_control = trainControl(method = "repeatedcv", number = 10, repeats=3, verboseIter = FALSE)
+> rf_tune = data.frame(mtry=c(2,4,6,8), min.node.size=c(1,2,3,4), splitrule = c("gini", "extratrees"))
+> 
+> #build model
+> set.seed(100)
+> RF_mod = train(Survived ~ Pclass + title + Age + SibSp + Parch+ Embarked + Sex, 
++                data = train80,
++                method = "ranger",
++                trControl = rf_control,
++                tuneGrid = rf_tune)
+> 
+> #model results
+> RF_mod
+Random Forest 
+
+713 samples
+  7 predictor
+  2 classes: '0', '1' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold, repeated 3 times) 
+Summary of sample sizes: 642, 642, 642, 642, 642, 642, ... 
+Resampling results across tuning parameters:
+
+  mtry  min.node.size  splitrule   Accuracy   Kappa    
+  2     1              gini        0.8115847  0.5915517
+  4     2              extratrees  0.8223176  0.6050121
+  6     3              gini        0.8214049  0.6087176
+  8     4              extratrees  0.8055010  0.5727242
+
+Accuracy was used to select the optimal model using the largest value.
+The final values used for the model were mtry = 4, splitrule = extratrees
+ and min.node.size = 2.
+> RF_mod$finalModel
+Ranger result
+
+Call:
+ ranger::ranger(dependent.variable.name = ".outcome", data = x,      mtry = min(param$mtry, ncol(x)), min.node.size = param$min.node.size,      splitrule = as.character(param$splitrule), write.forest = TRUE,      probability = classProbs, ...) 
+
+Type:                             Classification 
+Number of trees:                  500 
+Sample size:                      713 
+Number of independent variables:  13 
+Mtry:                             4 
+Target node size:                 2 
+Variable importance mode:         none 
+Splitrule:                        extratrees 
+Number of random splits:          1 
+OOB prediction error:             18.09 % 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #model predictions on withheld training data train20
+> RF_pred = predict(RF_mod, newdata = train20)
+> confusionMatrix(RF_pred, train20$Survived)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction   0   1
+         0 103  19
+         1   7  49
+                                          
+               Accuracy : 0.8539          
+                 95% CI : (0.7933, 0.9023)
+    No Information Rate : 0.618           
+    P-Value [Acc > NIR] : 3.721e-12       
+                                          
+                  Kappa : 0.6799          
+                                          
+ Mcnemar's Test P-Value : 0.03098         
+                                          
+            Sensitivity : 0.9364          
+            Specificity : 0.7206          
+         Pos Pred Value : 0.8443          
+         Neg Pred Value : 0.8750          
+             Prevalence : 0.6180          
+         Detection Rate : 0.5787          
+   Detection Prevalence : 0.6854          
+      Balanced Accuracy : 0.8285          
+                                          
+       'Positive' Class : 0               
+                                          
+> colAUC(as.numeric(RF_pred), as.numeric(train20$Survived), plotROC = TRUE)
+             [,1]
+1 vs. 2 0.8284759
+> RF_ROC = roc(response = as.numeric(train20$Survived), predictor = as.numeric(RF_pred))
+Setting levels: control = 1, case = 2
+Setting direction: controls < cases
+> pROC::auc(RF_ROC)
+Area under the curve: 0.8285
+> 
+> 
+> ## ----error=FALSE, warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(555)
+> nb_control = trainControl(method = "repeatedcv", number = 10, repeats = 3, verboseIter = FALSE)
+> nb_mod = train(Survived ~ Pclass + title + Age + SibSp + Parch + Sex + Embarked,
++                method = "nb",
++                data=train80,
++                trControl = nb_control)
+There were 50 or more warnings (use warnings() to see the first 50)
+> 
+> summary(nb_mod)
+            Length Class      Mode     
+apriori      2     table      numeric  
+tables      13     -none-     list     
+levels       2     -none-     character
+call         5     -none-     call     
+x           13     data.frame list     
+usekernel    1     -none-     logical  
+varnames    13     -none-     character
+xNames      13     -none-     character
+problemType  1     -none-     character
+tuneValue    3     data.frame list     
+obsLevels    2     -none-     character
+param        0     -none-     list     
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #out of sample predication and performance with Naive Bayes model
+> nb_pred = predict(nb_mod, newdata = train20, type = "raw")
+Warning messages:
+1: In FUN(X[[i]], ...) :
+  Numerical 0 probability for all classes with observation 4
+2: In FUN(X[[i]], ...) :
+  Numerical 0 probability for all classes with observation 65
+3: In FUN(X[[i]], ...) :
+  Numerical 0 probability for all classes with observation 94
+4: In FUN(X[[i]], ...) :
+  Numerical 0 probability for all classes with observation 118
+5: In FUN(X[[i]], ...) :
+  Numerical 0 probability for all classes with observation 120
+6: In FUN(X[[i]], ...) :
+  Numerical 0 probability for all classes with observation 167
+7: In FUN(X[[i]], ...) :
+  Numerical 0 probability for all classes with observation 177
+> confusionMatrix((nb_pred), (train20$Survived))
+Confusion Matrix and Statistics
+
+          Reference
+Prediction  0  1
+         0 97 18
+         1 13 50
+                                         
+               Accuracy : 0.8258         
+                 95% CI : (0.762, 0.8785)
+    No Information Rate : 0.618          
+    P-Value [Acc > NIR] : 1.367e-09      
+                                         
+                  Kappa : 0.6259         
+                                         
+ Mcnemar's Test P-Value : 0.4725         
+                                         
+            Sensitivity : 0.8818         
+            Specificity : 0.7353         
+         Pos Pred Value : 0.8435         
+         Neg Pred Value : 0.7937         
+             Prevalence : 0.6180         
+         Detection Rate : 0.5449         
+   Detection Prevalence : 0.6461         
+      Balanced Accuracy : 0.8086         
+                                         
+       'Positive' Class : 0              
+                                         
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #copy training data sets before modifying
+> train80nn = train80
+> train20nn = train20
+> 
+> #set Passenger class to integer
+> train80nn$Pclass = as.integer(train80nn$Pclass)
+> train20nn$Pclass = as.integer(train20nn$Pclass)
+> 
+> library(dummies)
+> dummy_title80 = as.data.frame(dummy(train80nn$title))
+Warning message:
+In model.matrix.default(~x - 1, model.frame(~x - 1), contrasts = FALSE) :
+  non-list contrasts argument ignored
+> colnames(dummy_title80) = c("Master","Miss","Mr","Mrs","Officer","Royal")
+> dummy_embarked80 = as.data.frame(dummy(train80nn$Embarked))
+Warning message:
+In model.matrix.default(~x - 1, model.frame(~x - 1), contrasts = FALSE) :
+  non-list contrasts argument ignored
+> colnames(dummy_embarked80) = c("C","Q","S")
+> train80nn_dum = cbind(train80nn, dummy_title80, dummy_embarked80)
+> 
+> dummy_title20 = as.data.frame(dummy(train20nn$title))
+Warning message:
+In model.matrix.default(~x - 1, model.frame(~x - 1), contrasts = FALSE) :
+  non-list contrasts argument ignored
+> colnames(dummy_title20) = c("Master","Miss","Mr","Mrs","Officer")
+> dummy_embarked20 = as.data.frame(dummy(train20nn$Embarked))
+Warning message:
+In model.matrix.default(~x - 1, model.frame(~x - 1), contrasts = FALSE) :
+  non-list contrasts argument ignored
+> colnames(dummy_embarked20) = c("C","Q","S")
+> train20nn_dum = cbind(train20nn, dummy_title20, dummy_embarked20)
+> train20nn_dum <- train20nn_dum %>%
++   mutate(Royal = 0)
+> 
+> 
+> ## ----message=FALSE, echo=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(nnet)
+> set.seed(55)
+> nn_control = trainControl(method = "repeatedcv", number = 3, repeats = 1, verboseIter = FALSE)
+> nn_mod = train(Survived ~ Pclass + Age + SibSp + Parch+ Master + Miss + Mr + Mrs + Officer + Royal+ C+ Q+ S,
++                data = train80nn_dum,
++                method = "nnet",
++                trControl = nn_control,
++                preProcess = "range")
+# weights:  16
+initial  value 326.154185 
+iter  10 value 196.577016
+iter  20 value 185.518342
+iter  30 value 185.087805
+iter  40 value 184.269698
+iter  50 value 184.085394
+iter  60 value 184.060024
+iter  70 value 184.059128
+iter  80 value 184.048230
+iter  90 value 184.043478
+final  value 184.043469 
+converged
+# weights:  46
+initial  value 353.574561 
+iter  10 value 190.983181
+iter  20 value 180.558306
+iter  30 value 173.772475
+iter  40 value 170.626583
+iter  50 value 169.612502
+iter  60 value 167.803046
+iter  70 value 165.708834
+iter  80 value 164.678342
+iter  90 value 164.316602
+iter 100 value 164.298357
+final  value 164.298357 
+stopped after 100 iterations
+# weights:  76
+initial  value 326.540295 
+iter  10 value 192.261708
+iter  20 value 177.085628
+iter  30 value 167.665110
+iter  40 value 162.651980
+iter  50 value 155.612727
+iter  60 value 151.019685
+iter  70 value 147.233325
+iter  80 value 145.402269
+iter  90 value 144.701761
+iter 100 value 143.765830
+final  value 143.765830 
+stopped after 100 iterations
+# weights:  16
+initial  value 322.253094 
+iter  10 value 223.164979
+iter  20 value 196.393683
+iter  30 value 195.692426
+final  value 195.692418 
+converged
+# weights:  46
+initial  value 314.865820 
+iter  10 value 213.322737
+iter  20 value 197.490443
+iter  30 value 194.848005
+iter  40 value 193.730247
+iter  50 value 193.513370
+iter  60 value 193.319955
+iter  70 value 193.250868
+iter  80 value 193.233984
+iter  90 value 193.226680
+iter 100 value 193.217472
+final  value 193.217472 
+stopped after 100 iterations
+# weights:  76
+initial  value 327.888455 
+iter  10 value 218.648304
+iter  20 value 193.658368
+iter  30 value 192.307698
+iter  40 value 191.848092
+iter  50 value 191.744586
+iter  60 value 191.546288
+iter  70 value 191.503767
+iter  80 value 191.498941
+iter  90 value 191.498290
+iter 100 value 191.497834
+final  value 191.497834 
+stopped after 100 iterations
+# weights:  16
+initial  value 359.966625 
+iter  10 value 281.295082
+iter  20 value 216.939060
+iter  30 value 210.650626
+iter  40 value 207.520709
+iter  50 value 199.884081
+iter  60 value 199.665862
+iter  70 value 199.640719
+iter  80 value 199.636478
+iter  90 value 193.425278
+iter 100 value 186.204133
+final  value 186.204133 
+stopped after 100 iterations
+# weights:  46
+initial  value 346.212775 
+iter  10 value 204.267565
+iter  20 value 182.598443
+iter  30 value 175.525352
+iter  40 value 173.392130
+iter  50 value 172.317898
+iter  60 value 171.857870
+iter  70 value 171.690516
+iter  80 value 171.523159
+iter  90 value 171.238289
+iter 100 value 170.958423
+final  value 170.958423 
+stopped after 100 iterations
+# weights:  76
+initial  value 381.468477 
+iter  10 value 206.173781
+iter  20 value 184.956165
+iter  30 value 175.403663
+iter  40 value 167.946347
+iter  50 value 165.390489
+iter  60 value 163.563882
+iter  70 value 161.923271
+iter  80 value 160.747451
+iter  90 value 160.024563
+iter 100 value 159.234151
+final  value 159.234151 
+stopped after 100 iterations
+# weights:  16
+initial  value 351.413833 
+iter  10 value 210.038329
+iter  20 value 198.246730
+iter  30 value 192.639120
+iter  40 value 191.678159
+iter  50 value 191.407926
+iter  60 value 191.389809
+iter  70 value 191.382532
+final  value 191.382385 
+converged
+# weights:  46
+initial  value 321.997881 
+iter  10 value 203.182472
+iter  20 value 188.064311
+iter  30 value 182.362500
+iter  40 value 177.858420
+iter  50 value 175.766790
+iter  60 value 175.237815
+iter  70 value 174.009741
+iter  80 value 173.838051
+iter  90 value 173.816713
+final  value 173.816641 
+converged
+# weights:  76
+initial  value 397.086627 
+iter  10 value 232.239281
+iter  20 value 192.388470
+iter  30 value 187.275313
+iter  40 value 184.497289
+iter  50 value 183.599376
+iter  60 value 178.936114
+iter  70 value 172.651750
+iter  80 value 169.349973
+iter  90 value 167.854031
+iter 100 value 167.155837
+final  value 167.155837 
+stopped after 100 iterations
+# weights:  16
+initial  value 330.876542 
+iter  10 value 208.191752
+iter  20 value 203.040617
+final  value 203.038700 
+converged
+# weights:  46
+initial  value 365.350303 
+iter  10 value 208.306905
+iter  20 value 203.232369
+iter  30 value 200.939391
+iter  40 value 200.784789
+iter  50 value 200.508768
+iter  60 value 200.449755
+iter  70 value 200.445769
+iter  80 value 200.444901
+final  value 200.444895 
+converged
+# weights:  76
+initial  value 415.649016 
+iter  10 value 218.968734
+iter  20 value 201.752822
+iter  30 value 200.972581
+iter  40 value 200.627002
+iter  50 value 200.575205
+iter  60 value 200.519553
+iter  70 value 200.439758
+iter  80 value 200.422519
+iter  90 value 200.420168
+iter 100 value 200.419852
+final  value 200.419852 
+stopped after 100 iterations
+# weights:  16
+initial  value 371.521959 
+iter  10 value 203.927252
+iter  20 value 196.453057
+iter  30 value 194.371558
+iter  40 value 194.273913
+iter  50 value 194.249048
+iter  60 value 194.217767
+iter  70 value 193.250813
+iter  80 value 192.494805
+iter  90 value 191.821276
+iter 100 value 191.751751
+final  value 191.751751 
+stopped after 100 iterations
+# weights:  46
+initial  value 336.893018 
+iter  10 value 211.322418
+iter  20 value 195.450650
+iter  30 value 189.862126
+iter  40 value 187.561395
+iter  50 value 186.150362
+iter  60 value 183.473066
+iter  70 value 181.089773
+iter  80 value 179.819661
+iter  90 value 179.436197
+iter 100 value 179.201598
+final  value 179.201598 
+stopped after 100 iterations
+# weights:  76
+initial  value 397.810075 
+iter  10 value 206.839542
+iter  20 value 194.265107
+iter  30 value 189.236450
+iter  40 value 181.715292
+iter  50 value 178.331474
+iter  60 value 176.536046
+iter  70 value 170.490967
+iter  80 value 166.237089
+iter  90 value 163.858803
+iter 100 value 163.125066
+final  value 163.125066 
+stopped after 100 iterations
+# weights:  16
+initial  value 372.436565 
+iter  10 value 218.201468
+iter  20 value 184.470805
+iter  30 value 180.804578
+iter  40 value 180.802153
+iter  50 value 180.751260
+iter  60 value 180.554786
+iter  70 value 180.549472
+iter  80 value 180.543403
+iter  90 value 180.490306
+iter 100 value 180.446695
+final  value 180.446695 
+stopped after 100 iterations
+# weights:  46
+initial  value 356.656380 
+iter  10 value 211.282387
+iter  20 value 187.003402
+iter  30 value 177.463931
+iter  40 value 164.474954
+iter  50 value 158.927307
+iter  60 value 156.287577
+iter  70 value 152.721035
+iter  80 value 150.837906
+iter  90 value 150.261178
+iter 100 value 149.725221
+final  value 149.725221 
+stopped after 100 iterations
+# weights:  76
+initial  value 330.051814 
+iter  10 value 225.276263
+iter  20 value 181.376341
+iter  30 value 170.373285
+iter  40 value 165.151286
+iter  50 value 157.615445
+iter  60 value 150.698883
+iter  70 value 145.381874
+iter  80 value 137.714566
+iter  90 value 135.609690
+iter 100 value 135.548262
+final  value 135.548262 
+stopped after 100 iterations
+# weights:  16
+initial  value 335.427133 
+iter  10 value 206.892013
+iter  20 value 193.182302
+final  value 192.985441 
+converged
+# weights:  46
+initial  value 316.198732 
+iter  10 value 212.377062
+iter  20 value 194.436348
+iter  30 value 192.592688
+iter  40 value 192.036617
+iter  50 value 191.819674
+iter  60 value 191.771200
+iter  70 value 191.743236
+iter  80 value 191.719681
+iter  90 value 191.711339
+iter 100 value 191.626189
+final  value 191.626189 
+stopped after 100 iterations
+# weights:  76
+initial  value 331.212435 
+iter  10 value 198.897240
+iter  20 value 194.041808
+iter  30 value 191.585482
+iter  40 value 191.437481
+iter  50 value 191.391916
+iter  60 value 191.371860
+iter  70 value 191.354432
+iter  80 value 191.322568
+iter  90 value 191.307599
+iter 100 value 191.306824
+final  value 191.306824 
+stopped after 100 iterations
+# weights:  16
+initial  value 319.797690 
+iter  10 value 189.099791
+iter  20 value 185.401025
+iter  30 value 182.314896
+iter  40 value 180.718259
+iter  50 value 180.480752
+final  value 180.478662 
+converged
+# weights:  46
+initial  value 319.987936 
+iter  10 value 187.496714
+iter  20 value 176.061373
+iter  30 value 173.189518
+iter  40 value 171.120128
+iter  50 value 168.227792
+iter  60 value 165.074524
+iter  70 value 163.387231
+iter  80 value 162.745740
+iter  90 value 162.154940
+iter 100 value 162.035674
+final  value 162.035674 
+stopped after 100 iterations
+# weights:  76
+initial  value 330.121491 
+iter  10 value 191.277671
+iter  20 value 174.505526
+iter  30 value 167.425024
+iter  40 value 160.213165
+iter  50 value 153.544802
+iter  60 value 149.081080
+iter  70 value 147.718826
+iter  80 value 147.418471
+iter  90 value 147.189296
+iter 100 value 147.014115
+final  value 147.014115 
+stopped after 100 iterations
+# weights:  16
+initial  value 532.017186 
+iter  10 value 363.266528
+iter  20 value 299.309650
+iter  30 value 294.255797
+final  value 294.253439 
+converged
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #model
+> nn_mod$modelInfo
+$label
+[1] "Neural Network"
+
+$library
+[1] "nnet"
+
+$loop
+NULL
+
+$type
+[1] "Classification" "Regression"    
+
+$parameters
+  parameter   class         label
+1      size numeric #Hidden Units
+2     decay numeric  Weight Decay
+
+$grid
+function(x, y, len = NULL, search = "grid"){
+                    if(search == "grid") {
+                      out <- expand.grid(size = ((1:len) * 2) - 1,
+                                         decay = c(0, 10 ^ seq(-1, -4, length = len - 1)))
+                    } else {
+                      out <- data.frame(size = sample(1:20, size = len, replace = TRUE),
+                                        decay = 10^runif(len, min = -5, 1))
+                    }
+                    out
+                  }
+
+$fit
+function(x, y, wts, param, lev, last, classProbs, ...) {
+                    dat <- if(is.data.frame(x)) x else as.data.frame(x, stringsAsFactors = TRUE)
+                    dat$.outcome <- y
+                    if(!is.null(wts)) {
+                      out <- nnet::nnet(.outcome ~ .,
+                                        data = dat,
+                                        weights = wts,
+                                        size = param$size,
+                                        decay = param$decay,
+                                        ...)
+                    } else out <- nnet::nnet(.outcome ~ .,
+                                             data = dat,
+                                             size = param$size,
+                                             decay = param$decay,
+                                             ...)
+                    out
+                  }
+<bytecode: 0x7f9115b30e00>
+
+$predict
+function(modelFit, newdata, submodels = NULL) {
+                    if(modelFit$problemType == "Classification")
+                    {
+                      out <- predict(modelFit, newdata, type="class")
+                    } else {
+                      out  <- predict(modelFit, newdata, type="raw")[,1]
+                    }
+                    out
+                  }
+<bytecode: 0x7f9115a6e2c8>
+
+$prob
+function(modelFit, newdata, submodels = NULL){
+                    out <- predict(modelFit, newdata)
+                    if(ncol(as.data.frame(out, stringsAsFactors = TRUE)) == 1) {
+                      out <- cbind(out, 1-out)
+                      dimnames(out)[[2]] <-  rev(modelFit$obsLevels)
+                    }
+                    out
+                  }
+
+$varImp
+function(object, ...) {
+                    imp <- caret:::GarsonWeights(object, ...)
+                    if(ncol(imp) > 1) {
+                      imp <- cbind(apply(imp, 1, mean), imp)
+                      colnames(imp)[1] <- "Overall"
+                    } else {
+                      imp <- as.data.frame(imp, stringsAsFactors = TRUE)
+                      names(imp) <- "Overall"
+                    }
+                    if(!is.null(object$xNames)) rownames(imp) <- object$xNames
+                    imp
+                  }
+
+$predictors
+function(x, ...) if(hasTerms(x)) predictors(x$terms) else NA
+
+$tags
+[1] "Neural Network"       "L2 Regularization"    "Accepts Case Weights"
+
+$levels
+function(x) x$lev
+
+$sort
+function(x) x[order(x$size, -x$decay),]
+
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #neural net accuracy
+> nn_pred = predict(nn_mod, newdata = train20nn_dum)
+> confusionMatrix(nn_pred, train20nn_dum$Survived)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction  0  1
+         0 99 19
+         1 11 49
+                                          
+               Accuracy : 0.8315          
+                 95% CI : (0.7682, 0.8833)
+    No Information Rate : 0.618           
+    P-Value [Acc > NIR] : 4.545e-10       
+                                          
+                  Kappa : 0.6348          
+                                          
+ Mcnemar's Test P-Value : 0.2012          
+                                          
+            Sensitivity : 0.9000          
+            Specificity : 0.7206          
+         Pos Pred Value : 0.8390          
+         Neg Pred Value : 0.8167          
+             Prevalence : 0.6180          
+         Detection Rate : 0.5562          
+   Detection Prevalence : 0.6629          
+      Balanced Accuracy : 0.8103          
+                                          
+       'Positive' Class : 0               
+                                          
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #predictions on test data
+> test_pred = predict(RF_mod, newdata=test_clean)
+> submission = data.frame(test_clean$PassengerId, test_pred)
+> colnames(submission) = c("PassengerId", "Survived")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #write CSV file
+> #write.csv(submission, file = "titanic_submission.csv", row.names = FALSE)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 47.267   1.024  18.386 

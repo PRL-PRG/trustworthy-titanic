@@ -1,0 +1,114 @@
+# loading libraries
+library(car)
+library(rpart)
+library(randomForest)
+library(party)
+ 
+#reading train & test dataset
+train <- read.csv("train.csv",header=TRUE,stringsAsFactors=FALSE)
+test <- read.csv("test.csv",header=TRUE,stringsAsFactors=FALSE)
+
+trainnew <- train
+testnew <- test
+
+#removing extra variables to combine train & test dataset
+trainnew <- subset(trainnew,select=-c(PassengerId,Survived))
+testnew <- subset(testnew,select=-c(PassengerId))
+
+#combining train & test dataset
+full <- rbind(trainnew,testnew)
+
+#Extracting Title from Name
+full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+
+#Title Vs. Sex
+table(full$Sex,full$Title)
+
+rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don','Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+
+
+full$Title[full$Title=="Mlle"] <- "Miss"
+full$Title[full$Title=="Ms"] <- "Miss"
+full$Title[full$Title=="Mme"] <- "Mrs"
+
+full$Title[full$Title %in% rare_title] <- "Rare Title"
+
+#Defining Family Size
+full$Family_size <- full$SibSp + full$Parch + 1
+
+#Setting female to 0 and male to 1
+full$Sex <- gsub("female",0,full$Sex)
+full$Sex <- gsub("male",1,full$Sex)
+
+#Creating Child Variable
+full$Child <- rep(0,length(full$Age))
+full$Child[full$Age < 18] <- 1
+
+#Creating Mother Variable
+full$Mother <- rep(0,length(full$Child))
+full$Mother[full$Title == "Mrs" & full$Parch >0] <- 1
+
+#Checking any NA values
+colSums(is.na(full))
+full$Embarked <- recode(full$Embarked,'c("")=NA')
+full$Fare <- recode(full$Fare,'c("")=NA')
+full$Age <- recode(full$Age,'c("")=NA')
+colSums(is.na(full))
+
+#Printing index of NA value in Embarked
+for(i in 1:nrow(train)){
+  if(is.na(full$Embarked[i])){
+    print(i)
+  }
+}
+#Printing index of NA value in Fare
+for(i in 1:nrow(full)){
+  if(is.na(full$Fare[i])){
+    print(i)
+  }
+}
+
+#Treating Na values
+full$Embarked[c(62,830)] <- "S"
+full$Fare[1044] <- median(full$Fare,na.rm=TRUE)
+
+#Predicting Age
+predicted_age <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + Family_size,data =full[!is.na(full$Age),], method = "anova")
+#Substituting Predictated Age Values in missing places of Age Column
+full$Age[is.na(full$Age)] = predict(predicted_age,full[is.na(full$Age),])
+
+colSums(is.na(full))
+
+#Spliting train and test dataset
+trainnew <- full[1:891,]
+testnew <- full[892:1309,]
+
+train <- cbind(PassengerId=train$PassengerId,Survived=train$Survived,trainnew)
+test <- cbind(PassengerId=test$PassengerId,testnew)
+#Removing Unwanted variables
+train <- subset(train,select=-c(Name,Cabin,Ticket))
+test <- subset(test,select=-c(Name,Cabin,Ticket))
+
+View(test)
+View(train)
+
+#Converting chr to factors
+train$Sex <- as.factor(train$Sex)
+train$Embarked <- as.factor(train$Embarked)
+train$Title <- as.factor(train$Title)
+test$Sex <- as.factor(test$Sex)
+test$Embarked <- as.factor(test$Embarked)
+test$Title <- as.factor(test$Title)
+
+#Setting Seed
+set.seed(754)
+
+#Applying randomForest
+fit <- cforest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + Family_size + Child+ Mother,data = train, controls=cforest_unbiased(ntree=2000, mtry=3)) 
+Prediction <- predict(fit, test, OOB=TRUE, type = "response") 
+submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+
+#write Submission
+write.csv(submit, file="my_solution1.csv", row.names=FALSE)
+
+#Gives a score of 0.80861

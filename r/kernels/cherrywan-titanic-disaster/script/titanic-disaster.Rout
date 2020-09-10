@@ -1,0 +1,94 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(xgboost)
+
+Attaching package: ‘xgboost’
+
+The following object is masked from ‘package:dplyr’:
+
+    slice
+
+Warning message:
+package ‘xgboost’ was built under R version 3.6.2 
+> 
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> system("ls ../input")
+gender_submission.csv
+test.csv
+train.csv
+> 
+> train <- read_csv("../input/train.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test <- read_csv("../input/test.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> gendermodel <- read_csv("../input/gendermodel.csv")
+Error: '../input/gendermodel.csv' does not exist in current working directory ('/Users/alex/MachineLearning/TrustworthyML/KaggleCrawler/Aviral/korpus-master/notebooks/r/kernels/cherrywan-titanic-disaster/script').
+Execution halted

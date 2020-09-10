@@ -1,0 +1,343 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Load packages
+> library('ggplot2') # visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library('ggthemes') # visualization
+> library('scales') # visualization
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> library('dplyr') # data manipulation
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library('randomForest') # classification algorithm
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library('forcats')
+> library('caret')
+Loading required package: lattice
+> library('dummies')
+dummies-1.5.6 provided by Decision Patterns
+
+> 
+> getMissingRows <- function(total_data,column.with.gaps){
++     missingrows <- integer(0)
++     count <- 0
++     for (i in 1:nrow(total_data)){
++         if(is.na(total_data[i,column.with.gaps])){
++             count <- count+1
++             missingrows[count] <- i
++             
++         }
++     }
++     print(paste(column.with.gaps,"has",count,"record(s) with a missing value"))
++     return(missingrows)
++ }
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> raw_train <- read.csv('../input/train.csv')
+> raw_test  <- read.csv('../input/test.csv')
+> 
+> # will need this to write output
+> testPassengerId <- raw_test$PassengerId
+> 
+> combine  <- bind_rows(raw_train, raw_test) # bind training & test data
+> summary(combine)
+  PassengerId      Survived          Pclass     
+ Min.   :   1   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000  
+ Median : 655   Median :0.0000   Median :3.000  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295  
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :1309   Max.   :1.0000   Max.   :3.000  
+                NA's   :418                     
+                               Name          Sex           Age       
+ Connolly, Miss. Kate            :   2   female:466   Min.   : 0.17  
+ Kelly, Mr. James                :   2   male  :843   1st Qu.:21.00  
+ Abbing, Mr. Anthony             :   1                Median :28.00  
+ Abbott, Mr. Rossmore Edward     :   1                Mean   :29.88  
+ Abbott, Mrs. Stanton (Rosa Hunt):   1                3rd Qu.:39.00  
+ Abelson, Mr. Samuel             :   1                Max.   :80.00  
+ (Other)                         :1301                NA's   :263    
+     SibSp            Parch            Ticket          Fare        
+ Min.   :0.0000   Min.   :0.000   CA. 2343:  11   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.000   1601    :   8   1st Qu.:  7.896  
+ Median :0.0000   Median :0.000   CA 2144 :   8   Median : 14.454  
+ Mean   :0.4989   Mean   :0.385   3101295 :   7   Mean   : 33.295  
+ 3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7   3rd Qu.: 31.275  
+ Max.   :8.0000   Max.   :9.000   347082  :   7   Max.   :512.329  
+                                  (Other) :1261   NA's   :1        
+             Cabin      Embarked
+                :1014    :  2   
+ C23 C25 C27    :   6   C:270   
+ B57 B59 B63 B66:   5   Q:123   
+ G6             :   5   S:914   
+ B96 B98        :   4           
+ C22 C26        :   4           
+ (Other)        : 271           
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> names(combine)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"   
+> combine <- select(combine, -Name, -Ticket) %>% 
++     mutate(Pclass = factor(Pclass), 
++            Embarked = factor(Embarked),
++            Sex = fct_recode(Sex, "0" = "male", "1" = "female"),
++            family = SibSp + Parch
++     )
+> names(combine)
+ [1] "PassengerId" "Survived"    "Pclass"      "Sex"         "Age"        
+ [6] "SibSp"       "Parch"       "Fare"        "Cabin"       "Embarked"   
+[11] "family"     
+> 
+> 
+> ## ----exploreCabin----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combine$Cabin[is.na(combine$Cabin)] <- "X"
+Warning message:
+In `[<-.factor`(`*tmp*`, is.na(combine$Cabin), value = c(1L, 83L,  :
+  invalid factor level, NA generated
+> combine$Cabin <- substring(combine$Cabin, 1, 1)
+> combine$Cabin <- as.factor(combine$Cabin)
+> 
+> # look at things there we have survival info and cabin info
+> ggplot(combine[(!is.na(combine$Survived) & combine$Cabin != "X"),], aes(x=Cabin, fill=Survived)) +
++     geom_bar(stat="count") +
++     labs(title="Survival rate by Cabin assignment")
+> 
+> 
+> # delete cabin now
+> combine <- select(combine, -Cabin) 
+> 
+> 
+> ## ----gplotAgePre-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(combine[(!is.na(combine$Survived) & !is.na(combine$Age)),], aes(x=Age, fill=Survived)) +
++     geom_density(alpha=0.5, aes(fill=factor(Survived))) +
++     labs(title="Survival/Age Density plot") +
++     scale_x_continuous(breaks=scales::pretty_breaks(n=10))
+> 
+> 
+> ## ----cleanAge--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ageMissingRows <- getMissingRows(combine, "Age")
+[1] "Age has 263 record(s) with a missing value"
+> idx_na <- is.na(combine$Age)
+> age_train <- combine[!idx_na, ]
+> age_test <- combine[idx_na, ]
+> cvidx <- rep(1:5, each = ceiling(nrow(age_train)/5))
+> cvidx <- sample(cvidx, nrow(age_train))
+> norm01 <- function(x) x/max(x, na.rm=TRUE)
+> 
+> age_train <- select(age_train, PassengerId, Age, Survived, Pclass, Sex, SibSp, Parch, Fare, Embarked) %>%
++     mutate(cvidx=cvidx, SibSp = norm01(SibSp), Parch = norm01(Parch), Fare = norm01(Fare))
+> 
+> age_test <- select(age_test, PassengerId, Age, Survived, Pclass, Sex, SibSp, Parch, Fare, Embarked) %>%
++     mutate(SibSp = norm01(SibSp), Parch = norm01(Parch), Fare = norm01(Fare))
+> 
+> modelAgePSS <- lm(Age ~ Pclass + SibSp + Fare, data = age_train )
+> age_test$Age <- predict(modelAgePSS, newdata = age_test)
+> combine[combine$PassengerId %in% age_test$PassengerId, "Age"] <- age_test$Age
+> ageMissingRows <- getMissingRows(combine, "Age")
+[1] "Age has 0 record(s) with a missing value"
+> 
+> 
+> ## ----gplotAge--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(combine[(!is.na(combine$Survived) & !is.na(combine$Age)),], aes(x=Age, fill=Survived)) +
++     geom_density(alpha=0.5, aes(fill=factor(Survived))) +
++     labs(title="Survival/Age Density plot") +
++     scale_x_continuous(breaks=scales::pretty_breaks(n=10))
+> 
+> 
+> ## ----cleanFare-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> names(combine)
+ [1] "PassengerId" "Survived"    "Pclass"      "Sex"         "Age"        
+ [6] "SibSp"       "Parch"       "Fare"        "Embarked"    "family"     
+> FareMissingRows <- getMissingRows(combine, "Fare")
+[1] "Fare has 1 record(s) with a missing value"
+> idx_na <- is.na(combine$Fare)
+> fare_train <- combine[!idx_na, ]
+> fare_test <- combine[idx_na, ]
+> fare_train <- select(fare_train, PassengerId, Age, Survived, Pclass, Sex, SibSp, Parch, Fare, Embarked) %>%
++     mutate(SibSp = norm01(SibSp), Parch = norm01(Parch))
+> 
+> 
+> fare_test <- select(fare_test, PassengerId, Age, Survived, Pclass, Sex, SibSp, Parch, Fare, Embarked)
+> 
+> #modelFarePSS <- lm(Fare ~ Pclass + SibSp + Age + Sex + Embarked, data = fare_train )
+> modelFarePSS <- lm(Fare ~ Age, data = fare_train )
+> fare_test$Fare <- predict(modelFarePSS, newdata = fare_test)
+> combine[combine$PassengerId %in% fare_test$PassengerId, "Fare"] <- fare_test$Fare
+> 
+> FareMissingRows <- getMissingRows(combine, "Fare")
+[1] "Fare has 0 record(s) with a missing value"
+> 
+> 
+> ## ----cleanFinal------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combine <- dummy.data.frame(combine)
+Warning messages:
+1: In model.matrix.default(~x - 1, model.frame(~x - 1), contrasts = FALSE) :
+  non-list contrasts argument ignored
+2: In model.matrix.default(~x - 1, model.frame(~x - 1), contrasts = FALSE) :
+  non-list contrasts argument ignored
+3: In model.matrix.default(~x - 1, model.frame(~x - 1), contrasts = FALSE) :
+  non-list contrasts argument ignored
+> combine <- select(combine, -PassengerId, -SibSp, -Parch) %>%
++     mutate(Survived = factor(Survived))
+> names(combine)
+ [1] "Survived"  "Pclass1"   "Pclass2"   "Pclass3"   "Sex1"      "Sex0"     
+ [7] "Age"       "Fare"      "Embarked"  "EmbarkedC" "EmbarkedQ" "EmbarkedS"
+[13] "family"   
+> 
+> combine <- as.data.frame(combine)
+> idx_na <- is.na(combine$Survived)
+> train <- combine[!idx_na, ]
+> test <- combine[idx_na, ]
+> summary(train)
+ Survived    Pclass1          Pclass2          Pclass3            Sex1       
+ 0:549    Min.   :0.0000   Min.   :0.0000   Min.   :0.0000   Min.   :0.0000  
+ 1:342    1st Qu.:0.0000   1st Qu.:0.0000   1st Qu.:0.0000   1st Qu.:0.0000  
+          Median :0.0000   Median :0.0000   Median :1.0000   Median :0.0000  
+          Mean   :0.2424   Mean   :0.2065   Mean   :0.5511   Mean   :0.3524  
+          3rd Qu.:0.0000   3rd Qu.:0.0000   3rd Qu.:1.0000   3rd Qu.:1.0000  
+          Max.   :1.0000   Max.   :1.0000   Max.   :1.0000   Max.   :1.0000  
+      Sex0             Age              Fare           Embarked       
+ Min.   :0.0000   Min.   :-3.085   Min.   :  0.00   Min.   :0.000000  
+ 1st Qu.:0.0000   1st Qu.:22.000   1st Qu.:  7.91   1st Qu.:0.000000  
+ Median :1.0000   Median :26.640   Median : 14.45   Median :0.000000  
+ Mean   :0.6476   Mean   :29.173   Mean   : 32.20   Mean   :0.002245  
+ 3rd Qu.:1.0000   3rd Qu.:36.000   3rd Qu.: 31.00   3rd Qu.:0.000000  
+ Max.   :1.0000   Max.   :80.000   Max.   :512.33   Max.   :1.000000  
+   EmbarkedC        EmbarkedQ         EmbarkedS          family       
+ Min.   :0.0000   Min.   :0.00000   Min.   :0.0000   Min.   : 0.0000  
+ 1st Qu.:0.0000   1st Qu.:0.00000   1st Qu.:0.0000   1st Qu.: 0.0000  
+ Median :0.0000   Median :0.00000   Median :1.0000   Median : 0.0000  
+ Mean   :0.1886   Mean   :0.08642   Mean   :0.7228   Mean   : 0.9046  
+ 3rd Qu.:0.0000   3rd Qu.:0.00000   3rd Qu.:1.0000   3rd Qu.: 1.0000  
+ Max.   :1.0000   Max.   :1.00000   Max.   :1.0000   Max.   :10.0000  
+> summary(test)
+ Survived      Pclass1         Pclass2          Pclass3            Sex1       
+ 0   :  0   Min.   :0.000   Min.   :0.0000   Min.   :0.0000   Min.   :0.0000  
+ 1   :  0   1st Qu.:0.000   1st Qu.:0.0000   1st Qu.:0.0000   1st Qu.:0.0000  
+ NA's:418   Median :0.000   Median :0.0000   Median :1.0000   Median :0.0000  
+            Mean   :0.256   Mean   :0.2225   Mean   :0.5215   Mean   :0.3636  
+            3rd Qu.:1.000   3rd Qu.:0.0000   3rd Qu.:1.0000   3rd Qu.:1.0000  
+            Max.   :1.000   Max.   :1.0000   Max.   :1.0000   Max.   :1.0000  
+      Sex0             Age              Fare            Embarked
+ Min.   :0.0000   Min.   :-3.085   Min.   :  0.000   Min.   :0  
+ 1st Qu.:0.0000   1st Qu.:22.000   1st Qu.:  7.896   1st Qu.:0  
+ Median :1.0000   Median :26.622   Median : 14.454   Median :0  
+ Mean   :0.6364   Mean   :29.630   Mean   : 35.672   Mean   :0  
+ 3rd Qu.:1.0000   3rd Qu.:36.375   3rd Qu.: 31.500   3rd Qu.:0  
+ Max.   :1.0000   Max.   :76.000   Max.   :512.329   Max.   :0  
+   EmbarkedC       EmbarkedQ      EmbarkedS          family       
+ Min.   :0.000   Min.   :0.00   Min.   :0.0000   Min.   : 0.0000  
+ 1st Qu.:0.000   1st Qu.:0.00   1st Qu.:0.0000   1st Qu.: 0.0000  
+ Median :0.000   Median :0.00   Median :1.0000   Median : 0.0000  
+ Mean   :0.244   Mean   :0.11   Mean   :0.6459   Mean   : 0.8397  
+ 3rd Qu.:0.000   3rd Qu.:0.00   3rd Qu.:1.0000   3rd Qu.: 1.0000  
+ Max.   :1.000   Max.   :1.00   Max.   :1.0000   Max.   :10.0000  
+> 
+> 
+> ## ----modelBuild------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> threshold <- 0.6
+> pcaTransform <- preProcess(train[-1], method=c("center", "scale", "pca"), thresh = threshold)
+> 
+> # translate the training and test data to the pca-coordinates to train run the model
+> pc_train <- predict(pcaTransform, train[,-1])
+> pc_test <- predict(pcaTransform, test[,-1])
+> 
+> # train the model
+> pc_train$Survived <- train$Survived
+> model <- train(Survived ~ ., data = pc_train)
+> 
+> 
+> ## ----modelPredict----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> pred_train <- predict(model, newdata = pc_train[,-7])
+> confusionMatrix(pred_train, train$Survived)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction   0   1
+         0 546  13
+         1   3 329
+                                         
+               Accuracy : 0.982          
+                 95% CI : (0.971, 0.9897)
+    No Information Rate : 0.6162         
+    P-Value [Acc > NIR] : < 2e-16        
+                                         
+                  Kappa : 0.9618         
+                                         
+ Mcnemar's Test P-Value : 0.02445        
+                                         
+            Sensitivity : 0.9945         
+            Specificity : 0.9620         
+         Pos Pred Value : 0.9767         
+         Neg Pred Value : 0.9910         
+             Prevalence : 0.6162         
+         Detection Rate : 0.6128         
+   Detection Prevalence : 0.6274         
+      Balanced Accuracy : 0.9783         
+                                         
+       'Positive' Class : 0              
+                                         
+> 
+> 
+> pred_test <- predict(model, newdata = pc_test)
+> 
+> # Save the solution to a dataframe with two columns: PassengerId and Survived (prediction)
+> solution <- data.frame(PassengerID = testPassengerId, Survived = pred_test)
+> 
+> # Write the solution to file
+> write.csv(solution, file = 'rf_mod_Solution.csv', row.names = F)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 21.599   0.704  22.374 

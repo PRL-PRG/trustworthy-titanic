@@ -1,0 +1,261 @@
+##############################
+#### SETUP ####
+##############################
+
+# Clean up environment
+#rm(list=ls()) # Clear objects from Memory
+#cat("\014") # Clear Console
+
+# Load needed libraries
+library(dplyr)    #Data Frame Manipulation
+library(ggplot2)  #Data Visualization
+library(VIM)      #NA Analysis
+library(mice)     #Age & Deck imputation
+library(caret)    #Model Analysis
+library(e1071)    #Naive Bayes
+library(randomForest) #Random Forest
+
+
+##############################
+#### LOAD DATA ####
+##############################
+
+# Import csv's, convert blanks to NA
+train <- read.csv('../input/train.csv',stringsAsFactors = FALSE,na.strings=c("","NA"))
+test <- read.csv('../input/test.csv',stringsAsFactors = FALSE,na.strings=c("","NA"))
+
+# Combine into full
+full <- bind_rows(train,test)
+
+# TESTING - Check out the data
+#str(full)
+
+##############################
+#### FEATURE ENGINEERING ####
+##############################
+
+#### NAME MANIPULATION ####
+
+# Grab title from passenger names
+full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+
+# TESTING - Show title counts by sex
+#table(full$Sex, full$Title)
+
+# Isolate rate titles
+rare_title <- c('Capt','Col','Don','Dona','Dr','Jonkheer','Lady','Major','Rev','Sir','the Countess')
+full$Title[full$Title %in% rare_title] <- 'Rare Title'
+
+# Combine synonyms
+full$Title[full$Title %in% c('Mlle','Ms')] <- 'Miss'
+full$Title[full$Title == 'Mme'] <- 'Mrs'
+
+# Isolate the surname
+full$Surname <- sapply(full$Name,  
+                       function(x) strsplit(x, split = '[,.]')[[1]][1])
+
+#### FAMILY INFORMATION ####
+
+# Calculate family size
+full$Fsize <- full$SibSp + full$Parch + 1  # +1 for the actual passenger
+
+# TESTING - Family Size and Survival
+# ggplot(full[full$Survived %in% c(0,1),],aes(x=Fsize,fill=factor(Survived))) +
+#   geom_bar(stat='count',position='dodge') +
+#   scale_x_continuous(breaks=c(1:11))
+
+#### DECK ####
+
+# Isolate deck from cabin
+full$Deck<-factor(sapply(full$Cabin, function(x) strsplit(x, NULL)[[1]][1]))
+
+
+##############################
+#### HANDLE SPARSE DATA ####
+##############################
+
+# TESTING - Columns with NAs
+#colnames(full)[colSums(is.na(full)) > 0]
+#aggr(full)
+
+
+#### Embarked ####
+
+# TESTING - Two Passengers with no port of embarkation
+#full[is.na(full$Embarked),]
+
+# TESTING - Look at fares by port and class
+# ggplot(full, aes(x = Embarked, y = Fare, fill = factor(Pclass))) +
+#   geom_boxplot() +
+#   geom_hline(aes(yintercept=80), 
+#              colour='red', linetype='dashed', lwd=2)
+
+# Both passengers' class and fare match up with Charbourg (C). Set them to that.
+full$Embarked[c(62,830)] <- 'C'
+
+#### Fare ####
+
+# TESTING - Passenger 1044 has no fare
+# full[is.na(full$Fare),]
+
+# TESTING - Look at fares for third class passengers from Southampton (S)
+# ggplot(full[full$Pclass == '3' & full$Embarked == 'S',],aes(x=Fare)) +
+#   geom_density(alpha=0.4) +
+#   geom_vline(aes(xintercept=median(Fare, na.rm=TRUE)))
+
+# Assign the median fare of that class and port to passenger 1044
+full$Fare[1044] <- median(full[full$Pclass == '3' & full$Embarked == 'S',]$Fare,na.rm = TRUE)
+
+
+#### Deck ####
+
+# TESTING - A lot of people are missing deck (cabin) information
+# Anything we can do about this? Address this later, maybe
+#full[is.na(full$Deck),]
+
+##############################
+#### IMPUTING MISSING AGE (& DECK?) ####
+##############################
+
+# TESTING - A lot of folks are missing their age
+#full[is.na(full$Age),]
+
+# Make variables factors into factors
+factors <- c('Name','Sex','Ticket','Cabin','Embarked','Title','Surname')
+full[factors] <- lapply(full[factors],factor)
+
+# Set a random seed
+set.seed(11)
+
+# Perform MICE imputation
+mice_var <- c('PassengerId','Name','Ticket','Cabin','Family','Surname','Survived')
+mice_mod <- mice(full[, !names(full) %in% mice_var], method='rf') 
+
+# Save the output
+mice_output <- complete(mice_mod)
+
+# Change Age to MICE imputed age
+full$Age <- mice_output$Age
+
+# Should we try the same thing with Deck?
+full$Deck <- mice_output$Deck
+full$Deck <- as.factor(full$Deck)
+
+##############################
+#### AGE-BASED FEATURE ENGINEERING ####
+##############################
+
+# Adult and Child
+# I'm choosing 16 here, since lifeboat preference was based on sight
+full$Child[full$Age < 16] <- 'Child'
+full$Child[full$Age >= 16] <- 'Adult'
+full$Child <- as.factor(full$Child)
+
+# Mother and Father
+full$Mother <- 0
+full$Mother[full$Sex == 'female' & full$Parch > 0 & full$Child == 'Adult' & full$Title != 'Miss'] <- 1
+
+full$Father <- 0
+full$Father[full$Sex == 'male' & full$Parch > 0 & full$Child == 'Adult'] <- 1
+
+##############################
+#### DATA SPLITTING ####
+##############################
+
+# Split train and test apart
+train <- full[is.na(full$Survived)==FALSE,]
+test <- full[is.na(full$Survived)==TRUE,]
+
+#### Partition Train So We Can Test the Model ####
+
+# Define Partition Function
+PartitionExact <- function(dataSet, fractionOfTest = 0.3)
+{
+  random <- runif(nrow(dataSet))
+  q <- quantile(random,probs=fractionOfTest)
+  testFlag <- random <= q
+  
+  train1 <- dataSet[testFlag, ]
+  train2 <- dataSet[!testFlag, ]
+  dataSetSplit <- list(trainingData=train1, testingData=train2)
+  return(dataSetSplit)
+}
+
+# Split train in 2
+trainSplit <- PartitionExact(train,0.6)
+split1 <- trainSplit$trainingData
+split2 <- trainSplit$testingData
+
+################################
+#### MODELING ##
+##############################
+
+# Define the formula - Father & Deck ended up not being useful
+formula <- factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + Fsize +
+  Child + Mother #+ Father #+ Deck
+
+
+set.seed(1314)
+
+##### Lostitic Regression ####
+# Create logistic regression
+glmModel <- glm(formula,data=split1,family="binomial")
+
+# Predict the outcomes for the test data. (predict type="response")
+predictedProbabilities.GLM <- predict(glmModel,newdata=split2,type="response")
+
+#### Naive Bayes ####
+# Create Naive Bayes model
+nbModel <- naiveBayes(formula,data=split1)
+# Predict the outcomes for the test data. (predict type="raw")
+predictedProbabilities.NB <- predict(nbModel,newdata=split2,type="raw")
+
+#### Random Forest ####
+RFModel <- randomForest(formula,data=split1)
+
+##############################
+#### ANALYZE PRELIMINARY RESULTS ####
+##############################
+
+#Define Threshold
+threshold = 0.7
+
+# Logistic Regression
+actual.GLM <- ifelse(split2$Survived,1,0)
+predicted.GLM <- ifelse(predictedProbabilities.GLM > threshold,1,0)
+confusion.GLM <- confusionMatrix(predicted.GLM,actual.GLM)
+accuracy.GLM <- confusion.GLM[3]$overall[1]
+
+# Naive Bayes
+actual.NB <- ifelse(split2$Survived,1,0)
+predicted.NB <- ifelse(predictedProbabilities.NB[,2] > threshold,1,0)
+confusion.NB <- confusionMatrix(predicted.NB,actual.NB)
+accuracy.NB <- confusion.NB[3]$overall[1]
+
+# Random Forest
+predictedProbabilities.RF <- predict(RFModel,newdata=split2,type="response")
+predicted.RF <- data.frame(split2$PassengerId,Survived=predictedProbabilities.RF)
+actual.RF <- data.frame(split2$PassengerId,split2$Survived)
+confusion.RF <- confusionMatrix(predicted.RF$Survived,actual.RF$split2.Survived)
+accuracy.RF <- confusion.RF[3]$overall[1]
+
+# Compare Accuracy
+comparison <- data.frame(Model = c('GLM','NB','RF'),Accuracy = c(accuracy.GLM,accuracy.NB,accuracy.RF))
+
+# ggplot(data = comparison,aes(x=Model,y=Accuracy))+
+#   geom_col()
+
+##############################
+#### MODEL ON FULL DATA ####
+##############################
+
+# Random Forest seemed to perform the best. We'll model the full training set on that.
+RFModel.final <- randomForest(formula,data=train)
+
+# Final Prediction
+predict.final <- predict(RFModel.final,test)
+
+solution <- data.frame(PassengerId = test$PassengerId,Survived = predict.final)
+
+# Write to file
+#write.csv(solution,file="Titanic_Solution_v1.csv",row.names=FALSE)

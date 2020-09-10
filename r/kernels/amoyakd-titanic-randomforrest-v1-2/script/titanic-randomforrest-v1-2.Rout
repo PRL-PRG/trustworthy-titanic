@@ -1,0 +1,191 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> 
+> train<-read.csv("../input/train.csv",na.strings=c('NA',''),stringsAsFactors=F)
+> test<-read.csv("../input/test.csv",na.strings=c('NA',''),stringsAsFactors=F)
+> 
+> check.missing<-function(x) return(paste0(round(sum(is.na(x))/length(x),4)*100,'%'))
+> data.frame(sapply(train,check.missing))
+            sapply.train..check.missing.
+PassengerId                           0%
+Survived                              0%
+Pclass                                0%
+Name                                  0%
+Sex                                   0%
+Age                               19.87%
+SibSp                                 0%
+Parch                                 0%
+Ticket                                0%
+Fare                                  0%
+Cabin                              77.1%
+Embarked                           0.22%
+> data.frame(sapply(test,check.missing))
+            sapply.test..check.missing.
+PassengerId                          0%
+Pclass                               0%
+Name                                 0%
+Sex                                  0%
+Age                              20.57%
+SibSp                                0%
+Parch                                0%
+Ticket                               0%
+Fare                              0.24%
+Cabin                            78.23%
+Embarked                             0%
+> 
+> #combine train/test data for pre-processing
+> train$Cat<-'train'
+> test$Cat<-'test'
+> test$Survived<-NA
+> full<-rbind(train,test)
+> 
+> #Embarked
+> full$Embarked[is.na(full$Embarked)]<-'S'
+> 
+> #Extract Title from Name
+> full$Title = sapply(full$Name,function(x) strsplit(x,'[.,]')[[1]][2])
+> full$Title<-gsub(' ','',full$Title)
+> full$Title[full$Title %in% c('Capt', 'Don', 'Major', 'Sir')] <- 'Sir'
+> full$Title[full$Title %in% c('Dona', 'Lady', 'the Countess', 'Jonkheer')] <- 'Lady'
+> 
+> #Adding FamilySize
+> full$FamilySize<-full$Parch+full$SibSp+1
+> 
+> #Perform Imputation to remove NAs
+> set.seed(144)
+> vars.for.imputation = setdiff(names(full), "Survived")
+> imputed = complete(mice(full[vars.for.imputation]))
+
+ iter imp variable
+  1   1  Age  Fare
+  1   2  Age  Fare
+  1   3  Age  Fare
+  1   4  Age  Fare
+  1   5  Age  Fare
+  2   1  Age  Fare
+  2   2  Age  Fare
+  2   3  Age  Fare
+  2   4  Age  Fare
+  2   5  Age  Fare
+  3   1  Age  Fare
+  3   2  Age  Fare
+  3   3  Age  Fare
+  3   4  Age  Fare
+  3   5  Age  Fare
+  4   1  Age  Fare
+  4   2  Age  Fare
+  4   3  Age  Fare
+  4   4  Age  Fare
+  4   5  Age  Fare
+  5   1  Age  Fare
+  5   2  Age  Fare
+  5   3  Age  Fare
+  5   4  Age  Fare
+  5   5  Age  Fare
+Warning message:
+Number of logged events: 57 
+> full[vars.for.imputation] = imputed
+> 
+> #Adding Mother
+> full$Mother<-0
+> full$Mother[full$Sex=='female' & full$Parch>0 & full$Age>18 & full$Title!='Miss']<-1
+> #Adding Child
+> full$Child<-0
+> full$Child[full$Parch>0 & full$Age<=18]<- 1
+> 
+> #FamilyId2
+> Surname<-sapply(full$Name,function(x) strsplit(x,'[.,]')[[1]][1])
+> FamilyId<-paste0(full$FamilySize,Surname)
+> full$FamilyId<-factor(FamilyId)
+> Family<-data.frame(table(FamilyId))
+> SmallFamily<-Family$FamilyId[Family$Freq<=2]
+> FamilyId[FamilyId %in% SmallFamily]<-'Small'
+> full$FamilyId2<-factor(FamilyId)
+> 
+> #Exact Deck from Cabin number
+> full$Deck<-sapply(full$Cabin, function(x) strsplit(x,NULL)[[1]][1])
+> 
+> #Excat Position from Cabin number
+> full$CabinNum<-sapply(full$Cabin,function(x) strsplit(x,'[A-Z]')[[1]][2])
+> full$num<-as.numeric(full$CabinNum)
+> num<-full$num[!is.na(full$num)]
+> Pos<-kmeans(num,3)
+> full$CabinPos[!is.na(full$num)]<-Pos$cluster
+> full$CabinPos<-factor(full$CabinPos)
+> levels(full$CabinPos)<-c('Front','End','Middle')
+> full$num<-NULL
+> 
+> full<-transform(full,
++                 Pclass=factor(Pclass),
++                 Sex=factor(Sex),
++                 Embarked=factor(Embarked),
++                 Title=factor(Title),
++                 Mother=factor(Mother),
++                 Child=factor(Child),
++                 FamilyId2=factor(FamilyId2),
++                 Deck=factor(Deck)
++                 )
+>                 
+> #split train/test data
+> train<-full[full$Cat=='train',]
+> test<-full[full$Cat=='test',]
+> train$Survived<-factor(train$Survived)
+> 
+> #rf.fit = randomForest(Survived ~ Pclass + Age + Sex + Title + Mother + Child + Fare, data=train, ntree = 100, nodesize = 25)
+> #test$Survived = predict(rf.fit, test)
+> 
+> library(party)
+Loading required package: grid
+Loading required package: mvtnorm
+Loading required package: modeltools
+Loading required package: stats4
+Loading required package: strucchange
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: sandwich
+Warning messages:
+1: package ‘party’ was built under R version 3.6.2 
+2: package ‘zoo’ was built under R version 3.6.2 
+> #cf.fit<-cforest(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+Title+Mother+Child,data=train,controls=cforest_unbiased(ntree=2000, mtry=3))
+> cf.fit<-cforest(train$Survived~FamilyId2+CabinPos+Deck+Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+Title+Mother+Child+Deck,data=train,controls=cforest_unbiased(ntree=2000, mtry=3))
+> test$Survived = predict(cf.fit, test, OOB=TRUE,type='response')
+Error in `$<-.data.frame`(`*tmp*`, Survived, value = c(1L, 2L, 1L, 2L,  : 
+  replacement has 891 rows, data has 418
+Calls: $<- -> $<-.data.frame
+Execution halted

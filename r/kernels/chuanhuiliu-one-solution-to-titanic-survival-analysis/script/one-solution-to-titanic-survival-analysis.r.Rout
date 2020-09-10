@@ -1,0 +1,227 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> #Arthor: Chuanhui Liu
+> #Date:   2017-03-20
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(rpart)
+> library(rpart.plot) 
+> library(caret)
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+> library(ggplot2)
+> library(Hmisc)
+Loading required package: survival
+
+Attaching package: ‘survival’
+
+The following object is masked from ‘package:caret’:
+
+    cluster
+
+Loading required package: Formula
+
+Attaching package: ‘Hmisc’
+
+The following objects are masked from ‘package:dplyr’:
+
+    src, summarize
+
+The following objects are masked from ‘package:base’:
+
+    format.pval, units
+
+Warning message:
+package ‘survival’ was built under R version 3.6.2 
+> 
+> #import dataset
+> train<-read_csv("../input/train.csv") 
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test<-read_csv("../input/test.csv") 
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> #basic information of dataset, finding missing values
+> #describe(train)
+> #describe(test)
+> 
+> #head(train)
+> # PassengerId Survived Pclass                                                Name    Sex   Age SibSp Parch           Ticket    Fare Cabin Embarked
+> # <int>    <int>  <int>                                               <chr>  <chr> <dbl> <int> <int>            <chr>   <dbl> <chr>    <chr>
+> #   1        0      3                             Braund, Mr. Owen Harris   male    22     1     0        A/5 21171  7.2500  <NA>        S
+> #   2        1      1 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female    38     1     0         PC 17599 71.2833   C85        C
+> #   3        1      3                              Heikkinen, Miss. Laina female    26     0     0 STON/O2. 3101282  7.9250  <NA>        S
+> #   4        1      1        Futrelle, Mrs. Jacques Heath (Lily May Peel) female    35     1     0           113803 53.1000  C123        S
+> #   5        0      3                            Allen, Mr. William Henry   male    35     0     0           373450  8.0500  <NA>        S
+> #   6        0      3                                    Moran, Mr. James   male    NA     0     0           330877  8.4583  <NA>        Q
+> 
+> #
+> ggplot(train, aes(x = Embarked, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge') +
++   labs(x = 'Embarked')
+> 
+> 
+> 
+> ggplot(train,aes(x=Sex,fill=factor(Survived)))+
++   geom_bar(position='dodge')+
++   facet_grid(.~Pclass)+
++   labs(title = "How Different Pclass impact the survival of male&female passengers",x = "Pclass",y = "Count")
+> 
+> #Fsize<1 Fsize>=5 have penalty for survival chances
+> train$FamilySize<-train$SibSp+train$Parch
+> ggplot(train, aes(x = FamilySize, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge') +
++   scale_x_continuous(breaks=c(1:11)) +
++   labs(x = 'Family Size')
+> 
+> 
+> 
+> 
+> train$Child[train$Age < 16] <- 'Child'
+Warning message:
+Unknown or uninitialised column: `Child`. 
+> train$Child[train$Age >= 16] <- 'Adult'
+> 
+> table(train$Child,train$Survived)
+       
+          0   1
+  Adult 390 241
+  Child  34  49
+> 
+> 
+> 
+> 
+> 
+> #missing value(Embarked/Fare/age)
+> 
+> ggplot(train, aes(x=Embarked,y=Fare))+geom_boxplot(aes(fill=factor(Pclass)))
+> #which means missing values in Embarked, most probably, is C
+> train$Embarked[is.na(train$Embarked)]<-'C'
+> 
+> #test[is.na(test$Fare),]
+> #  PassengerId Pclass               Name   Sex   Age SibSp Parch Ticket  Fare Cabin Embarked
+> # <int>  <int>              <chr> <chr> <dbl> <int> <int>  <chr> <dbl> <chr>    <chr>
+> #   1        1044      3 Storey, Mr. Thomas  male  60.5     0     0   3701    NA  <NA>    S
+> test1<-test[c(test$Embarked=='S'),] 
+> test2<-test1[c(test1$Pclass==3),]
+> test3<-test2[complete.cases(test2$Fare),]
+> test$Fare[is.na(test$Fare)]<-mean(test3$Fare)
+> 
+> #feature engineering
+> # create title from passenger names
+> full<-bind_rows(train,test)
+> full$Child[full$Age < 16] <- 'Child'
+> full$Child[full$Age >= 16] <- 'Adult'
+> full$FamilySize<-full$SibSp+full$Parch
+> full$FsizeD[full$FamilySize == 0] <- 'singleton'
+Warning message:
+Unknown or uninitialised column: `FsizeD`. 
+> full$FsizeD[full$FamilySize< 4 & full$FamilySize > 0] <- 'small'
+> full$FsizeD[full$FamilySize >=4 ] <- 'large'
+> 
+> full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+> rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
++                 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+> full$Title[full$Title == 'Mlle']        <- 'Miss' 
+> full$Title[full$Title == 'Ms']          <- 'Miss'
+> full$Title[full$Title == 'Mme']         <- 'Mrs' 
+> full$Title[full$Title %in% rare_title]  <- 'Rare Title'
+> table(full$Sex, full$Title)
+        
+         Master Miss  Mr Mrs Rare Title
+  female      0  264   0 198          4
+  male       61    0 757   0         25
+> 
+> 
+> 
+> #factorize variables for modelling
+> full$Sex <- as.factor(full$Sex)
+> full$Pclass <- as.factor(full$Pclass)
+> full$Title<-as.factor(full$Title)
+> full$Embarked<-as.factor(full$Embarked)
+> full$FsizeD<-as.factor(full$FsizeD)
+> 
+> train <- full[1:891,]
+> test <- full[892:1309,]
+> #Modeling
+> fol <- formula(Survived ~Title+ Fare+ Pclass+Age)
+> model <- rpart(fol, method="class", data=train)
+> 
+> rpart.plot(model,branch=0,branch.type=2,type=1,extra=102,shadow.col="pink",box.col="gray",split.col="magenta",
++            main="Decision tree for model")
+> rpred <- predict(model, newdata=test, type="class")
+> 
+> #write into solutions
+> Survived<-as.numeric(levels(rpred)[rpred])
+> PassengerId<-test$PassengerId
+> solution<-cbind(PassengerId,Survived)
+> write.csv(data.frame(solution),file = 'my solution.csv',row.names= F)
+> 
+> proc.time()
+   user  system elapsed 
+  2.803   0.190   3.027 

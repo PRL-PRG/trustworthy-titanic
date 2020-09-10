@@ -1,0 +1,53 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> library(mlr)
+Loading required package: ParamHelpers
+'mlr' is in maintenance mode since July 2019. Future development
+efforts will go into its successor 'mlr3' (<https://mlr3.mlr-org.com>).
+> train = read.csv("../input/train.csv", header = TRUE)
+> test = read.csv("../input/test.csv", header =TRUE)
+> features = c("Pclass","Sex", "Age", "SibSp", "Parch", "Fare", "Embarked")
+> featuresTarget = c("Pclass","Sex", "Age", "SibSp", "Parch", "Fare", "Embarked", "Survived")
+> 
+> train_data = train[,featuresTarget]
+> test_data = test[,features]
+> PassengerId = test[,'PassengerId']
+> 
+> task = makeClassifTask(data = train_data, target = "Survived")
+> lrn = makeLearner("classif.naiveBayes")
+> model = train(lrn, task)
+> pred = as.data.frame(predict(model, newdata = test_data))
+> colnames(pred) = c("Survived")
+> PassengerIdPred = cbind(PassengerId,pred)
+> write.csv(PassengerIdPred, file = "PassengerId Survived.csv", row.names = FALSE)
+> head(PassengerIdPred)
+  PassengerId Survived
+1         892        0
+2         893        0
+3         894        0
+4         895        0
+5         896        0
+6         897        0
+> 
+> proc.time()
+   user  system elapsed 
+  1.553   0.136   1.700 

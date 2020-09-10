@@ -1,0 +1,460 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic.train <- read.csv("../input/train.csv");
+> titanic.test <- read.csv("../input/test.csv");
+> 
+> head(titanic.train)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> tail(titanic.train)
+    PassengerId Survived Pclass                                     Name    Sex
+886         886        0      3     Rice, Mrs. William (Margaret Norton) female
+887         887        0      2                    Montvila, Rev. Juozas   male
+888         888        1      1             Graham, Miss. Margaret Edith female
+889         889        0      3 Johnston, Miss. Catherine Helen "Carrie" female
+890         890        1      1                    Behr, Mr. Karl Howell   male
+891         891        0      3                      Dooley, Mr. Patrick   male
+    Age SibSp Parch     Ticket   Fare Cabin Embarked
+886  39     0     5     382652 29.125              Q
+887  27     0     0     211536 13.000              S
+888  19     0     0     112053 30.000   B42        S
+889  NA     1     2 W./C. 6607 23.450              S
+890  26     0     0     111369 30.000  C148        C
+891  32     0     0     370376  7.750              Q
+> summary(titanic.train)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked
+            :687    :  2   
+ B96 B98    :  4   C:168   
+ C23 C25 C27:  4   Q: 77   
+ G6         :  4   S:644   
+ C22 C26    :  3           
+ D          :  3           
+ (Other)    :186           
+> str(titanic.train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> # Age has some NAs, and there are blank entries for Cabin and Embarked (only two for "Embarked"). As far as the structure is concerned, I'd probably change Survived to a factor and Pclass to a factor. I may consider getting rid of PassengerId, Name, Ticket, and Cabin. I will also need to decide what to do about the 177 NAs for Age, and the two blank entries for Embarked. Seeing as its only two, I may delete the entries where Embarked is left blank, but probably can't do the same for NA age.
+> 
+> head(titanic.test)
+  PassengerId Pclass                                         Name    Sex  Age
+1         892      3                             Kelly, Mr. James   male 34.5
+2         893      3             Wilkes, Mrs. James (Ellen Needs) female 47.0
+3         894      2                    Myles, Mr. Thomas Francis   male 62.0
+4         895      3                             Wirz, Mr. Albert   male 27.0
+5         896      3 Hirvonen, Mrs. Alexander (Helga E Lindqvist) female 22.0
+6         897      3                   Svensson, Mr. Johan Cervin   male 14.0
+  SibSp Parch  Ticket    Fare Cabin Embarked
+1     0     0  330911  7.8292              Q
+2     1     0  363272  7.0000              S
+3     0     0  240276  9.6875              Q
+4     0     0  315154  8.6625              S
+5     1     1 3101298 12.2875              S
+6     0     0    7538  9.2250              S
+> tail(titanic.test)
+    PassengerId Pclass                           Name    Sex  Age SibSp Parch
+413        1304      3 Henriksson, Miss. Jenny Lovisa female 28.0     0     0
+414        1305      3             Spector, Mr. Woolf   male   NA     0     0
+415        1306      1   Oliva y Ocana, Dona. Fermina female 39.0     0     0
+416        1307      3   Saether, Mr. Simon Sivertsen   male 38.5     0     0
+417        1308      3            Ware, Mr. Frederick   male   NA     0     0
+418        1309      3       Peter, Master. Michael J   male   NA     1     1
+                Ticket     Fare Cabin Embarked
+413             347086   7.7750              S
+414          A.5. 3236   8.0500              S
+415           PC 17758 108.9000  C105        C
+416 SOTON/O.Q. 3101262   7.2500              S
+417             359309   8.0500              S
+418               2668  22.3583              C
+> summary(titanic.test)
+  PassengerId         Pclass     
+ Min.   : 892.0   Min.   :1.000  
+ 1st Qu.: 996.2   1st Qu.:1.000  
+ Median :1100.5   Median :3.000  
+ Mean   :1100.5   Mean   :2.266  
+ 3rd Qu.:1204.8   3rd Qu.:3.000  
+ Max.   :1309.0   Max.   :3.000  
+                                 
+                                        Name         Sex           Age       
+ Abbott, Master. Eugene Joseph            :  1   female:152   Min.   : 0.17  
+ Abelseth, Miss. Karen Marie              :  1   male  :266   1st Qu.:21.00  
+ Abelseth, Mr. Olaus Jorgensen            :  1                Median :27.00  
+ Abrahamsson, Mr. Abraham August Johannes :  1                Mean   :30.27  
+ Abrahim, Mrs. Joseph (Sophie Halaut Easu):  1                3rd Qu.:39.00  
+ Aks, Master. Philip Frank                :  1                Max.   :76.00  
+ (Other)                                  :412                NA's   :86     
+     SibSp            Parch             Ticket         Fare        
+ Min.   :0.0000   Min.   :0.0000   PC 17608:  5   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.0000   113503  :  4   1st Qu.:  7.896  
+ Median :0.0000   Median :0.0000   CA. 2343:  4   Median : 14.454  
+ Mean   :0.4474   Mean   :0.3923   16966   :  3   Mean   : 35.627  
+ 3rd Qu.:1.0000   3rd Qu.:0.0000   220845  :  3   3rd Qu.: 31.500  
+ Max.   :8.0000   Max.   :9.0000   347077  :  3   Max.   :512.329  
+                                   (Other) :396   NA's   :1        
+             Cabin     Embarked
+                :327   C:102   
+ B57 B59 B63 B66:  3   Q: 46   
+ A34            :  2   S:270   
+ B45            :  2           
+ C101           :  2           
+ C116           :  2           
+ (Other)        : 80           
+> str(titanic.test)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : Factor w/ 418 levels "Abbott, Master. Eugene Joseph",..: 210 409 273 414 182 370 85 58 5 104 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : Factor w/ 77 levels "","A11","A18",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+> 
+> # Still some NAs for age in the test dataset, as well as one instance where Fare is NA. Still some blanks in Cabin, although all of Embarked looks good now. We also notice that there's no "Survived" column in the test dataset.
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Combine the two datasets and clean together
+>   # We need a new flag to indicate whether the row is originally from the training data set or the test dataset
+> 
+> titanic.train$IsTrainSet <- TRUE
+> titanic.test$IsTrainSet <- FALSE
+> 
+> # Ideally, we would do an rbind() to create one dataset, but we don't have the same columns...test is missing a "Survived" column
+> 
+> names(titanic.train)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"    "IsTrainSet" 
+> names(titanic.test)
+ [1] "PassengerId" "Pclass"      "Name"        "Sex"         "Age"        
+ [6] "SibSp"       "Parch"       "Ticket"      "Fare"        "Cabin"      
+[11] "Embarked"    "IsTrainSet" 
+> 
+> titanic.test$Survived <- NA # Keep it as an NA for now
+> titanic.full <- rbind(titanic.train, titanic.test)
+> 
+> table(titanic.full$IsTrainSet) # Just to make sure we're matching what we had previously
+
+FALSE  TRUE 
+  418   891 
+> 
+> # Look for missing values and replace
+> 
+> summary(titanic.full)
+  PassengerId      Survived          Pclass     
+ Min.   :   1   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000  
+ Median : 655   Median :0.0000   Median :3.000  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295  
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :1309   Max.   :1.0000   Max.   :3.000  
+                NA's   :418                     
+                               Name          Sex           Age       
+ Connolly, Miss. Kate            :   2   female:466   Min.   : 0.17  
+ Kelly, Mr. James                :   2   male  :843   1st Qu.:21.00  
+ Abbing, Mr. Anthony             :   1                Median :28.00  
+ Abbott, Mr. Rossmore Edward     :   1                Mean   :29.88  
+ Abbott, Mrs. Stanton (Rosa Hunt):   1                3rd Qu.:39.00  
+ Abelson, Mr. Samuel             :   1                Max.   :80.00  
+ (Other)                         :1301                NA's   :263    
+     SibSp            Parch            Ticket          Fare        
+ Min.   :0.0000   Min.   :0.000   CA. 2343:  11   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.000   1601    :   8   1st Qu.:  7.896  
+ Median :0.0000   Median :0.000   CA 2144 :   8   Median : 14.454  
+ Mean   :0.4989   Mean   :0.385   3101295 :   7   Mean   : 33.295  
+ 3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7   3rd Qu.: 31.275  
+ Max.   :8.0000   Max.   :9.000   347082  :   7   Max.   :512.329  
+                                  (Other) :1261   NA's   :1        
+             Cabin      Embarked IsTrainSet     
+                :1014    :  2    Mode :logical  
+ C23 C25 C27    :   6   C:270    FALSE:418      
+ B57 B59 B63 B66:   5   Q:123    TRUE :891      
+ G6             :   5   S:914                   
+ B96 B98        :   4                           
+ C22 C26        :   4                           
+ (Other)        : 271                           
+> 
+> # 263 NAs for Age. Fare has 1 NA. Cabin has 1014 blank rows, so we should remove Cabin. Embarked has 2 blank rows. 
+> 
+> # Embarked
+> 
+> table(titanic.full$Embarked) # A lot of Ss (Southhampton). Replace missing embarked with the mode, which is S.
+
+      C   Q   S 
+  2 270 123 914 
+> titanic.full[titanic.full$Embarked == "",]
+    PassengerId Survived Pclass                                      Name
+62           62        1      1                       Icard, Miss. Amelie
+830         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Cabin Embarked IsTrainSet
+62  female  38     0     0 113572   80   B28                TRUE
+830 female  62     0     0 113572   80   B28                TRUE
+> titanic.full[titanic.full$Embarked == "","Embarked"] <- "S"
+> titanic.full[titanic.full$Embarked == "",] # Verify that it was updated, which it is.
+ [1] PassengerId Survived    Pclass      Name        Sex         Age        
+ [7] SibSp       Parch       Ticket      Fare        Cabin       Embarked   
+[13] IsTrainSet 
+<0 rows> (or 0-length row.names)
+> titanic.full[titanic.full$PassengerId == 62 | titanic.full$PassengerId == 830,] # These were the two that were missing earlier, but now have S.
+    PassengerId Survived Pclass                                      Name
+62           62        1      1                       Icard, Miss. Amelie
+830         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Cabin Embarked IsTrainSet
+62  female  38     0     0 113572   80   B28        S       TRUE
+830 female  62     0     0 113572   80   B28        S       TRUE
+> 
+> # Age
+> 
+> table(is.na(titanic.full$Age)) # 263 instances where Age is equal to NA.
+
+FALSE  TRUE 
+ 1046   263 
+> 
+> # We will replace with the median of titanic.full (for the sake of simplicity here)
+> 
+> median(titanic.full$Age, na.rm = TRUE) # Make sure to remove the NAs
+[1] 28
+> titanic.full[is.na(titanic.full$Age),"Age"] <- median(titanic.full$Age, na.rm = TRUE)
+> 
+> table(titanic.full$Age) # A ton of age 28s, so it worked.
+
+0.17 0.33 0.42 0.67 0.75 0.83 0.92    1    2    3    4    5    6    7    8    9 
+   1    1    1    1    3    3    2   10   12    7   10    5    6    4    6   10 
+  10   11 11.5   12   13   14 14.5   15   16   17   18 18.5   19   20 20.5   21 
+   4    4    1    3    5    8    2    6   19   20   39    3   29   23    1   41 
+  22 22.5   23 23.5   24 24.5   25   26 26.5   27   28 28.5   29   30 30.5   31 
+  43    1   26    1   47    1   34   30    1   30  295    3   30   40    2   23 
+  32 32.5   33   34 34.5   35   36 36.5   37   38 38.5   39   40 40.5   41   42 
+  24    4   21   16    2   23   31    2    9   14    1   20   18    3   11   18 
+  43   44   45 45.5   46   47   48   49   50   51   52   53   54   55 55.5   56 
+   9   10   21    2    6   14   14    9   15    8    6    4   10    8    1    4 
+  57   58   59   60 60.5   61   62   63   64   65   66   67   70 70.5   71   74 
+   5    6    3    7    1    5    5    4    5    3    1    1    2    1    2    1 
+  76   80 
+   1    1 
+> 
+> # Fare
+> 
+> titanic.full[is.na(titanic.full$Fare),] # Mr. Thomas Storey has NA fare.
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked IsTrainSet
+1044   3701   NA              S      FALSE
+> 
+> # We could do a number of things (decision tree, regression), but we will just do median fare again for the sake of simplicity.
+> 
+> median(titanic.full$Fare, na.rm = TRUE)
+[1] 14.4542
+> 
+> titanic.full[is.na(titanic.full$Fare),"Fare"] <- median(titanic.full$Fare, na.rm = TRUE)
+> 
+> # Cabin
+> 
+> titanic.full$Cabin <- NULL
+> 
+> # Change the types of the columns if needed
+> 
+> str(titanic.full)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 28 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+ $ IsTrainSet : logi  TRUE TRUE TRUE TRUE TRUE TRUE ...
+> 
+> titanic.full$PassengerId <- as.factor(titanic.full$PassengerId)
+> titanic.full$Pclass <- as.factor(titanic.full$Pclass)
+> 
+> # Split the dataset back into training and test data sets
+> 
+> titanic.train <- titanic.full[titanic.full$IsTrainSet == TRUE,]
+> titanic.test <- titanic.full[titanic.full$IsTrainSet == FALSE,]
+> 
+> # Change the Survived column into a factor
+> 
+> titanic.train$Survived <- as.factor(titanic.train$Survived)
+> str(titanic.train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: Factor w/ 1309 levels "1","2","3","4",..: 1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 28 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+ $ IsTrainSet : logi  TRUE TRUE TRUE TRUE TRUE TRUE ...
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> g <- ggplot(data = titanic.train, aes(x = Sex, fill = Survived)) + geom_bar()
+> g # We can see that there were more males on the Titanic that females (just from the actual count), and we can see that a much higher number of females survived
+> 
+> g <- ggplot(data = titanic.train, aes(x = Pclass, fill = Survived)) + geom_bar()
+> g # First class passengers survived at a higher rate
+> 
+> g <- ggplot(data = titanic.train, aes(x = Embarked, fill = Survived)) + geom_bar(position = "dodge")
+> g # Southhampton was the most common embarking point (which we knew). It's somewhat difficult to tell whether this impacted survival or not, let's make a table.
+> table(titanic.train$Embarked, titanic.train$Survived) 
+   
+      0   1
+      0   0
+  C  75  93
+  Q  47  30
+  S 427 219
+> 
+> g <- ggplot(data = titanic.train, aes(x = SibSp, fill = Survived)) + geom_bar()
+> g # A lot of single folks on the boat, and that didn't help their chances for survival.
+> 
+> g <- ggplot(data = titanic.train, aes(x = SibSp, fill = Survived)) + geom_bar() + facet_grid(~Sex)
+> g # A lot of single males, and a lot did not make it.
+> 
+> g <- ggplot(data = titanic.train, aes(x = SibSp, fill = Survived)) + geom_bar() + facet_wrap(~Pclass)
+> g # Maybe slightly better for Pclass == 1.
+> 
+> g <- ggplot(data = titanic.train, aes(x = Age)) + geom_density()
+> g # Big spike at 28, which makes sense since we put them all at 28 where we had NAs.
+> 
+> g <- ggplot(data = titanic.train, aes(x = Fare)) + geom_density() + facet_grid(~ Pclass)
+> g
+> 
+> g <- ggplot(titanic.train, aes(x = Pclass, y = Fare)) +
++   geom_boxplot()
+> g
+> 
+> g <- ggplot(titanic.train, aes(x = Pclass, y = Fare, color = Pclass)) +
++   geom_boxplot() + geom_jitter() # Now we can really see the spread of how expensive the first class tickets were.
+> g
+> 
+> g <- ggplot(titanic.train, aes(x = Pclass, y = Fare, color = Survived)) +
++   geom_boxplot() + geom_jitter() + ggtitle("Titanic Survival by Class")# Now we can really see the spread of how expensive the first class tickets were.
+> g
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> survived.equation <- "Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked"
+> survived.formula <- as.formula(survived.equation)
+> 
+> titanic.model <- randomForest(formula = survived.formula, 
++                               data = titanic.train, 
++                               ntree = 500,
++                               mtry = 3,
++                               nodesize = 0.01 * nrow(titanic.train))
+> 
+> Survived <- predict(titanic.model, newdata = titanic.test)
+> 
+> # PassengerID and Survived
+> 
+> PassengerID <- titanic.test$PassengerId
+> 
+> output.df <- as.data.frame(PassengerID)
+> output.df$Survived <- Survived
+> 
+> write.csv(output.df, "titanic_kaggle_submission.csv",row.names = FALSE)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  2.165   0.089   2.259 

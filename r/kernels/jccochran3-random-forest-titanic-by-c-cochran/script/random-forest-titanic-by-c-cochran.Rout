@@ -1,0 +1,172 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following object is masked from ‘package:randomForest’:
+
+    combine
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> 
+> set.seed(1)
+> 
+> train <- read.csv("../input/train.csv", stringsAsFactors=FALSE)
+> train$split <- "train"
+> 
+> test  <- read.csv("../input/test.csv",  stringsAsFactors=FALSE)
+> test$split <- "test"
+> 
+> full <- bind_rows(train,test)
+> 
+> full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+> full$Title <- ifelse(full$Title %in% c("Miss","Mlle","Mme"),"Miss",
++               ifelse(full$Title %in% c("Mrs","Mme","Mme"),"Mrs",
++               ifelse(full$Title %in% c("Mr"),"Mr",
++               ifelse(full$Title %in% c("Master"),"Master",
++                      "Other"))))
+> 
+> 
+> full$Surname <- gsub(',(.*)','',full$Name)
+> full$FamSize <- full$SibSp + full$Parch + 1
+> 
+> full.survival <- subset(full,select=c("PassengerId","Survived"))
+> full <- full[,!names(full) %in% c("Cabin","Ticket","Name")]
+> 
+> 
+> # Make variables factors into factors
+> factor_vars <- c('Pclass','Sex','Embarked',
++                  'Title','FamSize')
+> 
+> full[factor_vars] <- lapply(full[factor_vars], function(x) as.factor(x))
+> 
+> imp.rf <- mice(full,method=c("",
++                           "",
++                           "",
++                           "",
++                           "rf",
++                           "",
++                           "",
++                           "rf",
++                           "",
++                           "",
++                           "",
++                           "",
++                           "" ))
+
+ iter imp variable
+  1   1  Age  Fare
+  1   2  Age  Fare
+  1   3  Age  Fare
+  1   4  Age  Fare
+  1   5  Age  Fare
+  2   1  Age  Fare
+  2   2  Age  Fare
+  2   3  Age  Fare
+  2   4  Age  Fare
+  2   5  Age  Fare
+  3   1  Age  Fare
+  3   2  Age  Fare
+  3   3  Age  Fare
+  3   4  Age  Fare
+  3   5  Age  Fare
+  4   1  Age  Fare
+  4   2  Age  Fare
+  4   3  Age  Fare
+  4   4  Age  Fare
+  4   5  Age  Fare
+  5   1  Age  Fare
+  5   2  Age  Fare
+  5   3  Age  Fare
+  5   4  Age  Fare
+  5   5  Age  Fare
+Warning message:
+Number of logged events: 27 
+> 
+> imp.rf.1 <- complete(imp.rf)
+> 
+> rf.train <- imp.rf.1[imp.rf.1$split %in% "train",]
+> rf.test <- imp.rf.1[imp.rf.1$split %in% "test",]
+> 
+> rf <- randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + 
++                                       Fare + Embarked + Title + FamSize,
++                    data=rf.train, ntree=100, importance=TRUE)
+> 
+> 
+> submission <- data.frame(PassengerId = test$PassengerId)
+> submission$Survived <- predict(rf, rf.test)
+> write.csv(submission, file = "1_random_forest_r_submission.csv", row.names=FALSE)
+> 
+> imp <- importance(rf, type=1)
+> featureImportance <- data.frame(Feature=row.names(imp), Importance=imp[,1])
+> 
+> p <- ggplot(featureImportance, aes(x=reorder(Feature, Importance), y=Importance)) +
++      geom_bar(stat="identity", fill="#53cfff") +
++      coord_flip() + 
++      theme_light(base_size=20) +
++      xlab("") +
++      ylab("Importance") + 
++      ggtitle("Random Forest Feature Importance\n") +
++      theme(plot.title=element_text(size=18))
+> 
+> 
+> ggsave("2_feature_importance.png", p)
+Saving 7 x 7 in image
+> 
+> proc.time()
+   user  system elapsed 
+  2.244   0.239   2.534 

@@ -1,0 +1,731 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> library(readr)
+> # reading the data
+> #trainOr <- read_csv("C:/Users/Aadish/Downloads/trainOr.csv")
+> trainOr <- read.csv("../input/train.csv")
+> testOr  <- read.csv("../input/test.csv")
+> 
+> #View(trainOr)
+> 
+> # divide the training data into testing and training
+> set.seed(3)
+> 
+> 
+> trainOr1<-trainOr
+> ind<-sample(2,nrow(trainOr),replace=T,prob=c(0.7,0.3))
+> trainOr1<-trainOr[ind==1,]
+> testOr1<-trainOr[ind==2,]
+> # removing columns which are not required in analysis
+> 
+> trainOr1<-trainOr1[,c(2,3,5,6,7,8,12)]
+> #View(trainOr1)
+> 
+> testOr1<-testOr1[,c(2,3,5,6,7,8,12)]
+> 
+> str(trainOr1)
+'data.frame':	617 obs. of  7 variables:
+ $ Survived: int  0 1 1 0 0 0 0 1 1 1 ...
+ $ Pclass  : int  3 3 1 3 3 1 3 3 2 3 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 1 2 2 2 2 1 1 1 ...
+ $ Age     : num  22 26 35 35 NA 54 2 27 14 4 ...
+ $ SibSp   : int  1 0 1 0 0 0 3 0 1 1 ...
+ $ Parch   : int  0 0 0 0 0 0 1 2 0 1 ...
+ $ Embarked: Factor w/ 4 levels "","C","Q","S": 4 4 4 4 3 4 4 4 2 4 ...
+> #using unclass to convert characters into numeric
+> trainOr1<-as.data.frame(unclass(trainOr1))
+> testOr1<-as.data.frame(unclass(testOr1))
+> 
+> #check the attribute type by using str again
+> 
+> str(trainOr1)
+'data.frame':	617 obs. of  7 variables:
+ $ Survived: int  0 1 1 0 0 0 0 1 1 1 ...
+ $ Pclass  : int  3 3 1 3 3 1 3 3 2 3 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 1 2 2 2 2 1 1 1 ...
+ $ Age     : num  22 26 35 35 NA 54 2 27 14 4 ...
+ $ SibSp   : int  1 0 1 0 0 0 3 0 1 1 ...
+ $ Parch   : int  0 0 0 0 0 0 1 2 0 1 ...
+ $ Embarked: Factor w/ 4 levels "","C","Q","S": 4 4 4 4 3 4 4 4 2 4 ...
+> 
+> # converting integer into facto (Why ?   because sibsp parch  p class survived)
+> # i think sibsp and parch should not be disturbed.The reason is
+> # there can be any number of family members.Why to convert into categorical 
+> cols<-colnames(trainOr1[,c(1,2)])
+> trainOr1[,cols] <- data.frame(apply(trainOr1[cols], 2, as.factor))
+> 
+> 
+> cols<-colnames(testOr1[,c(1,2)])
+> testOr1[,cols] <- data.frame(apply(testOr1[cols], 2, as.factor))
+> 
+> 
+> colSums(is.na(trainOr1))
+Survived   Pclass      Sex      Age    SibSp    Parch Embarked 
+       0        0        0      120        0        0        0 
+> # using multiple imputation chained equation method to substitute missing values
+> 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> tempData <- mice(trainOr1,m=5,maxit=50,meth='pmm',seed=500)
+
+ iter imp variable
+  1   1  Age
+  1   2  Age
+  1   3  Age
+  1   4  Age
+  1   5  Age
+  2   1  Age
+  2   2  Age
+  2   3  Age
+  2   4  Age
+  2   5  Age
+  3   1  Age
+  3   2  Age
+  3   3  Age
+  3   4  Age
+  3   5  Age
+  4   1  Age
+  4   2  Age
+  4   3  Age
+  4   4  Age
+  4   5  Age
+  5   1  Age
+  5   2  Age
+  5   3  Age
+  5   4  Age
+  5   5  Age
+  6   1  Age
+  6   2  Age
+  6   3  Age
+  6   4  Age
+  6   5  Age
+  7   1  Age
+  7   2  Age
+  7   3  Age
+  7   4  Age
+  7   5  Age
+  8   1  Age
+  8   2  Age
+  8   3  Age
+  8   4  Age
+  8   5  Age
+  9   1  Age
+  9   2  Age
+  9   3  Age
+  9   4  Age
+  9   5  Age
+  10   1  Age
+  10   2  Age
+  10   3  Age
+  10   4  Age
+  10   5  Age
+  11   1  Age
+  11   2  Age
+  11   3  Age
+  11   4  Age
+  11   5  Age
+  12   1  Age
+  12   2  Age
+  12   3  Age
+  12   4  Age
+  12   5  Age
+  13   1  Age
+  13   2  Age
+  13   3  Age
+  13   4  Age
+  13   5  Age
+  14   1  Age
+  14   2  Age
+  14   3  Age
+  14   4  Age
+  14   5  Age
+  15   1  Age
+  15   2  Age
+  15   3  Age
+  15   4  Age
+  15   5  Age
+  16   1  Age
+  16   2  Age
+  16   3  Age
+  16   4  Age
+  16   5  Age
+  17   1  Age
+  17   2  Age
+  17   3  Age
+  17   4  Age
+  17   5  Age
+  18   1  Age
+  18   2  Age
+  18   3  Age
+  18   4  Age
+  18   5  Age
+  19   1  Age
+  19   2  Age
+  19   3  Age
+  19   4  Age
+  19   5  Age
+  20   1  Age
+  20   2  Age
+  20   3  Age
+  20   4  Age
+  20   5  Age
+  21   1  Age
+  21   2  Age
+  21   3  Age
+  21   4  Age
+  21   5  Age
+  22   1  Age
+  22   2  Age
+  22   3  Age
+  22   4  Age
+  22   5  Age
+  23   1  Age
+  23   2  Age
+  23   3  Age
+  23   4  Age
+  23   5  Age
+  24   1  Age
+  24   2  Age
+  24   3  Age
+  24   4  Age
+  24   5  Age
+  25   1  Age
+  25   2  Age
+  25   3  Age
+  25   4  Age
+  25   5  Age
+  26   1  Age
+  26   2  Age
+  26   3  Age
+  26   4  Age
+  26   5  Age
+  27   1  Age
+  27   2  Age
+  27   3  Age
+  27   4  Age
+  27   5  Age
+  28   1  Age
+  28   2  Age
+  28   3  Age
+  28   4  Age
+  28   5  Age
+  29   1  Age
+  29   2  Age
+  29   3  Age
+  29   4  Age
+  29   5  Age
+  30   1  Age
+  30   2  Age
+  30   3  Age
+  30   4  Age
+  30   5  Age
+  31   1  Age
+  31   2  Age
+  31   3  Age
+  31   4  Age
+  31   5  Age
+  32   1  Age
+  32   2  Age
+  32   3  Age
+  32   4  Age
+  32   5  Age
+  33   1  Age
+  33   2  Age
+  33   3  Age
+  33   4  Age
+  33   5  Age
+  34   1  Age
+  34   2  Age
+  34   3  Age
+  34   4  Age
+  34   5  Age
+  35   1  Age
+  35   2  Age
+  35   3  Age
+  35   4  Age
+  35   5  Age
+  36   1  Age
+  36   2  Age
+  36   3  Age
+  36   4  Age
+  36   5  Age
+  37   1  Age
+  37   2  Age
+  37   3  Age
+  37   4  Age
+  37   5  Age
+  38   1  Age
+  38   2  Age
+  38   3  Age
+  38   4  Age
+  38   5  Age
+  39   1  Age
+  39   2  Age
+  39   3  Age
+  39   4  Age
+  39   5  Age
+  40   1  Age
+  40   2  Age
+  40   3  Age
+  40   4  Age
+  40   5  Age
+  41   1  Age
+  41   2  Age
+  41   3  Age
+  41   4  Age
+  41   5  Age
+  42   1  Age
+  42   2  Age
+  42   3  Age
+  42   4  Age
+  42   5  Age
+  43   1  Age
+  43   2  Age
+  43   3  Age
+  43   4  Age
+  43   5  Age
+  44   1  Age
+  44   2  Age
+  44   3  Age
+  44   4  Age
+  44   5  Age
+  45   1  Age
+  45   2  Age
+  45   3  Age
+  45   4  Age
+  45   5  Age
+  46   1  Age
+  46   2  Age
+  46   3  Age
+  46   4  Age
+  46   5  Age
+  47   1  Age
+  47   2  Age
+  47   3  Age
+  47   4  Age
+  47   5  Age
+  48   1  Age
+  48   2  Age
+  48   3  Age
+  48   4  Age
+  48   5  Age
+  49   1  Age
+  49   2  Age
+  49   3  Age
+  49   4  Age
+  49   5  Age
+  50   1  Age
+  50   2  Age
+  50   3  Age
+  50   4  Age
+  50   5  Age
+> trainOr1<-complete(tempData,1)
+> c("#1E90FF", "#FFFFFF", "#FFFFFF")
+[1] "#1E90FF" "#FFFFFF" "#FFFFFF"
+> 
+> tempDatatest <- mice(testOr1,m=5,maxit=50,meth='pmm',seed=500)
+
+ iter imp variable
+  1   1  Age
+  1   2  Age
+  1   3  Age
+  1   4  Age
+  1   5  Age
+  2   1  Age
+  2   2  Age
+  2   3  Age
+  2   4  Age
+  2   5  Age
+  3   1  Age
+  3   2  Age
+  3   3  Age
+  3   4  Age
+  3   5  Age
+  4   1  Age
+  4   2  Age
+  4   3  Age
+  4   4  Age
+  4   5  Age
+  5   1  Age
+  5   2  Age
+  5   3  Age
+  5   4  Age
+  5   5  Age
+  6   1  Age
+  6   2  Age
+  6   3  Age
+  6   4  Age
+  6   5  Age
+  7   1  Age
+  7   2  Age
+  7   3  Age
+  7   4  Age
+  7   5  Age
+  8   1  Age
+  8   2  Age
+  8   3  Age
+  8   4  Age
+  8   5  Age
+  9   1  Age
+  9   2  Age
+  9   3  Age
+  9   4  Age
+  9   5  Age
+  10   1  Age
+  10   2  Age
+  10   3  Age
+  10   4  Age
+  10   5  Age
+  11   1  Age
+  11   2  Age
+  11   3  Age
+  11   4  Age
+  11   5  Age
+  12   1  Age
+  12   2  Age
+  12   3  Age
+  12   4  Age
+  12   5  Age
+  13   1  Age
+  13   2  Age
+  13   3  Age
+  13   4  Age
+  13   5  Age
+  14   1  Age
+  14   2  Age
+  14   3  Age
+  14   4  Age
+  14   5  Age
+  15   1  Age
+  15   2  Age
+  15   3  Age
+  15   4  Age
+  15   5  Age
+  16   1  Age
+  16   2  Age
+  16   3  Age
+  16   4  Age
+  16   5  Age
+  17   1  Age
+  17   2  Age
+  17   3  Age
+  17   4  Age
+  17   5  Age
+  18   1  Age
+  18   2  Age
+  18   3  Age
+  18   4  Age
+  18   5  Age
+  19   1  Age
+  19   2  Age
+  19   3  Age
+  19   4  Age
+  19   5  Age
+  20   1  Age
+  20   2  Age
+  20   3  Age
+  20   4  Age
+  20   5  Age
+  21   1  Age
+  21   2  Age
+  21   3  Age
+  21   4  Age
+  21   5  Age
+  22   1  Age
+  22   2  Age
+  22   3  Age
+  22   4  Age
+  22   5  Age
+  23   1  Age
+  23   2  Age
+  23   3  Age
+  23   4  Age
+  23   5  Age
+  24   1  Age
+  24   2  Age
+  24   3  Age
+  24   4  Age
+  24   5  Age
+  25   1  Age
+  25   2  Age
+  25   3  Age
+  25   4  Age
+  25   5  Age
+  26   1  Age
+  26   2  Age
+  26   3  Age
+  26   4  Age
+  26   5  Age
+  27   1  Age
+  27   2  Age
+  27   3  Age
+  27   4  Age
+  27   5  Age
+  28   1  Age
+  28   2  Age
+  28   3  Age
+  28   4  Age
+  28   5  Age
+  29   1  Age
+  29   2  Age
+  29   3  Age
+  29   4  Age
+  29   5  Age
+  30   1  Age
+  30   2  Age
+  30   3  Age
+  30   4  Age
+  30   5  Age
+  31   1  Age
+  31   2  Age
+  31   3  Age
+  31   4  Age
+  31   5  Age
+  32   1  Age
+  32   2  Age
+  32   3  Age
+  32   4  Age
+  32   5  Age
+  33   1  Age
+  33   2  Age
+  33   3  Age
+  33   4  Age
+  33   5  Age
+  34   1  Age
+  34   2  Age
+  34   3  Age
+  34   4  Age
+  34   5  Age
+  35   1  Age
+  35   2  Age
+  35   3  Age
+  35   4  Age
+  35   5  Age
+  36   1  Age
+  36   2  Age
+  36   3  Age
+  36   4  Age
+  36   5  Age
+  37   1  Age
+  37   2  Age
+  37   3  Age
+  37   4  Age
+  37   5  Age
+  38   1  Age
+  38   2  Age
+  38   3  Age
+  38   4  Age
+  38   5  Age
+  39   1  Age
+  39   2  Age
+  39   3  Age
+  39   4  Age
+  39   5  Age
+  40   1  Age
+  40   2  Age
+  40   3  Age
+  40   4  Age
+  40   5  Age
+  41   1  Age
+  41   2  Age
+  41   3  Age
+  41   4  Age
+  41   5  Age
+  42   1  Age
+  42   2  Age
+  42   3  Age
+  42   4  Age
+  42   5  Age
+  43   1  Age
+  43   2  Age
+  43   3  Age
+  43   4  Age
+  43   5  Age
+  44   1  Age
+  44   2  Age
+  44   3  Age
+  44   4  Age
+  44   5  Age
+  45   1  Age
+  45   2  Age
+  45   3  Age
+  45   4  Age
+  45   5  Age
+  46   1  Age
+  46   2  Age
+  46   3  Age
+  46   4  Age
+  46   5  Age
+  47   1  Age
+  47   2  Age
+  47   3  Age
+  47   4  Age
+  47   5  Age
+  48   1  Age
+  48   2  Age
+  48   3  Age
+  48   4  Age
+  48   5  Age
+  49   1  Age
+  49   2  Age
+  49   3  Age
+  49   4  Age
+  49   5  Age
+  50   1  Age
+  50   2  Age
+  50   3  Age
+  50   4  Age
+  50   5  Age
+> testOr1<-complete(tempDatatest,1)
+> #View(testOr1)
+> 
+> 
+> #running logistic regression to build a model
+> train.model<-glm(Survived~Sex+Pclass+Age+SibSp+Parch+Embarked,family ="binomial",data=trainOr1)
+> library(ROCR)
+Warning message:
+package ‘ROCR’ was built under R version 3.6.2 
+> 
+> 
+> # predicting on the test data to evaluate our build model
+> predtest<-predict(train.model,newdata=testOr1,type = 'response' )
+> head(predtest)
+        1         2         3         4         5         6 
+0.9202804 0.7617289 0.6450520 0.4656423 0.4789860 0.2805154 
+> 
+> 
+> predtest1<-predict(train.model,newdata=testOr1,type = 'terms' )
+> head(predtest1)
+        Sex     Pclass        Age      SibSp       Parch    Embarked
+1  1.855817  1.6346470 -0.4543512 -0.1907640  0.03879547  0.23314233
+2  1.855817 -0.9298808  0.7179515  0.2251419  0.03879547 -0.07452032
+3  1.855817  0.5079813 -1.2847324  0.2251419  0.03879547 -0.07452032
+4 -1.028412  0.5079813  0.8644894  0.2251419  0.03879547 -0.07452032
+5  1.855817 -0.9298808 -0.1124296 -0.1907640  0.03879547 -0.07452032
+6  1.855817 -0.9298808 -0.4543512 -0.1907640 -0.47708394 -0.07452032
+> 
+> tab<-table(testOr1$Survived)
+> 
+>  
+> pred<-prediction(predtest,testOr1$Survived)
+> # pred object has many attributes
+> pred
+A prediction instance
+  with 274 data points> 
+> 
+> table(slot(pred,'labels'))
+
+  0   1 
+171 103 
+> 
+> eval<-performance(pred,'acc')
+> eval
+A performance instance
+  'Cutoff' vs. 'Accuracy' (alpha: 'none')
+  with 223 data points> plot(eval)
+> 
+> 
+> eval1<-performance(pred,'tpr','fpr')
+> plot(eval1,
++      colorize=T)
+> 
+> 
+> 
+> max<-which.max(slot(eval,"y.values")[[1]])
+> max
+[1] 91
+> acc<-slot(eval,"y.values")[[1]][max]
+> acc
+[1] 0.7992701
+> cut<-slot(eval,"x.values")[[1]][max]
+> cut
+     100 
+0.453316 
+> print(c(accuracy=acc,cutoff=cut))
+  accuracy cutoff.100 
+ 0.7992701  0.4533160 
+> abline(a=0,b=1)
+> 
+> #Area under the curve
+> 
+> auc<-performance(pred,"auc")
+> auc<-unlist(slot(auc,"y.values"))
+> auc<-round(auc,digits=2)
+> legend(0.8,0.4,auc,title="AUC",cex=1,merge = T)
+Warning message:
+In legend(0.8, 0.4, auc, title = "AUC", cex = 1, merge = T) :
+  'merge = TRUE' has no effect when no line segments are drawn
+> 
+> 
+> 
+> 
+> # importing test data
+> library(readr)
+> #testOr<- read_csv("C:/Users/Aadish/Downloads/test.csv")
+> #View(testOr)
+> #Clean the data on which testing has to be done
+> 
+> testOr<-testOr[,c(2,4,5,6,7,11)]
+> 
+> testOr<-as.data.frame(unclass(testOr))
+> str(testOr)
+'data.frame':	418 obs. of  6 variables:
+ $ Pclass  : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age     : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp   : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch   : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Embarked: Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+> testOr[,1]
+  [1] 3 3 2 3 3 3 3 2 3 3 3 1 1 2 1 2 2 3 3 3 1 3 1 1 1 3 1 3 1 3 2 2 3 3 1 3 3
+ [38] 3 3 3 3 1 3 2 1 3 1 3 1 3 1 2 2 1 2 3 3 3 3 1 3 2 3 3 1 2 3 1 1 1 3 3 3 1
+ [75] 1 1 3 1 2 3 3 1 1 3 2 3 3 3 3 2 3 3 1 3 1 3 1 3 3 3 1 2 3 3 3 3 3 3 3 2 2
+[112] 3 1 3 1 3 3 3 1 2 2 3 1 3 3 3 3 3 2 3 3 1 3 3 3 3 3 2 3 3 3 1 1 2 1 3 1 3
+[149] 1 2 1 3 3 3 3 3 1 3 1 3 3 3 2 3 2 3 1 3 1 3 3 3 3 3 3 2 2 1 2 1 2 1 1 3 1
+[186] 2 2 3 3 2 2 1 3 2 2 3 1 3 2 3 3 3 1 2 2 1 3 2 1 3 3 3 2 2 3 1 3 1 1 3 2 3
+[223] 2 3 1 3 3 3 3 2 2 1 3 3 1 3 1 3 2 1 1 2 1 3 3 1 2 2 2 3 2 3 1 3 3 3 3 3 2
+[260] 3 3 3 2 3 2 3 1 3 3 3 1 3 1 3 3 2 2 2 2 2 3 3 3 3 3 3 3 1 3 3 1 3 3 1 3 3
+[297] 2 3 1 3 3 2 2 3 3 1 1 3 1 3 3 3 3 3 1 3 1 2 3 2 3 3 2 1 1 3 2 1 2 2 2 1 3
+[334] 3 3 1 2 3 2 3 2 3 3 1 3 3 2 3 2 2 1 2 2 2 3 1 1 3 3 3 3 2 2 3 1 3 3 3 1 2
+[371] 2 1 1 2 1 1 3 2 1 3 3 3 3 3 2 2 3 2 3 3 1 1 3 2 3 1 3 1 3 3 1 2 1 1 1 2 2
+[408] 1 3 3 3 1 3 3 1 3 3 3
+> testOr<-as.data.frame(unclass(testOr))
+> cols<-colnames(testOr)[1]
+> cols
+[1] "Pclass"
+> testOr[cols] <- data.frame(apply(testOr[cols],2,FUN = as.factor))
+> 
+> survivaltest<-predict(train.model,newdata=testOr,type = 'response' )
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  2.592   0.194   2.802 

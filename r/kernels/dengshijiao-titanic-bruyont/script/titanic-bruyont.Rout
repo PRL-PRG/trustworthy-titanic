@@ -1,0 +1,593 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library()
+Packages in library ‘/Library/Frameworks/R.framework/Versions/3.6/Resources/library’:
+
+abind                   Combine Multidimensional Arrays
+acepack                 ACE and AVAS for Selecting Multiple Regression
+                        Transformations
+ada                     The R Package Ada for Stochastic Boosting
+additivityTests         Additivity Tests in the Two Way Anova with
+                        Single Sub-class Numbers
+alluvial                Alluvial Diagrams
+amap                    Another Multidimensional Analysis Package
+Amelia                  A Program for Missing Data
+arules                  Mining Association Rules and Frequent Itemsets
+arulesViz               Visualizing Association Rules and Frequent
+                        Itemsets
+askpass                 Safe Password Entry for R, Git, and SSH
+assertthat              Easy Pre and Post Assertions
+backports               Reimplementations of Functions Introduced Since
+                        R-3.0.0
+base                    The R Base Package
+base64enc               Tools for base64 encoding
+BBmisc                  Miscellaneous Helper Functions for B. Bischl
+bench                   High Precision Timing of R Expressions
+BH                      Boost C++ Header Files
+biclust                 BiCluster Algorithms
+bit                     A Class for Vectors of 1-Bit Booleans
+bit64                   A S3 Class for Vectors of 64bit Integers
+bitops                  Bitwise Operations
+blob                    A Simple S3 Class for Representing Vectors of
+                        Binary Data ('BLOBS')
+boot                    Bootstrap Functions (Originally by Angelo Canty
+                        for S)
+brew                    Templating Framework for Report Generation
+broom                   Convert Statistical Analysis Objects into Tidy
+                        Tibbles
+cairoDevice             Embeddable Cairo Graphics Device Driver
+callr                   Call R from R
+car                     Companion to Applied Regression
+carData                 Companion to Applied Regression Data Sets
+caret                   Classification and Regression Training
+caretEnsemble           Ensembles of Caret Models
+caTools                 Tools: Moving Window Statistics, GIF, Base64,
+                        ROC AUC, etc
+cba                     Clustering for Business Analytics
+cellranger              Translate Spreadsheet Cell Ranges to Rows and
+                        Columns
+checkmate               Fast and Versatile Argument Checks
+chron                   Chronological Objects which can Handle Dates
+                        and Times
+CircStats               Circular Statistics, from "Topics in Circular
+                        Statistics" (2001)
+class                   Functions for Classification
+classInt                Choose Univariate Class Intervals
+cli                     Helpers for Developing Command Line Interfaces
+clipr                   Read and Write from the System Clipboard
+cluster                 "Finding Groups in Data": Cluster Analysis
+                        Extended Rousseeuw et al.
+codetools               Code Analysis Tools for R
+coin                    Conditional Inference Procedures in a
+                        Permutation Test Framework
+colorspace              A Toolbox for Manipulating and Assessing Colors
+                        and Palettes
+combinat                combinatorics utilities
+commonmark              High Performance CommonMark and Github Markdown
+                        Rendering in R
+compiler                The R Compiler Package
+config                  Manage Environment Specific Configuration
+                        Values
+corrgram                Plot a Correlogram
+corrplot                Visualization of a Correlation Matrix
+covr                    Test Coverage for Packages
+cowplot                 Streamlined Plot Theme and Plot Annotations for
+                        'ggplot2'
+crayon                  Colored Terminal Output
+crosstalk               Inter-Widget Interactivity for HTML Widgets
+curl                    A Modern and Flexible Web Client for R
+data.table              Extension of `data.frame`
+DataExplorer            Automate Data Exploration and Treatment
+datasets                The R Datasets Package
+DBI                     R Database Interface
+dbplyr                  A 'dplyr' Back End for Databases
+dbscan                  Density Based Clustering of Applications with
+                        Noise (DBSCAN) and Related Algorithms
+Deducer                 A Data Analysis GUI for R
+dendextend              Extending 'dendrogram' Functionality in R
+DEoptimR                Differential Evolution Optimization in Pure R
+Deriv                   Symbolic Differentiation
+desc                    Manipulate DESCRIPTION Files
+descr                   Descriptive Statistics
+devtools                Tools to Make Developing R Packages Easier
+diffobj                 Diffs for R Objects
+digest                  Create Compact Hash Digests of R Objects
+diptest                 Hartigan's Dip Test Statistic for Unimodality -
+                        Corrected
+DMwR                    Functions and data for "Data Mining with R"
+doBy                    Groupwise Statistics, LSmeans, Linear
+                        Contrasts, Utilities
+doMC                    Foreach Parallel Adaptor for 'parallel'
+dotCall64               Enhanced Foreign Function Interface Supporting
+                        Long Vectors
+dplyr                   A Grammar of Data Manipulation
+DT                      A Wrapper of the JavaScript Library
+                        'DataTables'
+dtw                     Dynamic Time Warping Algorithms
+dummies                 Create dummy/indicator variables flexibly and
+                        efficiently
+e1071                   Misc Functions of the Department of Statistics,
+                        Probability Theory Group (Formerly: E1071), TU
+                        Wien
+earth                   Multivariate Adaptive Regression Splines
+effects                 Effect Displays for Linear, Generalized Linear,
+                        and Other Models
+ellipse                 Functions for Drawing Ellipses and Ellipse-Like
+                        Confidence Regions
+ellipsis                Tools for Working with ...
+estimability            Tools for Assessing Estimability of Linear
+                        Predictions
+evaluate                Parsing and Evaluation Tools that Provide More
+                        Details than the Default
+factoextra              Extract and Visualize the Results of
+                        Multivariate Data Analyses
+FactoMineR              Multivariate Exploratory Data Analysis and Data
+                        Mining
+fansi                   ANSI Control Sequence Aware String Functions
+faraway                 Functions and Datasets for Books by Julian
+                        Faraway
+farver                  High Performance Colour Space Manipulation
+fastmap                 Fast Implementation of a Key-Value Store
+fastmatch               Fast match() function
+fBasics                 Rmetrics - Markets and Basic Statistics
+fields                  Tools for Spatial Data
+flashClust              Implementation of optimal hierarchical
+                        clustering
+flexclust               Flexible Cluster Algorithms
+flexdashboard           R Markdown Format for Flexible Dashboards
+flexmix                 Flexible Mixture Modeling
+FNN                     Fast Nearest Neighbor Search Algorithms and
+                        Applications
+fontBitstreamVera       Fonts with 'Bitstream Vera Fonts' License
+fontLiberation          Liberation Fonts
+fontquiver              Set of Installed Fonts
+forcats                 Tools for Working with Categorical Variables
+                        (Factors)
+foreach                 Provides Foreach Looping Construct
+forecast                Forecasting Functions for Time Series and
+                        Linear Models
+foreign                 Read Data Stored by 'Minitab', 'S', 'SAS',
+                        'SPSS', 'Stata', 'Systat', 'Weka', 'dBase', ...
+Formula                 Extended Model Formulas
+fpc                     Flexible Procedures for Clustering
+fracdiff                Fractionally Differenced ARIMA aka
+                        ARFIMA(P,d,q) Models
+freetypeharfbuzz        Deterministic Computation of Text Box Metrics
+fs                      Cross-Platform File System Operations Based on
+                        'libuv'
+fst                     Lightning Fast Serialization of Data Frames for
+                        R
+gbm                     Generalized Boosted Regression Models
+gclus                   Clustering Graphics
+gdata                   Various R Programming Tools for Data
+                        Manipulation
+gdtools                 Utilities for Graphical Rendering
+generics                Common S3 Generics not Provided by Base R
+                        Methods Related to Model Fitting
+ggalluvial              Alluvial Plots in 'ggplot2'
+GGally                  Extension to 'ggplot2'
+ggcorrplot              Visualization of a Correlation Matrix using
+                        'ggplot2'
+ggdendro                Create Dendrograms and Tree Diagrams Using
+                        'ggplot2'
+ggplot2                 Create Elegant Data Visualisations Using the
+                        Grammar of Graphics
+ggplot2movies           Movies Data
+ggpubr                  'ggplot2' Based Publication Ready Plots
+ggraptR                 Allows Interactive Visualization of Data
+                        Through a Web Browser GUI
+ggrepel                 Automatically Position Non-Overlapping Text
+                        Labels with 'ggplot2'
+ggsci                   Scientific Journal and Sci-Fi Themed Color
+                        Palettes for 'ggplot2'
+ggsignif                Significance Brackets for 'ggplot2'
+ggthemes                Extra Themes, Scales and Geoms for 'ggplot2'
+gh                      'GitHub' 'API'
+git2r                   Provides Access to Git Repositories
+glmnet                  Lasso and Elastic-Net Regularized Generalized
+                        Linear Models
+glue                    Interpreted String Literals
+gower                   Gower's Distance
+gplots                  Various R Programming Tools for Plotting Data
+graphics                The R Graphics Package
+grDevices               The R Graphics Devices and Support for Colours
+                        and Fonts
+grid                    The Grid Graphics Package
+gridExtra               Miscellaneous Functions for "Grid" Graphics
+gss                     General Smoothing Splines
+gsubfn                  Utilities for Strings and Function Arguments
+gtable                  Arrange 'Grobs' in Tables
+gtools                  Various R Programming Tools
+haven                   Import and Export 'SPSS', 'Stata' and 'SAS'
+                        Files
+HDoutliers              Leland Wilkinson's Algorithm for Detecting
+                        Multidimensional Outliers
+hexbin                  Hexagonal Binning Routines
+highcharter             A Wrapper for the 'Highcharts' Library
+highr                   Syntax Highlighting for R Source Code
+hmeasure                The H-Measure and Other Scalar Classification
+                        Performance Metrics
+Hmisc                   Harrell Miscellaneous
+hms                     Pretty Time of Day
+htmlTable               Advanced Tables for Markdown/HTML
+htmltools               Tools for HTML
+htmlwidgets             HTML Widgets for R
+httpuv                  HTTP and WebSocket Server Library
+httr                    Tools for Working with URLs and HTTP
+hunspell                High-Performance Stemmer, Tokenizer, and Spell
+                        Checker
+igraph                  Network Analysis and Visualization
+ini                     Read and Write '.ini' Files
+inum                    Interval and Enum-Type Representation of
+                        Vectors
+ipred                   Improved Predictors
+irr                     Various Coefficients of Interrater Reliability
+                        and Agreement
+ISLR                    Data for an Introduction to Statistical
+                        Learning with Applications in R
+isoband                 Generate Isolines and Isobands from Regularly
+                        Spaced Elevation Grids
+ISOcodes                Selected ISO Codes
+iterators               Provides Iterator Construct
+itertools               Iterator Tools
+janeaustenr             Jane Austen's Complete Novels
+JavaGD                  Java Graphics Device
+JGR                     Java GUI for R
+jpeg                    Read and write JPEG images
+jsonlite                A Robust, High Performance JSON Parser and
+                        Generator for R
+kableExtra              Construct Complex Table with 'kable' and Pipe
+                        Syntax
+keras                   R Interface to 'Keras'
+kernlab                 Kernel-Based Machine Learning Lab
+KernSmooth              Functions for Kernel Smoothing Supporting Wand
+                        & Jones (1995)
+kknn                    Weighted k-Nearest Neighbors
+klaR                    Classification and Visualization
+knitr                   A General-Purpose Package for Dynamic Report
+                        Generation in R
+labeling                Axis Labeling
+labelled                Manipulating Labelled Data
+laeken                  Estimation of Indicators on Social Exclusion
+                        and Poverty
+Lahman                  Sean 'Lahman' Baseball Database
+later                   Utilities for Scheduling Functions to Execute
+                        Later with Event Loops
+lattice                 Trellis Graphics for R
+latticeExtra            Extra Graphical Utilities Based on Lattice
+lava                    Latent Variable Models
+lavaan                  Latent Variable Analysis
+lazyeval                Lazy (Non-Standard) Evaluation
+leaps                   Regression Subset Selection
+libcoin                 Linear Test Statistics for Permutation
+                        Inference
+lifecycle               Manage the Life Cycle of your Package Functions
+lme4                    Linear Mixed-Effects Models using 'Eigen' and
+                        S4
+lmtest                  Testing Linear Regression Models
+lobstr                  Visualize R Data Structures with Trees
+lpSolve                 Interface to 'Lp_solve' v. 5.5 to Solve
+                        Linear/Integer Programs
+lubridate               Make Dealing with Dates a Little Easier
+magrittr                A Forward-Pipe Operator for R
+mapproj                 Map Projections
+maps                    Draw Geographical Maps
+maptools                Tools for Handling Spatial Objects
+markdown                Render Markdown with the C Library 'Sundown'
+MASS                    Support Functions and Datasets for Venables and
+                        Ripley's MASS
+Matrix                  Sparse and Dense Matrix Classes and Methods
+MatrixModels            Modelling with Sparse And Dense Matrices
+matrixStats             Functions that Apply to Rows and Columns of
+                        Matrices (and to Vectors)
+mboost                  Model-Based Boosting
+mclust                  Gaussian Mixture Modelling for Model-Based
+                        Clustering, Classification, and Density
+                        Estimation
+measures                Performance Measures for Statistical Learning
+memoise                 Memoisation of Functions
+metaSEM                 Meta-Analysis using Structural Equation
+                        Modeling
+methods                 Formal Methods and Classes
+Metrics                 Evaluation Metrics for Machine Learning
+mgcv                    Mixed GAM Computation Vehicle with Automatic
+                        Smoothness Estimation
+mice                    Multivariate Imputation by Chained Equations
+microbenchmark          Accurate Timing Functions
+mime                    Map Filenames to MIME Types
+miniUI                  Shiny UI Widgets for Small Screens
+minqa                   Derivative-free optimization algorithms by
+                        quadratic approximation
+miscTools               Miscellaneous Tools and Utilities
+missForest              Nonparametric Missing Value Imputation using
+                        Random Forest
+mitools                 Tools for Multiple Imputation of Missing Data
+mlbench                 Machine Learning Benchmark Problems
+MLmetrics               Machine Learning Evaluation Metrics
+mlr                     Machine Learning in R
+ModelMetrics            Rapid Calculation of Model Metrics
+modelr                  Modelling Functions that Work with the Pipe
+modeltools              Tools and Classes for Statistical Models
+multcomp                Simultaneous Inference in General Parametric
+                        Models
+munsell                 Utilities for Using Munsell Colours
+mvtnorm                 Multivariate Normal and t Distributions
+naivebayes              High Performance Implementation of the Naive
+                        Bayes Algorithm
+nbconvertR              Vignette Engine Wrapping Jupyter Notebooks
+NCmisc                  Miscellaneous Functions for Creating Adaptive
+                        Functions and Scripts
+networkD3               D3 JavaScript Network Graphs from R
+neuralnet               Training of Neural Networks
+nlme                    Linear and Nonlinear Mixed Effects Models
+nloptr                  R Interface to NLopt
+NLP                     Natural Language Processing Infrastructure
+nnet                    Feed-Forward Neural Networks and Multinomial
+                        Log-Linear Models
+nnls                    The Lawson-Hanson algorithm for non-negative
+                        least squares (NNLS)
+numDeriv                Accurate Numerical Derivatives
+nycflights13            Flights that Departed NYC in 2013
+OpenMx                  Extended Structural Equation Modelling
+openssl                 Toolkit for Encryption, Signatures and
+                        Certificates Based on OpenSSL
+openxlsx                Read, Write and Edit xlsx Files
+pacman                  Package Management Tool
+pander                  An R 'Pandoc' Writer
+parallel                Support for Parallel computation in R
+parallelMap             Unified Interface to Parallelization Back-Ends
+ParamHelpers            Helpers for Parameters in Black-Box
+                        Optimization, Tuning and Machine Learning
+party                   A Laboratory for Recursive Partytioning
+partykit                A Toolkit for Recursive Partytioning
+pbapply                 Adding Progress Bar to '*apply' Functions
+pbivnorm                Vectorized Bivariate Normal CDF
+pbkrtest                Parametric Bootstrap and Kenward Roger Based
+                        Methods for Mixed Model Comparison
+pillar                  Coloured Formatting for Columns
+pkgbuild                Find Tools Needed to Build R Packages
+pkgconfig               Private Configuration for 'R' Packages
+pkgload                 Simulate Package Installation and Attach
+plogr                   The 'plog' C++ Logging Library
+plotly                  Create Interactive Web Graphics via 'plotly.js'
+plotmo                  Plot a Model's Residuals, Response, and Partial
+                        Dependence Plots
+plotrix                 Various Plotting Functions
+plyr                    Tools for Splitting, Applying and Combining
+                        Data
+pmml                    Generate PMML for Various Models
+png                     Read and write PNG images
+polspline               Polynomial Spline Routines
+polynom                 A Collection of Functions to Implement a Class
+                        for Univariate Polynomial Manipulations
+prabclus                Functions for Clustering and Testing of
+                        Presence-Absence, Abundance and Multilocus
+                        Genetic Data
+praise                  Praise Users
+prettyunits             Pretty, Human Readable Formatting of Quantities
+pROC                    Display and Analyze ROC Curves
+processx                Execute and Control System Processes
+prodlim                 Product-Limit Estimation for Censored Event
+                        History Analysis
+profmem                 Simple Memory Profiling for R
+proftools               Profile Output Processing Tools for R
+profvis                 Interactive Visualizations for Profiling R Code
+progress                Terminal Progress Bars
+promises                Abstractions for Promise-Based Asynchronous
+                        Programming
+proto                   Prototype Object-Based Programming
+proxy                   Distance and Similarity Measures
+PRROC                   Precision-Recall and ROC Curves for Weighted
+                        and Unweighted Data
+ps                      List, Query, Manipulate System Processes
+pscl                    Political Science Computational Laboratory
+psych                   Procedures for Psychological, Psychometric, and
+                        Personality Research
+purrr                   Functional Programming Tools
+qap                     Heuristics for the Quadratic Assignment Problem
+                        (QAP)
+quadprog                Functions to Solve Quadratic Programming
+                        Problems
+quantmod                Quantitative Financial Modelling Framework
+quantreg                Quantile Regression
+questionr               Functions to Make Surveys Processing Easier
+R.cache                 Fast and Light-Weight Caching (Memoization) of
+                        Objects and Results to Speed Up Computations
+R.methodsS3             S3 Methods Simplified
+R.oo                    R Object-Oriented Programming with or without
+                        References
+R.utils                 Various Programming Utilities
+R6                      Encapsulated Classes with Reference Semantics
+randomForest            Breiman and Cutler's Random Forests for
+                        Classification and Regression
+ranger                  A Fast Implementation of Random Forests
+RANN                    Fast Nearest Neighbour Search (Wraps ANN
+                        Library) Using L2 Metric
+rappdirs                Application Directories: Determine Where to
+                        Save Data, Caches, and Logs
+rattle                  Graphical User Interface for Data Science in R
+rcmdcheck               Run 'R CMD check' from 'R' and Capture Results
+RColorBrewer            ColorBrewer Palettes
+Rcpp                    Seamless R and C++ Integration
+RcppArmadillo           'Rcpp' Integration for the 'Armadillo'
+                        Templated Linear Algebra Library
+RcppEigen               'Rcpp' Integration for the 'Eigen' Templated
+                        Linear Algebra Library
+RcppParallel            Parallel Programming Tools for 'Rcpp'
+readr                   Read Rectangular Text Data
+readxl                  Read Excel Files
+recipes                 Preprocessing Tools to Create Design Matrices
+registry                Infrastructure for R Package Registries
+rematch                 Match Regular Expressions with a Nicer 'API'
+rematch2                Tidy Output from Regular Expression Matching
+remotes                 R Package Installation from Remote
+                        Repositories, Including 'GitHub'
+reprex                  Prepare Reproducible Example Code via the
+                        Clipboard
+reshape                 Flexibly Reshape Data
+reshape2                Flexibly Reshape Data: A Reboot of the Reshape
+                        Package
+reticulate              Interface to 'Python'
+rex                     Friendly Regular Expressions
+rgdal                   Bindings for the 'Geospatial' Data Abstraction
+                        Library
+rgeos                   Interface to Geometry Engine - Open Source
+                        ('GEOS')
+RGtk2                   R Bindings for Gtk 2.8.0 and Above
+rio                     A Swiss-Army Knife for Data I/O
+rJava                   Low-Level R to Java Interface
+rlang                   Functions for Base Types and Core R and
+                        'Tidyverse' Features
+rlist                   A Toolbox for Non-Tabular Data Manipulation
+rmarkdown               Dynamic Documents for R
+Rmisc                   Rmisc: Ryan Miscellaneous
+rms                     Regression Modeling Strategies
+RMySQL                  Database Interface and 'MySQL' Driver for R
+robustbase              Basic Robust Statistics
+ROCR                    Visualizing the Performance of Scoring
+                        Classifiers
+ROSE                    ROSE: Random Over-Sampling Examples
+roxygen2                In-Line Documentation for R
+rpart                   Recursive Partitioning and Regression Trees
+rpart.plot              Plot 'rpart' Models: An Enhanced Version of
+                        'plot.rpart'
+rpf                     Response Probability Functions
+RPostgreSQL             R Interface to the 'PostgreSQL' Database System
+rprojroot               Finding Files in Project Subdirectories
+RSQLite                 'SQLite' Interface for R
+rstatix                 Pipe-Friendly Framework for Basic Statistical
+                        Tests
+rstudioapi              Safely Access the RStudio API
+rversions               Query 'R' Versions, Including 'r-release' and
+                        'r-oldrel'
+rvest                   Easily Harvest (Scrape) Web Pages
+sandwich                Robust Covariance Matrix Estimators
+scales                  Scale Functions for Visualization
+scatterplot3d           3D Scatter Plot
+selectr                 Translate CSS Selectors to XPath Expressions
+seriation               Infrastructure for Ordering Objects Using
+                        Seriation
+sessioninfo             R Session Information
+sf                      Simple Features for R
+shape                   Functions for Plotting Graphical Shapes, Colors
+shiny                   Web Application Framework for R
+slam                    Sparse Lightweight Arrays and Matrices
+SnowballC               Snowball Stemmers Based on the C 'libstemmer'
+                        UTF-8 Library
+sourcetools             Tools for Reading, Tokenizing and Parsing R
+                        Code
+sp                      Classes and Methods for Spatial Data
+spam                    SPArse Matrix
+SparseM                 Sparse Linear Algebra
+spatial                 Functions for Kriging and Point Pattern
+                        Analysis
+spelling                Tools for Spell Checking in R
+splines                 Regression Spline Functions and Classes
+sqldf                   Manipulate R Data Frames Using SQL
+SQUAREM                 Squared Extrapolation Methods for Accelerating
+                        EM-Like Monotone Algorithms
+stabledist              Stable Distribution Functions
+stabs                   Stability Selection with Error Control
+StanHeaders             C++ Header Files for Stan
+statmod                 Statistical Modeling
+stats                   The R Stats Package
+stats4                  Statistical Functions using S4 Classes
+stopwords               Multilingual Stopword Lists
+stringi                 Character String Processing Facilities
+stringr                 Simple, Consistent Wrappers for Common String
+                        Operations
+strucchange             Testing, Monitoring, and Dating Structural
+                        Changes
+styler                  Non-Invasive Pretty Printing of R Code
+survey                  Analysis of Complex Survey Samples
+survival                Survival Analysis
+svglite                 An 'SVG' Graphics Device
+sys                     Powerful and Reliable Tools for Running System
+                        Commands in R
+systemfonts             System Native Font Finding
+taRifx                  Collection of Utility and Convenience Functions
+tcltk                   Tcl/Tk Interface
+TeachingDemos           Demonstrations for Teaching and Learning
+tensorflow              R Interface to 'TensorFlow'
+testthat                Unit Testing for R
+texreg                  Conversion of R Regression Output to LaTeX or
+                        HTML Tables
+tfruns                  Training Run Tools for 'TensorFlow'
+TH.data                 TH's Data Archive
+tibble                  Simple Data Frames
+tidyr                   Tidy Messy Data
+tidyselect              Select from a Set of Strings
+tidytext                Text Mining using 'dplyr', 'ggplot2', and Other
+                        Tidy Tools
+tidyverse               Easily Install and Load the 'Tidyverse'
+timeDate                Rmetrics - Chronological and Calendar Objects
+timeSeries              Financial Time Series Objects (Rmetrics)
+tinytex                 Helper Functions to Install and Maintain 'TeX
+                        Live', and Compile 'LaTeX' Documents
+tm                      Text Mining Package
+tokenizers              Fast, Consistent Tokenization of Natural
+                        Language Text
+tools                   Tools for Package Development
+tseries                 Time Series Analysis and Computational Finance
+TSP                     Traveling Salesperson Problem (TSP)
+TTR                     Technical Trading Rules
+units                   Measurement Units for R Vectors
+urca                    Unit Root and Cointegration Tests for Time
+                        Series Data
+usethis                 Automate Package and Project Setup
+utf8                    Unicode Text Processing
+utils                   The R Utils Package
+varImp                  RF Variable Importance for Arbitrary Measures
+vcd                     Visualizing Categorical Data
+vctrs                   Vector Helpers
+vdiffr                  Visual Regression Testing and Graphical Diffing
+verification            Weather Forecast Verification Utilities
+VIM                     Visualization and Imputation of Missing Values
+viridis                 Default Color Maps from 'matplotlib'
+viridisLite             Default Color Maps from 'matplotlib' (Lite
+                        Version)
+visNetwork              Network Visualization using 'vis.js' Library
+webshot                 Take Screenshots of Web Pages
+whisker                 {{mustache}} for R, Logicless Templating
+withr                   Run Code 'With' Temporarily Modified Global
+                        State
+wskm                    Weighted k-Means Clustering
+xfun                    Miscellaneous Functions by 'Yihui Xie'
+xgboost                 Extreme Gradient Boosting
+xlsx                    Read, Write, Format Excel 2007 and Excel
+                        97/2000/XP/2003 Files
+xlsxjars                Package required POI jars for the xlsx package
+XML                     Tools for Parsing and Generating XML Within R
+                        and S-Plus
+xml2                    Parse XML
+xopen                   Open System Files, 'URLs', Anything
+xtable                  Export Tables to LaTeX or HTML
+xts                     eXtensible Time Series
+yaml                    Methods to Convert R Data to YAML and Back
+zeallot                 Multiple, Unpacking, and Destructuring
+                        Assignment
+zip                     Cross-Platform 'zip' Compression
+zoo                     S3 Infrastructure for Regular and Irregular
+                        Time Series (Z's Ordered Observations)
+
+> 
+> proc.time()
+   user  system elapsed 
+  0.310   0.106   0.438 

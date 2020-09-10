@@ -1,0 +1,85 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> library(caret)
+Loading required package: lattice
+Loading required package: ggplot2
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(ggplot2)
+> 
+> list.files(path = "../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> getwd()
+[1] "/Users/alex/MachineLearning/TrustworthyML/KaggleCrawler/Aviral/korpus-master/notebooks/r/kernels/andrewl67-titanic/script"
+> list.files()
+[1] "Rplots.pdf"     "titanic.irnb"   "titanic.r"      "titanic.r.json"
+[5] "titanic.r.Rout"
+> data <- read.csv("../input/train.csv")
+> 
+> set.seed(123)
+> trainIndex <- createDataPartition(data$Survived, p = .8, 
++                                   list = FALSE, 
++                                   times = 1)
+> 
+> train <- data[ trainIndex,]
+> test  <- data[-trainIndex,]
+> head(train)
+  PassengerId Survived Pclass
+2           2        1      1
+4           4        1      1
+5           5        0      3
+6           6        0      3
+8           8        0      3
+9           9        1      3
+                                                 Name    Sex Age SibSp Parch
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+8                      Palsson, Master. Gosta Leonard   male   2     3     1
+9   Johnson, Mrs. Oscar W (Elisabeth Vilhelmina Berg) female  27     0     2
+    Ticket    Fare Cabin Embarked
+2 PC 17599 71.2833   C85        C
+4   113803 53.1000  C123        S
+5   373450  8.0500              S
+6   330877  8.4583              Q
+8   349909 21.0750              S
+9   347742 11.1333              S
+> 
+> 
+> #Exploratory data analysis
+> ## Scatterplot matrix 1
+> 
+> featurePlot(x=train[,3:5],y=train$Survived, plot="pairs")
+> 
+> ## Scatterplot matrix 2
+> 
+> featurePlot(x=train[,7:10],y=train$Survived, plot="pairs")
+> 
+> ## Scatterplot matrix 3
+> 
+> featurePlot(x=train[,11:12],y=train$Survived, plot="pairs")
+> 
+> 
+> #Data pre-processing
+> Using K-nearest neighbors to impute missing values.
+Error: unexpected symbol in "Using K"
+Execution halted

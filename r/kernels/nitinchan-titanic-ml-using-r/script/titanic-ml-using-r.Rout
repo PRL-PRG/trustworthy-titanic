@@ -1,0 +1,713 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ###############################################################################
+> #~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ Ingesting & Preprocessing Datasets ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+> ###############################################################################
+> rm(list=ls(all=TRUE))
+> gc()
+          used  (Mb) gc trigger  (Mb) limit (Mb) max used  (Mb)
+Ncells 2117478 113.1    4383334 234.1         NA  2591650 138.5
+Vcells 3287278  25.1    8388608  64.0      16384  6034139  46.1
+> 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(ggrepel)
+> 
+> # Step 2: Import the data and read the file
+> traindata <- read.csv(file="../input/train.csv", header=TRUE,na.strings=c(""))
+> testdata <- read.csv(file="../input/test.csv", header = TRUE, na.strings=c(""))
+> # Save the Survived labels from train data in variable survived
+> survived <- traindata$Survived
+> 
+> # Step 3: Determine the class and structure of train dataset
+> class(traindata)
+[1] "data.frame"
+> sapply(traindata, function(x) sum(is.na(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0         177 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0         687           2 
+> # Preprocessing the Train Dataset
+> traindata$Pclass <- as.factor(traindata$Pclass)
+> traindata$Age <- as.integer(traindata$Age)
+> traindata$Name <- as.character(traindata$Name)
+> str(traindata)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : int  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 147 levels "A10","A14","A16",..: NA 82 NA 56 NA NA 130 NA NA NA ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+> 
+> # Step 4: Determine the class and structure of test dataset
+> class(testdata)
+[1] "data.frame"
+> sapply(testdata, function(x) sum(is.na(x)))
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+          0           0           0           0          86           0 
+      Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           1         327           0 
+> # Preprocessing the Test Dataset
+> testdata$Pclass <- as.factor(testdata$Pclass)
+> testdata$Age <- as.integer(testdata$Age)
+> testdata$Name <- as.character(testdata$Name)
+> str(testdata)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : chr  "Kelly, Mr. James" "Wilkes, Mrs. James (Ellen Needs)" "Myles, Mr. Thomas Francis" "Wirz, Mr. Albert" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : int  34 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : Factor w/ 76 levels "A11","A18","A21",..: NA NA NA NA NA NA NA NA NA NA ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+> 
+> # Step 5: Feature Engineering in Train Data
+> # Create a new feature Title
+> traindata$Title <- gsub('(.*, )|(\\..*)', '', traindata$Name)
+> traindata$Title <- as.factor(traindata$Title)
+> str(traindata$Title)
+ Factor w/ 17 levels "Capt","Col","Don",..: 12 13 9 13 12 12 12 8 13 13 ...
+> # Create a new feature family_size
+> traindata$family_size <- as.integer(traindata$SibSp + traindata$Parch + 1)
+> 
+> "Drop Cabin since more than 70% values are missing, Drop some of the predictors that are redundant"
+[1] "Drop Cabin since more than 70% values are missing, Drop some of the predictors that are redundant"
+> traindata <- subset(traindata,select = -c(Name,SibSp,Parch,Ticket,Cabin))
+> 
+> # Identify if any Age is identified as 0
+> traindata[which(traindata$Age==0),] # Where Age is less than a year either new born or wrongly interpreted
+    PassengerId Survived Pclass    Sex Age     Fare Embarked  Title family_size
+79           79        1      2   male   0  29.0000        S Master           3
+306         306        1      1   male   0 151.5500        S Master           4
+470         470        1      3 female   0  19.2583        C   Miss           4
+645         645        1      3 female   0  19.2583        C   Miss           4
+756         756        1      2   male   0  14.5000        S Master           3
+804         804        1      3   male   0   8.5167        C Master           2
+832         832        1      2   male   0  18.7500        S Master           3
+> traindata$Age[which(traindata$Age==0)] <- 1 # Since Title are either Master or Miss
+> 
+> levels(traindata$Title)
+ [1] "Capt"         "Col"          "Don"          "Dr"           "Jonkheer"    
+ [6] "Lady"         "Major"        "Master"       "Miss"         "Mlle"        
+[11] "Mme"          "Mr"           "Mrs"          "Ms"           "Rev"         
+[16] "Sir"          "the Countess"
+> sort(summary(traindata$Title)[1:17],decreasing = T)
+          Mr         Miss          Mrs       Master           Dr          Rev 
+         517          182          125           40            7            6 
+         Col        Major         Mlle         Capt          Don     Jonkheer 
+           2            2            2            1            1            1 
+        Lady          Mme           Ms          Sir the Countess 
+           1            1            1            1            1 
+> # Create a new variable var holding few titles
+> var <- c("Mr", "Mrs", "Master", "Miss", "Dr")
+> # Since there are some titles that are 1 in count causing the system to see some unseen title in test data
+> length(traindata$Title[!traindata$Title %in% var]) # 20
+[1] 20
+> # Rename the 20 other titles as VIP
+> traindata$Title <- as.character(traindata$Title)
+> traindata$Title[!traindata$Title %in% var] <- 'VIP'
+> traindata$Title <- as.factor(traindata$Title)
+> 
+> # Step 6: Feature Engineering in Test Data
+> # Create a new feature Title
+> testdata$Title <- gsub('(.*, )|(\\..*)', '', testdata$Name)
+> testdata$Title <- as.factor(testdata$Title)
+> str(testdata$Title)
+ Factor w/ 9 levels "Col","Dona","Dr",..: 6 7 6 6 7 6 5 6 7 6 ...
+> # Create a new feature family_size
+> testdata$family_size <- as.integer(testdata$SibSp + testdata$Parch + 1)
+> 
+> "Drop Cabin since more than 70% values are missing, Drop some of the predictors that are redundant"
+[1] "Drop Cabin since more than 70% values are missing, Drop some of the predictors that are redundant"
+> testdata <- subset(testdata,select = -c(Name,SibSp,Parch,Ticket,Cabin))
+> 
+> # Identify if any Age is identified as 0
+> testdata[which(testdata$Age==0),] # Where Age is less than a year either new born or wrongly interpreted
+    PassengerId Pclass    Sex Age   Fare Embarked  Title family_size
+202        1093      3   male   0 14.400        S Master           3
+251        1142      2 female   0 27.750        S   Miss           4
+282        1173      3   male   0 13.775        S Master           3
+308        1199      3   male   0  9.350        S Master           2
+355        1246      3 female   0 20.575        S   Miss           4
+> testdata$Age[which(testdata$Age==0)] <- 1 # Since Title are either Master or Miss
+> 
+> levels(testdata$Title)
+[1] "Col"    "Dona"   "Dr"     "Master" "Miss"   "Mr"     "Mrs"    "Ms"    
+[9] "Rev"   
+> sort(summary(testdata$Title)[1:9],decreasing = T)
+    Mr   Miss    Mrs Master    Col    Rev   Dona     Dr     Ms 
+   240     78     72     21      2      2      1      1      1 
+> # Since there are some titles that are 1 in count causing the system to see some unseen title in test data
+> length(testdata$Title[!testdata$Title %in% var]) # 6 
+[1] 6
+> # Rename the 6 other titles as VIP
+> testdata$Title <- as.character(testdata$Title)
+> testdata$Title[!testdata$Title %in% var] <- 'VIP'
+> testdata$Title <- as.factor(testdata$Title)
+> 
+> "Use the concept of Random Forest to calculate missing values for quantitative and qualitative predictors. It's a non-parametric approach without any assumptions"
+[1] "Use the concept of Random Forest to calculate missing values for quantitative and qualitative predictors. It's a non-parametric approach without any assumptions"
+> #install.packages("missForest")
+> library(missForest)
+Loading required package: randomForest
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+Loading required package: foreach
+Loading required package: itertools
+Loading required package: iterators
+Warning message:
+package ‘foreach’ was built under R version 3.6.2 
+> 
+> # Step 7: Impute Missing Values in Train Data
+> sapply(traindata,function(x) sum(is.na(x)))
+PassengerId    Survived      Pclass         Sex         Age        Fare 
+          0           0           0           0         177           0 
+   Embarked       Title family_size 
+          2           0           0 
+> traindata.imp <- missForest(traindata)
+  missForest iteration 1 in progress...done!
+  missForest iteration 2 in progress...done!
+  missForest iteration 3 in progress...done!
+> sum(is.na(traindata.imp$ximp))
+[1] 0
+> "Shows the error rate during computation of missing values, quite an effective way to check quality of computational process"
+[1] "Shows the error rate during computation of missing values, quite an effective way to check quality of computational process"
+> traindata.imp$OOBerror
+     NRMSE        PFC 
+0.02421172 0.05258718 
+> traindata <- traindata.imp$ximp
+> 
+> # Step 8: Impute Missing Values in Test Data
+> sapply(testdata,function(x) sum(is.na(x)))
+PassengerId      Pclass         Sex         Age        Fare    Embarked 
+          0           0           0          86           1           0 
+      Title family_size 
+          0           0 
+> testdata.imp <- missForest(testdata)
+  missForest iteration 1 in progress...done!
+  missForest iteration 2 in progress...done!
+  missForest iteration 3 in progress...done!
+  missForest iteration 4 in progress...done!
+> sum(is.na(testdata.imp$ximp))
+[1] 0
+> "Shows the error rate during computation of missing values, quite an effective way to check quality of computational process"
+[1] "Shows the error rate during computation of missing values, quite an effective way to check quality of computational process"
+> testdata.imp$OOBerror
+     NRMSE        PFC 
+0.04434413 0.00000000 
+> testdata <- testdata.imp$ximp
+> 
+> 
+> # Step 9: Identify number of observation for each class
+> count_survived <- qplot(factor(traindata$Survived), fill = factor(traindata$Survived))
+> count_survived + geom_label_repel(stat='count', aes(label=..count..), nudge_x = 0.0, nudge_y = -50) + labs(title="No. of observation for each class", x ="Class", y = "Count")
+> "Since the labels are imbalanced in count, We will use Precision-Recall curves, as it summarize the trade-off between the true positive rate and the positive predictive value for a predictive model using different probability thresholds."
+[1] "Since the labels are imbalanced in count, We will use Precision-Recall curves, as it summarize the trade-off between the true positive rate and the positive predictive value for a predictive model using different probability thresholds."
+> 
+> ###############################################################################
+> #~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ Visualizing the Datasets ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+> ###############################################################################
+> #Plotting relation between Age & Survived on traindata
+> ggplot(traindata, aes(x= Age, fill=factor(Survived))) + 
++   geom_bar(width=0.5) + labs(title="Relation between Age & Survived", x ="Age", y = "Total Count", fill="Survived")
+Warning message:
+position_stack requires non-overlapping x intervals 
+> 
+> #Plotting relation between Sex & Survived on traindata
+> ggplot(traindata, aes(x= Sex, fill=factor(Survived))) + 
++   geom_bar(width=0.5) + geom_label_repel(stat='count', aes(label=..count..), nudge_x = 0, nudge_y = 0.2) +
++   labs(title="Relation between Sex & Survived", x ="Sex", y = "Total Count", fill="Survived")
+>   
+> #Plotting relation between Pclass & Survived on traindata
+> ggplot(traindata, aes(x= Pclass, fill=factor(Survived))) +  
++   geom_bar(width=0.5) + geom_label_repel(stat='count', aes(label=..count..),nudge_x = 0, nudge_y = 0.2) +
++   labs(title="Relation between Pclass & Survived", x ="Pclass", y = "Total Count", fill="Survived")
+>   
+> #Plotting relation between Embarked & Survived on traindata
+> ggplot(traindata, aes(x= Embarked, fill=factor(Survived))) + 
++   geom_bar(width=0.5) + geom_label_repel(stat='count', aes(label=..count..), nudge_x = 0, nudge_y = 0.2) +
++   labs(title="Relation between Embarked & Survived", x ="Embarked", y = "Total Count", fill="Survived")
+> 
+> #Plotting relation between Title and Pclass on traindata
+> ggplot(traindata, aes(x= Title, fill=factor(Pclass))) + 
++   geom_bar(width=0.5) + geom_label_repel(stat='count', aes(label=..count..),nudge_x = 0, nudge_y = 0.2) +
++   labs(title="Relation between Title & Pclass", x ="Title", y = "Total Count", fill="Pclass")
+> 
+> 
+> #Splitting the dataset into 70:30 Train and Valid
+> size_train <- nrow(traindata)
+> sample_index <- sample.int(size_train, size = floor(0.3*nrow(traindata)))
+> valid <- traindata[sample_index,]
+> train <- traindata[-sample_index,]
+> 
+> 
+> ###############################################################################
+> #~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ Logistic Regression ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~
+> ###############################################################################
+> library(e1071)
+> #To verify that the model is reasonable, we calculate the data fitting for 
+> #both training set and cross validation set.
+> logmodel <- glm(factor(Survived)~., data = valid, family = binomial(link = logit), control = list(maxit=15,epsilon=1e-4))
+> cutoffs <- seq(0.1,0.9,0.1)
+> accuracy <- NULL
+> 
+> #Function to Set accuracy for each cutoffs
+> for (i in seq(along = cutoffs)){
++   prediction <- ifelse(logmodel$fitted.values >= cutoffs[i], 1, 0) #Predicting for cut-off
++   accuracy <- c(accuracy,length(which(factor(valid$Survived) ==prediction))/length(prediction)*100)
++ }
+> 
+> plot(cutoffs, accuracy, pch =19,type='b',col= "steelblue",
++      main ="Logistic Regression Cut-off", xlab="Cutoff Level", ylab = "Accuracy %")
+> 
+> #From the plot above the best Accuracy % is at cutoff 0.6
+> 
+> full_mod <- glm(factor(Survived)~., data = train, family = binomial(link = logit), control = list(maxit=15,epsilon=1e-4))
+> summary(full_mod)
+
+Call:
+glm(formula = factor(Survived) ~ ., family = binomial(link = logit), 
+    data = train, control = list(maxit = 15, epsilon = 1e-04))
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.3049  -0.5083  -0.3417   0.5230   2.5355  
+
+Coefficients:
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  9.0986471  6.5658174   1.386  0.16582    
+PassengerId  0.0001876  0.0004489   0.418  0.67600    
+Pclass2     -1.2833114  0.3929251  -3.266  0.00109 ** 
+Pclass3     -2.5566462  0.3999507  -6.392 1.63e-10 ***
+Sexmale     -6.4235979  6.4666101  -0.993  0.32054    
+Age         -0.0374590  0.0115353  -3.247  0.00116 ** 
+Fare         0.0008460  0.0029719   0.285  0.77591    
+EmbarkedQ    0.2046758  0.4833084   0.423  0.67194    
+EmbarkedS   -0.3429637  0.3018134  -1.136  0.25581    
+TitleMaster  2.1836092  1.3284924   1.644  0.10024    
+TitleMiss   -4.4112678  6.5463666  -0.674  0.50041    
+TitleMr     -0.9176519  1.1596022  -0.791  0.42874    
+TitleMrs    -3.7890467  6.5488926  -0.579  0.56287    
+TitleVIP    -0.8301382  1.3402247  -0.619  0.53565    
+family_size -0.4675645  0.1091376  -4.284 1.83e-05 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 831.52  on 623  degrees of freedom
+Residual deviance: 492.53  on 609  degrees of freedom
+AIC: 522.53
+
+Number of Fisher Scoring iterations: 5
+
+> library(MASS)
+> backward <- stepAIC(full_mod,direction="backward",trace=FALSE)
+> #Building the model with lowest deviance and lowest AIC
+> mylogit <- glm(formula = factor(Survived) ~ Pclass + Sex + Age + Fare + 
++                  Title + family_size, family = binomial(link = logit), data = train, 
++                control = list(maxit = 15, epsilon = 1e-04))
+> 
+> summary(mylogit)
+
+Call:
+glm(formula = factor(Survived) ~ Pclass + Sex + Age + Fare + 
+    Title + family_size, family = binomial(link = logit), data = train, 
+    control = list(maxit = 15, epsilon = 1e-04))
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.3960  -0.5102  -0.3409   0.5264   2.6938  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  9.198667   6.532946   1.408 0.159118    
+Pclass2     -1.354807   0.388524  -3.487 0.000488 ***
+Pclass3     -2.518484   0.392875  -6.410 1.45e-10 ***
+Sexmale     -6.512891   6.439190  -1.011 0.311803    
+Age         -0.038352   0.011513  -3.331 0.000865 ***
+Fare         0.001458   0.002943   0.495 0.620375    
+TitleMaster  2.147008   1.290537   1.664 0.096182 .  
+TitleMiss   -4.538798   6.518356  -0.696 0.486235    
+TitleMr     -1.040281   1.118230  -0.930 0.352220    
+TitleMrs    -3.983977   6.521316  -0.611 0.541255    
+TitleVIP    -0.883595   1.307596  -0.676 0.499206    
+family_size -0.498009   0.107406  -4.637 3.54e-06 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 831.52  on 623  degrees of freedom
+Residual deviance: 495.24  on 612  degrees of freedom
+AIC: 519.24
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> # Test the model on valid
+> pred <- predict.glm(mylogit,valid)
+> pred <- ifelse(pred > 0.5,1,0)
+> nrow(valid)
+[1] 267
+> length(pred)
+[1] 267
+> library(caret)
+Loading required package: lattice
+> xtab <- table(pred, valid$Survived)
+> print(confusionMatrix(xtab[2:1,2:1]))
+Confusion Matrix and Statistics
+
+    
+pred   1   0
+   1  61   9
+   0  41 156
+                                          
+               Accuracy : 0.8127          
+                 95% CI : (0.7607, 0.8577)
+    No Information Rate : 0.618           
+    P-Value [Acc > NIR] : 4.543e-12       
+                                          
+                  Kappa : 0.5781          
+                                          
+ Mcnemar's Test P-Value : 1.165e-05       
+                                          
+            Sensitivity : 0.5980          
+            Specificity : 0.9455          
+         Pos Pred Value : 0.8714          
+         Neg Pred Value : 0.7919          
+             Prevalence : 0.3820          
+         Detection Rate : 0.2285          
+   Detection Prevalence : 0.2622          
+      Balanced Accuracy : 0.7717          
+                                          
+       'Positive' Class : 1               
+                                          
+> 
+> # Prediction on TestData
+> predSurv <- predict.glm(mylogit,testdata)
+> predSurv <- ifelse(predSurv > 0.5,1,0)
+> length(predSurv)
+[1] 418
+> final_result <- data.frame(testdata$PassengerId,predSurv)
+> colnames(final_result) <- c("PassengerId","Survived")
+> 
+> ###############################################################
+> #----------------------------- SVM ---------------------------#
+> ###############################################################
+> # Step 1: Compare Kernels based on Validation set
+> # Step 2: Radial Kernel
+> SVMmodel<-svm(factor(Survived) ~ ., data = valid, kernel="radial", cost = 100, gamma = 1)
+> print(SVMmodel)
+
+Call:
+svm(formula = factor(Survived) ~ ., data = valid, kernel = "radial", 
+    cost = 100, gamma = 1)
+
+
+Parameters:
+   SVM-Type:  C-classification 
+ SVM-Kernel:  radial 
+       cost:  100 
+
+Number of Support Vectors:  182
+
+> summary(SVMmodel)
+
+Call:
+svm(formula = factor(Survived) ~ ., data = valid, kernel = "radial", 
+    cost = 100, gamma = 1)
+
+
+Parameters:
+   SVM-Type:  C-classification 
+ SVM-Kernel:  radial 
+       cost:  100 
+
+Number of Support Vectors:  182
+
+ ( 91 91 )
+
+
+Number of Classes:  2 
+
+Levels: 
+ 0 1
+
+
+
+> compareTable <- table(predict(SVMmodel),valid$Survived)  
+> mean(valid$Survived != predict(SVMmodel)) #1.12% misclassification error
+[1] 0.01123596
+> 
+> # Step 3: Linear Kernel
+> SVMmodel<-svm(factor(Survived) ~ ., data = valid, kernel="linear", cost = 100, gamma = 1)
+> print(SVMmodel)
+
+Call:
+svm(formula = factor(Survived) ~ ., data = valid, kernel = "linear", 
+    cost = 100, gamma = 1)
+
+
+Parameters:
+   SVM-Type:  C-classification 
+ SVM-Kernel:  linear 
+       cost:  100 
+
+Number of Support Vectors:  114
+
+> summary(SVMmodel)
+
+Call:
+svm(formula = factor(Survived) ~ ., data = valid, kernel = "linear", 
+    cost = 100, gamma = 1)
+
+
+Parameters:
+   SVM-Type:  C-classification 
+ SVM-Kernel:  linear 
+       cost:  100 
+
+Number of Support Vectors:  114
+
+ ( 57 57 )
+
+
+Number of Classes:  2 
+
+Levels: 
+ 0 1
+
+
+
+> compareTable <- table(predict(SVMmodel),valid$Survived)
+> mean(valid$Survived != predict(SVMmodel)) #16.47% misclassification error
+[1] 0.1685393
+> 
+> "The Radial kernel seems to result in low misclassification error thus we will use it for further modeling"
+[1] "The Radial kernel seems to result in low misclassification error thus we will use it for further modeling"
+> # Step 4: Tune the model using tune.svm on validation set
+> tuned <- tune.svm(factor(Survived) ~ ., data = valid, gamma = 10^(-6:-1), cost = 10^(1:3)) # tune
+> summary (tuned) # to select best gamma and cost
+
+Parameter tuning of ‘svm’:
+
+- sampling method: 10-fold cross validation 
+
+- best parameters:
+ gamma cost
+ 0.001 1000
+
+- best performance: 0.184188 
+
+- Detailed performance results:
+   gamma cost     error dispersion
+1  1e-06   10 0.3821937 0.09378911
+2  1e-05   10 0.3821937 0.09378911
+3  1e-04   10 0.3821937 0.09378911
+4  1e-03   10 0.2179487 0.08256649
+5  1e-02   10 0.1915954 0.06437895
+6  1e-01   10 0.1914530 0.06326241
+7  1e-06  100 0.3821937 0.09378911
+8  1e-05  100 0.3821937 0.09378911
+9  1e-04  100 0.2179487 0.08256649
+10 1e-03  100 0.1991453 0.08437304
+11 1e-02  100 0.2064103 0.07006478
+12 1e-01  100 0.2213675 0.05322038
+13 1e-06 1000 0.3821937 0.09378911
+14 1e-05 1000 0.2179487 0.08256649
+15 1e-04 1000 0.1991453 0.08254682
+16 1e-03 1000 0.1841880 0.07558677
+17 1e-02 1000 0.2138177 0.06896199
+18 1e-01 1000 0.2585470 0.07181852
+
+> model1 <- svm (factor(Survived) ~., data = valid, kernel = "radial", cost = 100, gamma=0.01) # radial svm, scaling turned OFF
+> print(model1)
+
+Call:
+svm(formula = factor(Survived) ~ ., data = valid, kernel = "radial", 
+    cost = 100, gamma = 0.01)
+
+
+Parameters:
+   SVM-Type:  C-classification 
+ SVM-Kernel:  radial 
+       cost:  100 
+
+Number of Support Vectors:  121
+
+> compareTable <- table (valid$Survived, predict(model1, valid))  # comparison table
+> mean(valid$Survived != predict(model1, valid)) # 13.48% misclassification train error
+[1] 0.1610487
+> 
+> # Step 5: Tune the model using k fold cross validation
+> train_control <- trainControl(method="cv", number=10)
+> # Fit SVM Radial Model
+> model <- train(factor(Survived) ~ ., data=valid, trControl=train_control, method="svmRadial")
+> # Summarise Results
+> print(model)
+Support Vector Machines with Radial Basis Function Kernel 
+
+267 samples
+  8 predictor
+  2 classes: '0', '1' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 240, 241, 239, 240, 240, 241, ... 
+Resampling results across tuning parameters:
+
+  C     Accuracy   Kappa    
+  0.25  0.7865486  0.5327224
+  0.50  0.8163411  0.5895691
+  1.00  0.8127696  0.5783550
+
+Tuning parameter 'sigma' was held constant at a value of 0.08462066
+Accuracy was used to select the optimal model using the largest value.
+The final values used for the model were sigma = 0.08462066 and C = 0.5.
+> # C=0.50  Accuracy=0.8390313  K=0.6360905
+> 
+> # Step 6: Create a prediction model
+> svmfit <- train(factor(Survived) ~ ., data=train, trControl=train_control, method="svmRadial")
+> # Summarise Results
+> print(svmfit)
+Support Vector Machines with Radial Basis Function Kernel 
+
+624 samples
+  8 predictor
+  2 classes: '0', '1' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 562, 562, 562, 561, 561, 562, ... 
+Resampling results across tuning parameters:
+
+  C     Accuracy   Kappa    
+  0.25  0.8253456  0.6255338
+  0.50  0.8269841  0.6229637
+  1.00  0.8317460  0.6330058
+
+Tuning parameter 'sigma' was held constant at a value of 0.08371777
+Accuracy was used to select the optimal model using the largest value.
+The final values used for the model were sigma = 0.08371777 and C = 1.
+> 
+> # Step 7: Testing on unseen data 'testdata'
+> prediction1 <- predict(svmfit, testdata)
+> length(prediction1)
+[1] 418
+> final_result <- data.frame(testdata$PassengerId,prediction1)
+> colnames(final_result) <- c("PassengerId","Survived")
+> 
+> ###############################################################
+> #--------------------- RANDOM FOREST -------------------------#
+> ###############################################################
+> 
+> # Step 1: Compare Different Tuning algorithms based on Validation set
+> # Step 2: Grid Search for Tuning Hyperparameters using CARET
+> library(randomForest)
+> y <- as.factor(valid$Survived)
+> bestmtry <- tuneRF(valid[,-2],y, stepFactor=1.5, improve=1e-5, ntreeTry = 500)
+mtry = 2  OOB error = 18.73% 
+Searching left ...
+Searching right ...
+mtry = 3 	OOB error = 20.6% 
+-0.1 1e-05 
+> print(bestmtry)
+      mtry  OOBError
+2.OOB    2 0.1872659
+3.OOB    3 0.2059925
+> # Step 3: Create a model using hyperparameters obtained from Grid Search
+> rf1 <- randomForest(factor(train$Survived) ~ ., data=train[-2], keep.forest=TRUE, ntree=500, mtry=2)
+> print(rf1) # OOB estimate of  error rate: 16.72%
+
+Call:
+ randomForest(formula = factor(train$Survived) ~ ., data = train[-2],      keep.forest = TRUE, ntree = 500, mtry = 2) 
+               Type of random forest: classification
+                     Number of trees: 500
+No. of variables tried at each split: 2
+
+        OOB estimate of  error rate: 16.51%
+Confusion matrix:
+    0   1 class.error
+0 346  38  0.09895833
+1  65 175  0.27083333
+> varImpPlot(rf1, main="Important Features in Random Forest Model 1")
+> # confusion Matrix
+> table(train$Survived, predict(rf1, train[,-2], type="response", norm.votes=TRUE))
+   
+      0   1
+  0 381   3
+  1  30 210
+> 
+> # Step 4: Create a model using k-fold cross validation
+> train_control <- trainControl(method="cv", number=10)
+> # Fit SVM Radial Model
+> rf2 <- train(factor(Survived) ~ ., data=train, trControl=train_control, method="rf")
+> # Summarise Results
+> print(rf2)
+Random Forest 
+
+624 samples
+  8 predictor
+  2 classes: '0', '1' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 562, 561, 562, 561, 561, 562, ... 
+Resampling results across tuning parameters:
+
+  mtry  Accuracy   Kappa    
+   2    0.8270865  0.6248061
+   8    0.8397849  0.6519415
+  14    0.8269329  0.6272088
+
+Accuracy was used to select the optimal model using the largest value.
+The final value used for the model was mtry = 8.
+> 
+> # Compare the results of model rf1 & rf2 and which ever results in best result, use that model to predict on unseen data
+> # Step 5: Testing on unseen data 'testdata'
+> RFpred <- predict(rf2, testdata)
+> final_result <- data.frame(testdata$PassengerId, RFpred)
+> names(final_result) <- c("PassengerId","Survived")
+> 
+> proc.time()
+   user  system elapsed 
+ 17.332   0.486  17.859 

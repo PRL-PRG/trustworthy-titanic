@@ -1,0 +1,2020 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R enviro ere's several helpful packages to load in 
+> 
+> library(ggplot2) # Gráficos
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(dplyr) # data manipulation
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library(ggthemes)
+> # Any results you write to the current directory are saved as output.
+> 
+> # Carregando os arquivos de Treino e Teste.
+> data_train <- read.csv("../input/train.csv")
+> data_test<- read.csv("../input/train.csv")
+> 
+> 
+> 
+> head(data_train)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> colnames(data_train)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"   
+> 
+> # Removendo colunas.
+> data_train$PassengerId <- NULL
+> data_train$SibSp <- NULL
+> data_train$Parch <- NULL
+> data_train$Ticket <- NULL
+> data_train$Cabin <- NULL
+> data_train$Name <- NULL
+> 
+> # Ordenando as colunas
+> data_train <- data_train %>%
++ select(Pclass, Age, Sex, Fare, Embarked, Survived)
+> 
+> head(data_train)
+  Pclass Age    Sex    Fare Embarked Survived
+1      3  22   male  7.2500        S        0
+2      1  38 female 71.2833        C        1
+3      3  26 female  7.9250        S        1
+4      1  35 female 53.1000        S        1
+5      3  35   male  8.0500        S        0
+6      3  NA   male  8.4583        Q        0
+> 
+> # Transformando as variáveis em facto.
+> data_train$Survived <- as.factor(data_train$Survived)
+> levels(data_train$Survived) <- c("Não", "Sim")
+> 
+> data_train$Sex <- as.factor(data_train$Sex)
+> levels(data_train$Sex) <- c("Feminino", "Masculino")
+> 
+> data_train$Pclass <- as.factor(data_train$Pclass)
+> levels(data_train$Pclass) <- c("Alta", "Média", "Baixa")
+> 
+> data_train$Age <- as.numeric(data_train$Age)
+> data_train$Age <- cut(data_train$Age, c(0, 30, 50, 100), labels = c("Jovem", "adulto", "Idoso"))
+> 
+> data_train$Embarked <- as.factor(data_train$Embarked)
+> levels(data_train$Embarked) <- c(0,"Cherbourg","Southampton", "Queenstown")
+> 
+> head(data_train)
+  Pclass    Age       Sex    Fare    Embarked Survived
+1  Baixa  Jovem Masculino  7.2500  Queenstown      Não
+2   Alta adulto  Feminino 71.2833   Cherbourg      Sim
+3  Baixa  Jovem  Feminino  7.9250  Queenstown      Sim
+4   Alta adulto  Feminino 53.1000  Queenstown      Sim
+5  Baixa adulto Masculino  8.0500  Queenstown      Não
+6  Baixa   <NA> Masculino  8.4583 Southampton      Não
+> 
+> #########################################################################
+> #Eclat Algotitmo utilizado para encontrar padrões nos data sets #########
+> #########################################################################
+> library(arules)
+Loading required package: Matrix
+
+Attaching package: ‘arules’
+
+The following object is masked from ‘package:dplyr’:
+
+    recode
+
+The following objects are masked from ‘package:base’:
+
+    abbreviate, write
+
+Warning message:
+package ‘arules’ was built under R version 3.6.2 
+> library(arulesViz)
+Loading required package: grid
+Registered S3 method overwritten by 'seriation':
+  method         from 
+  reorder.hclust gclus
+> 
+> data_train$Fare <- as.factor(data_train$Fare)
+> regras <- eclat(data_train, parameter = list(supp = 0.1, maxlen = 5))
+Eclat
+
+parameter specification:
+ tidLists support minlen maxlen            target  ext
+    FALSE     0.1      1      5 frequent itemsets TRUE
+
+algorithmic control:
+ sparse sort verbose
+      7   -2    TRUE
+
+Absolute minimum support count: 89 
+
+create itemset ... 
+set transactions ...[262 item(s), 891 transaction(s)] done [0.00s].
+sorting and recoding items ... [11 item(s)] done [0.00s].
+creating bit matrix ... [11 row(s), 891 column(s)] done [0.00s].
+writing  ... [71 set(s)] done [0.00s].
+Creating S4 object  ... done [0.00s].
+> inspect(regras)
+     items                   support transIdenticalToItemsets count
+[1]  {Sex=Masculino,                                               
+      Embarked=Cherbourg}  0.1066218                       95    95
+[2]  {Embarked=Cherbourg,                                          
+      Survived=Sim}        0.1043771                       93    93
+[3]  {Pclass=Média,                                                
+      Sex=Masculino,                                               
+      Survived=Não}        0.1021324                       91    91
+[4]  {Pclass=Média,                                                
+      Sex=Masculino,                                               
+      Embarked=Queenstown} 0.1088664                       97    97
+[5]  {Pclass=Média,                                                
+      Embarked=Queenstown} 0.1840629                      164   164
+[6]  {Pclass=Média,                                                
+      Sex=Masculino}       0.1212121                      108   108
+[7]  {Pclass=Média,                                                
+      Survived=Não}        0.1088664                       97    97
+[8]  {Pclass=Média,                                                
+      Age=Jovem}           0.1077441                       96    96
+[9]  {Pclass=Alta,                                                 
+      Sex=Feminino,                                                
+      Survived=Sim}        0.1021324                       91    91
+[10] {Pclass=Alta,                                                 
+      Embarked=Queenstown} 0.1425365                      127   127
+[11] {Pclass=Alta,                                                 
+      Sex=Masculino}       0.1369248                      122   122
+[12] {Pclass=Alta,                                                 
+      Survived=Sim}        0.1526375                      136   136
+[13] {Pclass=Alta,                                                 
+      Sex=Feminino}        0.1054994                       94    94
+[14] {Age=adulto,                                                  
+      Sex=Masculino,                                               
+      Embarked=Queenstown,                                         
+      Survived=Não}        0.1122334                      100   100
+[15] {Age=adulto,                                                  
+      Embarked=Queenstown,                                         
+      Survived=Não}        0.1279461                      114   114
+[16] {Age=adulto,                                                  
+      Sex=Masculino,                                               
+      Survived=Não}        0.1346801                      120   120
+[17] {Age=adulto,                                                  
+      Sex=Masculino,                                               
+      Embarked=Queenstown} 0.1425365                      127   127
+[18] {Age=adulto,                                                  
+      Embarked=Queenstown} 0.2132435                      190   190
+[19] {Age=adulto,                                                  
+      Sex=Masculino}       0.1739618                      155   155
+[20] {Age=adulto,                                                  
+      Survived=Não}        0.1560045                      139   139
+[21] {Pclass=Baixa,                                                
+      Age=adulto}          0.1043771                       93    93
+[22] {Age=adulto,                                                  
+      Survived=Sim}        0.1144781                      102   102
+[23] {Sex=Feminino,                                                
+      Embarked=Queenstown,                                         
+      Survived=Sim}        0.1571268                      140   140
+[24] {Age=Jovem,                                                   
+      Sex=Feminino,                                                
+      Survived=Sim}        0.1279461                      114   114
+[25] {Age=Jovem,                                                   
+      Sex=Feminino,                                                
+      Embarked=Queenstown} 0.1268238                      113   113
+[26] {Sex=Feminino,                                                
+      Embarked=Queenstown} 0.2278339                      203   203
+[27] {Pclass=Baixa,                                                
+      Sex=Feminino}        0.1616162                      144   144
+[28] {Age=Jovem,                                                   
+      Sex=Feminino}        0.1773288                      158   158
+[29] {Sex=Feminino,                                                
+      Survived=Sim}        0.2615039                      233   233
+[30] {Age=Jovem,                                                   
+      Embarked=Queenstown,                                         
+      Survived=Sim}        0.1257015                      112   112
+[31] {Embarked=Queenstown,                                         
+      Survived=Sim}        0.2435466                      217   217
+[32] {Sex=Masculino,                                               
+      Survived=Sim}        0.1223345                      109   109
+[33] {Pclass=Baixa,                                                
+      Survived=Sim}        0.1335578                      119   119
+[34] {Age=Jovem,                                                   
+      Survived=Sim}        0.1863075                      166   166
+[35] {Pclass=Baixa,                                                
+      Age=Jovem,                                                   
+      Sex=Masculino,                                               
+      Embarked=Queenstown,                                         
+      Survived=Não}        0.1402918                      125   125
+[36] {Pclass=Baixa,                                                
+      Age=Jovem,                                                   
+      Embarked=Queenstown,                                         
+      Survived=Não}        0.1773288                      158   158
+[37] {Pclass=Baixa,                                                
+      Age=Jovem,                                                   
+      Sex=Masculino,                                               
+      Survived=Não}        0.1616162                      144   144
+[38] {Pclass=Baixa,                                                
+      Age=Jovem,                                                   
+      Sex=Masculino,                                               
+      Embarked=Queenstown} 0.1638608                      146   146
+[39] {Pclass=Baixa,                                                
+      Age=Jovem,                                                   
+      Embarked=Queenstown} 0.2278339                      203   203
+[40] {Pclass=Baixa,                                                
+      Age=Jovem,                                                   
+      Sex=Masculino}       0.1941639                      173   173
+[41] {Pclass=Baixa,                                                
+      Age=Jovem,                                                   
+      Survived=Não}        0.2053872                      183   183
+[42] {Age=Jovem,                                                   
+      Sex=Masculino,                                               
+      Embarked=Queenstown,                                         
+      Survived=Não}        0.1896745                      169   169
+[43] {Age=Jovem,                                                   
+      Embarked=Queenstown,                                         
+      Survived=Não}        0.2323232                      207   207
+[44] {Age=Jovem,                                                   
+      Sex=Masculino,                                               
+      Survived=Não}        0.2233446                      199   199
+[45] {Age=Jovem,                                                   
+      Sex=Masculino,                                               
+      Embarked=Queenstown} 0.2312009                      206   206
+[46] {Age=Jovem,                                                   
+      Embarked=Queenstown} 0.3580247                      319   319
+[47] {Age=Jovem,                                                   
+      Sex=Masculino}       0.2817059                      251   251
+[48] {Age=Jovem,                                                   
+      Survived=Não}        0.2727273                      243   243
+[49] {Pclass=Baixa,                                                
+      Age=Jovem}           0.2828283                      252   252
+[50] {Pclass=Baixa,                                                
+      Sex=Masculino,                                               
+      Embarked=Queenstown,                                         
+      Survived=Não}        0.2592593                      231   231
+[51] {Pclass=Baixa,                                                
+      Embarked=Queenstown,                                         
+      Survived=Não}        0.3209877                      286   286
+[52] {Pclass=Baixa,                                                
+      Sex=Masculino,                                               
+      Survived=Não}        0.3367003                      300   300
+[53] {Pclass=Baixa,                                                
+      Sex=Masculino,                                               
+      Embarked=Queenstown} 0.2974186                      265   265
+[54] {Pclass=Baixa,                                                
+      Embarked=Queenstown} 0.3961841                      353   353
+[55] {Pclass=Baixa,                                                
+      Sex=Masculino}       0.3894501                      347   347
+[56] {Pclass=Baixa,                                                
+      Survived=Não}        0.4175084                      372   372
+[57] {Sex=Masculino,                                               
+      Embarked=Queenstown,                                         
+      Survived=Não}        0.4085297                      364   364
+[58] {Embarked=Queenstown,                                         
+      Survived=Não}        0.4792368                      427   427
+[59] {Sex=Masculino,                                               
+      Survived=Não}        0.5252525                      468   468
+[60] {Sex=Masculino,                                               
+      Embarked=Queenstown} 0.4949495                      441   441
+[61] {Embarked=Queenstown} 0.7227834                      644   644
+[62] {Sex=Masculino}       0.6475870                      577   577
+[63] {Survived=Não}        0.6161616                      549   549
+[64] {Pclass=Baixa}        0.5510662                      491   491
+[65] {Age=Jovem}           0.4590348                      409   409
+[66] {Survived=Sim}        0.3838384                      342   342
+[67] {Sex=Feminino}        0.3524130                      314   314
+[68] {Age=adulto}          0.2704826                      241   241
+[69] {Pclass=Alta}         0.2424242                      216   216
+[70] {Pclass=Média}        0.2065095                      184   184
+[71] {Embarked=Cherbourg}  0.1885522                      168   168
+> #install.packages("aruleViz")
+> plot(regras, method="graph", control=list(type="items"))
+Warning: Unknown control parameters: type
+Available control parameters (with default values):
+main	 =  Graph for 71 itemsets
+nodeColors	 =  c("#66CC6680", "#9999CC80")
+nodeCol	 =  c("#EE0000FF", "#EE0303FF", "#EE0606FF", "#EE0909FF", "#EE0C0CFF", "#EE0F0FFF", "#EE1212FF", "#EE1515FF", "#EE1818FF", "#EE1B1BFF", "#EE1E1EFF", "#EE2222FF", "#EE2525FF", "#EE2828FF", "#EE2B2BFF", "#EE2E2EFF", "#EE3131FF", "#EE3434FF", "#EE3737FF", "#EE3A3AFF", "#EE3D3DFF", "#EE4040FF", "#EE4444FF", "#EE4747FF", "#EE4A4AFF", "#EE4D4DFF", "#EE5050FF", "#EE5353FF", "#EE5656FF", "#EE5959FF", "#EE5C5CFF", "#EE5F5FFF", "#EE6262FF", "#EE6666FF", "#EE6969FF", "#EE6C6CFF", "#EE6F6FFF", "#EE7272FF", "#EE7575FF",  "#EE7878FF", "#EE7B7BFF", "#EE7E7EFF", "#EE8181FF", "#EE8484FF", "#EE8888FF", "#EE8B8BFF", "#EE8E8EFF", "#EE9191FF", "#EE9494FF", "#EE9797FF", "#EE9999FF", "#EE9B9BFF", "#EE9D9DFF", "#EE9F9FFF", "#EEA0A0FF", "#EEA2A2FF", "#EEA4A4FF", "#EEA5A5FF", "#EEA7A7FF", "#EEA9A9FF", "#EEABABFF", "#EEACACFF", "#EEAEAEFF", "#EEB0B0FF", "#EEB1B1FF", "#EEB3B3FF", "#EEB5B5FF", "#EEB7B7FF", "#EEB8B8FF", "#EEBABAFF", "#EEBCBCFF", "#EEBDBDFF", "#EEBFBFFF", "#EEC1C1FF", "#EEC3C3FF", "#EEC4C4FF", "#EEC6C6FF", "#EEC8C8FF",  "#EEC9C9FF", "#EECBCBFF", "#EECDCDFF", "#EECFCFFF", "#EED0D0FF", "#EED2D2FF", "#EED4D4FF", "#EED5D5FF", "#EED7D7FF", "#EED9D9FF", "#EEDBDBFF", "#EEDCDCFF", "#EEDEDEFF", "#EEE0E0FF", "#EEE1E1FF", "#EEE3E3FF", "#EEE5E5FF", "#EEE7E7FF", "#EEE8E8FF", "#EEEAEAFF", "#EEECECFF", "#EEEEEEFF")
+edgeCol	 =  c("#474747FF", "#494949FF", "#4B4B4BFF", "#4D4D4DFF", "#4F4F4FFF", "#515151FF", "#535353FF", "#555555FF", "#575757FF", "#595959FF", "#5B5B5BFF", "#5E5E5EFF", "#606060FF", "#626262FF", "#646464FF", "#666666FF", "#686868FF", "#6A6A6AFF", "#6C6C6CFF", "#6E6E6EFF", "#707070FF", "#727272FF", "#747474FF", "#767676FF", "#787878FF", "#7A7A7AFF", "#7C7C7CFF", "#7E7E7EFF", "#808080FF", "#828282FF", "#848484FF", "#868686FF", "#888888FF", "#8A8A8AFF", "#8C8C8CFF", "#8D8D8DFF", "#8F8F8FFF", "#919191FF", "#939393FF",  "#959595FF", "#979797FF", "#999999FF", "#9A9A9AFF", "#9C9C9CFF", "#9E9E9EFF", "#A0A0A0FF", "#A2A2A2FF", "#A3A3A3FF", "#A5A5A5FF", "#A7A7A7FF", "#A9A9A9FF", "#AAAAAAFF", "#ACACACFF", "#AEAEAEFF", "#AFAFAFFF", "#B1B1B1FF", "#B3B3B3FF", "#B4B4B4FF", "#B6B6B6FF", "#B7B7B7FF", "#B9B9B9FF", "#BBBBBBFF", "#BCBCBCFF", "#BEBEBEFF", "#BFBFBFFF", "#C1C1C1FF", "#C2C2C2FF", "#C3C3C4FF", "#C5C5C5FF", "#C6C6C6FF", "#C8C8C8FF", "#C9C9C9FF", "#CACACAFF", "#CCCCCCFF", "#CDCDCDFF", "#CECECEFF", "#CFCFCFFF", "#D1D1D1FF",  "#D2D2D2FF", "#D3D3D3FF", "#D4D4D4FF", "#D5D5D5FF", "#D6D6D6FF", "#D7D7D7FF", "#D8D8D8FF", "#D9D9D9FF", "#DADADAFF", "#DBDBDBFF", "#DCDCDCFF", "#DDDDDDFF", "#DEDEDEFF", "#DEDEDEFF", "#DFDFDFFF", "#E0E0E0FF", "#E0E0E0FF", "#E1E1E1FF", "#E1E1E1FF", "#E2E2E2FF", "#E2E2E2FF", "#E2E2E2FF")
+alpha	 =  0.5
+cex	 =  1
+itemLabels	 =  TRUE
+labelCol	 =  #000000B3
+measureLabels	 =  FALSE
+precision	 =  3
+layout	 =  NULL
+layoutParams	 =  list()
+arrowSize	 =  0.5
+engine	 =  igraph
+plot	 =  TRUE
+plot_options	 =  list()
+max	 =  100
+verbose	 =  FALSE
+> 
+> 
+> # Verificando se a valores missing
+> sapply(data_train, function(x) sum(is.na(x)))
+  Pclass      Age      Sex     Fare Embarked Survived 
+       0      177        0        0        0        0 
+> #missmap(data_train, main = "Valores Missing Observados")
+> data_train <- na.omit(data_train)
+> head(data_train)
+  Pclass    Age       Sex    Fare   Embarked Survived
+1  Baixa  Jovem Masculino    7.25 Queenstown      Não
+2   Alta adulto  Feminino 71.2833  Cherbourg      Sim
+3  Baixa  Jovem  Feminino   7.925 Queenstown      Sim
+4   Alta adulto  Feminino    53.1 Queenstown      Sim
+5  Baixa adulto Masculino    8.05 Queenstown      Não
+7   Alta  Idoso Masculino 51.8625 Queenstown      Não
+> 
+> # Esses 3 gráficos nos mostram que pessoas mais velhas, de classe social alta e do sexo 
+> # feminino pagarama mais caro nas cabines do navio.
+> 
+> data_train$Fare <- as.numeric(data_train$Fare)
+> # Gráfico média de preço da passagem por Idade
+> ggplot(data_train) + stat_summary(aes(x = data_train$Age, y = data_train$Fare),
++                                fun.y = mean, geom = "bar",
++                                fill = "lightgreen", col = "grey50")
+Warning message:
+`fun.y` is deprecated. Use `fun` instead. 
+> #Gráfico média de preço da passagem por CLasse Social
+> ggplot(data_train) + stat_summary(aes(x = data_train$Pclass, y = data_train$Fare),
++                                fun.y = mean, geom = "bar",
++                                fill = "lightblue", col = "grey50")
+Warning message:
+`fun.y` is deprecated. Use `fun` instead. 
+> 
+> #Gráfico média de preço da passagem por Sexo
+> ggplot(data_train) + stat_summary(aes(x = data_train$Sex, y = data_train$Fare),
++                                fun.y = mean, geom = "bar",
++                                fill = "lightblue", col = "grey50")
+Warning message:
+`fun.y` is deprecated. Use `fun` instead. 
+> 
+> # Age vs Survived
+> ggplot(data_train[1:714,],aes(Age, fill = (Survived))) + 
++   geom_bar(stat = "count") + 
++   theme_few() +
++   xlab("Age") +
++   facet_grid(.~Sex)+
++   ylab("count") +
++   scale_fill_discrete(name = "Survived") + 
++   ggtitle("Age vs Survived")
+> 
+> # Pclass vc Survived
+> ggplot(data_train[1:714,], aes(Pclass, fill = (Survived))) +
++   geom_bar(stat = "count") +
++   theme_few() +
++   xlab("Pclass") +
++   facet_grid(.~Sex) +
++   ylab("count") +
++   scale_fill_discrete(name = "Survided") +
++   ggtitle("Pclass vs Survived")
+> 
+> # Embarked vs Survived
+> ggplot(data_train[1:714,], aes(Embarked, fill = (Survived))) +
++   geom_bar(stat = "count") +
++   xlab("Embarked") +
++   facet_grid(.~Sex) +
++   ylab("count") +
++   scale_fill_discrete(name = "Survived") +
++   ggtitle("Embarked vs Survived")
+> 
+> #########################################################################
+> ################## Random Forest Classification Model ###################
+> #########################################################################
+> 
+> # Set the seed
+> set.seed(12345)
+> 
+> # Contruindo o modelo Random Forest
+> rf_model <- randomForest(Survived ~ ., data = data_train)
+> print("Modelo contruido")
+[1] "Modelo contruido"
+> rf_model
+
+Call:
+ randomForest(formula = Survived ~ ., data = data_train) 
+               Type of random forest: classification
+                     Number of trees: 500
+No. of variables tried at each split: 2
+
+        OOB estimate of  error rate: 19.89%
+Confusion matrix:
+    Não Sim class.error
+Não 393  31  0.07311321
+Sim 111 179  0.38275862
+> 
+> varImpPlot(rf_model)
+> 
+> ########################################################################
+> ############## Carregando dataset de Teste #############################
+> ########################################################################
+> 
+> head(data_test)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> 
+> data_test$PassengerId <- NULL
+> data_test$Name <- NULL
+> data_test$SibSp <- NULL
+> data_test$Parch <- NULL
+> data_test$Parch <- NULL
+> data_test$Ticket <- NULL
+> data_test$Cabin <- NULL
+> 
+> # Ordenando as colunas
+> data_test <- data_test %>%
++   select(Pclass, Age, Sex, Fare, Embarked)
+> 
+> head(data_test)
+  Pclass Age    Sex    Fare Embarked
+1      3  22   male  7.2500        S
+2      1  38 female 71.2833        C
+3      3  26 female  7.9250        S
+4      1  35 female 53.1000        S
+5      3  35   male  8.0500        S
+6      3  NA   male  8.4583        Q
+> 
+> # Transoformando as Variáveis em fator, numerico e character
+> data_test$Pclass <- as.factor(data_test$Pclass)
+> levels(data_test$Pclass) <- c("Alta", "Média", "Baixa")
+> 
+> data_test$Sex <- as.factor(data_test$Sex)
+> levels(data_test$Sex) <- c("Feminino", "Masculino")
+> 
+> data_test$Age <- as.numeric(data_test$Age)
+> data_test$Age <- cut(data_test$Age, c(0, 30, 50, 100), labels = c("Jovem", "adulto", "Idoso"))
+> 
+> data_test$Embarked <- as.factor(data_test$Embarked)
+> levels(data_test$Embarked) <- c(0, "Cherbourg", "Queenstown", "Southampton")
+> 
+> head(data_test)
+  Pclass    Age       Sex    Fare    Embarked
+1  Baixa  Jovem Masculino  7.2500 Southampton
+2   Alta adulto  Feminino 71.2833   Cherbourg
+3  Baixa  Jovem  Feminino  7.9250 Southampton
+4   Alta adulto  Feminino 53.1000 Southampton
+5  Baixa adulto Masculino  8.0500 Southampton
+6  Baixa   <NA> Masculino  8.4583  Queenstown
+> 
+> # Verificando se a valores missing
+> sapply(data_test, function(x) sum(is.na(x)))
+  Pclass      Age      Sex     Fare Embarked 
+       0      177        0        0        0 
+> data_test <- na.omit(data_test)
+> head(data_test)
+  Pclass    Age       Sex    Fare    Embarked
+1  Baixa  Jovem Masculino  7.2500 Southampton
+2   Alta adulto  Feminino 71.2833   Cherbourg
+3  Baixa  Jovem  Feminino  7.9250 Southampton
+4   Alta adulto  Feminino 53.1000 Southampton
+5  Baixa adulto Masculino  8.0500 Southampton
+7   Alta  Idoso Masculino 51.8625 Southampton
+> 
+> ####################### Previsão Randon Forest #####################################
+> ####################################################################################
+> predictionrf <- predict(rf_model, data_test)
+> predictionrf <- data.frame(predictionrf)
+> predictionrf
+    predictionrf
+1            Não
+2            Sim
+3            Sim
+4            Sim
+5            Não
+7            Não
+8            Não
+9            Sim
+10           Sim
+11           Sim
+12           Sim
+13           Não
+14           Não
+15           Sim
+16           Sim
+17           Não
+19           Não
+21           Não
+22           Não
+23           Sim
+24           Não
+25           Sim
+26           Não
+28           Não
+31           Não
+34           Não
+35           Não
+36           Não
+38           Não
+39           Sim
+40           Sim
+41           Não
+42           Sim
+44           Sim
+45           Sim
+50           Sim
+51           Não
+52           Não
+53           Sim
+54           Sim
+55           Não
+57           Sim
+58           Não
+59           Sim
+60           Não
+61           Não
+62           Sim
+63           Não
+64           Não
+67           Sim
+68           Não
+69           Sim
+70           Não
+71           Não
+72           Sim
+73           Não
+74           Não
+75           Não
+76           Não
+79           Não
+80           Sim
+81           Não
+82           Não
+84           Não
+85           Sim
+86           Não
+87           Não
+89           Sim
+90           Não
+91           Não
+92           Não
+93           Não
+94           Não
+95           Não
+97           Não
+98           Não
+99           Sim
+100          Não
+101          Sim
+103          Não
+104          Não
+105          Não
+106          Não
+107          Sim
+109          Não
+111          Não
+112          Sim
+113          Não
+114          Sim
+115          Sim
+116          Não
+117          Não
+118          Não
+119          Não
+120          Sim
+121          Não
+123          Não
+124          Sim
+125          Não
+126          Não
+128          Não
+130          Não
+131          Não
+132          Não
+133          Não
+134          Sim
+135          Não
+136          Não
+137          Sim
+138          Não
+139          Não
+140          Não
+142          Sim
+143          Sim
+144          Não
+145          Não
+146          Não
+147          Não
+148          Sim
+149          Não
+150          Não
+151          Não
+152          Sim
+153          Não
+154          Não
+156          Não
+157          Sim
+158          Não
+161          Não
+162          Sim
+163          Não
+164          Não
+165          Não
+166          Não
+168          Não
+170          Não
+171          Não
+172          Não
+173          Sim
+174          Não
+175          Não
+176          Não
+178          Sim
+179          Não
+180          Não
+183          Não
+184          Não
+185          Sim
+188          Não
+189          Não
+190          Não
+191          Sim
+192          Não
+193          Sim
+194          Não
+195          Sim
+196          Sim
+198          Não
+200          Sim
+201          Não
+203          Não
+204          Não
+205          Não
+206          Sim
+207          Não
+208          Não
+209          Sim
+210          Não
+211          Não
+212          Sim
+213          Não
+214          Não
+216          Sim
+217          Sim
+218          Não
+219          Sim
+220          Não
+221          Não
+222          Não
+223          Não
+225          Não
+226          Não
+227          Não
+228          Não
+229          Não
+231          Sim
+232          Não
+233          Não
+234          Sim
+235          Não
+237          Não
+238          Sim
+239          Não
+240          Não
+243          Não
+244          Não
+245          Não
+246          Não
+247          Sim
+248          Sim
+249          Não
+250          Não
+252          Sim
+253          Não
+254          Não
+255          Não
+256          Sim
+258          Sim
+259          Sim
+260          Sim
+262          Não
+263          Não
+264          Não
+266          Não
+267          Não
+268          Não
+269          Sim
+270          Sim
+272          Não
+273          Sim
+274          Não
+276          Sim
+277          Não
+279          Não
+280          Não
+281          Não
+282          Não
+283          Não
+284          Não
+286          Não
+287          Não
+288          Não
+289          Não
+290          Sim
+291          Sim
+292          Sim
+293          Não
+294          Sim
+295          Não
+297          Não
+298          Sim
+300          Sim
+303          Não
+306          Não
+308          Sim
+309          Não
+310          Sim
+311          Sim
+312          Sim
+313          Sim
+314          Não
+315          Não
+316          Sim
+317          Sim
+318          Não
+319          Sim
+320          Sim
+321          Não
+322          Não
+323          Sim
+324          Sim
+326          Sim
+327          Não
+328          Sim
+329          Não
+330          Sim
+332          Não
+333          Não
+334          Não
+337          Não
+338          Sim
+339          Não
+340          Não
+341          Não
+342          Sim
+343          Não
+344          Não
+345          Não
+346          Sim
+347          Sim
+349          Não
+350          Não
+351          Não
+353          Não
+354          Não
+356          Não
+357          Sim
+358          Sim
+361          Não
+362          Não
+363          Não
+364          Não
+366          Não
+367          Sim
+370          Sim
+371          Não
+372          Não
+373          Não
+374          Não
+375          Sim
+377          Sim
+378          Sim
+379          Não
+380          Não
+381          Sim
+382          Sim
+383          Não
+384          Sim
+386          Não
+387          Não
+388          Sim
+390          Sim
+391          Não
+392          Não
+393          Não
+394          Sim
+395          Sim
+396          Não
+397          Não
+398          Não
+399          Não
+400          Sim
+401          Não
+402          Não
+403          Sim
+404          Não
+405          Sim
+406          Não
+407          Não
+408          Não
+409          Não
+413          Sim
+415          Não
+417          Sim
+418          Sim
+419          Não
+420          Sim
+422          Não
+423          Não
+424          Sim
+425          Não
+427          Sim
+428          Sim
+430          Não
+431          Não
+433          Sim
+434          Não
+435          Não
+436          Sim
+437          Sim
+438          Sim
+439          Não
+440          Não
+441          Sim
+442          Não
+443          Não
+444          Sim
+446          Não
+447          Sim
+448          Não
+449          Sim
+450          Não
+451          Não
+453          Não
+454          Não
+456          Não
+457          Não
+459          Sim
+461          Não
+462          Não
+463          Não
+464          Não
+466          Não
+468          Não
+470          Sim
+472          Não
+473          Sim
+474          Sim
+475          Sim
+477          Não
+478          Não
+479          Não
+480          Sim
+481          Não
+483          Não
+484          Não
+485          Não
+487          Sim
+488          Não
+489          Não
+490          Não
+492          Não
+493          Não
+494          Não
+495          Não
+497          Sim
+499          Sim
+500          Não
+501          Não
+502          Sim
+504          Não
+505          Sim
+506          Não
+507          Sim
+509          Não
+510          Não
+511          Não
+513          Não
+514          Sim
+515          Não
+516          Não
+517          Sim
+519          Sim
+520          Não
+521          Sim
+522          Não
+524          Sim
+526          Não
+527          Sim
+529          Não
+530          Não
+531          Sim
+533          Não
+535          Sim
+536          Sim
+537          Não
+538          Sim
+540          Sim
+541          Sim
+542          Sim
+543          Sim
+544          Não
+545          Não
+546          Não
+547          Sim
+549          Não
+550          Não
+551          Não
+552          Não
+554          Não
+555          Sim
+556          Não
+557          Sim
+559          Sim
+560          Não
+562          Não
+563          Não
+566          Não
+567          Não
+568          Sim
+570          Não
+571          Não
+572          Sim
+573          Não
+575          Não
+576          Não
+577          Sim
+578          Sim
+580          Não
+581          Sim
+582          Sim
+583          Não
+584          Não
+586          Sim
+587          Não
+588          Não
+589          Não
+591          Não
+592          Sim
+593          Não
+595          Não
+596          Não
+598          Não
+600          Não
+601          Sim
+604          Não
+605          Não
+606          Não
+607          Não
+608          Não
+609          Sim
+610          Sim
+611          Não
+615          Não
+616          Sim
+617          Não
+618          Sim
+619          Sim
+620          Não
+621          Não
+622          Não
+623          Não
+624          Não
+625          Não
+626          Não
+627          Não
+628          Sim
+629          Não
+631          Não
+632          Não
+633          Não
+635          Sim
+636          Sim
+637          Não
+638          Não
+639          Não
+641          Não
+642          Sim
+643          Sim
+645          Sim
+646          Não
+647          Não
+648          Não
+650          Sim
+652          Sim
+653          Não
+655          Sim
+656          Não
+658          Não
+659          Não
+660          Não
+661          Não
+662          Não
+663          Não
+664          Não
+665          Não
+666          Não
+667          Não
+669          Não
+671          Sim
+672          Não
+673          Não
+674          Não
+676          Não
+677          Não
+678          Sim
+679          Não
+680          Sim
+682          Não
+683          Não
+684          Não
+685          Não
+686          Não
+687          Não
+688          Não
+689          Não
+690          Sim
+691          Não
+692          Sim
+694          Não
+695          Não
+696          Não
+697          Não
+699          Não
+700          Não
+701          Sim
+702          Não
+703          Sim
+704          Não
+705          Não
+706          Não
+707          Sim
+708          Não
+709          Sim
+711          Sim
+713          Não
+714          Não
+715          Não
+716          Não
+717          Sim
+718          Sim
+720          Não
+721          Sim
+722          Não
+723          Não
+724          Não
+725          Não
+726          Não
+727          Sim
+729          Não
+730          Sim
+731          Sim
+732          Não
+734          Não
+735          Não
+736          Não
+737          Não
+738          Sim
+742          Não
+743          Sim
+744          Não
+745          Não
+746          Não
+747          Não
+748          Sim
+749          Não
+750          Não
+751          Sim
+752          Não
+753          Não
+754          Não
+755          Sim
+756          Não
+757          Não
+758          Não
+759          Não
+760          Sim
+762          Não
+763          Não
+764          Sim
+765          Não
+766          Sim
+768          Não
+770          Não
+771          Não
+772          Não
+773          Sim
+775          Sim
+776          Não
+778          Sim
+780          Sim
+781          Sim
+782          Sim
+783          Não
+785          Não
+786          Não
+787          Sim
+788          Não
+789          Não
+790          Não
+792          Não
+795          Não
+796          Não
+797          Sim
+798          Não
+799          Não
+800          Sim
+801          Não
+802          Sim
+803          Não
+804          Não
+805          Não
+806          Não
+807          Não
+808          Sim
+809          Não
+810          Sim
+811          Não
+812          Não
+813          Não
+814          Sim
+815          Não
+817          Sim
+818          Não
+819          Não
+820          Não
+821          Sim
+822          Não
+823          Não
+824          Sim
+825          Não
+828          Não
+830          Sim
+831          Sim
+832          Não
+834          Não
+835          Não
+836          Sim
+837          Não
+839          Não
+841          Não
+842          Não
+843          Sim
+844          Não
+845          Não
+846          Não
+848          Não
+849          Não
+851          Não
+852          Não
+853          Sim
+854          Sim
+855          Sim
+856          Sim
+857          Sim
+858          Não
+859          Sim
+861          Não
+862          Não
+863          Sim
+865          Não
+866          Sim
+867          Sim
+868          Não
+870          Não
+871          Não
+872          Sim
+873          Não
+874          Não
+875          Sim
+876          Sim
+877          Não
+878          Não
+880          Sim
+881          Sim
+882          Não
+883          Sim
+884          Não
+885          Não
+886          Não
+887          Não
+888          Sim
+890          Não
+891          Não
+> 
+> data_test['Previsão'] <- c(predictionrf)
+> data_test
+    Pclass    Age       Sex     Fare    Embarked Previsão
+1    Baixa  Jovem Masculino   7.2500 Southampton      Não
+2     Alta adulto  Feminino  71.2833   Cherbourg      Sim
+3    Baixa  Jovem  Feminino   7.9250 Southampton      Sim
+4     Alta adulto  Feminino  53.1000 Southampton      Sim
+5    Baixa adulto Masculino   8.0500 Southampton      Não
+7     Alta  Idoso Masculino  51.8625 Southampton      Não
+8    Baixa  Jovem Masculino  21.0750 Southampton      Não
+9    Baixa  Jovem  Feminino  11.1333 Southampton      Sim
+10   Média  Jovem  Feminino  30.0708   Cherbourg      Sim
+11   Baixa  Jovem  Feminino  16.7000 Southampton      Sim
+12    Alta  Idoso  Feminino  26.5500 Southampton      Sim
+13   Baixa  Jovem Masculino   8.0500 Southampton      Não
+14   Baixa adulto Masculino  31.2750 Southampton      Não
+15   Baixa  Jovem  Feminino   7.8542 Southampton      Sim
+16   Média  Idoso  Feminino  16.0000 Southampton      Sim
+17   Baixa  Jovem Masculino  29.1250  Queenstown      Não
+19   Baixa adulto  Feminino  18.0000 Southampton      Não
+21   Média adulto Masculino  26.0000 Southampton      Não
+22   Média adulto Masculino  13.0000 Southampton      Não
+23   Baixa  Jovem  Feminino   8.0292  Queenstown      Sim
+24    Alta  Jovem Masculino  35.5000 Southampton      Não
+25   Baixa  Jovem  Feminino  21.0750 Southampton      Sim
+26   Baixa adulto  Feminino  31.3875 Southampton      Não
+28    Alta  Jovem Masculino 263.0000 Southampton      Não
+31    Alta adulto Masculino  27.7208   Cherbourg      Não
+34   Média  Idoso Masculino  10.5000 Southampton      Não
+35    Alta  Jovem Masculino  82.1708   Cherbourg      Não
+36    Alta adulto Masculino  52.0000 Southampton      Não
+38   Baixa  Jovem Masculino   8.0500 Southampton      Não
+39   Baixa  Jovem  Feminino  18.0000 Southampton      Sim
+40   Baixa  Jovem  Feminino  11.2417   Cherbourg      Sim
+41   Baixa adulto  Feminino   9.4750 Southampton      Não
+42   Média  Jovem  Feminino  21.0000 Southampton      Sim
+44   Média  Jovem  Feminino  41.5792   Cherbourg      Sim
+45   Baixa  Jovem  Feminino   7.8792  Queenstown      Sim
+50   Baixa  Jovem  Feminino  17.8000 Southampton      Sim
+51   Baixa  Jovem Masculino  39.6875 Southampton      Não
+52   Baixa  Jovem Masculino   7.8000 Southampton      Não
+53    Alta adulto  Feminino  76.7292   Cherbourg      Sim
+54   Média  Jovem  Feminino  26.0000 Southampton      Sim
+55    Alta  Idoso Masculino  61.9792   Cherbourg      Não
+57   Média  Jovem  Feminino  10.5000 Southampton      Sim
+58   Baixa  Jovem Masculino   7.2292   Cherbourg      Não
+59   Média  Jovem  Feminino  27.7500 Southampton      Sim
+60   Baixa  Jovem Masculino  46.9000 Southampton      Não
+61   Baixa  Jovem Masculino   7.2292   Cherbourg      Não
+62    Alta adulto  Feminino  80.0000           0      Sim
+63    Alta adulto Masculino  83.4750 Southampton      Não
+64   Baixa  Jovem Masculino  27.9000 Southampton      Não
+67   Média  Jovem  Feminino  10.5000 Southampton      Sim
+68   Baixa  Jovem Masculino   8.1583 Southampton      Não
+69   Baixa  Jovem  Feminino   7.9250 Southampton      Sim
+70   Baixa  Jovem Masculino   8.6625 Southampton      Não
+71   Média adulto Masculino  10.5000 Southampton      Não
+72   Baixa  Jovem  Feminino  46.9000 Southampton      Sim
+73   Média  Jovem Masculino  73.5000 Southampton      Não
+74   Baixa  Jovem Masculino  14.4542   Cherbourg      Não
+75   Baixa adulto Masculino  56.4958 Southampton      Não
+76   Baixa  Jovem Masculino   7.6500 Southampton      Não
+79   Média  Jovem Masculino  29.0000 Southampton      Não
+80   Baixa  Jovem  Feminino  12.4750 Southampton      Sim
+81   Baixa  Jovem Masculino   9.0000 Southampton      Não
+82   Baixa  Jovem Masculino   9.5000 Southampton      Não
+84    Alta  Jovem Masculino  47.1000 Southampton      Não
+85   Média  Jovem  Feminino  10.5000 Southampton      Sim
+86   Baixa adulto  Feminino  15.8500 Southampton      Não
+87   Baixa  Jovem Masculino  34.3750 Southampton      Não
+89    Alta  Jovem  Feminino 263.0000 Southampton      Sim
+90   Baixa  Jovem Masculino   8.0500 Southampton      Não
+91   Baixa  Jovem Masculino   8.0500 Southampton      Não
+92   Baixa  Jovem Masculino   7.8542 Southampton      Não
+93    Alta adulto Masculino  61.1750 Southampton      Não
+94   Baixa  Jovem Masculino  20.5750 Southampton      Não
+95   Baixa  Idoso Masculino   7.2500 Southampton      Não
+97    Alta  Idoso Masculino  34.6542   Cherbourg      Não
+98    Alta  Jovem Masculino  63.3583   Cherbourg      Não
+99   Média adulto  Feminino  23.0000 Southampton      Sim
+100  Média adulto Masculino  26.0000 Southampton      Não
+101  Baixa  Jovem  Feminino   7.8958 Southampton      Sim
+103   Alta  Jovem Masculino  77.2875 Southampton      Não
+104  Baixa adulto Masculino   8.6542 Southampton      Não
+105  Baixa adulto Masculino   7.9250 Southampton      Não
+106  Baixa  Jovem Masculino   7.8958 Southampton      Não
+107  Baixa  Jovem  Feminino   7.6500 Southampton      Sim
+109  Baixa adulto Masculino   7.8958 Southampton      Não
+111   Alta adulto Masculino  52.0000 Southampton      Não
+112  Baixa  Jovem  Feminino  14.4542   Cherbourg      Sim
+113  Baixa  Jovem Masculino   8.0500 Southampton      Não
+114  Baixa  Jovem  Feminino   9.8250 Southampton      Sim
+115  Baixa  Jovem  Feminino  14.4583   Cherbourg      Sim
+116  Baixa  Jovem Masculino   7.9250 Southampton      Não
+117  Baixa  Idoso Masculino   7.7500  Queenstown      Não
+118  Média  Jovem Masculino  21.0000 Southampton      Não
+119   Alta  Jovem Masculino 247.5208   Cherbourg      Não
+120  Baixa  Jovem  Feminino  31.2750 Southampton      Sim
+121  Média  Jovem Masculino  73.5000 Southampton      Não
+123  Média adulto Masculino  30.0708   Cherbourg      Não
+124  Média adulto  Feminino  13.0000 Southampton      Sim
+125   Alta  Idoso Masculino  77.2875 Southampton      Não
+126  Baixa  Jovem Masculino  11.2417   Cherbourg      Não
+128  Baixa  Jovem Masculino   7.1417 Southampton      Não
+130  Baixa adulto Masculino   6.9750 Southampton      Não
+131  Baixa adulto Masculino   7.8958   Cherbourg      Não
+132  Baixa  Jovem Masculino   7.0500 Southampton      Não
+133  Baixa adulto  Feminino  14.5000 Southampton      Não
+134  Média  Jovem  Feminino  26.0000 Southampton      Sim
+135  Média  Jovem Masculino  13.0000 Southampton      Não
+136  Média  Jovem Masculino  15.0458   Cherbourg      Não
+137   Alta  Jovem  Feminino  26.2833 Southampton      Sim
+138   Alta adulto Masculino  53.1000 Southampton      Não
+139  Baixa  Jovem Masculino   9.2167 Southampton      Não
+140   Alta  Jovem Masculino  79.2000   Cherbourg      Não
+142  Baixa  Jovem  Feminino   7.7500 Southampton      Sim
+143  Baixa  Jovem  Feminino  15.8500 Southampton      Sim
+144  Baixa  Jovem Masculino   6.7500  Queenstown      Não
+145  Média  Jovem Masculino  11.5000 Southampton      Não
+146  Média  Jovem Masculino  36.7500 Southampton      Não
+147  Baixa  Jovem Masculino   7.7958 Southampton      Não
+148  Baixa  Jovem  Feminino  34.3750 Southampton      Sim
+149  Média adulto Masculino  26.0000 Southampton      Não
+150  Média adulto Masculino  13.0000 Southampton      Não
+151  Média  Idoso Masculino  12.5250 Southampton      Não
+152   Alta  Jovem  Feminino  66.6000 Southampton      Sim
+153  Baixa  Idoso Masculino   8.0500 Southampton      Não
+154  Baixa adulto Masculino  14.5000 Southampton      Não
+156   Alta  Idoso Masculino  61.3792   Cherbourg      Não
+157  Baixa  Jovem  Feminino   7.7333  Queenstown      Sim
+158  Baixa  Jovem Masculino   8.0500 Southampton      Não
+161  Baixa adulto Masculino  16.1000 Southampton      Não
+162  Média adulto  Feminino  15.7500 Southampton      Sim
+163  Baixa  Jovem Masculino   7.7750 Southampton      Não
+164  Baixa  Jovem Masculino   8.6625 Southampton      Não
+165  Baixa  Jovem Masculino  39.6875 Southampton      Não
+166  Baixa  Jovem Masculino  20.5250 Southampton      Não
+168  Baixa adulto  Feminino  27.9000 Southampton      Não
+170  Baixa  Jovem Masculino  56.4958 Southampton      Não
+171   Alta  Idoso Masculino  33.5000 Southampton      Não
+172  Baixa  Jovem Masculino  29.1250  Queenstown      Não
+173  Baixa  Jovem  Feminino  11.1333 Southampton      Sim
+174  Baixa  Jovem Masculino   7.9250 Southampton      Não
+175   Alta  Idoso Masculino  30.6958   Cherbourg      Não
+176  Baixa  Jovem Masculino   7.8542 Southampton      Não
+178   Alta adulto  Feminino  28.7125   Cherbourg      Sim
+179  Média  Jovem Masculino  13.0000 Southampton      Não
+180  Baixa adulto Masculino   0.0000 Southampton      Não
+183  Baixa  Jovem Masculino  31.3875 Southampton      Não
+184  Média  Jovem Masculino  39.0000 Southampton      Não
+185  Baixa  Jovem  Feminino  22.0250 Southampton      Sim
+188   Alta adulto Masculino  26.5500 Southampton      Não
+189  Baixa adulto Masculino  15.5000  Queenstown      Não
+190  Baixa adulto Masculino   7.8958 Southampton      Não
+191  Média adulto  Feminino  13.0000 Southampton      Sim
+192  Média  Jovem Masculino  13.0000 Southampton      Não
+193  Baixa  Jovem  Feminino   7.8542 Southampton      Sim
+194  Média  Jovem Masculino  26.0000 Southampton      Não
+195   Alta adulto  Feminino  27.7208   Cherbourg      Sim
+196   Alta  Idoso  Feminino 146.5208   Cherbourg      Sim
+198  Baixa adulto Masculino   8.4042 Southampton      Não
+200  Média  Jovem  Feminino  13.0000 Southampton      Sim
+201  Baixa  Jovem Masculino   9.5000 Southampton      Não
+203  Baixa adulto Masculino   6.4958 Southampton      Não
+204  Baixa adulto Masculino   7.2250   Cherbourg      Não
+205  Baixa  Jovem Masculino   8.0500 Southampton      Não
+206  Baixa  Jovem  Feminino  10.4625 Southampton      Sim
+207  Baixa adulto Masculino  15.8500 Southampton      Não
+208  Baixa  Jovem Masculino  18.7875   Cherbourg      Não
+209  Baixa  Jovem  Feminino   7.7500  Queenstown      Sim
+210   Alta adulto Masculino  31.0000   Cherbourg      Não
+211  Baixa  Jovem Masculino   7.0500 Southampton      Não
+212  Média adulto  Feminino  21.0000 Southampton      Sim
+213  Baixa  Jovem Masculino   7.2500 Southampton      Não
+214  Média  Jovem Masculino  13.0000 Southampton      Não
+216   Alta adulto  Feminino 113.2750   Cherbourg      Sim
+217  Baixa  Jovem  Feminino   7.9250 Southampton      Sim
+218  Média adulto Masculino  27.0000 Southampton      Não
+219   Alta adulto  Feminino  76.2917   Cherbourg      Sim
+220  Média  Jovem Masculino  10.5000 Southampton      Não
+221  Baixa  Jovem Masculino   8.0500 Southampton      Não
+222  Média  Jovem Masculino  13.0000 Southampton      Não
+223  Baixa  Idoso Masculino   8.0500 Southampton      Não
+225   Alta adulto Masculino  90.0000 Southampton      Não
+226  Baixa  Jovem Masculino   9.3500 Southampton      Não
+227  Média  Jovem Masculino  10.5000 Southampton      Não
+228  Baixa  Jovem Masculino   7.2500 Southampton      Não
+229  Média  Jovem Masculino  13.0000 Southampton      Não
+231   Alta adulto  Feminino  83.4750 Southampton      Sim
+232  Baixa  Jovem Masculino   7.7750 Southampton      Não
+233  Média  Idoso Masculino  13.5000 Southampton      Não
+234  Baixa  Jovem  Feminino  31.3875 Southampton      Sim
+235  Média  Jovem Masculino  10.5000 Southampton      Não
+237  Média adulto Masculino  26.0000 Southampton      Não
+238  Média  Jovem  Feminino  26.2500 Southampton      Sim
+239  Média  Jovem Masculino  10.5000 Southampton      Não
+240  Média adulto Masculino  12.2750 Southampton      Não
+243  Média  Jovem Masculino  10.5000 Southampton      Não
+244  Baixa  Jovem Masculino   7.1250 Southampton      Não
+245  Baixa  Jovem Masculino   7.2250   Cherbourg      Não
+246   Alta adulto Masculino  90.0000  Queenstown      Não
+247  Baixa  Jovem  Feminino   7.7750 Southampton      Sim
+248  Média  Jovem  Feminino  14.5000 Southampton      Sim
+249   Alta adulto Masculino  52.5542 Southampton      Não
+250  Média  Idoso Masculino  26.0000 Southampton      Não
+252  Baixa  Jovem  Feminino  10.4625 Southampton      Sim
+253   Alta  Idoso Masculino  26.5500 Southampton      Não
+254  Baixa  Jovem Masculino  16.1000 Southampton      Não
+255  Baixa adulto  Feminino  20.2125 Southampton      Não
+256  Baixa  Jovem  Feminino  15.2458   Cherbourg      Sim
+258   Alta  Jovem  Feminino  86.5000 Southampton      Sim
+259   Alta adulto  Feminino 512.3292   Cherbourg      Sim
+260  Média adulto  Feminino  26.0000 Southampton      Sim
+262  Baixa  Jovem Masculino  31.3875 Southampton      Não
+263   Alta  Idoso Masculino  79.6500 Southampton      Não
+264   Alta adulto Masculino   0.0000 Southampton      Não
+266  Média adulto Masculino  10.5000 Southampton      Não
+267  Baixa  Jovem Masculino  39.6875 Southampton      Não
+268  Baixa  Jovem Masculino   7.7750 Southampton      Não
+269   Alta  Idoso  Feminino 153.4625 Southampton      Sim
+270   Alta adulto  Feminino 135.6333 Southampton      Sim
+272  Baixa  Jovem Masculino   0.0000 Southampton      Não
+273  Média adulto  Feminino  19.5000 Southampton      Sim
+274   Alta adulto Masculino  29.7000   Cherbourg      Não
+276   Alta  Idoso  Feminino  77.9583 Southampton      Sim
+277  Baixa adulto  Feminino   7.7500 Southampton      Não
+279  Baixa  Jovem Masculino  29.1250  Queenstown      Não
+280  Baixa adulto  Feminino  20.2500 Southampton      Não
+281  Baixa  Idoso Masculino   7.7500  Queenstown      Não
+282  Baixa  Jovem Masculino   7.8542 Southampton      Não
+283  Baixa  Jovem Masculino   9.5000 Southampton      Não
+284  Baixa  Jovem Masculino   8.0500 Southampton      Não
+286  Baixa adulto Masculino   8.6625   Cherbourg      Não
+287  Baixa  Jovem Masculino   9.5000 Southampton      Não
+288  Baixa  Jovem Masculino   7.8958 Southampton      Não
+289  Média adulto Masculino  13.0000 Southampton      Não
+290  Baixa  Jovem  Feminino   7.7500  Queenstown      Sim
+291   Alta  Jovem  Feminino  78.8500 Southampton      Sim
+292   Alta  Jovem  Feminino  91.0792   Cherbourg      Sim
+293  Média adulto Masculino  12.8750   Cherbourg      Não
+294  Baixa  Jovem  Feminino   8.8500 Southampton      Sim
+295  Baixa  Jovem Masculino   7.8958 Southampton      Não
+297  Baixa  Jovem Masculino   7.2292   Cherbourg      Não
+298   Alta  Jovem  Feminino 151.5500 Southampton      Sim
+300   Alta adulto  Feminino 247.5208   Cherbourg      Sim
+303  Baixa  Jovem Masculino   0.0000 Southampton      Não
+306   Alta  Jovem Masculino 151.5500 Southampton      Não
+308   Alta  Jovem  Feminino 108.9000   Cherbourg      Sim
+309  Média  Jovem Masculino  24.0000   Cherbourg      Não
+310   Alta  Jovem  Feminino  56.9292   Cherbourg      Sim
+311   Alta  Jovem  Feminino  83.1583   Cherbourg      Sim
+312   Alta  Jovem  Feminino 262.3750   Cherbourg      Sim
+313  Média  Jovem  Feminino  26.0000 Southampton      Sim
+314  Baixa  Jovem Masculino   7.8958 Southampton      Não
+315  Média adulto Masculino  26.2500 Southampton      Não
+316  Baixa  Jovem  Feminino   7.8542 Southampton      Sim
+317  Média  Jovem  Feminino  26.0000 Southampton      Sim
+318  Média  Idoso Masculino  14.0000 Southampton      Não
+319   Alta adulto  Feminino 164.8667 Southampton      Sim
+320   Alta adulto  Feminino 134.5000   Cherbourg      Sim
+321  Baixa  Jovem Masculino   7.2500 Southampton      Não
+322  Baixa  Jovem Masculino   7.8958 Southampton      Não
+323  Média  Jovem  Feminino  12.3500  Queenstown      Sim
+324  Média  Jovem  Feminino  29.0000 Southampton      Sim
+326   Alta adulto  Feminino 135.6333   Cherbourg      Sim
+327  Baixa  Idoso Masculino   6.2375 Southampton      Não
+328  Média adulto  Feminino  13.0000 Southampton      Sim
+329  Baixa adulto  Feminino  20.5250 Southampton      Não
+330   Alta  Jovem  Feminino  57.9792   Cherbourg      Sim
+332   Alta adulto Masculino  28.5000 Southampton      Não
+333   Alta adulto Masculino 153.4625 Southampton      Não
+334  Baixa  Jovem Masculino  18.0000 Southampton      Não
+337   Alta  Jovem Masculino  66.6000 Southampton      Não
+338   Alta adulto  Feminino 134.5000   Cherbourg      Sim
+339  Baixa adulto Masculino   8.0500 Southampton      Não
+340   Alta adulto Masculino  35.5000 Southampton      Não
+341  Média  Jovem Masculino  26.0000 Southampton      Não
+342   Alta  Jovem  Feminino 263.0000 Southampton      Sim
+343  Média  Jovem Masculino  13.0000 Southampton      Não
+344  Média  Jovem Masculino  13.0000 Southampton      Não
+345  Média adulto Masculino  13.0000 Southampton      Não
+346  Média  Jovem  Feminino  13.0000 Southampton      Sim
+347  Média adulto  Feminino  13.0000 Southampton      Sim
+349  Baixa  Jovem Masculino  15.9000 Southampton      Não
+350  Baixa adulto Masculino   8.6625 Southampton      Não
+351  Baixa  Jovem Masculino   9.2250 Southampton      Não
+353  Baixa  Jovem Masculino   7.2292   Cherbourg      Não
+354  Baixa  Jovem Masculino  17.8000 Southampton      Não
+356  Baixa  Jovem Masculino   9.5000 Southampton      Não
+357   Alta  Jovem  Feminino  55.0000 Southampton      Sim
+358  Média adulto  Feminino  13.0000 Southampton      Sim
+361  Baixa adulto Masculino  27.9000 Southampton      Não
+362  Média  Jovem Masculino  27.7208   Cherbourg      Não
+363  Baixa adulto  Feminino  14.4542   Cherbourg      Não
+364  Baixa adulto Masculino   7.0500 Southampton      Não
+366  Baixa  Jovem Masculino   7.2500 Southampton      Não
+367   Alta  Idoso  Feminino  75.2500   Cherbourg      Sim
+370   Alta  Jovem  Feminino  69.3000   Cherbourg      Sim
+371   Alta  Jovem Masculino  55.4417   Cherbourg      Não
+372  Baixa  Jovem Masculino   6.4958 Southampton      Não
+373  Baixa  Jovem Masculino   8.0500 Southampton      Não
+374   Alta  Jovem Masculino 135.6333   Cherbourg      Não
+375  Baixa  Jovem  Feminino  21.0750 Southampton      Sim
+377  Baixa  Jovem  Feminino   7.2500 Southampton      Sim
+378   Alta  Jovem Masculino 211.5000   Cherbourg      Sim
+379  Baixa  Jovem Masculino   4.0125   Cherbourg      Não
+380  Baixa  Jovem Masculino   7.7750 Southampton      Não
+381   Alta adulto  Feminino 227.5250   Cherbourg      Sim
+382  Baixa  Jovem  Feminino  15.7417   Cherbourg      Sim
+383  Baixa adulto Masculino   7.9250 Southampton      Não
+384   Alta adulto  Feminino  52.0000 Southampton      Sim
+386  Média  Jovem Masculino  73.5000 Southampton      Não
+387  Baixa  Jovem Masculino  46.9000 Southampton      Não
+388  Média adulto  Feminino  13.0000 Southampton      Sim
+390  Média  Jovem  Feminino  12.0000   Cherbourg      Sim
+391   Alta adulto Masculino 120.0000 Southampton      Não
+392  Baixa  Jovem Masculino   7.7958 Southampton      Não
+393  Baixa  Jovem Masculino   7.9250 Southampton      Não
+394   Alta  Jovem  Feminino 113.2750   Cherbourg      Sim
+395  Baixa  Jovem  Feminino  16.7000 Southampton      Sim
+396  Baixa  Jovem Masculino   7.7958 Southampton      Não
+397  Baixa adulto  Feminino   7.8542 Southampton      Não
+398  Média adulto Masculino  26.0000 Southampton      Não
+399  Média  Jovem Masculino  10.5000 Southampton      Não
+400  Média  Jovem  Feminino  12.6500 Southampton      Sim
+401  Baixa adulto Masculino   7.9250 Southampton      Não
+402  Baixa  Jovem Masculino   8.0500 Southampton      Não
+403  Baixa  Jovem  Feminino   9.8250 Southampton      Sim
+404  Baixa  Jovem Masculino  15.8500 Southampton      Não
+405  Baixa  Jovem  Feminino   8.6625 Southampton      Sim
+406  Média adulto Masculino  21.0000 Southampton      Não
+407  Baixa  Idoso Masculino   7.7500 Southampton      Não
+408  Média  Jovem Masculino  18.7500 Southampton      Não
+409  Baixa  Jovem Masculino   7.7750 Southampton      Não
+413   Alta adulto  Feminino  90.0000  Queenstown      Sim
+415  Baixa adulto Masculino   7.9250 Southampton      Não
+417  Média adulto  Feminino  32.5000 Southampton      Sim
+418  Média  Jovem  Feminino  13.0000 Southampton      Sim
+419  Média  Jovem Masculino  13.0000 Southampton      Não
+420  Baixa  Jovem  Feminino  24.1500 Southampton      Sim
+422  Baixa  Jovem Masculino   7.7333  Queenstown      Não
+423  Baixa  Jovem Masculino   7.8750 Southampton      Não
+424  Baixa  Jovem  Feminino  14.4000 Southampton      Sim
+425  Baixa  Jovem Masculino  20.2125 Southampton      Não
+427  Média  Jovem  Feminino  26.0000 Southampton      Sim
+428  Média  Jovem  Feminino  26.0000 Southampton      Sim
+430  Baixa adulto Masculino   8.0500 Southampton      Não
+431   Alta  Jovem Masculino  26.5500 Southampton      Não
+433  Média adulto  Feminino  26.0000 Southampton      Sim
+434  Baixa  Jovem Masculino   7.1250 Southampton      Não
+435   Alta adulto Masculino  55.9000 Southampton      Não
+436   Alta  Jovem  Feminino 120.0000 Southampton      Sim
+437  Baixa  Jovem  Feminino  34.3750 Southampton      Sim
+438  Média  Jovem  Feminino  18.7500 Southampton      Sim
+439   Alta  Idoso Masculino 263.0000 Southampton      Não
+440  Média adulto Masculino  10.5000 Southampton      Não
+441  Média adulto  Feminino  26.2500 Southampton      Sim
+442  Baixa  Jovem Masculino   9.5000 Southampton      Não
+443  Baixa  Jovem Masculino   7.7750 Southampton      Não
+444  Média  Jovem  Feminino  13.0000 Southampton      Sim
+446   Alta  Jovem Masculino  81.8583 Southampton      Não
+447  Média  Jovem  Feminino  19.5000 Southampton      Sim
+448   Alta adulto Masculino  26.5500 Southampton      Não
+449  Baixa  Jovem  Feminino  19.2583   Cherbourg      Sim
+450   Alta  Idoso Masculino  30.5000 Southampton      Não
+451  Média adulto Masculino  27.7500 Southampton      Não
+453   Alta  Jovem Masculino  27.7500   Cherbourg      Não
+454   Alta adulto Masculino  89.1042   Cherbourg      Não
+456  Baixa  Jovem Masculino   7.8958   Cherbourg      Não
+457   Alta  Idoso Masculino  26.5500 Southampton      Não
+459  Média adulto  Feminino  10.5000 Southampton      Sim
+461   Alta adulto Masculino  26.5500 Southampton      Não
+462  Baixa adulto Masculino   8.0500 Southampton      Não
+463   Alta adulto Masculino  38.5000 Southampton      Não
+464  Média adulto Masculino  13.0000 Southampton      Não
+466  Baixa adulto Masculino   7.0500 Southampton      Não
+468   Alta  Idoso Masculino  26.5500 Southampton      Não
+470  Baixa  Jovem  Feminino  19.2583   Cherbourg      Sim
+472  Baixa adulto Masculino   8.6625 Southampton      Não
+473  Média adulto  Feminino  27.7500 Southampton      Sim
+474  Média  Jovem  Feminino  13.7917   Cherbourg      Sim
+475  Baixa  Jovem  Feminino   9.8375 Southampton      Sim
+477  Média adulto Masculino  21.0000 Southampton      Não
+478  Baixa  Jovem Masculino   7.0458 Southampton      Não
+479  Baixa  Jovem Masculino   7.5208 Southampton      Não
+480  Baixa  Jovem  Feminino  12.2875 Southampton      Sim
+481  Baixa  Jovem Masculino  46.9000 Southampton      Não
+483  Baixa adulto Masculino   8.0500 Southampton      Não
+484  Baixa  Idoso  Feminino   9.5875 Southampton      Não
+485   Alta  Jovem Masculino  91.0792   Cherbourg      Não
+487   Alta adulto  Feminino  90.0000 Southampton      Sim
+488   Alta  Idoso Masculino  29.7000   Cherbourg      Não
+489  Baixa  Jovem Masculino   8.0500 Southampton      Não
+490  Baixa  Jovem Masculino  15.9000 Southampton      Não
+492  Baixa  Jovem Masculino   7.2500 Southampton      Não
+493   Alta  Idoso Masculino  30.5000 Southampton      Não
+494   Alta  Idoso Masculino  49.5042   Cherbourg      Não
+495  Baixa  Jovem Masculino   8.0500 Southampton      Não
+497   Alta  Idoso  Feminino  78.2667   Cherbourg      Sim
+499   Alta  Jovem  Feminino 151.5500 Southampton      Sim
+500  Baixa  Jovem Masculino   7.7958 Southampton      Não
+501  Baixa  Jovem Masculino   8.6625 Southampton      Não
+502  Baixa  Jovem  Feminino   7.7500  Queenstown      Sim
+504  Baixa adulto  Feminino   9.5875 Southampton      Não
+505   Alta  Jovem  Feminino  86.5000 Southampton      Sim
+506   Alta  Jovem Masculino 108.9000   Cherbourg      Não
+507  Média adulto  Feminino  26.0000 Southampton      Sim
+509  Baixa  Jovem Masculino  22.5250 Southampton      Não
+510  Baixa  Jovem Masculino  56.4958 Southampton      Não
+511  Baixa  Jovem Masculino   7.7500  Queenstown      Não
+513   Alta adulto Masculino  26.2875 Southampton      Não
+514   Alta  Idoso  Feminino  59.4000   Cherbourg      Sim
+515  Baixa  Jovem Masculino   7.4958 Southampton      Não
+516   Alta adulto Masculino  34.0208 Southampton      Não
+517  Média adulto  Feminino  10.5000 Southampton      Sim
+519  Média adulto  Feminino  26.0000 Southampton      Sim
+520  Baixa adulto Masculino   7.8958 Southampton      Não
+521   Alta  Jovem  Feminino  93.5000 Southampton      Sim
+522  Baixa  Jovem Masculino   7.8958 Southampton      Não
+524   Alta adulto  Feminino  57.9792   Cherbourg      Sim
+526  Baixa adulto Masculino   7.7500  Queenstown      Não
+527  Média adulto  Feminino  10.5000 Southampton      Sim
+529  Baixa adulto Masculino   7.9250 Southampton      Não
+530  Média  Jovem Masculino  11.5000 Southampton      Não
+531  Média  Jovem  Feminino  26.0000 Southampton      Sim
+533  Baixa  Jovem Masculino   7.2292   Cherbourg      Não
+535  Baixa  Jovem  Feminino   8.6625 Southampton      Sim
+536  Média  Jovem  Feminino  26.2500 Southampton      Sim
+537   Alta adulto Masculino  26.5500 Southampton      Não
+538   Alta  Jovem  Feminino 106.4250   Cherbourg      Sim
+540   Alta  Jovem  Feminino  49.5000   Cherbourg      Sim
+541   Alta adulto  Feminino  71.0000 Southampton      Sim
+542  Baixa  Jovem  Feminino  31.2750 Southampton      Sim
+543  Baixa  Jovem  Feminino  31.2750 Southampton      Sim
+544  Média adulto Masculino  26.0000 Southampton      Não
+545   Alta adulto Masculino 106.4250   Cherbourg      Não
+546   Alta  Idoso Masculino  26.0000 Southampton      Não
+547  Média  Jovem  Feminino  26.0000 Southampton      Sim
+549  Baixa adulto Masculino  20.5250 Southampton      Não
+550  Média  Jovem Masculino  36.7500 Southampton      Não
+551   Alta  Jovem Masculino 110.8833   Cherbourg      Não
+552  Média  Jovem Masculino  26.0000 Southampton      Não
+554  Baixa  Jovem Masculino   7.2250   Cherbourg      Não
+555  Baixa  Jovem  Feminino   7.7750 Southampton      Sim
+556   Alta  Idoso Masculino  26.5500 Southampton      Não
+557   Alta adulto  Feminino  39.6000   Cherbourg      Sim
+559   Alta adulto  Feminino  79.6500 Southampton      Sim
+560  Baixa adulto  Feminino  17.4000 Southampton      Não
+562  Baixa adulto Masculino   7.8958 Southampton      Não
+563  Média  Jovem Masculino  13.5000 Southampton      Não
+566  Baixa  Jovem Masculino  24.1500 Southampton      Não
+567  Baixa  Jovem Masculino   7.8958 Southampton      Não
+568  Baixa  Jovem  Feminino  21.0750 Southampton      Sim
+570  Baixa adulto Masculino   7.8542 Southampton      Não
+571  Média  Idoso Masculino  10.5000 Southampton      Não
+572   Alta  Idoso  Feminino  51.4792 Southampton      Sim
+573   Alta adulto Masculino  26.3875 Southampton      Não
+575  Baixa  Jovem Masculino   8.0500 Southampton      Não
+576  Baixa  Jovem Masculino  14.5000 Southampton      Não
+577  Média adulto  Feminino  13.0000 Southampton      Sim
+578   Alta adulto  Feminino  55.9000 Southampton      Sim
+580  Baixa adulto Masculino   7.9250 Southampton      Não
+581  Média  Jovem  Feminino  30.0000 Southampton      Sim
+582   Alta adulto  Feminino 110.8833   Cherbourg      Sim
+583  Média  Idoso Masculino  26.0000 Southampton      Não
+584   Alta adulto Masculino  40.1250   Cherbourg      Não
+586   Alta  Jovem  Feminino  79.6500 Southampton      Sim
+587  Média adulto Masculino  15.0000 Southampton      Não
+588   Alta  Idoso Masculino  79.2000   Cherbourg      Não
+589  Baixa  Jovem Masculino   8.0500 Southampton      Não
+591  Baixa adulto Masculino   7.1250 Southampton      Não
+592   Alta  Idoso  Feminino  78.2667   Cherbourg      Sim
+593  Baixa adulto Masculino   7.2500 Southampton      Não
+595  Média adulto Masculino  26.0000 Southampton      Não
+596  Baixa adulto Masculino  24.1500 Southampton      Não
+598  Baixa adulto Masculino   0.0000 Southampton      Não
+600   Alta adulto Masculino  56.9292   Cherbourg      Não
+601  Média  Jovem  Feminino  27.0000 Southampton      Sim
+604  Baixa adulto Masculino   8.0500 Southampton      Não
+605   Alta adulto Masculino  26.5500   Cherbourg      Não
+606  Baixa adulto Masculino  15.5500 Southampton      Não
+607  Baixa  Jovem Masculino   7.8958 Southampton      Não
+608   Alta  Jovem Masculino  30.5000 Southampton      Não
+609  Média  Jovem  Feminino  41.5792   Cherbourg      Sim
+610   Alta adulto  Feminino 153.4625 Southampton      Sim
+611  Baixa adulto  Feminino  31.2750 Southampton      Não
+615  Baixa adulto Masculino   8.0500 Southampton      Não
+616  Média  Jovem  Feminino  65.0000 Southampton      Sim
+617  Baixa adulto Masculino  14.4000 Southampton      Não
+618  Baixa  Jovem  Feminino  16.1000 Southampton      Sim
+619  Média  Jovem  Feminino  39.0000 Southampton      Sim
+620  Média  Jovem Masculino  10.5000 Southampton      Não
+621  Baixa  Jovem Masculino  14.4542   Cherbourg      Não
+622   Alta adulto Masculino  52.5542 Southampton      Não
+623  Baixa  Jovem Masculino  15.7417   Cherbourg      Não
+624  Baixa  Jovem Masculino   7.8542 Southampton      Não
+625  Baixa  Jovem Masculino  16.1000 Southampton      Não
+626   Alta  Idoso Masculino  32.3208 Southampton      Não
+627  Média  Idoso Masculino  12.3500  Queenstown      Não
+628   Alta  Jovem  Feminino  77.9583 Southampton      Sim
+629  Baixa  Jovem Masculino   7.8958 Southampton      Não
+631   Alta  Idoso Masculino  30.0000 Southampton      Não
+632  Baixa  Idoso Masculino   7.0542 Southampton      Não
+633   Alta adulto Masculino  30.5000   Cherbourg      Não
+635  Baixa  Jovem  Feminino  27.9000 Southampton      Sim
+636  Média  Jovem  Feminino  13.0000 Southampton      Sim
+637  Baixa adulto Masculino   7.9250 Southampton      Não
+638  Média adulto Masculino  26.2500 Southampton      Não
+639  Baixa adulto  Feminino  39.6875 Southampton      Não
+641  Baixa  Jovem Masculino   7.8542 Southampton      Não
+642   Alta  Jovem  Feminino  69.3000   Cherbourg      Sim
+643  Baixa  Jovem  Feminino  27.9000 Southampton      Sim
+645  Baixa  Jovem  Feminino  19.2583   Cherbourg      Sim
+646   Alta adulto Masculino  76.7292   Cherbourg      Não
+647  Baixa  Jovem Masculino   7.8958 Southampton      Não
+648   Alta  Idoso Masculino  35.5000   Cherbourg      Não
+650  Baixa  Jovem  Feminino   7.5500 Southampton      Sim
+652  Média  Jovem  Feminino  23.0000 Southampton      Sim
+653  Baixa  Jovem Masculino   8.4333 Southampton      Não
+655  Baixa  Jovem  Feminino   6.7500  Queenstown      Sim
+656  Média  Jovem Masculino  73.5000 Southampton      Não
+658  Baixa adulto  Feminino  15.5000  Queenstown      Não
+659  Média  Jovem Masculino  13.0000 Southampton      Não
+660   Alta  Idoso Masculino 113.2750   Cherbourg      Não
+661   Alta adulto Masculino 133.6500 Southampton      Não
+662  Baixa adulto Masculino   7.2250   Cherbourg      Não
+663   Alta adulto Masculino  25.5875 Southampton      Não
+664  Baixa adulto Masculino   7.4958 Southampton      Não
+665  Baixa  Jovem Masculino   7.9250 Southampton      Não
+666  Média adulto Masculino  73.5000 Southampton      Não
+667  Média  Jovem Masculino  13.0000 Southampton      Não
+669  Baixa adulto Masculino   8.0500 Southampton      Não
+671  Média adulto  Feminino  39.0000 Southampton      Sim
+672   Alta adulto Masculino  52.0000 Southampton      Não
+673  Média  Idoso Masculino  10.5000 Southampton      Não
+674  Média adulto Masculino  13.0000 Southampton      Não
+676  Baixa  Jovem Masculino   7.7750 Southampton      Não
+677  Baixa  Jovem Masculino   8.0500 Southampton      Não
+678  Baixa  Jovem  Feminino   9.8417 Southampton      Sim
+679  Baixa adulto  Feminino  46.9000 Southampton      Não
+680   Alta adulto Masculino 512.3292   Cherbourg      Sim
+682   Alta  Jovem Masculino  76.7292   Cherbourg      Não
+683  Baixa  Jovem Masculino   9.2250 Southampton      Não
+684  Baixa  Jovem Masculino  46.9000 Southampton      Não
+685  Média  Idoso Masculino  39.0000 Southampton      Não
+686  Média  Jovem Masculino  41.5792   Cherbourg      Não
+687  Baixa  Jovem Masculino  39.6875 Southampton      Não
+688  Baixa  Jovem Masculino  10.1708 Southampton      Não
+689  Baixa  Jovem Masculino   7.7958 Southampton      Não
+690   Alta  Jovem  Feminino 211.3375 Southampton      Sim
+691   Alta adulto Masculino  57.0000 Southampton      Não
+692  Baixa  Jovem  Feminino  13.4167   Cherbourg      Sim
+694  Baixa  Jovem Masculino   7.2250   Cherbourg      Não
+695   Alta  Idoso Masculino  26.5500 Southampton      Não
+696  Média  Idoso Masculino  13.5000 Southampton      Não
+697  Baixa adulto Masculino   8.0500 Southampton      Não
+699   Alta adulto Masculino 110.8833   Cherbourg      Não
+700  Baixa adulto Masculino   7.6500 Southampton      Não
+701   Alta  Jovem  Feminino 227.5250   Cherbourg      Sim
+702   Alta adulto Masculino  26.2875 Southampton      Não
+703  Baixa  Jovem  Feminino  14.4542   Cherbourg      Sim
+704  Baixa  Jovem Masculino   7.7417  Queenstown      Não
+705  Baixa  Jovem Masculino   7.8542 Southampton      Não
+706  Média adulto Masculino  26.0000 Southampton      Não
+707  Média adulto  Feminino  13.5000 Southampton      Sim
+708   Alta adulto Masculino  26.2875 Southampton      Não
+709   Alta  Jovem  Feminino 151.5500 Southampton      Sim
+711   Alta  Jovem  Feminino  49.5042   Cherbourg      Sim
+713   Alta adulto Masculino  52.0000 Southampton      Não
+714  Baixa  Jovem Masculino   9.4833 Southampton      Não
+715  Média  Idoso Masculino  13.0000 Southampton      Não
+716  Baixa  Jovem Masculino   7.6500 Southampton      Não
+717   Alta adulto  Feminino 227.5250   Cherbourg      Sim
+718  Média  Jovem  Feminino  10.5000 Southampton      Sim
+720  Baixa adulto Masculino   7.7750 Southampton      Não
+721  Média  Jovem  Feminino  33.0000 Southampton      Sim
+722  Baixa  Jovem Masculino   7.0542 Southampton      Não
+723  Média adulto Masculino  13.0000 Southampton      Não
+724  Média adulto Masculino  13.0000 Southampton      Não
+725   Alta  Jovem Masculino  53.1000 Southampton      Não
+726  Baixa  Jovem Masculino   8.6625 Southampton      Não
+727  Média  Jovem  Feminino  21.0000 Southampton      Sim
+729  Média  Jovem Masculino  26.0000 Southampton      Não
+730  Baixa  Jovem  Feminino   7.9250 Southampton      Sim
+731   Alta  Jovem  Feminino 211.3375 Southampton      Sim
+732  Baixa  Jovem Masculino  18.7875   Cherbourg      Não
+734  Média  Jovem Masculino  13.0000 Southampton      Não
+735  Média  Jovem Masculino  13.0000 Southampton      Não
+736  Baixa  Jovem Masculino  16.1000 Southampton      Não
+737  Baixa adulto  Feminino  34.3750 Southampton      Não
+738   Alta adulto Masculino 512.3292   Cherbourg      Sim
+742   Alta adulto Masculino  78.8500 Southampton      Não
+743   Alta  Jovem  Feminino 262.3750   Cherbourg      Sim
+744  Baixa  Jovem Masculino  16.1000 Southampton      Não
+745  Baixa adulto Masculino   7.9250 Southampton      Não
+746   Alta  Idoso Masculino  71.0000 Southampton      Não
+747  Baixa  Jovem Masculino  20.2500 Southampton      Não
+748  Média  Jovem  Feminino  13.0000 Southampton      Sim
+749   Alta  Jovem Masculino  53.1000 Southampton      Não
+750  Baixa adulto Masculino   7.7500  Queenstown      Não
+751  Média  Jovem  Feminino  23.0000 Southampton      Sim
+752  Baixa  Jovem Masculino  12.4750 Southampton      Não
+753  Baixa adulto Masculino   9.5000 Southampton      Não
+754  Baixa  Jovem Masculino   7.8958 Southampton      Não
+755  Média adulto  Feminino  65.0000 Southampton      Sim
+756  Média  Jovem Masculino  14.5000 Southampton      Não
+757  Baixa  Jovem Masculino   7.7958 Southampton      Não
+758  Média  Jovem Masculino  11.5000 Southampton      Não
+759  Baixa adulto Masculino   8.0500 Southampton      Não
+760   Alta adulto  Feminino  86.5000 Southampton      Sim
+762  Baixa adulto Masculino   7.1250 Southampton      Não
+763  Baixa  Jovem Masculino   7.2292   Cherbourg      Não
+764   Alta adulto  Feminino 120.0000 Southampton      Sim
+765  Baixa  Jovem Masculino   7.7750 Southampton      Não
+766   Alta  Idoso  Feminino  77.9583 Southampton      Sim
+768  Baixa adulto  Feminino   7.7500  Queenstown      Não
+770  Baixa adulto Masculino   8.3625 Southampton      Não
+771  Baixa  Jovem Masculino   9.5000 Southampton      Não
+772  Baixa adulto Masculino   7.8542 Southampton      Não
+773  Média  Idoso  Feminino  10.5000 Southampton      Sim
+775  Média  Idoso  Feminino  23.0000 Southampton      Sim
+776  Baixa  Jovem Masculino   7.7500 Southampton      Não
+778  Baixa  Jovem  Feminino  12.4750 Southampton      Sim
+780   Alta adulto  Feminino 211.3375 Southampton      Sim
+781  Baixa  Jovem  Feminino   7.2292   Cherbourg      Sim
+782   Alta  Jovem  Feminino  57.0000 Southampton      Sim
+783   Alta  Jovem Masculino  30.0000 Southampton      Não
+785  Baixa  Jovem Masculino   7.0500 Southampton      Não
+786  Baixa  Jovem Masculino   7.2500 Southampton      Não
+787  Baixa  Jovem  Feminino   7.4958 Southampton      Sim
+788  Baixa  Jovem Masculino  29.1250  Queenstown      Não
+789  Baixa  Jovem Masculino  20.5750 Southampton      Não
+790   Alta adulto Masculino  79.2000   Cherbourg      Não
+792  Média  Jovem Masculino  26.0000 Southampton      Não
+795  Baixa  Jovem Masculino   7.8958 Southampton      Não
+796  Média adulto Masculino  13.0000 Southampton      Não
+797   Alta adulto  Feminino  25.9292 Southampton      Sim
+798  Baixa adulto  Feminino   8.6833 Southampton      Não
+799  Baixa  Jovem Masculino   7.2292   Cherbourg      Não
+800  Baixa  Jovem  Feminino  24.1500 Southampton      Sim
+801  Média adulto Masculino  13.0000 Southampton      Não
+802  Média adulto  Feminino  26.2500 Southampton      Sim
+803   Alta  Jovem Masculino 120.0000 Southampton      Não
+804  Baixa  Jovem Masculino   8.5167   Cherbourg      Não
+805  Baixa  Jovem Masculino   6.9750 Southampton      Não
+806  Baixa adulto Masculino   7.7750 Southampton      Não
+807   Alta adulto Masculino   0.0000 Southampton      Não
+808  Baixa  Jovem  Feminino   7.7750 Southampton      Sim
+809  Média adulto Masculino  13.0000 Southampton      Não
+810   Alta adulto  Feminino  53.1000 Southampton      Sim
+811  Baixa  Jovem Masculino   7.8875 Southampton      Não
+812  Baixa adulto Masculino  24.1500 Southampton      Não
+813  Média adulto Masculino  10.5000 Southampton      Não
+814  Baixa  Jovem  Feminino  31.2750 Southampton      Sim
+815  Baixa adulto Masculino   8.0500 Southampton      Não
+817  Baixa  Jovem  Feminino   7.9250 Southampton      Sim
+818  Média adulto Masculino  37.0042   Cherbourg      Não
+819  Baixa adulto Masculino   6.4500 Southampton      Não
+820  Baixa  Jovem Masculino  27.9000 Southampton      Não
+821   Alta  Idoso  Feminino  93.5000 Southampton      Sim
+822  Baixa  Jovem Masculino   8.6625 Southampton      Não
+823   Alta adulto Masculino   0.0000 Southampton      Não
+824  Baixa  Jovem  Feminino  12.4750 Southampton      Sim
+825  Baixa  Jovem Masculino  39.6875 Southampton      Não
+828  Média  Jovem Masculino  37.0042   Cherbourg      Não
+830   Alta  Idoso  Feminino  80.0000           0      Sim
+831  Baixa  Jovem  Feminino  14.4542   Cherbourg      Sim
+832  Média  Jovem Masculino  18.7500 Southampton      Não
+834  Baixa  Jovem Masculino   7.8542 Southampton      Não
+835  Baixa  Jovem Masculino   8.3000 Southampton      Não
+836   Alta adulto  Feminino  83.1583   Cherbourg      Sim
+837  Baixa  Jovem Masculino   8.6625 Southampton      Não
+839  Baixa adulto Masculino  56.4958 Southampton      Não
+841  Baixa  Jovem Masculino   7.9250 Southampton      Não
+842  Média  Jovem Masculino  10.5000 Southampton      Não
+843   Alta  Jovem  Feminino  31.0000   Cherbourg      Sim
+844  Baixa adulto Masculino   6.4375   Cherbourg      Não
+845  Baixa  Jovem Masculino   8.6625 Southampton      Não
+846  Baixa adulto Masculino   7.5500 Southampton      Não
+848  Baixa adulto Masculino   7.8958   Cherbourg      Não
+849  Média  Jovem Masculino  33.0000 Southampton      Não
+851  Baixa  Jovem Masculino  31.2750 Southampton      Não
+852  Baixa  Idoso Masculino   7.7750 Southampton      Não
+853  Baixa  Jovem  Feminino  15.2458   Cherbourg      Sim
+854   Alta  Jovem  Feminino  39.4000 Southampton      Sim
+855  Média adulto  Feminino  26.0000 Southampton      Sim
+856  Baixa  Jovem  Feminino   9.3500 Southampton      Sim
+857   Alta adulto  Feminino 164.8667 Southampton      Sim
+858   Alta  Idoso Masculino  26.5500 Southampton      Não
+859  Baixa  Jovem  Feminino  19.2583   Cherbourg      Sim
+861  Baixa adulto Masculino  14.1083 Southampton      Não
+862  Média  Jovem Masculino  11.5000 Southampton      Não
+863   Alta adulto  Feminino  25.9292 Southampton      Sim
+865  Média  Jovem Masculino  13.0000 Southampton      Não
+866  Média adulto  Feminino  13.0000 Southampton      Sim
+867  Média  Jovem  Feminino  13.8583   Cherbourg      Sim
+868   Alta adulto Masculino  50.4958 Southampton      Não
+870  Baixa  Jovem Masculino  11.1333 Southampton      Não
+871  Baixa  Jovem Masculino   7.8958 Southampton      Não
+872   Alta adulto  Feminino  52.5542 Southampton      Sim
+873   Alta adulto Masculino   5.0000 Southampton      Não
+874  Baixa adulto Masculino   9.0000 Southampton      Não
+875  Média  Jovem  Feminino  24.0000   Cherbourg      Sim
+876  Baixa  Jovem  Feminino   7.2250   Cherbourg      Sim
+877  Baixa  Jovem Masculino   9.8458 Southampton      Não
+878  Baixa  Jovem Masculino   7.8958 Southampton      Não
+880   Alta  Idoso  Feminino  83.1583   Cherbourg      Sim
+881  Média  Jovem  Feminino  26.0000 Southampton      Sim
+882  Baixa adulto Masculino   7.8958 Southampton      Não
+883  Baixa  Jovem  Feminino  10.5167 Southampton      Sim
+884  Média  Jovem Masculino  10.5000 Southampton      Não
+885  Baixa  Jovem Masculino   7.0500 Southampton      Não
+886  Baixa adulto  Feminino  29.1250  Queenstown      Não
+887  Média  Jovem Masculino  13.0000 Southampton      Não
+888   Alta  Jovem  Feminino  30.0000 Southampton      Sim
+890   Alta  Jovem Masculino  30.0000   Cherbourg      Não
+891  Baixa adulto Masculino   7.7500  Queenstown      Não
+> table(predictionrf)
+predictionrf
+Não Sim 
+473 241 
+> 
+> # Conferindo o erro do modelo 
+> plot(rf_model, ylim = c(0,0.36))
+> legend('topright', colnames(rf_model$err.rate), col = 1:3, fill = 1:3)
+> 
+> varImpPlot(rf_model)
+> 
+> # Obtendo as variaveis mais importantes
+> importance <- importance(rf_model)
+> varimportance <- data.frame(Variables = row.names(importance), importance = round(importance[,'MeanDecreaseGini'],2))
+> 
+> # Criando o rank de variaveis baseado na importância
+> rankImportance <- varimportance %>%
++   mutate(Rank = paste0('#', dense_rank(desc(importance))))
+> 
+> # Usando o ggplot2 para visualizar a importância relativa das variaveis
+> ggplot(rankImportance, aes(x = reorder(Variables, importance), y = importance, fill = importance))+
++   geom_bar(stat = 'identity')+
++   geom_text(aes(x = Variables, y = 0.5, label = Rank), hjust = 0, vjust=0.55, size = 4, colour = 'red')+
++   labs(x = 'Variables')+
++   coord_flip()
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  3.317   0.239   3.670 

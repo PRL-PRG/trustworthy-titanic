@@ -1,0 +1,383 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(forcats)
+> library(stringr)
+> library(caret)
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library(doMC)
+Loading required package: foreach
+
+Attaching package: ‘foreach’
+
+The following objects are masked from ‘package:purrr’:
+
+    accumulate, when
+
+Loading required package: iterators
+Loading required package: parallel
+Warning message:
+package ‘foreach’ was built under R version 3.6.2 
+> set.seed(29082012)
+> 
+> 
+> # The train and test data is stored in the ../input directory
+> file_train <- "../input/train.csv"
+> file_test  <- "../input/test.csv"
+> 
+> 
+> # Load the train & test dataset -------------------------------------------
+> train_data <- read_csv(file_train)
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test_data <- read_csv(file_test)
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> full_data = bind_rows(train_data, test_data)
+> 
+> # Look for NA's in full_data ----------------------------------------------
+> full_data %>%
++   summarise_each(funs(sum(is.na(.)))) %>%
++   print
+[90m# A tibble: 1 x 12[39m
+  PassengerId Survived Pclass  Name   Sex   Age SibSp Parch Ticket  Fare Cabin
+        [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m  [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m  [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m
+[90m1[39m           0      418      0     0     0   263     0     0      0     1  [4m1[24m014
+[90m# … with 1 more variable: Embarked [3m[90m<int>[90m[23m[39m
+Warning messages:
+1: `summarise_each_()` is deprecated as of dplyr 0.7.0.
+Please use `across()` instead.
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+2: `funs()` is deprecated as of dplyr 0.8.0.
+Please use a list of either functions or lambdas: 
+
+  # Simple named list: 
+  list(mean = mean, median = median)
+
+  # Auto named with `tibble::lst()`: 
+  tibble::lst(mean, median)
+
+  # Using lambdas
+  list(~ mean(., trim = .2), ~ median(., na.rm = TRUE))
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+> 
+> # Extract useful data -----------------------------------------------------
+> full_data <- full_data %>%
++   mutate(Sex = as.factor(Sex), Embarked = as.factor(Embarked)) %>%
++   separate(Name, into = c("Surname", "FirstName"), sep = ",") %>%
++   separate(FirstName, into = c("Title", "FirstName"), sep = "\\.", extra = "merge") %>%
++   mutate(Title = as.factor(str_trim(Title)), Survived = as.factor(Survived)) %>%
++   mutate(FamilySize = Parch + SibSp + 1, Pclass = as.factor(Pclass)) %>%
++   mutate(Pclass = fct_recode(Pclass,first = "1", second = "2", third = "3")) %>%
++   mutate(Survived = fct_recode(Survived, "no" = "0", "yes" = "1")) %>%
++   select(-FirstName, -Parch, -SibSp, -Cabin)
+> 
+> # Fix NA's in Age Fare Embarked -------------------------------------------
+> imputed_data <- complete(mice(select(full_data, -Survived)))
+
+ iter imp variable
+  1   1  Age  Fare  Embarked
+  1   2  Age  Fare  Embarked
+  1   3  Age  Fare  Embarked
+  1   4  Age  Fare  Embarked
+  1   5  Age  Fare  Embarked
+  2   1  Age  Fare  Embarked
+  2   2  Age  Fare  Embarked
+  2   3  Age  Fare  Embarked
+  2   4  Age  Fare  Embarked
+  2   5  Age  Fare  Embarked
+  3   1  Age  Fare  Embarked
+  3   2  Age  Fare  Embarked
+  3   3  Age  Fare  Embarked
+  3   4  Age  Fare  Embarked
+  3   5  Age  Fare  Embarked
+  4   1  Age  Fare  Embarked
+  4   2  Age  Fare  Embarked
+  4   3  Age  Fare  Embarked
+  4   4  Age  Fare  Embarked
+  4   5  Age  Fare  Embarked
+  5   1  Age  Fare  Embarked
+  5   2  Age  Fare  Embarked
+  5   3  Age  Fare  Embarked
+  5   4  Age  Fare  Embarked
+  5   5  Age  Fare  Embarked
+Warning message:
+Number of logged events: 2 
+> full_data$Age <- round(imputed_data$Age)
+> full_data$Fare <- imputed_data$Fare
+> full_data$Embarked <- imputed_data$Embarked
+> # Drop "contrasts" attribute
+> attr(full_data$Embarked, "contrasts") <- NULL
+> 
+> # Check again for NA's in full_data ---------------------------------------
+> full_data %>%
++   summarise_each(funs(sum(is.na(.)))) %>%
++   print
+[90m# A tibble: 1 x 11[39m
+  PassengerId Survived Pclass Surname Title   Sex   Age Ticket  Fare Embarked
+        [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m  [3m[90m<int>[39m[23m   [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m  [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m
+[90m1[39m           0      418      0       0     0     0     0      0     0        0
+[90m# … with 1 more variable: FamilySize [3m[90m<int>[90m[23m[39m
+> 
+> 
+> # Explore Title column ----------------------------------------------------
+> full_data %>% 
++   select(Title) %>%
++   group_by(Title) %>%
++   summarize(count = n()) %>%
++   print()
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 18 x 2[39m
+   Title        count
+   [3m[90m<fct>[39m[23m        [3m[90m<int>[39m[23m
+[90m 1[39m Capt             1
+[90m 2[39m Col              4
+[90m 3[39m Don              1
+[90m 4[39m Dona             1
+[90m 5[39m Dr               8
+[90m 6[39m Jonkheer         1
+[90m 7[39m Lady             1
+[90m 8[39m Major            2
+[90m 9[39m Master          61
+[90m10[39m Miss           260
+[90m11[39m Mlle             2
+[90m12[39m Mme              1
+[90m13[39m Mr             757
+[90m14[39m Mrs            197
+[90m15[39m Ms               2
+[90m16[39m Rev              8
+[90m17[39m Sir              1
+[90m18[39m the Countess     1
+> 
+> # titles <- full_data %>%
+> #   select(Title) %>%
+> #   mutate(Title = fct_collapse(full_data$Title,
+> #          yes = c("Capt", "Col", "Don", "Dona", "Dr", "Jonkheer", "Lady", "Major", "Rev", "Sir", "the Countess"),
+> #          no = c("Miss", "Mr", "Mrs", "Ms", "Mlle", "Mme", "Master")))
+> 
+> titles <- full_data %>%
++   select(Title) %>%
++   mutate(Title = fct_collapse(full_data$Title,
++                               "Sir" = c("Don", "Jonkheer", "Sir"),
++                               "Lady" = c("Dona", "Lady", "the Countess")))
+> 
+> full_data$Title <- titles$Title
+> 
+> # male - female - child ----------------------------------------------------
+> sex_age <- full_data %>% 
++   select(Sex, Age)
+> 
+> sex_age <- sex_age %>%
++   mutate(mfc = as.factor(ifelse(Age < 18, "child", as.character(Sex))))
+> 
+> levels(sex_age$mfc)
+[1] "child"  "female" "male"  
+> 
+> full_data <- full_data %>%
++   mutate(mfc = sex_age$mfc)
+> 
+> # Family group -----------------------------------------------------------
+> family_unique <- full_data %>% 
++   select(Surname) %>%
++   unique()
+> 
+> full_data <-full_data %>%
++   mutate(group = as.factor(Surname), ticket_group = as.factor(Ticket)) %>%
++   select(-Ticket, -Surname)
+> 
+> # Resplit train and test data ---------------------------------------------
+> 
+> train_data <- full_data %>%
++   filter(!is.na(Survived))
+> 
+> test_data <- full_data %>%
++   filter(is.na(Survived)) %>%
++   select(-Survived)
+>   
+> # Model fitting and validation --------------------------------------------
+> inTrain <- createDataPartition(train_data$Survived, p=.75, list = F)
+> 
+> training <- train_data %>%
++   slice(inTrain)
+> testing <- train_data %>%
++   slice(-inTrain)
+> 
+> fitControl <- trainControl(## 10-fold CV
++   method = "repeatedcv",
++   number = 10,
++   ## repeated ten times
++   repeats = 10,
++   classProbs = TRUE)
+> 
+> trGrid <-  expand.grid(.alpha = c(0.01, 0.05),
++                        .lambda = (1:10) * 0.1)
+> 
+> glmFit<-train(Survived~., data=select(training, -PassengerId),
++                 method='glmnet',
++                 trControl = fitControl,
++                 metric = "Accuracy",
++                 tuneGrid=trGrid
++                 )
+> 
+> glmFit
+glmnet 
+
+669 samples
+ 10 predictor
+  2 classes: 'no', 'yes' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold, repeated 10 times) 
+Summary of sample sizes: 602, 602, 602, 602, 603, 602, ... 
+Resampling results across tuning parameters:
+
+  alpha  lambda  Accuracy   Kappa    
+  0.01   0.1     0.8203971  0.6026813
+  0.01   0.2     0.8203971  0.6026813
+  0.01   0.3     0.8199469  0.6017228
+  0.01   0.4     0.8220433  0.6060055
+  0.01   0.5     0.8230681  0.6081018
+  0.01   0.6     0.8212792  0.6039273
+  0.01   0.7     0.8214262  0.6042710
+  0.01   0.8     0.8182805  0.5960624
+  0.01   0.9     0.8151395  0.5859661
+  0.01   1.0     0.8127648  0.5773178
+  0.05   0.1     0.8369809  0.6440323
+  0.05   0.2     0.8301147  0.6287110
+  0.05   0.3     0.8136509  0.5920802
+  0.05   0.4     0.7942065  0.5468286
+  0.05   0.5     0.7900226  0.5352292
+  0.05   0.6     0.7862867  0.5254548
+  0.05   0.7     0.7855382  0.5236328
+  0.05   0.8     0.7846448  0.5214722
+  0.05   0.9     0.7804611  0.5109185
+  0.05   1.0     0.7734502  0.4914106
+
+Accuracy was used to select the optimal model using the largest value.
+The final values used for the model were alpha = 0.05 and lambda = 0.1.
+> ggplot(glmFit)
+> 
+> predictions<- predict(glmFit, select(testing, -PassengerId))
+> confusionMatrix(predictions, testing$Survived)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction  no yes
+       no  123  21
+       yes  14  64
+                                          
+               Accuracy : 0.8423          
+                 95% CI : (0.7876, 0.8877)
+    No Information Rate : 0.6171          
+    P-Value [Acc > NIR] : 1.726e-13       
+                                          
+                  Kappa : 0.6611          
+                                          
+ Mcnemar's Test P-Value : 0.3105          
+                                          
+            Sensitivity : 0.8978          
+            Specificity : 0.7529          
+         Pos Pred Value : 0.8542          
+         Neg Pred Value : 0.8205          
+             Prevalence : 0.6171          
+         Detection Rate : 0.5541          
+   Detection Prevalence : 0.6486          
+      Balanced Accuracy : 0.8254          
+                                          
+       'Positive' Class : no              
+                                          
+> 
+> # Write submission file ---------------------------------------------------
+> model <- glmFit
+> 
+> Prediction <- predict(model, newdata = select(test_data, -PassengerId))
+> submit <- data.frame(PassengerId = test_data$PassengerId, 
++                      Survived = ifelse(Prediction == "yes",1,0))
+> write.csv(submit, file = "mysubmission.csv", row.names = FALSE)
+>   
+>   
+> 
+> proc.time()
+   user  system elapsed 
+ 91.551   3.430  95.611 

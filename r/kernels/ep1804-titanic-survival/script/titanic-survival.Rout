@@ -1,0 +1,347 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # Classification model for survival using titanic data
+> # Reference: Megan Risdal and Ben Hamner
+> 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(ggthemes)
+> 
+> # Load csv files -----------------------------------------------------------------------
+> 
+> train <- read.csv("../input/train.csv", stringsAsFactors=FALSE)
+> test  <- read.csv("../input/test.csv",  stringsAsFactors=FALSE)
+> 
+> 
+> # Feature extraction from each variable ------------------------------------------------
+> 
+> d0 <- merge(train, test, all=T)
+> 
+> # Make empty characters NA
+> for(i in 1:ncol(d0)){
++   if(is.character(d0[,i])){
++     d0[d0[,i] == '', i] <- NA
++   }
++ }
+> 
+> summary(d0)
+  PassengerId       Pclass          Name               Sex           
+ Min.   :   1   Min.   :1.000   Length:1309        Length:1309       
+ 1st Qu.: 328   1st Qu.:2.000   Class :character   Class :character  
+ Median : 655   Median :3.000   Mode  :character   Mode  :character  
+ Mean   : 655   Mean   :2.295                                        
+ 3rd Qu.: 982   3rd Qu.:3.000                                        
+ Max.   :1309   Max.   :3.000                                        
+                                                                     
+      Age            SibSp            Parch          Ticket         
+ Min.   : 0.17   Min.   :0.0000   Min.   :0.000   Length:1309       
+ 1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000   Class :character  
+ Median :28.00   Median :0.0000   Median :0.000   Mode  :character  
+ Mean   :29.88   Mean   :0.4989   Mean   :0.385                     
+ 3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000                     
+ Max.   :80.00   Max.   :8.0000   Max.   :9.000                     
+ NA's   :263                                                        
+      Fare            Cabin             Embarked            Survived     
+ Min.   :  0.000   Length:1309        Length:1309        Min.   :0.0000  
+ 1st Qu.:  7.896   Class :character   Class :character   1st Qu.:0.0000  
+ Median : 14.454   Mode  :character   Mode  :character   Median :0.0000  
+ Mean   : 33.295                                         Mean   :0.3838  
+ 3rd Qu.: 31.275                                         3rd Qu.:1.0000  
+ Max.   :512.329                                         Max.   :1.0000  
+ NA's   :1                                               NA's   :418     
+> apply(d0, 2, function(x){sum(is.na(x))})
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+          0           0           0           0         263           0 
+      Parch      Ticket        Fare       Cabin    Embarked    Survived 
+          0           0           1        1014           2         418 
+> 
+> # PassengerId have no information
+> d0$PassengerId <- NULL
+> 
+> # Pclass is factor
+> unique(d0$Pclass)
+[1] 3 1 2
+> d0$Pclass <- factor(d0$Pclass)
+> 
+> # Extract 'title' information from Name variable (thx Megan)
+> extract_title <- function(name){
++   title <- gsub('(.*, )|(\\..*)', '', name)
++   
++   # language translation
++   title[title == 'Mlle'] <- 'Miss' 
++   title[title == 'Ms']   <- 'Miss'
++   title[title == 'Mme']  <- 'Mrs' 
++   
++   # summarize rare titles
++   tb <- table(title)
++   title[title %in% names(tb)[tb < 10]] <- 'Rare'
++   
++   cat(noquote(paste('Titles summary:')))
++   print(table(d0$Sex, title))
++   
++   title
++ }
+> d0$Title <- factor(extract_title(d0$Name))
+Titles summary:        title
+         Master Miss  Mr Mrs Rare
+  female      0  264   0 198    4
+  male       61    0 757   0   25
+> d0$Name <- NULL
+> 
+> # Sex is factor
+> d0$Sex <- factor(d0$Sex)
+> 
+> # Extract 'FamilySize' from SibSp and Parch variables (thx Megan)
+> # Note - this variable may be harmful for linear models.
+> d0$FamilySize <- d0$SibSp + d0$Parch + 1
+> 
+> # Cabin has too many NA
+> d0$Cabin <- NULL
+> 
+> d0$Ticket <- NULL
+> 
+> # Embarked is factor
+> d0$Embarked <- factor(d0$Embarked)
+> 
+> # Survived is factor
+> d0$Survived <- factor(d0$Survived)
+> 
+> 
+> # Split train and test data ------------------------------------------------------------
+> 
+> tr <- head(d0, nrow(train))
+> cv <- tail(d0, nrow(test))
+> cv$Survived <- NULL
+> 
+> # imputation usint mice package
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> mice_fit <- mice(tr, method = 'rf')
+
+ iter imp variable
+  1   1  Age  Embarked
+  1   2  Age  Embarked
+  1   3  Age  Embarked
+  1   4  Age  Embarked
+  1   5  Age  Embarked
+  2   1  Age  Embarked
+  2   2  Age  Embarked
+  2   3  Age  Embarked
+  2   4  Age  Embarked
+  2   5  Age  Embarked
+  3   1  Age  Embarked
+  3   2  Age  Embarked
+  3   3  Age  Embarked
+  3   4  Age  Embarked
+  3   5  Age  Embarked
+  4   1  Age  Embarked
+  4   2  Age  Embarked
+  4   3  Age  Embarked
+  4   4  Age  Embarked
+  4   5  Age  Embarked
+  5   1  Age  Embarked
+  5   2  Age  Embarked
+  5   3  Age  Embarked
+  5   4  Age  Embarked
+  5   5  Age  Embarked
+Warning message:
+Number of logged events: 50 
+> tr <- complete(mice_fit)
+> mice_fit <- mice(cv, method = 'rf')
+
+ iter imp variable
+  1   1  Age  Fare
+  1   2  Age  Fare
+  1   3  Age  Fare
+  1   4  Age  Fare
+  1   5  Age  Fare
+  2   1  Age  Fare
+  2   2  Age  Fare
+  2   3  Age  Fare
+  2   4  Age  Fare
+  2   5  Age  Fare
+  3   1  Age  Fare
+  3   2  Age  Fare
+  3   3  Age  Fare
+  3   4  Age  Fare
+  3   5  Age  Fare
+  4   1  Age  Fare
+  4   2  Age  Fare
+  4   3  Age  Fare
+  4   4  Age  Fare
+  4   5  Age  Fare
+  5   1  Age  Fare
+  5   2  Age  Fare
+  5   3  Age  Fare
+  5   4  Age  Fare
+  5   5  Age  Fare
+Warning message:
+Number of logged events: 50 
+> cv <- complete(mice_fit)
+> 
+> apply(tr, 2, function(x){sum(is.na(x))})
+    Pclass        Sex        Age      SibSp      Parch       Fare   Embarked 
+         0          0          0          0          0          0          0 
+  Survived      Title FamilySize 
+         0          0          0 
+> apply(cv, 2, function(x){sum(is.na(x))})
+    Pclass        Sex        Age      SibSp      Parch       Fare   Embarked 
+         0          0          0          0          0          0          0 
+     Title FamilySize 
+         0          0 
+> 
+> 
+> # preliminary modeling -----------------------------------------------------------------
+> 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> fit <- randomForest(Survived ~ ., data = tr)
+> plot(fit)
+> legend('topright', colnames(fit$err.rate), col=1:3, fill=1:3)
+> 
+> imp <- importance(fit) # type = 2, Gini
+> imp <- as.data.frame(imp)
+> 
+> p <- ggplot(imp, aes(x = reorder(rownames(imp), MeanDecreaseGini) , y=MeanDecreaseGini)) +
++   geom_bar(stat="identity") +
++   xlab("Features") +
++   ggtitle("Random Forest Feature Importance\n") +
++   coord_flip() +
++   theme_few()
+> 
+> ggsave("feature_importance.png", p)
+Saving 7 x 7 in image
+> 
+> 
+> # modeling with CV-based tuning for regularization param -------------------------------
+> 
+> library(caret)
+Loading required package: lattice
+> library(ranger)
+
+Attaching package: ‘ranger’
+
+The following object is masked from ‘package:randomForest’:
+
+    importance
+
+> 
+> fit <- train(
++   Survived ~ ., data = tr, method = 'ranger',
++   trControl = trainControl( method = 'cv', number = 5, verboseIter = TRUE )
++ )
++ Fold1: mtry= 2, min.node.size=1, splitrule=gini 
+- Fold1: mtry= 2, min.node.size=1, splitrule=gini 
++ Fold1: mtry= 8, min.node.size=1, splitrule=gini 
+- Fold1: mtry= 8, min.node.size=1, splitrule=gini 
++ Fold1: mtry=14, min.node.size=1, splitrule=gini 
+- Fold1: mtry=14, min.node.size=1, splitrule=gini 
++ Fold1: mtry= 2, min.node.size=1, splitrule=extratrees 
+- Fold1: mtry= 2, min.node.size=1, splitrule=extratrees 
++ Fold1: mtry= 8, min.node.size=1, splitrule=extratrees 
+- Fold1: mtry= 8, min.node.size=1, splitrule=extratrees 
++ Fold1: mtry=14, min.node.size=1, splitrule=extratrees 
+- Fold1: mtry=14, min.node.size=1, splitrule=extratrees 
++ Fold2: mtry= 2, min.node.size=1, splitrule=gini 
+- Fold2: mtry= 2, min.node.size=1, splitrule=gini 
++ Fold2: mtry= 8, min.node.size=1, splitrule=gini 
+- Fold2: mtry= 8, min.node.size=1, splitrule=gini 
++ Fold2: mtry=14, min.node.size=1, splitrule=gini 
+- Fold2: mtry=14, min.node.size=1, splitrule=gini 
++ Fold2: mtry= 2, min.node.size=1, splitrule=extratrees 
+- Fold2: mtry= 2, min.node.size=1, splitrule=extratrees 
++ Fold2: mtry= 8, min.node.size=1, splitrule=extratrees 
+- Fold2: mtry= 8, min.node.size=1, splitrule=extratrees 
++ Fold2: mtry=14, min.node.size=1, splitrule=extratrees 
+- Fold2: mtry=14, min.node.size=1, splitrule=extratrees 
++ Fold3: mtry= 2, min.node.size=1, splitrule=gini 
+- Fold3: mtry= 2, min.node.size=1, splitrule=gini 
++ Fold3: mtry= 8, min.node.size=1, splitrule=gini 
+- Fold3: mtry= 8, min.node.size=1, splitrule=gini 
++ Fold3: mtry=14, min.node.size=1, splitrule=gini 
+- Fold3: mtry=14, min.node.size=1, splitrule=gini 
++ Fold3: mtry= 2, min.node.size=1, splitrule=extratrees 
+- Fold3: mtry= 2, min.node.size=1, splitrule=extratrees 
++ Fold3: mtry= 8, min.node.size=1, splitrule=extratrees 
+- Fold3: mtry= 8, min.node.size=1, splitrule=extratrees 
++ Fold3: mtry=14, min.node.size=1, splitrule=extratrees 
+- Fold3: mtry=14, min.node.size=1, splitrule=extratrees 
++ Fold4: mtry= 2, min.node.size=1, splitrule=gini 
+- Fold4: mtry= 2, min.node.size=1, splitrule=gini 
++ Fold4: mtry= 8, min.node.size=1, splitrule=gini 
+- Fold4: mtry= 8, min.node.size=1, splitrule=gini 
++ Fold4: mtry=14, min.node.size=1, splitrule=gini 
+- Fold4: mtry=14, min.node.size=1, splitrule=gini 
++ Fold4: mtry= 2, min.node.size=1, splitrule=extratrees 
+- Fold4: mtry= 2, min.node.size=1, splitrule=extratrees 
++ Fold4: mtry= 8, min.node.size=1, splitrule=extratrees 
+- Fold4: mtry= 8, min.node.size=1, splitrule=extratrees 
++ Fold4: mtry=14, min.node.size=1, splitrule=extratrees 
+- Fold4: mtry=14, min.node.size=1, splitrule=extratrees 
++ Fold5: mtry= 2, min.node.size=1, splitrule=gini 
+- Fold5: mtry= 2, min.node.size=1, splitrule=gini 
++ Fold5: mtry= 8, min.node.size=1, splitrule=gini 
+- Fold5: mtry= 8, min.node.size=1, splitrule=gini 
++ Fold5: mtry=14, min.node.size=1, splitrule=gini 
+- Fold5: mtry=14, min.node.size=1, splitrule=gini 
++ Fold5: mtry= 2, min.node.size=1, splitrule=extratrees 
+- Fold5: mtry= 2, min.node.size=1, splitrule=extratrees 
++ Fold5: mtry= 8, min.node.size=1, splitrule=extratrees 
+- Fold5: mtry= 8, min.node.size=1, splitrule=extratrees 
++ Fold5: mtry=14, min.node.size=1, splitrule=extratrees 
+- Fold5: mtry=14, min.node.size=1, splitrule=extratrees 
+Aggregating results
+Selecting tuning parameters
+Fitting mtry = 8, splitrule = extratrees, min.node.size = 1 on full training set
+> 
+> #print(fit)
+> plot(fit, main = 'Random Forest Parameter Tuning by CV')
+> 
+> # output csv ---------------------------------------------------------------------------
+> 
+> pred <- data.frame(
++   PassengerId = test$PassengerId,
++   Survived = predict(fit, cv)
++ )
+> 
+> write.csv(pred, file = "pred.csv", quote = F, row.names=F)
+> 
+> proc.time()
+   user  system elapsed 
+ 20.947   0.619   8.539 

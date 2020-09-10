@@ -1,0 +1,600 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> library(rpart)
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library(e1071)
+> library(party)
+Loading required package: grid
+Loading required package: mvtnorm
+Loading required package: modeltools
+Loading required package: stats4
+Loading required package: strucchange
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: sandwich
+Warning messages:
+1: package ‘party’ was built under R version 3.6.2 
+2: package ‘zoo’ was built under R version 3.6.2 
+> 
+> 
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> list.files("../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> 
+> # Any results you write to the current directory are saved as output.
+> 
+> #Checking the training dataset 
+> trainData <- read.table("../input/train.csv", sep=",", header=TRUE)
+> head(trainData)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> str(trainData)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> table(trainData$Survived)
+
+  0   1 
+549 342 
+> prop.table(table(trainData$Survived))
+
+        0         1 
+0.6161616 0.3838384 
+> 
+> #Checking the test dataset
+> testData <- read.table("../input/test.csv", sep=",", header=T)
+> str(testData)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : Factor w/ 418 levels "Abbott, Master. Eugene Joseph",..: 210 409 273 414 182 370 85 58 5 104 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : Factor w/ 77 levels "","A11","A18",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+> testData$Survived <- rep(0, nrow(testData))
+> submit <- data.frame(PassengerId = testData$PassengerId, Survived = testData$Survived)
+> #try the submission (Every one die)
+> write.csv(submit, file = "./test1.csv", row.names= F)
+> 
+> summary(trainData$Sex)
+female   male 
+   314    577 
+> prop.table(table(trainData$Sex, trainData$Survived))
+        
+                  0          1
+  female 0.09090909 0.26150393
+  male   0.52525253 0.12233446
+> prop.table(table(trainData$Sex, trainData$Survived),1)
+        
+                 0         1
+  female 0.2579618 0.7420382
+  male   0.8110919 0.1889081
+> 
+> #Test 2: set all female & children passengers as having survived; 
+> testData$Survived <- 0
+> testData$Survived[testData$Sex == 'female'] <- 1 
+> testData$Survived[testData$Age < 18] <- 1 
+> submit <- data.frame(PassengerId = testData$PassengerId, Survived = testData$Survived)
+> write.csv(submit, file ="./test2.csv", row.names = F)
+> 
+> #Analysis by Age&Sex	
+> summary(trainData$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.42   20.12   28.00   29.70   38.00   80.00     177 
+> summary(trainData$Sex)
+female   male 
+   314    577 
+> 
+> #Creating a new variable "Child", and assuming that children also survived:
+> trainData$Child <- 0
+> trainData$Child[trainData$Age <18] <- 1
+> aggregate(Survived ~ Child + Sex, data=trainData, FUN=sum)
+  Child    Sex Survived
+1     0 female      195
+2     1 female       38
+3     0   male       86
+4     1   male       23
+> aggregate(Survived ~ Child + Sex, data=trainData, FUN=length)
+  Child    Sex Survived
+1     0 female      259
+2     1 female       55
+3     0   male      519
+4     1   male       58
+> aggregate(Survived ~ Child + Sex, data=trainData, FUN= function(x) { sum(x)/length(x) } )
+  Child    Sex  Survived
+1     0 female 0.7528958
+2     1 female 0.6909091
+3     0   male 0.1657033
+4     1   male 0.3965517
+> 
+> 
+> #Investigating now at the passenger class
+> # Let’s bin the fares into less than $10, between $10 and $20, $20 to $30 and more than $30 and store it to a new variable
+> trainData$Fare2 <- '30+'
+> trainData$Fare2[trainData$Fare < 30 & trainData$Fare >= 20] <- '20-30'
+> trainData$Fare2[trainData$Fare < 20 & trainData$Fare >= 10] <- '10-20'
+> trainData$Fare2[trainData$Fare < 10] <- '<10'
+> aggregate(Survived ~ Child + Fare2 + Sex, data = trainData, FUN = function(x) { sum(x)/length(x) } )
+   Child Fare2    Sex  Survived
+1      0   <10 female 0.5614035
+2      1   <10 female 0.8571429
+3      0 10-20 female 0.7166667
+4      1 10-20 female 0.7777778
+5      0 20-30 female 0.7173913
+6      1 20-30 female 0.5454545
+7      0   30+ female 0.9062500
+8      1   30+ female 0.6315789
+9      0   <10   male 0.1042471
+10     1   <10   male 0.1538462
+11     0 10-20   male 0.1222222
+12     1 10-20   male 0.7272727
+13     0 20-30   male 0.2153846
+14     1 20-30   male 0.3571429
+15     0   30+   male 0.3238095
+16     1   30+   male 0.4000000
+> aggregate(Survived ~ Fare2 + Pclass + Child + Sex, data = trainData, FUN = function(x) { sum(x)/length(x) } )
+   Fare2 Pclass Child    Sex   Survived
+1  20-30      1     0 female 0.83333333
+2    30+      1     0 female 0.98750000
+3  10-20      2     0 female 0.90625000
+4  20-30      2     0 female 0.88000000
+5    30+      2     0 female 1.00000000
+6    <10      3     0 female 0.56140351
+7  10-20      3     0 female 0.50000000
+8  20-30      3     0 female 0.40000000
+9    30+      3     0 female 0.11111111
+10   30+      1     1 female 0.87500000
+11 10-20      2     1 female 1.00000000
+12 20-30      2     1 female 1.00000000
+13   30+      2     1 female 1.00000000
+14   <10      3     1 female 0.85714286
+15 10-20      3     1 female 0.73333333
+16 20-30      3     1 female 0.16666667
+17   30+      3     1 female 0.14285714
+18   <10      1     0   male 0.00000000
+19 20-30      1     0   male 0.40000000
+20   30+      1     0   male 0.35365854
+21   <10      2     0   male 0.00000000
+22 10-20      2     0   male 0.11864407
+23 20-30      2     0   male 0.04761905
+24   30+      2     0   male 0.00000000
+25   <10      3     0   male 0.10931174
+26 10-20      3     0   male 0.12903226
+27 20-30      3     0   male 0.07142857
+28   30+      3     0   male 0.41666667
+29   30+      1     1   male 1.00000000
+30 10-20      2     1   male 0.75000000
+31 20-30      2     1   male 0.75000000
+32   30+      2     1   male 1.00000000
+33   <10      3     1   male 0.15384615
+34 10-20      3     1   male 0.71428571
+35 20-30      3     1   male 0.20000000
+36   30+      3     1   male 0.07692308
+> 
+> 
+> fol <- formula(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare)
+> modelR <- rpart(fol, method="class", data=trainData)
+> print(modelR)
+n= 891 
+
+node), split, n, loss, yval, (yprob)
+      * denotes terminal node
+
+  1) root 891 342 0 (0.61616162 0.38383838)  
+    2) Sex=male 577 109 0 (0.81109185 0.18890815)  
+      4) Age>=6.5 553  93 0 (0.83182640 0.16817360) *
+      5) Age< 6.5 24   8 1 (0.33333333 0.66666667)  
+       10) SibSp>=2.5 9   1 0 (0.88888889 0.11111111) *
+       11) SibSp< 2.5 15   0 1 (0.00000000 1.00000000) *
+    3) Sex=female 314  81 1 (0.25796178 0.74203822)  
+      6) Pclass>=2.5 144  72 0 (0.50000000 0.50000000)  
+       12) Fare>=23.35 27   3 0 (0.88888889 0.11111111) *
+       13) Fare< 23.35 117  48 1 (0.41025641 0.58974359)  
+         26) Age>=16.5 93  42 1 (0.45161290 0.54838710)  
+           52) Fare>=7.8875 56  25 0 (0.55357143 0.44642857)  
+            104) Fare< 14.8729 33  10 0 (0.69696970 0.30303030) *
+            105) Fare>=14.8729 23   8 1 (0.34782609 0.65217391) *
+           53) Fare< 7.8875 37  11 1 (0.29729730 0.70270270) *
+         27) Age< 16.5 24   6 1 (0.25000000 0.75000000) *
+      7) Pclass< 2.5 170   9 1 (0.05294118 0.94705882) *
+> modelR <- rpart(fol, method="class", data=trainData)
+> guessR<-predict(modelR,newdata=testData, type="class")
+> accuracy <- ( sum(guessR == testData$Survived)/nrow(testData) )
+> print(accuracy)
+[1] 0.8995215
+> 
+> plot(modelR)
+> text(modelR)
+> dev.copy(png, file="./rpart.png", height=480, width=480)
+quartz_off_screen 
+                3 
+> dev.off()
+pdf 
+  2 
+> 
+> library(rattle)
+Loading required package: tibble
+Loading required package: bitops
+Rattle: A free graphical interface for data science with R.
+Version 5.4.0 Copyright (c) 2006-2020 Togaware Pty Ltd.
+Type 'rattle()' to shake, rattle, and roll your data.
+
+Attaching package: ‘rattle’
+
+The following object is masked from ‘package:randomForest’:
+
+    importance
+
+Warning messages:
+1: package ‘rattle’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+> library(rpart.plot)
+> library(RColorBrewer)
+> 
+> fancyRpartPlot(modelR)
+> dev.copy(png, file = "./rpart2.png", height = 480, width=480)
+quartz_off_screen 
+                3 
+> dev.off()
+pdf 
+  2 
+> 
+> submit <- data.frame(PassengerId = testData$PassengerId, Survived = guessR)
+> write.csv(submit, file = "./test2final.csv", row.names = FALSE)
+> 
+> #########################################################
+> 
+> ###Feature engineering
+> #Analysing reamining variables, starting by Name
+> trainData$Name[1]
+[1] Braund, Mr. Owen Harris
+891 Levels: Abbing, Mr. Anthony ... Zimmerman, Mr. Leo
+> #[1] Braund, Mr. Owen Harris
+> #891 Levels: Abbing, Mr. Anthony ... van Melkebeke, Mr. Philemon
+> 
+> #New data.frame to work
+> trainData <- read.table("../input/train.csv", sep=",", header=TRUE)
+> testData$Survived <- NA
+> combi <- rbind(trainData, testData)
+> 
+> #strings are automatically imported as factors in R, even if it doesn’t make sense. So we need to cast this column back into a text string. To do this we use as.character.
+> combi$Name <- as.character(combi$Name)
+> combi$Name[1]
+[1] "Braund, Mr. Owen Harris"
+> 
+> #Splitting Strings through basic RGEX:
+> strsplit(combi$Name[1], split='[,.]')
+[[1]]
+[1] "Braund"       " Mr"          " Owen Harris"
+
+> #[[1]]
+> #[1] "Braund"       " Mr"          " Owen Harris"
+> strsplit(combi$Name[1], split='[,.]')[[1]]
+[1] "Braund"       " Mr"          " Owen Harris"
+> #[1] "Braund"       " Mr"          " Owen Harris"
+> 
+> #String split uses a doubly stacked matrix because it can never be sure that a given regex will have the same number of pieces. If there were more commas or periods in the name, it would create more segments, so it hides them a level deeper to maintain the rectangular types of containers that we are used to in things like spreadsheets, or now dataframes!
+> 
+> #Ripping specific parts
+> strsplit(combi$Name[1], split='[,.]')[[1]][[2]]
+[1] " Mr"
+> #" Mr"
+> combi$Title <- sapply(combi$Name, FUN = function(x) { strsplit(x, split='[,.]')[[1]][[2]] })
+> 
+> #R’s apply functions all work in slightly different ways, but sapply will work great here. We feed sapply our vector of names and our function that we just came up with. It runs through the rows of the vector of names, and sends each name to the function. The results of all these string splits are all combined up into a vector as output from the sapply function, which we then store to a new column in our original dataframe, called Title.
+> #Finally, we may wish to strip off those spaces from the beginning of the titles. Here we can just substitute the first occurrence of a space with nothing. We can use sub for this (gsub would replace all spaces, poor ‘the Countess’ would look strange then though)
+> 
+> combi$Title <- sub(' ', '', combi$Title)
+> table(combi$Title)
+
+        Capt          Col          Don         Dona           Dr     Jonkheer 
+           1            4            1            1            8            1 
+        Lady        Major       Master         Miss         Mlle          Mme 
+           1            2           61          260            2            1 
+          Mr          Mrs           Ms          Rev          Sir the Countess 
+         757          197            2            8            1            1 
+> #         Capt           Col           Don          Dona            Dr 
+> #            1             4             1             1             8 
+> #     Jonkheer          Lady         Major        Master          Miss 
+> #            1             1             2            61           260 
+> #         Mlle           Mme            Mr           Mrs            Ms 
+> #            2             1           757           197             2 
+> #          Rev           Sir  the Countess 
+> #            8             1             1 
+> 
+> combi$Title[combi$Title %in% c('Mme', 'Mlle')] <- 'Mlle'
+> 
+> #What have we done here? The %in% operator checks to see if a value is part of the vector we’re comparing it to. So here we are combining two titles, ‘Mme’ and ‘Mlle’, into a new temporary vector using the c() operator and seeing if any of the existing titles in the entire Title column match either of them. We then replace any match with ‘Mlle’.
+> #Let’s keep looking for redundancy. It seems the very rich are a bit of a problem for our set here too. For the men, we have a handful of titles that only one or two have been blessed with: Captain, Don, Major and Sir. All of these are either military titles, or rich fellas who were born with vast tracts of land. For the ladies, we have Dona, Lady, Jonkheer (*see comments below), and of course our Countess. All of these are again the rich folks, and may have acted somewhat similarly due to their noble birth. Let’s combine these two groups and reduce the number of factor levels to something that a decision tree might make sense of:
+> combi$Title[combi$Title %in% c('Capt', 'Don', 'Major', 'Sir')] <- 'Sir'
+> combi$Title[combi$Title %in% c('Dona', 'Lady', 'the Countess', 'Jonkheer')] <- 'Lady'
+> 
+> 
+> #Our final step is to change the variable type back to a factor, as these are essentially categories that we have created:
+> combi$Title <- factor(combi$Title)
+> 
+> #variables SibSb and Parch that indicate the number of family members the passenger is travelling with. Seems reasonable to assume that a large family might have trouble tracking down little Johnny as they all scramble to get off the sinking ship, so let’s combine the two variables into a new one, FamilySize:
+> combi$FamilySize <- combi$SibSp + combi$Parch + 1
+> 
+> #Pretty simple! We just add the number of siblings, spouses, parents and children the passenger had with them, and plus one for their own existence of course, and have a new variable indicating the size of the family they travelled with.
+> 
+> #Combining the Surname with the family size to obtain 
+> combi$Surname <- sapply(combi$Name, FUN=function(x) {strsplit(x, split='[,.]')[[1]][1]})
+> #combi$Surname <- sub(' ', '', combi$Surname)
+> 
+> #We then want to append the FamilySize variable to the front of it, but as we saw with factors, string operations need strings. So let’s convert the FamilySize variable temporarily to a string and combine it with the Surname to get our new FamilyID variable:
+> combi$FamilyID <- paste(as.character(combi$FamilySize), combi$Surname, sep="")
+> 
+> #We used the function paste to bring two strings together, and told it to separate them with nothing through the sep argument. This was stored to a new column called FamilyID. But those three single Johnsons would all have the same Family ID. Given we were originally hypothesising that large families might have trouble sticking together in the panic, let’s knock out any family size of two or less and call it a “small” family. This would fix the Johnson problem too.
+> combi$FamilyID[combi$FamilySize <= 2] <- 'Small'
+> table(combi$FamilyID)
+
+           11Sage           3Abbott         3Appleton         3Beckwith 
+               11                 3                 1                 2 
+          3Boulos           3Bourke            3Brown         3Caldwell 
+                3                 3                 4                 3 
+         3Christy          3Collyer          3Compton          3Cornell 
+                2                 3                 3                 1 
+          3Coutts           3Crosby           3Danbom           3Davies 
+                3                 3                 3                 5 
+           3Dodge          3Douglas             3Drew            3Elias 
+                3                 1                 3                 3 
+      3Frauenthal        3Frolicher 3Frolicher-Stehli        3Goldsmith 
+                1                 1                 2                 3 
+      3Gustafsson       3Hamalainen           3Hansen             3Hart 
+                2                 2                 1                 3 
+            3Hays          3Hickman         3Hiltunen         3Hirvonen 
+                2                 3                 1                 1 
+        3Jefferys          3Johnson             3Kink    3Kink-Heilmann 
+                2                 3                 2                 2 
+          3Klasen         3Lahtinen           3Mallet            3McCoy 
+                3                 2                 3                 3 
+         3Minahan         3Moubarek            3Nakid         3Navratil 
+                1                 3                 3                 3 
+          3Newell           3Newsom         3Nicholls          3Peacock 
+                1                 1                 1                 3 
+           3Peter            3Quick         3Richards          3Rosblom 
+                3                 3                 2                 3 
+          3Samaan        3Sandstrom           3Silven          3Spedden 
+                3                 3                 1                 3 
+           3Strom          3Taussig           3Thayer           3Thomas 
+                1                 3                 3                 1 
+           3Touma     3van Billiard         3Van Impe    3Vander Planke 
+                3                 3                 3                 2 
+           3Wells             3Wick          3Widener          4Allison 
+                3                 3                 3                 4 
+       4Backstrom          4Baclini           4Becker           4Carter 
+                1                 4                 4                 4 
+        4Davidson             4Dean           4Herman          4Hocking 
+                1                 4                 4                 2 
+       4Jacobsohn         4Johnston          4Laroche           4Renouf 
+                1                 4                 4                 1 
+   4Vander Planke             4West             5Ford          5Hocking 
+                1                 4                 5                 1 
+   5Kink-Heilmann          5Lefebre          5Palsson          5Ryerson 
+                1                 5                 5                 5 
+         6Fortune           6Panula             6Rice         6Richards 
+                6                 6                 6                 1 
+           6Skoog        7Andersson          7Asplund          8Goodwin 
+                6                 9                 7                 8 
+            Small 
+             1025 
+> famIDs <- data.frame(table(combi$FamilyID))
+> 
+> #Here we see again all those naughty families that didn’t work well with our assumptions, so let’s subset this dataframe to show only those unexpectedly small FamilyID groups.
+> famIDs <- famIDs[famIDs$Freq <= 2,]
+> 
+> #overwrite any family IDs in our dataset for groups that were not correctly identified 
+> combi$FamilyID[combi$FamilyID %in% famIDs$Var1] <- 'Small'
+> combi$FamilyID <- factor(combi$FamilyID)
+> 
+> #We are now ready to split the test and training sets back into their original states, carrying our fancy new engineered variables with them. The nicest part of what we just did is how the factors are treated in R. Behind the scenes, factors are basically stored as integers, but masked with their text names for us to look at. If you create the above factors on the isolated test and train sets separately, there is no guarantee that both groups exist in both sets.
+> 
+> #Because we built the factors on a single dataframe, and then split it apart after we built them, R will give all factor levels to both new dataframes, even if the factor doesn’t exist in one. It will still have the factor level, but no actual observations of it in the set. Neat trick right? Let me assure you that manually updating factor levels is a pain.
+> 
+> #So let’s break them apart and do some predictions on our new fancy engineered variables:
+> train <- combi[1:891,]
+> test <- combi[892:1309,]
+> 
+> #Time to do our predictions! We have a bunch of new variables, so let’s send them to a new decision tree. Last time the default complexity worked out pretty well, so let’s just grow a tree with the vanilla controls and see what it can do
+> fit <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize + FamilyID,
++              data=train, method="class")
+> fancyRpartPlot(fit)
+> 
+> dev.copy(png, file = "./featureEngineering.png", height = 480, width=480)
+quartz_off_screen 
+                3 
+> dev.off()
+pdf 
+  2 
+> 
+> Prediction <- predict(fit, test, type = "class")
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+> write.csv(submit, file = "./featureEngineering.csv", row.names = FALSE)
+> 
+> #Your Best Entry
+> #You improved on your best score by 0.01435. 
+> #You just moved up 448 positions on the leaderboard. 0.79904
+> 
+> 
+> #Final Approach: Random Forests
+> 
+> #First Approach - Bagging:
+> sample(1:10, replace = TRUE)
+ [1]  5  4  4  3  8  3 10 10  9  3
+> #In this simulation, we would still have 10 rows to work with, but rows 1, 2, 9 and 10 are each repeated twice, while rows 4, 5, 6 and 8 are excluded. If you run this command again, you will get a different sample of rows each time. On average, around 37% of the rows will be left out of the bootstrapped sample. With these repeated and omitted rows, each decision tree grown with bagging would evolve slightly differently. If you have very strong features such as gender in our example though, that variable will probably still dominate the first decision in most of your trees.
+> 
+> #Second Approach - The second source of randomness gets past this limitation though. Instead of looking at the entire pool of available variables, Random Forests take only a subset of them, typically the square root of the number available. In our case we have 10 variables, so using a subset of three variables would be reasonable. The selection of available variables is changed for each and every node in the decision trees. This way, many of the trees won’t even have the gender variable available at the first split, and might not even see it until several nodes deep.
+> 
+> #R’s Random Forest algorithm has a few restrictions that we did not have with our decision trees. The big one has been the elephant in the room until now, we have to clean up the missing values in our dataset. rpart has a great advantage in that it can use surrogate variables when it encounters an NA value. In our dataset there are a lot of age values missing. If any of our decision trees split on age, the tree would search for another variable that split in a similar way to age, and use them instead. Random Forests cannot do this, so we need to find a way to manually replace these values. A method we implicitly used in part 2 when we defined the adult/child age buckets was to assume that all missing values were the mean or median of the remaining data. Since then we’ve learned a lot of new skills though, so let’s use a decision tree to fill in those values instead. Let’s pick up where we left off last lesson, and take a look at the combined dataframe’s age variable to see what we’re up against
+> 
+> 
+> summary(combi$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.17   21.00   28.00   29.88   39.00   80.00     263 
+> #   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+> #   0.17   21.00   28.00   29.88   39.00   80.00     263 
+> 
+> #263 values out of 1309 were missing this whole time, that’s a whopping 20%! A few new pieces of syntax to use. Instead of subsetting by boolean logic, we can use the R function is.na(), and it’s reciprocal !is.na() (the bang symbol represents ‘not’). This subsets on whether a value is missing or not. We now also want to use the method=”anova” version of our decision tree, as we are not trying to predict a category any more, but a continuous variable. So let’s grow a tree on the subset of the data with the age values available, and then replace those that are missing
+> 
+> Agefit <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + FamilySize,
++                 data=combi[!is.na(combi$Age),], method="anova")
+> combi$Age[is.na(combi$Age)] <- predict(Agefit, combi[is.na(combi$Age),])
+> 
+> summary(combi$Embarked)
+      C   Q   S 
+  2 270 123 914 
+> #      C   Q   S 
+> #  2 270 123 914 
+> 
+> #Embarked has a blank for two passengers. While a blank wouldn’t be a problem for our model like an NA would be, since we’re cleaning anyhow, let’s get rid of it. Because it’s so few observations and such a large majority boarded in Southampton, let’s just replace those two with ‘S’. First we need to find out who they are though! We can use which for this:
+> which(combi$Embarked == '')
+[1]  62 830
+> #[1]  62 830
+> 
+> #This gives us the indexes of the blank fields. Then we simply replace those two, and encode it as a factor
+> combi$Embarked[c(62,830)] = "S"
+> combi$Embarked <- factor(combi$Embarked)
+> 
+> which(is.na(combi$Fare))
+[1] 1044
+> #[1] 1044
+> combi$Fare[1044] <- median(combi$Fare, na.rm = TRUE)
+> combi$Fare[1044]
+[1] 14.4542
+> #[1] 14.4542
+> 
+> #Okay. Our dataframe is now cleared of NAs. Now on to restriction number two: Random Forests in R can only digest factors with up to 32 levels. Our FamilyID variable had almost double that. We could take two paths forward here, either change these levels to their underlying integers (using the unclass() function) and having the tree treat them as continuous variables, or manually reduce the number of levels to keep it under the threshold.
+> 
+> #Let’s take the second approach. To do this we’ll copy the FamilyID column to a new variable, FamilyID2, and then convert it from a factor back into a character string with as.character(). We can then increase our cut-off to be a “Small” family from 2 to 3 people. Then we just convert it back to a factor and we’re done:
+> 
+> combi$FamilyID2 <- combi$FamilyID
+> combi$FamilyID2 <- as.character(combi$FamilyID2)
+> combi$FamilyID2[combi$FamilySize <= 3] <- 'Small'
+> combi$FamilyID2 <- factor(combi$FamilyID2)
+> 
+> #Okay, we’re down to 22 levels so we’re good to split the test and train sets back up as we did last lesson and grow a Random Forest. Install and load the package randomForest:
+> 
+> library(randomForest)
+> train <- combi[1:891,]
+> test <- combi[892:1309,]
+> 
+> set.seed(415)
+> fit <- randomForest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize +
++                     FamilyID2, data=train, importance=TRUE, ntree=2000)
+> varImpPlot(fit)
+> Prediction <- predict(fit, test)
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+> write.csv(submit, file = "./firstforest.csv", row.names = FALSE)
+> 
+> set.seed(415)
+> #fit <- svm(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize + FamilyID,
+> #               data = train)
+> #Prediction <- predict(fit, test, type="class")
+> fol <- as.factor(Survived) ~ Pclass + Sex + Age + Fare + Embarked + Title + FamilySize + FamilyID2
+> fit <- randomForest(fol, data=train, importance=TRUE, ntree=3000)
+> varImpPlot(fit)
+> Prediction<-predict(fit,test)
+> accuracy2RF <- ( sum(Prediction == test$Survived)/nrow(test) )
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+> write.csv(submit, file = "./secondforest.csv", row.names = FALSE)
+> 
+> #folnew <- formula(Survived ~ Pclass + Sex + Age + SibSp + Fare + Embarked + FamilySize + FamilyID2)
+> #modelRnew <- rpart(folnew, method="class", data=train)
+> #guessRnew<-predict(modelRnew,newdata=test, type="class")
+> #accuracyRnew <- ( sum(guessRnew == test$Survived)/nrow(test) )
+> #submit <- data.frame(PassengerId = test$PassengerId, Survived = modelRnew)
+> #write.csv(submit, file = "./rpartnew.csv", row.names = FALSE)
+> 
+> accuracy2RF
+[1] NA
+> #accuracyRnew
+> 
+> #set.seed(415)
+> #fit <- cforest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize + FamilyID,
+> #               data = train, controls=cforest_unbiased(ntree=2000, mtry=3))
+> #Prediction <- predict(fit, test, OOB=TRUE, type = "response")
+> #submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+> #write.csv(submit, file = "./secondforest.csv", row.names = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  7.502   0.273   7.841 

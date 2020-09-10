@@ -1,0 +1,534 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ---- include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(message = FALSE, warning = FALSE, collapse = TRUE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(ggplot2) # visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(rms) # model evaluation
+Loading required package: Hmisc
+Loading required package: lattice
+Loading required package: survival
+Loading required package: Formula
+
+Attaching package: ‘Hmisc’
+
+The following objects are masked from ‘package:base’:
+
+    format.pval, units
+
+Loading required package: SparseM
+
+Attaching package: ‘SparseM’
+
+The following object is masked from ‘package:base’:
+
+    backsolve
+
+Warning messages:
+1: package ‘rms’ was built under R version 3.6.2 
+2: package ‘survival’ was built under R version 3.6.2 
+> library(MASS) # data modelling
+> library(class) # data modelling
+> library(e1071) # data modelling
+
+Attaching package: ‘e1071’
+
+The following object is masked from ‘package:Hmisc’:
+
+    impute
+
+> library(dummies) # data modelling
+dummies-1.5.6 provided by Decision Patterns
+
+> library(randomForest) # data modelling
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library(ROCR) # model evaluation
+Warning message:
+package ‘ROCR’ was built under R version 3.6.2 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- read.csv("../input/train.csv")
+> test <- read.csv("../input/test.csv")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> test$Survived <- NA
+> c_data <- rbind(train,test)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(c_data)
+  PassengerId      Survived          Pclass     
+ Min.   :   1   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000  
+ Median : 655   Median :0.0000   Median :3.000  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295  
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :1309   Max.   :1.0000   Max.   :3.000  
+                NA's   :418                     
+                               Name          Sex           Age       
+ Connolly, Miss. Kate            :   2   female:466   Min.   : 0.17  
+ Kelly, Mr. James                :   2   male  :843   1st Qu.:21.00  
+ Abbing, Mr. Anthony             :   1                Median :28.00  
+ Abbott, Mr. Rossmore Edward     :   1                Mean   :29.88  
+ Abbott, Mrs. Stanton (Rosa Hunt):   1                3rd Qu.:39.00  
+ Abelson, Mr. Samuel             :   1                Max.   :80.00  
+ (Other)                         :1301                NA's   :263    
+     SibSp            Parch            Ticket          Fare        
+ Min.   :0.0000   Min.   :0.000   CA. 2343:  11   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.000   1601    :   8   1st Qu.:  7.896  
+ Median :0.0000   Median :0.000   CA 2144 :   8   Median : 14.454  
+ Mean   :0.4989   Mean   :0.385   3101295 :   7   Mean   : 33.295  
+ 3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7   3rd Qu.: 31.275  
+ Max.   :8.0000   Max.   :9.000   347082  :   7   Max.   :512.329  
+                                  (Other) :1261   NA's   :1        
+             Cabin      Embarked
+                :1014    :  2   
+ C23 C25 C27    :   6   C:270   
+ B57 B59 B63 B66:   5   Q:123   
+ G6             :   5   S:914   
+ B96 B98        :   4           
+ C22 C26        :   4           
+ (Other)        : 271           
+> 
+> 
+> ## ----echo=FALSE, results='asis'--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(knitr)
+> kable(c_data[is.na(c_data$Fare),])
+
+
+|     | PassengerId| Survived| Pclass|Name               |Sex  |  Age| SibSp| Parch|Ticket | Fare|Cabin |Embarked |
+|:----|-----------:|--------:|------:|:------------------|:----|----:|-----:|-----:|:------|----:|:-----|:--------|
+|1044 |        1044|       NA|      3|Storey, Mr. Thomas |male | 60.5|     0|     0|3701   |   NA|      |S        |
+> 
+> 
+> ## ---- include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> c_data$Ticket <- as.character(c_data$Ticket)
+> 
+> 
+> ## ----echo=FALSE, results='asis'--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(knitr)
+> kable(c_data[c_data$Ticket == "3701",])
+
+
+|     | PassengerId| Survived| Pclass|Name               |Sex  |  Age| SibSp| Parch|Ticket | Fare|Cabin |Embarked |
+|:----|-----------:|--------:|------:|:------------------|:----|----:|-----:|-----:|:------|----:|:-----|:--------|
+|1044 |        1044|       NA|      3|Storey, Mr. Thomas |male | 60.5|     0|     0|3701   |   NA|      |S        |
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> s_p3_solo <- c_data[c_data$Pclass == 3 & c_data$Embarked == "S" & c_data$SibSp == 0 & c_data$Parch == 0,]
+> s_p3_solo_clean <- s_p3_solo[!is.na(s_p3_solo$Fare),] # $7.90
+> c_data$Fare[1044] <- median(s_p3_solo_clean$Fare)
+> 
+> 
+> ## ----echo=FALSE, results='asis'--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(knitr)
+> kable(c_data[c_data$Embarked == "",])
+
+
+|    | PassengerId| Survived| Pclass|Name                                      |Sex    | Age| SibSp| Parch|Ticket | Fare|Cabin |Embarked |
+|:---|-----------:|--------:|------:|:-----------------------------------------|:------|---:|-----:|-----:|:------|----:|:-----|:--------|
+|62  |          62|        1|      1|Icard, Miss. Amelie                       |female |  38|     0|     0|113572 |   80|B28   |         |
+|830 |         830|        1|      1|Stone, Mrs. George Nelson (Martha Evelyn) |female |  62|     0|     0|113572 |   80|B28   |         |
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> embark <- c_data[c_data$Embarked != "",]
+> 
+> ggplot(embark, aes(x = Embarked, y = Fare, fill = factor(Pclass))) +
++   geom_boxplot() +
++   geom_hline(aes(yintercept=80), 
++              colour='red', linetype='dashed', lwd=2) +
++   theme_bw()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> c_data$Embarked[c(62,830)] <- 'C'
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> c_data$Title <- gsub('(.*, )|(\\..*)','',c_data$Name)
+> unique(c_data$Title)
+ [1] "Mr"           "Mrs"          "Miss"         "Master"       "Don"         
+ [6] "Rev"          "Dr"           "Mme"          "Ms"           "Major"       
+[11] "Lady"         "Sir"          "Mlle"         "Col"          "Capt"        
+[16] "the Countess" "Jonkheer"     "Dona"        
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> c_data$Title[c_data$Title == "Mme"] <- "Mrs"
+> c_data$Title[c_data$Title == "Mlle"] <- "Miss"
+> c_data$Title[c_data$Title == "Ms"] <- "Miss"
+> 
+> other_list <- unique(c_data$Title)
+> other_list <- other_list[5:15]
+> c_data$Title[c_data$Title %in% other_list] <- "Other"
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # family size variable
+> c_data$nFamily <- c_data$SibSp + c_data$Parch + 1
+> 
+> # shared ticket variable
+> c_data$sharedTix <- ifelse(c_data$Ticket %in% c_data$Ticket[duplicated(c_data$Ticket)], 1, 0)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Mother variable
+> c_data$mother <- ifelse(c_data$Parch > 0 & c_data$Title == "Mrs",1,0)
+> 
+> # Child variable using Title as a proxy when Age is missing
+> c_data$child <- ifelse(c_data$Age > 18 & !is.na(c_data$Age) | c_data$Title %in% c("Other", "Mr", "Mrs"),0,1)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train_new <- c_data[1:891,]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(train_new, aes(x = Pclass, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge') +
++   scale_x_continuous(breaks=c(min(train_new$Pclass):max(train_new$Pclass))) +
++   labs(x = 'P class') +
++   theme_bw()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(train_new, aes(x = nFamily, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge') +
++   scale_x_continuous(breaks=c(min(train_new$nFamily):max(train_new$nFamily))) +
++   labs(x = 'Family Size') +
++   theme_bw()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(train_new$sharedTix, train_new$Survived)
+   
+      0   1
+  0 351 130
+  1 198 212
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> c_data$travelParty <- ifelse(c_data$sharedTix == 0 & c_data$nFamily == 1, "Single",
++                              ifelse(c_data$sharedTix == 1 & c_data$nFamily == 1 |   c_data$nFamily < 5,"Small","Large"))
+> 
+> train_new <- c_data[1:891,]
+> 
+> ggplot(train_new, aes(x = travelParty, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge') +
++   labs(x = 'Travel Party Size') +
++   theme_bw()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fact_var <- c('Survived','Pclass', 'Sex', 'SibSp', 'Parch', 'Embarked', 'Title', 'nFamily', 'travelParty')
+> 
+> train_new[fact_var] <- lapply(train_new[fact_var], function(x) as.factor(x))
+> 
+> all_vars <- c('Pclass', 'Sex','SibSp', 'Parch','Fare','Embarked','sharedTix', 'Title', 
++               'nFamily','travelParty','mother', 'child')
+> 
+> n_train <- round((nrow(train_new)*2)/3,0)
+> 
+> set.seed(1912)
+> 
+> model_train <- sample(1:nrow(train_new), n_train)
+> 
+> cv <- train_new[-model_train,]
+> 
+> 
+> ## ---- results='hide'-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fm_all <- as.formula(paste("Survived ~ ", paste(all_vars, collapse= "+")))
+> logit_model_all <- glm(fm_all, data = train_new, family = binomial, subset = model_train)
+> step_fit <- step(logit_model_all)
+Start:  AIC=507.02
+Survived ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + sharedTix + 
+    Title + nFamily + travelParty + mother + child
+
+              Df Deviance    AIC
+- nFamily      4   448.81 502.81
+- SibSp        3   447.35 503.35
+- Parch        4   449.63 503.63
+- Embarked     2   445.83 503.83
+- sharedTix    1   445.03 505.03
+- mother       1   445.03 505.03
+- child        1   445.05 505.05
+- travelParty  1   445.06 505.06
+<none>             445.02 507.02
+- Sex          1   447.66 507.66
+- Fare         1   448.08 508.08
+- Pclass       2   471.83 529.83
+- Title        4   480.98 534.98
+
+Step:  AIC=502.81
+Survived ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + sharedTix + 
+    Title + travelParty + mother + child
+
+              Df Deviance    AIC
+- SibSp        6   451.12 493.12
+- Parch        5   453.49 497.49
+- Embarked     2   449.51 499.51
+- sharedTix    1   448.81 500.81
+- mother       1   448.85 500.85
+- child        1   448.87 500.87
+<none>             448.81 502.81
+- travelParty  2   453.05 503.05
+- Sex          1   451.53 503.53
+- Fare         1   451.87 503.87
+- Pclass       2   476.10 526.10
+- Title        4   482.95 528.95
+
+Step:  AIC=493.12
+Survived ~ Pclass + Sex + Parch + Fare + Embarked + sharedTix + 
+    Title + travelParty + mother + child
+
+              Df Deviance    AIC
+- Parch        5   456.93 488.93
+- Embarked     2   451.94 489.94
+- sharedTix    1   451.13 491.13
+- child        1   451.18 491.18
+- mother       1   451.20 491.20
+<none>             451.12 493.12
+- Sex          1   454.21 494.21
+- Fare         1   455.08 495.08
+- travelParty  2   475.04 513.04
+- Pclass       2   478.31 516.31
+- Title        4   484.06 518.06
+
+Step:  AIC=488.93
+Survived ~ Pclass + Sex + Fare + Embarked + sharedTix + Title + 
+    travelParty + mother + child
+
+              Df Deviance    AIC
+- Embarked     2   457.90 485.90
+- sharedTix    1   456.93 486.93
+- child        1   456.93 486.93
+- mother       1   457.21 487.21
+<none>             456.93 488.93
+- Fare         1   459.92 489.92
+- Sex          1   460.16 490.16
+- travelParty  2   484.11 512.11
+- Title        4   488.17 512.17
+- Pclass       2   486.65 514.65
+
+Step:  AIC=485.9
+Survived ~ Pclass + Sex + Fare + sharedTix + Title + travelParty + 
+    mother + child
+
+              Df Deviance    AIC
+- sharedTix    1   457.90 483.90
+- child        1   457.93 483.93
+- mother       1   458.21 484.21
+<none>             457.90 485.90
+- Sex          1   460.92 486.92
+- Fare         1   461.64 487.64
+- Title        4   488.88 508.88
+- travelParty  2   488.34 512.34
+- Pclass       2   489.26 513.26
+
+Step:  AIC=483.9
+Survived ~ Pclass + Sex + Fare + Title + travelParty + mother + 
+    child
+
+              Df Deviance    AIC
+- child        1   457.94 481.94
+- mother       1   458.21 482.21
+<none>             457.90 483.90
+- Sex          1   460.92 484.92
+- Fare         1   461.77 485.77
+- Title        4   489.08 507.08
+- Pclass       2   489.41 511.41
+- travelParty  2   490.47 512.47
+
+Step:  AIC=481.94
+Survived ~ Pclass + Sex + Fare + Title + travelParty + mother
+
+              Df Deviance    AIC
+- mother       1   458.25 480.25
+<none>             457.94 481.94
+- Sex          1   460.95 482.95
+- Fare         1   461.77 483.77
+- Pclass       2   489.66 509.66
+- travelParty  2   490.64 510.64
+- Title        4   498.47 514.47
+
+Step:  AIC=480.25
+Survived ~ Pclass + Sex + Fare + Title + travelParty
+
+              Df Deviance    AIC
+<none>             458.25 480.25
+- Sex          1   461.26 481.26
+- Fare         1   461.99 481.99
+- Pclass       2   489.86 507.86
+- travelParty  2   491.13 509.13
+- Title        4   499.17 513.17
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> vars_low <- c('Pclass', 'Sex', 'Fare', 'Embarked', 'Title', 'travelParty')
+> fm_low <- as.formula(paste("Survived ~ ", paste(vars_low, collapse= "+")))
+> logit_model_low <- glm(fm_low, data = train_new, family = binomial, subset = model_train)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Preform one hot encoding
+> onehot_var <- c('Pclass', 'Sex', 'Embarked', 'Title', 'travelParty')
+> onehot_encode <- dummy.data.frame(train_new, names = onehot_var, sep="_")
+Warning messages:
+1: In model.matrix.default(~x - 1, model.frame(~x - 1), contrasts = FALSE) :
+  non-list contrasts argument ignored
+2: In model.matrix.default(~x - 1, model.frame(~x - 1), contrasts = FALSE) :
+  non-list contrasts argument ignored
+3: In model.matrix.default(~x - 1, model.frame(~x - 1), contrasts = FALSE) :
+  non-list contrasts argument ignored
+4: In model.matrix.default(~x - 1, model.frame(~x - 1), contrasts = FALSE) :
+  non-list contrasts argument ignored
+5: In model.matrix.default(~x - 1, model.frame(~x - 1), contrasts = FALSE) :
+  non-list contrasts argument ignored
+> 
+> # Scale fare variable
+> onehot_encode$Fare <- scale(onehot_encode$Fare)
+> 
+> # Take out extra variables
+> delete <- c("Survived","PassengerId", "Name", "Age", "Ticket", "Cabin")
+> onehot_encode_preds <- onehot_encode[,!(names(onehot_encode) %in% delete)]
+> low_preds <- c(names(onehot_encode_preds)[grepl("Psize",names(onehot_encode_preds))], 
++                names(onehot_encode_preds)[grepl("Sex",names(onehot_encode_preds))],
++                names(onehot_encode_preds)[grepl("Embarked",names(onehot_encode_preds))], 
++                names(onehot_encode_preds)[grepl("Title",names(onehot_encode_preds))],
++                names(onehot_encode_preds)[grepl("travelParty",names(onehot_encode_preds))], "Fare")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Define KNN class labels and predictors
+> knn_class_train <- onehot_encode[,2][model_train]
+> knn_class_cv <- onehot_encode[,2][-model_train]
+> knn_preds_train <- onehot_encode_preds[model_train,low_preds]
+> knn_preds_cv <- onehot_encode_preds[-model_train,low_preds]
+> 
+> set.seed(1912)
+> knn_model <- knn(knn_preds_train,knn_preds_cv,knn_class_train, k=12)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> svm_train <- data.frame(cbind(knn_class_train, knn_preds_train))
+> svm_cv <- data.frame(cbind(knn_class_cv, knn_preds_cv))
+> 
+> colnames(svm_train)[1] <- "Survived" 
+> colnames(svm_cv)[1] <- "Survived"
+> 
+> set.seed(1912)
+> svm_low_fm <- as.formula(paste("Survived ~ ", paste(low_preds, collapse= "+")))
+> svm_low <- tune(svm, svm_low_fm, data = svm_train, kernel="radial",
++                 ranges=list(cost=c(0.1,1,10,100,1000),
++                             gamma=c(0.5,1,2,3,4)))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(1912)
+> rf_model <- randomForest(fm_low, data=train_new, subset=model_train, importance=TRUE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> logit_model_low_probs <- predict(logit_model_low, cv, type = "response")
+> 
+> logit_modellow_preds <- rep(0,297)
+> logit_modellow_preds[logit_model_low_probs>.5] <- 1
+> 
+> logit_tp <- mean(logit_modellow_preds ==cv$Survived)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knn_tp <- mean(knn_class_cv==knn_model)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> svm_low_preds <- predict(svm_low$best.model, newdata = svm_cv)
+> svm_tp <- mean(svm_low_preds ==svm_cv$Survived)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rf_pred <- predict(rf_model,newdata=cv,type="class")
+> rf_tp <- mean(rf_pred == cv$Survived)
+> 
+> 
+> ## ----echo=FALSE, results='asis'--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(knitr)
+> tp_rates <- data.frame(c("Logit", "KNN", "SVM", "RF"))
+> tp_rates$Accuracy <- c(logit_tp, knn_tp, svm_tp, rf_tp)
+> colnames(tp_rates)[1] <- "Model"
+> tp_rates <- tp_rates[order(tp_rates$Accuracy, decreasing = TRUE),]
+> kable(tp_rates)
+
+
+|   |Model |  Accuracy|
+|:--|:-----|---------:|
+|2  |KNN   | 0.8249158|
+|1  |Logit | 0.8215488|
+|4  |RF    | 0.8215488|
+|3  |SVM   | 0.8114478|
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> logitpred <- prediction(logit_modellow_preds, cv$Survived)
+> logitperf <- performance(logitpred, "tnr", "fnr")
+> 
+> svmpred <- prediction(as.numeric(svm_low_preds)-1, cv$Survived)
+> svmperf <- performance(svmpred, "tnr", "fnr")
+> 
+> rfpred <- prediction(as.numeric(rf_pred)-1, cv$Survived)
+> rfperf <- performance(rfpred, "tnr", "fnr")
+> 
+> plot(logitperf,col="green",lwd=2,main="ROC Curve for Titanic Survival Models")
+> plot(svmperf, add = TRUE, col="blue")
+> plot(rfperf, add=TRUE, col="red")
+> abline(a=0,b=1,lwd=2,lty=2,col="gray")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> test_feat <- c_data[c(892:1309),]
+> test_feat[fact_var] <- lapply(test_feat[fact_var], function(x) as.factor(x))
+> 
+> set.seed(1912)
+> rf_final <- randomForest(fm_low, data=train_new)
+> rf_final_pred <- predict(rf_final,test_feat)
+> rf_solution <- data.frame(PassengerID = test_feat$PassengerId, Survived = rf_final_pred)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 13.896   0.486  14.787 

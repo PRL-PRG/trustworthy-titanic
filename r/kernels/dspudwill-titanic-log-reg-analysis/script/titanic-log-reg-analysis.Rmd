@@ -1,0 +1,194 @@
+---
+title: "TitanicAnalysis"
+author: "Dylan Pudwill"
+date: "11/13/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**Project Summary:** This analysis aims to analyze the Titanic disaster and find any patterns or correlations related to who lived or died. As a brief summary of the disaster itself, the AMS Titanic sank on April 5th 1912. The Titanic had left from the port at Southhampton and was heading for New York. As most people know, the Titanic sank due to a glancing blow with an iceberg. One of the biggest reasons for the loss of life is due to the escape plan. Mainly, the lifeboats were built to shepherd people from the ship being abandoned to a nearby rescue vessel. During the catastrophic event, there were no rescue vessels nearby, which meant that the lifeboats were used only once by the passengers instead of multiple times, like planned. Therefore, there was a surplus in passengers meaning many passengers were left without a lifeboat, which means almost guaranteed death. This analysis is dedicated to trying to find out who had better chances of surviving that fateful night. 
+If you are interested in learning more about the Titanic I recommend [this](https://en.wikipedia.org/wiki/Sinking_of_the_RMS_Titanic) wiki page. 
+
+My analysis will unfold as follows: 
+ 
+1. Data Processing 
+2. Imputing NA Values 
+3. Exploratory Analysis 
+4. Regression Analysis 
+5. Conclusion
+
+##Processing Data
+
+We will begin by simply downloading and loading all the libraries we need for this analysis.
+```{r Libraries and Data, result = "hide", message = FALSE}
+
+##making sure all packages are already installed
+if( !("dplyr" %in% installed.packages()) ) {
+    install.packages("dplyr")
+}
+if( !("ggplot2" %in% installed.packages()) ) {
+    install.packages("ggplot2")
+}
+if( !("tidyr" %in% installed.packages()) ) {
+    install.packages("tidyr")
+}
+if( !("missForest" %in% installed.packages()) ) {
+    install.packages("missForest")
+}
+if( !("corrplot" %in% installed.packages()) ) {
+    install.packages("corrplot")
+}
+
+##loading neccessary installed packages
+library(tidyr)
+library(ggplot2)
+library(dplyr)
+library(missForest)
+library(corrplot)
+
+
+##downloading Kaggle datasets in the programm are giving me authintication errors.
+##These files were manually downloaded
+train <- read.csv("../input/train.csv", stringsAsFactors = FALSE)
+test <- read.csv("../input/test.csv", stringsAsFactors = FALSE)
+```
+
+Now that we have seen that the files were read and saved into variables properly(using the `summary` function) we can move on. 
+
+```{r, First Look}
+str(train)
+str(test)
+```
+
+
+##Imputing the Data
+
+We will now begin to impute the data. I have decided to use the `missForest` library because it works well with both continuous and categorical variables. We do have to remove three variables: (`Name, Ticket, Cabin`) because they have over 53 unique values and therefore cannot be coerced to factor variables. 
+
+
+```{r, Impute Data, message = FALSE, result = "hide"}
+## must remove the character variables with more than 53 unique values to avoid error.
+charColRemove <- c("Name", "Ticket", "Cabin")
+trainImputed <- train %>% select(-one_of(charColRemove))
+testImputed <- test %>% select(-one_of(charColRemove))
+
+##the rest of the character variables (less than 53 unique values) are converted to factors.
+trainImputed <- trainImputed %>% mutate_if(is.character, as.factor)
+testImputed <- testImputed %>% mutate_if(is.character, as.factor)
+
+##run missForest function to impute remaining data.
+trainImputed <- missForest(trainImputed)
+testImputed <- missForest(testImputed)
+
+
+##Here I should put the original data frame, including char vars, back together!
+newTrain <- trainImputed$ximp %>% mutate(PassengerId = train$PassengerId, Name = train$Name, Ticket = train$Ticket, Cabin = train$Cabin)
+```
+
+
+##Exploratory Analysis
+
+The next step will be exploring the data and finding interesting correlations we would like to explore more.
+
+
+We will begin by looking at the relationships between survival rate and age. We will split the data by sex as well to allow for more readability. 
+```{r Exp Analysis Plot 1}
+
+qplot(Age, as.numeric(Survived), data = trainImputed$ximp, facets = . ~ Sex, geom = c("point", "smooth"))
+
+```
+
+There is our first graph. We see that as female age increases chances of survival increase. Inversely, as mens age increase their chances of survival decrease quickly before leveling off. There seems to be a relationship to sex to keep in mind for our linear regression later on. 
+
+Next, We will look at the relationships between age, class and survival. The next plot will have 3 graphs split by class. The histogram shows the counts of each class split by age and colored by survival. 
+
+```{r Exp Analysis Plot 2}
+qplot(Age, ..count.., data = trainImputed$ximp, fill = factor(Survived), facets = . ~ Pclass, geom = c("histogram"))
+
+
+```
+
+This graph is showing us something interesting as well. We see that age is related to class which makes since because usually older people would be buying more expensive and therefore better class tickets. We also see that the chances of surviving drop as you move into lower classes. There is an interesting not to that young people (under 20 years old) and children had a high chance of surviving if they were from the first or second classes.
+
+This has given us a good idea of how our data is related. We could continue exploratory analysis for much longer, but this is sufficient for our analysis. 
+
+##Regression Analysis
+
+We are at our final step. We have cleaned our data and imputed the values. Then we looked at our data a few different ways to get a simple understanding of what we are looking at. Our final step will be to create a logistic regression model that will be able to predict survival rates. Logistic regression is chosen because it is a basic modeling technique that suits predicting binary outcomes like `Survived`.  
+
+We will start by looking at the correlations between the variables. We will make a `corrplot` using all the variables except for the `character` variables. 
+```{r}
+trainCorr <- trainImputed$ximp %>% mutate_if(is.factor, as.integer)
+corrplot(cor(trainCorr))
+```
+
+What we see from this plot is that there are some correlations between `Pclass` and `Fare`. Another big correlation found is between `Pclass` and `Age`. We will keep that in mind while choosing the variables in the model. These correlations might skew the p values of the independent variables. 
+
+Lets try out our model now. 
+
+```{r}
+
+final <- glm(formula = Survived ~ Pclass + Sex + Age + SibSp, family = "binomial", data = newTrain)
+
+```
+
+`Pclass` and `Age` are in this model which could lead to correlations in the independent variables which will hurt our overall model. Lets look at the summary of our model now.
+
+```{r}
+summary(final)
+```
+
+##Conclusion
+
+Now we have finished the model and we are moving on to test how well our model did. Overall, we will run our linear regression with the new data `test` and compare how our results compare to a guess or very simple model. We are expecting that our model with have a significant improvement on a simple model. 
+
+Our simple model that we will compare to is the guess that women survived more frequently than men. Therefore, our simple model is that if you are a women you survived and if you are a man you did not survive. 
+
+First, we will look at our simple model. Lets make a table using the original `train` data.
+
+```{r}
+
+t1 <- table(train$Sex, train$Survived)
+t1
+
+```
+
+We see that `81` women died and `233` women survived. For the men, `468` died and `109` men survived. Our simple model would have predicted `314` women survived and `577` men died.
+
+So lets look at the simple models accuracy, sensitivity and specificity.
+
+```{r First Model Accuracy}
+## 233 women survived which our model would predict correctly
+## 468 men died which our model would predict correctly
+(t1[3] + t1[2])/nrow(train)
+
+##sensitivity would start with 233 because only women could have been successfully predicted to survive.
+t1[3]/(t1[3]+t1[1])
+
+##specificity would start with 468 because only men could have been successfully predicted dead.
+t1[2]/(t1[2]+t1[4])
+```
+
+We see that the simple model had an accuracy of `78.68%`. That isn't awful! The models sensitivity is `74.20%` and the specificity is `81.11%`. 
+
+Finally, let us find the predictions for our logistic model so we can compare it to this simple model and see if it is a positive improvement like we assume. 
+
+```{r Log Model Accuracy}
+predTrain <- predict(final, type = "response")
+t2 <- table(train$Survived, predTrain >= 0.5)
+
+(t2[1] + t2[4])/nrow(train)
+
+t2[4] / (t2[2] + t2[4])
+
+t2[1] / (t2[3] + t2[1])
+```
+
+Our logistic model had an accuracy of `81.37%`. Our sensitivity is a low `72.22%` and our specificity is an improved `87.07%`. 
+
+So this isn't the great outcome we were looking for but a `81%` accuracy is not a bad model. Basically, our simple model ended up predicting very well and our logistic model could not improve on that much. 
+
+

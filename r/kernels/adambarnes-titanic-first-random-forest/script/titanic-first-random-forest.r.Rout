@@ -1,0 +1,278 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> options(stringsAsFactors = FALSE)
+> 
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> 
+> trainData <- read.csv("../input/train.csv")
+> testData <- read.csv("../input/test.csv")
+> 
+> fullData <- trainData %>%
++     bind_rows(testData)
+> 
+> str(trainData)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> # might be easier to use cut next time?
+> ageClass <- function(Age) {
++     if_else(Age <10,"0-9",
++            if_else(Age < 20,"10-19",
++                   if_else(Age < 30,"20-29",
++                          if_else(Age < 40,"30-39",
++                                 if_else(Age < 50,"40-49",
++                                        if_else(Age < 60,"50-59","60+"))))))
++ }
+> 
+> workData <- trainData %>%
++     bind_rows(testData) %>%
++     mutate(AgeClass = ageClass(Age),
++           CabinClass = substr(Cabin,1,1),
++           Title = substr(Name,unlist(gregexpr(",",Name)) + 2,unlist(gregexpr(",",Name)) + 4),
++           Title = gsub('\\.','',Title),
++           Title = factor(gsub(' ','',Title)),
++           Sex = factor(Sex),
++           CabinClass = factor(CabinClass),
++           Embarked = factor(Embarked),
++           Survived = factor(Survived),
++           Pclass = factor(Pclass)) %>%
++         anti_join(testData,by = "PassengerId")
+> 
+> str(workData)
+'data.frame':	891 obs. of  15 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+ $ AgeClass   : chr  "20-29" "30-39" "20-29" "30-39" ...
+ $ CabinClass : Factor w/ 9 levels "","A","B","C",..: 1 4 1 4 1 1 6 1 1 1 ...
+ $ Title      : Factor w/ 17 levels "Cap","Col","Don",..: 12 13 9 13 12 12 12 8 13 13 ...
+> 
+> 
+> ggplot(workData,aes(x = Sex)) + geom_bar(aes(fill = factor(Survived))) + 
++     scale_x_discrete(labels = c("F","M")) + 
++     facet_grid(Pclass~AgeClass)
+> 
+> 
+> 
+> # average age by sex, Pclass,Parch
+> avAges <- workData %>%
++     filter(!is.na(Age)) %>%
++     group_by(Sex,Pclass,Parch) %>%
++     summarize(AvAge = round(mean(Age),0))
+`summarise()` regrouping output by 'Sex', 'Pclass' (override with `.groups` argument)
+> 
+> avFare <- workData %>%
++     filter(!is.na(Fare)) %>%
++     group_by(Pclass,Embarked) %>%
++     summarize(AvFare = mean(Fare))
+`summarise()` regrouping output by 'Pclass' (override with `.groups` argument)
+> 
+> head(avFare,20)
+[90m# A tibble: 10 x 3[39m
+[90m# Groups:   Pclass [3][39m
+   Pclass Embarked AvFare
+   [3m[90m<fct>[39m[23m  [3m[90m<fct>[39m[23m     [3m[90m<dbl>[39m[23m
+[90m 1[39m 1      [90m"[39m[90m"[39m         80  
+[90m 2[39m 1      [90m"[39mC[90m"[39m       105. 
+[90m 3[39m 1      [90m"[39mQ[90m"[39m        90  
+[90m 4[39m 1      [90m"[39mS[90m"[39m        70.4
+[90m 5[39m 2      [90m"[39mC[90m"[39m        25.4
+[90m 6[39m 2      [90m"[39mQ[90m"[39m        12.4
+[90m 7[39m 2      [90m"[39mS[90m"[39m        20.3
+[90m 8[39m 3      [90m"[39mC[90m"[39m        11.2
+[90m 9[39m 3      [90m"[39mQ[90m"[39m        11.2
+[90m10[39m 3      [90m"[39mS[90m"[39m        14.6
+> 
+> # replace NA ages with averages, recalc age class
+> workData <- workData %>%
++     left_join(avAges, by = c("Sex" = "Sex","Pclass" = "Pclass","Parch" = "Parch")) %>%
++     left_join(avFare,by = c("Pclass" = "Pclass","Embarked" = "Embarked")) %>%
++     mutate(Age = if_else(is.na(Age),round(AvAge,0),Age),
++          AgeClass = factor(ageClass(Age)),
++          Fare = if_else(is.na(Fare),round(AvFare,0),Fare))
+> 
+> head(workData)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  29     0     0
+            Ticket    Fare Cabin Embarked AgeClass CabinClass Title AvAge
+1        A/5 21171  7.2500              S    20-29               Mr    29
+2         PC 17599 71.2833   C85        C    30-39          C   Mrs    36
+3 STON/O2. 3101282  7.9250              S    20-29              Mis    24
+4           113803 53.1000  C123        S    30-39          C   Mrs    36
+5           373450  8.0500              S    30-39               Mr    29
+6           330877  8.4583              Q    20-29               Mr    29
+     AvFare
+1  14.64408
+2 104.71853
+3  14.64408
+4  70.36486
+5  14.64408
+6  11.18339
+> rownames(workData) <- NULL
+> 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> 
+> forData <- workData %>%
++     select(Survived,Sex,Fare,Pclass,Age,Title,SibSp,Parch,Embarked) 
+> 
+> rf1 <- randomForest(Survived~., data=forData, mtry=2, ntree=50, importance=TRUE)
+> importance(rf1,type=1)
+         MeanDecreaseAccuracy
+Sex                  8.327733
+Fare                10.544125
+Pclass              11.517347
+Age                  8.293365
+Title               10.480044
+SibSp                7.683124
+Parch                3.146604
+Embarked             3.443837
+> 
+> resultSet <- data.frame(ID = workData$PassengerId,
++            Act = workData$Survived,
++            Pred = predict(rf1,workData)) 
+> 
+> #check accuracy
+> sum(resultSet$Act == resultSet$Pred) / nrow(resultSet)
+[1] 0.9068462
+> # 91% using Survived,Sex,Fare,Pclass,AgeClass,Title,SibSp,Parch,CabinClass,Embarked
+> # 89% using Survived,Pclass,Sex,AgeClass,SibSp,Parch,Fare,Title
+> # 90% using Survived,Pclass,Sex,AgeClass,SibSp,Parch,Fare,CabinClass,Title
+> 
+> # prepare submission file
+> avAgesTest <- fullData %>%
++     filter(!is.na(Age)) %>%
++     group_by(Pclass,Parch) %>%
++     summarize(AvAge = mean(Age))
+`summarise()` regrouping output by 'Pclass' (override with `.groups` argument)
+> 
+> avFareTest <- testData %>%
++     filter(!is.na(Fare)) %>%
++     group_by(Pclass,Embarked) %>%
++     summarize(AvFare = mean(Fare))
+`summarise()` regrouping output by 'Pclass' (override with `.groups` argument)
+> 
+> modTestData <- testData %>%
++     bind_rows(trainData) %>%
++     left_join(avAgesTest, by = c("Pclass" = "Pclass","Parch" = "Parch")) %>%
++     left_join(avFareTest,by = c("Pclass" = "Pclass","Embarked" = "Embarked")) %>%
++     mutate(Age = if_else(is.na(Age),round(AvAge,0),Age),
++            Age = if_else(is.na(Age),mean(Age,na.rm = TRUE),Age),
++            Fare = if_else(is.na(Fare),round(AvFare,0),Fare),
++             AgeClass = ageClass(Age),
++             CabinClass = substr(Cabin,1,1),
++             Title = substr(Name,unlist(gregexpr(",",Name)) + 2,unlist(gregexpr(",",Name)) + 4),
++             Title = gsub('\\.','',Title),
++             Title = factor(gsub(' ','',Title)),
++             Sex = factor(Sex),
++             CabinClass = factor(CabinClass),
++             Embarked = factor(Embarked),
++             Pclass = factor(Pclass)) %>%
++     anti_join(trainData,by = "PassengerId") %>%
++     select(-Survived)
+> 
+> rownames(modTestData) <- NULL
+> 
+> submitData <- data.frame(PassengerId = modTestData$PassengerId,
++             Survived = predict(rf1,modTestData),
++                        row.names = NULL) 
+> 
+> 
+> str(submitData)
+'data.frame':	418 obs. of  2 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 1 1 1 2 1 2 1 2 1 ...
+> head(submitData)
+  PassengerId Survived
+1         892        0
+2         893        0
+3         894        0
+4         895        0
+5         896        1
+6         897        0
+> 
+> write.csv(submitData,"submission.csv",row.names = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  1.497   0.090   1.588 

@@ -1,0 +1,342 @@
+---
+title: "Titanic: A Tidy Caret Approach - (0.8086)"
+output:
+  html_document:
+    code_folding: show
+    df_print: paged
+---
+
+
+
+* [1. Introduction & Approach](#anchor1)
+* [2. Setup & Explore](#anchor2)  
+    * [2.1 Setup](#anchor3)  
+    * [2.2 Load & Combine](#anchor4)  
+    * [2.3 Explore](#anchor5)  
+* [3. Feature Creation](#anchor7)  
+    * [3.1 String Extraction](#anchor8)  
+    * [3.2 Joins](#anchor10)  
+* [4. Model](#anchor11)
+    * [4.1 Clean & Create Dummies](#anchor12)  
+    * [4.2 Final Model](#anchor13)  
+* [5. Conclusion](#anchor14)
+
+## 1. Introduction & Approach {#anchor1} 
+As with most models, my goal is to extract the most out of the features we are given. My approach differs from many others in that I do not bin any continuous predictors. I have seen many kernels bin children, family size, or fares into groups. Because I want my algorithm to choose those cut points for itself I avoid educated binning here. Another method I focus on here is trying to have each row contain more information about the passengers group as a whole. One way to do this is to include demographics on the groups breakdown in the observation as seen in the Join section.  
+At the time of this writing this approach led to a score of .8086, landing in the top 7%. Not too bad. As I will mention, I think there are some definite tweaks we can do to try and increase this score even further. Anyways, I hope you enjoy. 
+
+## 2. Setup & Explore {#anchor2}  
+### 2.1 Setup {#anchor3}
+```{r results="hide", message=FALSE, warning=FALSE}
+library(readr)
+library(tidyverse)
+library(caret)
+library(corrplot)
+library(randomForest)
+library(RANN) #needed for imputing
+library(stringr)
+library(rpart)
+library(party)
+library(gridExtra)
+```
+
+
+### 2.2 Load & Combine {#anchor4}
+
+In preperation for combining our Train & Test sets, we add the column Survived to Test and give default values of NA.
+
+```{r results="hide", message=FALSE, warning=FALSE}
+train <- read_csv("../input/train.csv")
+test <- read_csv("../input/test.csv")
+test$Survived <- NA
+titanicCombo<- rbind(train,test)
+```
+
+
+### 2.3 Explore {#anchor5}
+
+Let's take a look at the quality of our data.
+
+```{r message=FALSE, warning=FALSE}
+colSums(is.na(titanicCombo[1:891,]))
+round(colSums(100*(is.na(titanicCombo[1:891,])/nrow(titanicCombo[1:891,]))),3)
+```
+
+From above you can see that we have a descent amount of missingness in Age (20%), considerable missingness in Cabin (77%), a very few missing values in Fare & Embarked. I do not want to remove any features yet as the missingness may be informative. Since cabins are so sparse, I will break them down into the haves & have-nots (aka 0/1). Additionally, I will set Survived, Pclass, Sex, and Embarked as factors.
+
+```{r results="hide", message=FALSE, warning=FALSE}
+titanicCombo <- titanicCombo %>% 
+  mutate(Survived = as.factor(Survived), Pclass = as.factor(Pclass), Sex = as.factor(Sex), Embarked = as.factor(Embarked), Cabin = as.factor(ifelse(is.na(Cabin),0,1))) 
+```
+  
+    
+#### 2.3.1 Visualization
+
+Now lets start visualizing our data. My method here will be to begin with one feature vs. our reponse, and sequentially add in more features, leveraging ggplot to show higher dimensionality interactions in one view.  
+  
+  
+**Begin With Class vs Survival:**   
+
+Here we see a few things:  
+*  1. The majority of passengers were in the 3rd class.  
+*  2. Survival decreased as class decreased.  
+
+```{r message=FALSE, warning=FALSE, fig.width=10}
+g1 <- titanicCombo[1:891,] %>% 
+  ggplot() + 
+  geom_bar(aes(x = Pclass, fill = Survived))
+g2 <- titanicCombo[1:891,] %>% 
+  ggplot() + 
+  geom_bar(aes(x = Pclass, fill = Survived), position = "fill")
+  
+grid.arrange(g1,g2)
+```
+
+
+
+**Now, Adding Sex:**  
+Below we can see begin to see some trends. Females were significantly better off than men. Female survivors outnumbered male survivors in each class even though males were the majority Sex in each class.
+```{r message=FALSE, warning=FALSE, fig.width=10}
+titanicCombo[1:891,] %>% 
+  ggplot() + 
+  geom_bar(aes(x = Pclass, fill = str_c(Survived,Sex))) + 
+  scale_fill_discrete("Survived | Sex")
+titanicCombo[1:891,] %>% 
+  ggplot() + 
+  geom_bar(aes(x = Pclass, fill = Survived), position = "fill") + 
+  facet_wrap(~Sex) 
+```
+
+
+**Now, Adding Age:**  
+Now, we are starting to see some good trends. If you focus on Pclass = 2, notice the difference between the Survivors & Deceased. ALL people under a certain age survived, regardless of sex. This also seem more likely in Class 1 as well. Unfortunately, for those men that survived in class 1 & 2, we can't really see why from this visual. Lets keep looking.
+```{r message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+titanicCombo[1:891,] %>% 
+  ggplot(aes(x = Age, y = Survived)) + 
+  geom_jitter(aes(color = Sex)) + 
+  facet_wrap(~Pclass) 
+```
+
+
+**Now, Adding Family Size:**  
+The previous chart seemed like a good jumping point for data exploration. Lets add in Family size (SibSp + Parch) and see what that looks like.
+```{r message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+titanicCombo[1:891,] %>% 
+  ggplot(aes(x = Age, y = Survived)) +
+  geom_jitter(aes(color = (as.factor(SibSp + Parch)), size = (as.factor(SibSp + Parch)))) + 
+  facet_grid(Pclass~Sex) + scale_color_discrete("FamilySize") + 
+  scale_size_discrete("FamilySize")
+```
+  
+This looks great. We can see clear groupings starting to emerge in the data. Lets look at two more views as well. 
+```{r message=FALSE, warning=FALSE, fig.width=8.6}
+g1 <- titanicCombo[1:891,] %>% 
+  ggplot(aes(x = as.factor(SibSp + Parch))) + 
+  geom_bar(aes(fill = as.factor(SibSp + Parch))) + 
+  labs(x="FamilySize") + 
+  scale_fill_discrete(guide=FALSE) 
+
+g2 <-titanicCombo[1:891,] %>% 
+  ggplot(aes(x = as.factor(SibSp + Parch))) + 
+  geom_bar(aes(fill = Survived),position = "fill")+ 
+  labs(x="FamilySize") 
+  
+grid.arrange(g1,g2)
+```
+
+This is interesting. While families with 4+ members are much less frequent in the dataset, their fatality rate is much higher. From the first family plot we can see that this likely has an interaction with class, as the majority of large families reside in class 3.  
+
+Now, what about Fare & Cabin? Do we see any interaction with the Response?
+
+```{r message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+titanicCombo[1:891,] %>% 
+  ggplot(aes(x = Cabin)) + 
+  geom_bar(aes(fill = Survived),position = "fill") +
+  facet_grid(Sex~Pclass) 
+
+titanicCombo[1:891,] %>% 
+  ggplot(aes(x = Fare, y = Survived)) +
+  geom_jitter(aes(color = (as.factor(SibSp + Parch)), size = (as.factor(SibSp + Parch)))) + 
+  facet_grid(Sex~Pclass, scales = "free") + 
+  scale_color_discrete("FamilySize") + 
+  scale_size_discrete("FamilySize") 
+```
+
+It seems we do see some clear patterns with Cabin. Having one, regardless of class, seems to help  you live for all segments except 1st and 2nd class females. For Fare, notice how it increases with Family Size. This leads me to believe that Fare is the aggregate of all the members on the ticket. Also, it is interesting to see the high fare groups with what seems to be the same fare, but all with zero family. Specifically, the area that stands out to me here is `Pclass = 3` & `Sex = male` & `Fare ~58`. There are others, but this stands out the most to me visually. Lets take a look and see if anything stands out.
+
+```{r message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+titanicCombo[1:891,] %>% filter(Pclass==3, Sex=="male", Fare > 55, (SibSp + Parch) < 1)
+```
+Notice Ticket, Fare, and Name. They all have the same ticket number, Fare price, and similar ethnicty last name. This leads me to *assume* these guys all boarded together and were a group. This also leads to SibSp + Parch and last name not being the only predictors of group size. These could be cousins, friends, etc. but they were certainly a group and we can see that 5 out of 7 of them survived in Pclass 3, which is much better than the male odds- especially for larger families. 
+
+## 3. Feature Creation {#anchor7}
+
+Let's starting looking at some feature engineering. First, what do we have to work with?
+```{r message=FALSE, warning=FALSE}
+titanicCombo[1:5,]
+```
+Moving from left to right, the first feature of interest is name. To me, the only useful bits of information we can glean from Name is the Title and Last Name. Below we will extract Title first.  
+
+### 3.1 String Extraction & Cleaning{#anchor8}
+  
+#### 3.1.1 Title  
+```{r message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+titanicCombo <- titanicCombo %>% 
+  mutate(Title = str_extract(Name,".[a-z]+\\."), Title = as.factor(Title))
+
+titanicCombo[1:891,] %>% 
+  group_by(Title) %>% 
+  summarise(n = n()) %>% 
+  arrange(desc(n)) %>% 
+  ggplot() + 
+  geom_bar(aes(x = reorder(Title, desc(n), FUN = median), y = n, fill = Title), stat = "identity") + 
+  labs(x = "Title", y = "Count") +
+  scale_fill_discrete(guide=FALSE) 
+```
+  
+As you can see, we have four major categories or Titles with a much lower quantity of what I would call the *fancy* titles. When looking at the class breakdown's of these titles, you can see the majority of fancy titles belonged to class 1, with only Rev. and one male Dr. belonging to class 2. This leads me to group these straggler titles as OTHER.
+
+```{r message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+titanicCombo <- titanicCombo %>% 
+  mutate(Title3 = ifelse(str_detect(Title,"Master."),as.character(Title),ifelse(str_detect(Title,"Mr."),as.character(Title),ifelse(str_detect(Title,"Mrs."),as.character(Title),ifelse(str_detect(Title,"Ms."),as.character("Mrs."),ifelse(str_detect(Title,"Miss."),as.character(Title),"OTHER")))))) %>% 
+  mutate(Title3 = as.factor(Title3))
+
+```
+
+One great thing that Title give us is `Master.`. By looking at the data we can see that this is a male childs title. Considering we had many missing Age values in our set, we may be able to clear up some of those here.
+```{r message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+titanicCombo %>% group_by(Title3) %>% summarise(n = n(), Age.NA = sum(is.na(Age))) %>% arrange(desc(n))
+```
+
+Whats the age range by title? NOTE: Only look at training data.
+```{r message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+titanicCombo[1:891,] %>% filter(!is.na(Age)) %>% group_by(Title3) %>% summarise(n = n(), MinAge = min(Age), MedianAge = median(Age), MaxAge = max(Age)) %>% arrange(desc(n))
+```
+
+Now, lets impute those 8 missing Age's for Master. 
+```{r Feature6, message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+titanicCombo <- titanicCombo %>% 
+  mutate(Age = ifelse(is.na(Age) & as.character(Title3) == "Master.",3.5,Age))
+```
+
+Now Title is clean and we were able to clear up some of our NA's because of it. Lets move on to Last Name.  
+
+
+#### 3.1.2 Last Name  
+```{r message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+titanicCombo$LastName = sapply(strsplit(titanicCombo$Name, ", "), `[`, 1)
+sum(is.na(titanicCombo$LastName))
+
+```
+
+Last name may not be what we want for groups since we noticed the anomoly earlier, but it was easy to get, so we can go ahead and grab it. Next is Ticket.  
+
+
+#### 3.1.3 Ticket  
+
+Here we are extracting out the numeric sections of Ticket. If there is not a numeric section, as some are not, we leave the character only ticket value. Once we have this, there isn't really anything else to parse out. 
+```{r message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+titanicCombo <- titanicCombo %>% mutate(Ticket2 = str_extract(Ticket,"[[:digit:]]+$")) %>% mutate(Ticket2 = ifelse(is.na(Ticket2),Ticket,Ticket2)) 
+sum(is.na(titanicCombo$Ticket2))
+```
+### 3.2 Joins {#anchor10}
+To me, this is where I think this method really shines. Our whole point is to find what makes these groups stand out. My assumption is that it's not only just groups, but the makeup of the groups that could also be a factor. How many men were in the group, how many women... Did groups with higher proportions of women or men fair better? Lets give the algorithm the chance to figure that out by creating those features. My method here is to show the make up of the group by using dplyr's SQL like ability to group and extract the sex makeup of each persons group. Since we saw earlier that groups were not soley just people with the same last name I will use Ticket as the key here. Also, counts of fares may be a good grouping factor, so I will grab this too - using Fare as the key. 
+
+```{r message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+#Bring in ONLY the training data
+titanicSQL <- titanicCombo[1:891,]
+
+#Finding Men
+titanicMen <- titanicSQL %>% mutate(Uniq = Ticket2) %>%
+  group_by(Uniq,Sex) %>% 
+  summarise(Men = n()) %>% #Men on same Ticket
+  filter(str_to_lower(Sex) == "male") %>%
+  arrange(desc(Men)) %>% ungroup(Uniq)
+
+#Finding Women
+titanicWomen <- titanicSQL %>% mutate(Uniq = Ticket2) %>% 
+  group_by(Uniq,Sex) %>% 
+  summarise(Women = n()) %>% #Women on same Ticket 
+  filter(str_to_lower(Sex) == "female") %>%
+  arrange(desc(Women))
+
+#Finding Fares
+titanicFare <- titanicSQL %>% mutate(Uniq2 = Fare) %>% 
+  group_by(Uniq2) %>% 
+  summarise(Fare = n()) %>% #Women on same Ticket 
+  arrange(desc(Fare))
+
+#Join Ticket information
+titanicCombo  <- titanicCombo %>% mutate(Uniq = Ticket2) %>% 
+  left_join(titanicMen ,by = "Uniq") %>% 
+  left_join(titanicWomen ,by = "Uniq") %>%
+  select(1:16, 19, 21) %>% 
+  mutate(Men = ifelse(is.na(Men) & Sex.x == "male",1,ifelse(is.na(Men),0,Men))) %>% 
+  mutate(Women = ifelse(is.na(Women) & Sex.x == "female",1,ifelse(is.na(Women),0,Women))) %>% 
+  mutate(TicketSize = Men + Women) 
+
+#Join Fare information
+titanicCombo <- titanicCombo %>% mutate(Uniq2 = Fare) %>% 
+  left_join(titanicFare ,by = "Uniq2") %>%
+  mutate(Fare.y = ifelse(is.na(Fare.y),1,Fare.y)) %>%
+  select(1:19,21) %>% 
+  rename(FareSize = Fare.y) %>%
+  mutate(FamilySize = SibSp + Parch)
+
+```
+
+Lets take a look at our previous Family Size outliers and see how this turned out.
+```{r message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+titanicCombo[1:891,] %>% filter(Ticket==1601) %>% select(14:21)
+```
+```{r message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+titanicCombo[1:891,] %>% 
+  ggplot(aes(x = Fare.x, y = Survived)) +
+  geom_jitter(aes(color = (as.factor(TicketSize)), size = (as.factor(TicketSize)))) + 
+  facet_grid(Sex.x~Pclass, scales = "free")  + 
+  scale_color_discrete("TicketSize") + 
+  scale_size_discrete("TicketSize") 
+```
+ 
+It looks like we were able to capture makeup of the Sex well! We can also see that our outlier group is now showing together. Now, lets tidy up the data a bit and then run our model.  
+
+## 4. Model {#anchor11}  
+### 4.1 Clean & Create Dummies {#anchor12}    
+First, we have created a lot of columns we don't want going forward. We will get rid of those. Also, a good modeling note, when we have a lot of categorical factors it is best to make those dummy variables. The levels in factors can sometimes be ranked and will cause your algorithm to perform in ways in which you don't expect. Caret has a easy function for this, which I use below.
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+#Remove unneeded columns
+titanicCombo <- titanicCombo %>% 
+  select(-PassengerId,-Name,-Ticket,-LastName,-Parch, -SibSp, -Title, -Ticket2)
+
+#Create the Dummy Model
+DummyRF_mod <- dummyVars(~Pclass + Sex.x + Title3 + Embarked,
+                         data = titanicCombo,
+                         levelsOnly = FALSE)
+#This actually creates the Dummy Variables
+titanicCombo_Dummy <- as.tibble(predict(DummyRF_mod,newdata = titanicCombo))
+
+#Now we bind those two data sets and remove the old columns we created the new ones from.
+titanicCombo_Dummy <- cbind(titanicCombo,titanicCombo_Dummy)
+titanicCombo_Dummy <- as.tibble(titanicCombo_Dummy)
+titanicCombo_Dummy <- titanicCombo_Dummy %>% 
+  select(-Pclass, -Sex.x,-Title3, -Embarked)
+
+```
+
+### 4.2 Final Model {#anchor13}   
+And thats it! Now we just run the model. I tried out a lot of models before settling, but ultimately ended up with random forests consistently giving the best performance on the test set. A note here though. These models are NOT deterministic. So if you run this model, you may not get the exact above score on the first go. This is because of the random nature of the model. If you notice below, not only am I using a random forest (which uses bagging (aka random samples with replacement) and chooses random features for the mtry), but I am also using KNN to impute missing values. Each time you run the model like below, a random seed is being chosen. The scores will change a little, but not much. If you find the model that works best, SAVE the model using the `saveRDS` function. Also, look into your model and see what seeds were set. This will be good practice for your future modeling efforts.
+```{r eval=FALSE, message=FALSE, warning=FALSE, fig.width=10, fig.height=7}
+titanicCrfTune_Dummy <- train(Survived ~.,
+                              data = titanicCombo_Dummy[1:891,],
+                              method = "cforest",
+                              preProc = c("knnImpute"),
+                              trControl = trainControl(method = "cv"),
+                              na.action = na.pass)
+```
+
+
+# 5. Conclusion {#anchor14}
+Thanks for reading! Now, you can take this further. I do believe there is room for improvement here. There is another feature I have thought about and may try. Also, what about Ensembling? Or... Take it further and let me know. If you have any questions or suggestions, feel free to comment!
+
+

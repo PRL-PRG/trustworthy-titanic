@@ -1,0 +1,458 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> #library(randomForest)
+> 
+> # The train and test data is stored in the ../input directory
+> df.train <- read.csv("../input/train.csv")
+> df.test  <- read.csv("../input/test.csv")
+> 
+> 
+> #install.packages('Amelia')
+> library(Amelia)
+Loading required package: Rcpp
+## 
+## Amelia II: Multiple Imputation
+## (Version 1.7.6, built: 2019-11-24)
+## Copyright (C) 2005-2020 James Honaker, Gary King and Matthew Blackwell
+## Refer to http://gking.harvard.edu/amelia/ for more information
+## 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(scales)
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> 
+> print(head(df.train))
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> print(str(df.train))
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+NULL
+> print(head(df.test))
+  PassengerId Pclass                                         Name    Sex  Age
+1         892      3                             Kelly, Mr. James   male 34.5
+2         893      3             Wilkes, Mrs. James (Ellen Needs) female 47.0
+3         894      2                    Myles, Mr. Thomas Francis   male 62.0
+4         895      3                             Wirz, Mr. Albert   male 27.0
+5         896      3 Hirvonen, Mrs. Alexander (Helga E Lindqvist) female 22.0
+6         897      3                   Svensson, Mr. Johan Cervin   male 14.0
+  SibSp Parch  Ticket    Fare Cabin Embarked
+1     0     0  330911  7.8292              Q
+2     1     0  363272  7.0000              S
+3     0     0  240276  9.6875              Q
+4     0     0  315154  8.6625              S
+5     1     1 3101298 12.2875              S
+6     0     0    7538  9.2250              S
+> print(str(df.test))
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : Factor w/ 418 levels "Abbott, Master. Eugene Joseph",..: 210 409 273 414 182 370 85 58 5 104 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : Factor w/ 77 levels "","A11","A18",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+NULL
+> full <- bind_rows(df.train, df.test)
+> 
+> # missing map with Amelia
+> help("missmap")
+missmap                 package:Amelia                 R Documentation
+
+_M_i_s_s_i_n_g_n_e_s_s _M_a_p
+
+_D_e_s_c_r_i_p_t_i_o_n:
+
+     Plots a missingness map showing where missingness occurs in the
+     dataset passed to ‘amelia’.
+
+_U_s_a_g_e:
+
+     missmap(obj, vars, legend = TRUE, col, main, y.cex = 0.8,
+       x.cex = 0.8, y.labels, y.at, csvar = NULL, tsvar = NULL,
+       rank.order = TRUE, margins = c(5, 5), gap.xaxis = 1, x.las = 2,
+       ...)
+     
+_A_r_g_u_m_e_n_t_s:
+
+     obj: an object of class "amelia"; typically output from the
+          function ‘amelia’, a matrix or a dataframe.
+
+    vars: a vector of column numbers or column names of the data to
+          include in the plot. The default is to plot all variables.
+
+  legend: should a legend be drawn? (True or False)
+
+     col: a vector of length two where the first element specifies the
+          color for missing cells and the second element specifies
+
+    main: main title of the plot. Defaults to "Missingness Map".
+
+   y.cex: expansion for the variables names on the x-axis.
+
+   x.cex: expansion for the unit names on the y-axis.
+
+y.labels: a vector of row labels to print on the y-axis
+
+    y.at: a vector of the same length as ‘y.labels’ with row nmumbers
+          associated with the labels.
+
+   csvar: column number or name of the variable corresponding to the
+          unit indicator. Only used when the ‘obj’ is not of class
+          ‘amelia’.
+
+   tsvar: column number or name of the variable corresponding to the
+          time indicator. Only used when the ‘obj’ is not of class
+          ‘amelia’.
+
+rank.order: a logical value. If ‘TRUE’, the default, then the order of
+          the variables along the the x-axis is sorted by the percent
+          missing (from highest to lowest). If ‘FALSE’, it is simply
+          the order of the variables in the data.
+
+ margins: a vector of length two that specifies the bottom and left
+          margins of the plot. Useful for when variable names or row
+          names are long.
+
+gap.xaxis: value to pass to the ‘gap.axis’ argument of the ‘axis’
+          function that plots the x-axis. See ‘axis’ for more details.
+          Ignored on R versions less than 4.0.0.
+
+   x.las: value of the ‘las’ argument to pass to the ‘axis’ function
+          creating the x-axis.
+
+     ...: further graphical arguments.
+
+_D_e_t_a_i_l_s:
+
+     ‘missmap’ draws a map of the missingness in a dataset using the
+     ‘image’ function. The columns are reordered to put the most
+     missing variable farthest to the left. The rows are reordered to a
+     unit-period order if the ‘ts’ and ‘cs’ arguments were passed to
+     ‘amelia’. If not, the rows are not reordered.
+
+     The ‘y.labels’ and ‘y.at’ commands can be used to associate labels
+     with rows in the data to identify them in the plot. The y-axis is
+     internally inverted so that the first row of the data is
+     associated with the top-most row of the missingness map. The
+     values of ‘y.at’ should refer to the rows of the data, not to any
+     point on the plotting region.
+
+_S_e_e _A_l_s_o:
+
+     ‘compare.density’, ‘overimpute’, ‘tscsPlot’, ‘image’, ‘heatmap’
+
+
+> missmap(full, main ="Missing MAP", col =c("yellow", "black"), legend= FALSE)
+> # about 20% of the age is missing, reasonable to perform imputation
+> #extend the window big enough if you get an error
+> 
+> ggplot(df.train, aes(Survived)) + geom_bar()
+> ggplot(df.train, aes(Pclass)) + geom_bar(aes(fill = factor(Pclass)))
+> 
+> ggplot(df.train, aes(Sex)) + geom_bar(aes(fill = factor(Sex)))
+> 
+> ggplot(df.train, aes(Age)) + geom_histogram(bins= 20, alpha =0.5, fill = 'blue')
+Warning message:
+Removed 177 rows containing non-finite values (stat_bin). 
+> 
+> ggplot(df.train, aes(SibSp)) + geom_bar()
+> #mostly single ppl
+> 
+> ggplot(df.train, aes(Fare)) + geom_histogram()
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> ggplot(df.train, aes(Fare)) + geom_histogram(fill = 'green', color ='black', alpha =0.5)
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> #most ppl paid low fares
+> 
+> #explore data cleaning
+> #fill in avg age by passenger class
+> pl <- ggplot(full, aes(Pclass, Age))
+> pl  <- pl + geom_boxplot(aes(group =Pclass, fill = factor(Pclass), alpha = 0.4))
+> pl + scale_y_continuous(breaks = seq(min(0), max(80), by =2)) + theme_bw()
+Warning message:
+Removed 263 rows containing non-finite values (stat_boxplot). 
+> 
+> impute_age <- function(age,class){
++   out <- age
++   for (i in 1:length(age)){
++     
++     if (is.na(age[i])){
++       
++       if (class[i] == 1){
++         out[i] <- 37
++         
++       }else if (class[i] == 2){
++         out[i] <- 29
++         
++       }else{
++         out[i] <- 24
++       }
++     }else{
++       out[i]<-age[i]
++     }
++   }
++   return(out)
++ }
+> 
+>   fixed.ages <- impute_age(full$Age,full$Pclass)
+> 
+>   full$Age <- fixed.ages
+> ####
+>   full[1044,]
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked
+1044   3701   NA              S
+> # missing the fare value
+>   ggplot(full[full$Pclass == '3' & full$Embarked == 'S', ],
++          aes(x= Fare)) +
++     geom_density(fill ='#99d6ff', alpha =0.4) +
++     geom_vline(aes(xintercept = median(Fare, na.rm =T)),
++                colour ='red', linetype ='dashed', lwd =1) +
++     scale_x_continuous(labels = dollar_format())
+Warning message:
+Removed 1 rows containing non-finite values (stat_density). 
+> 
+>   #replace missing fare with the median dare for the class/ embarkment
+>   full$Fare[1044] <- median(full[full$Pclass == '3' & full$Embarked == 'S', ]$Fare, na.rm =TRUE)
+> 
+> 
+> missmap(full, main="Titanic Training Data - Missings Map", 
++ col=c("yellow", "black"), legend=FALSE)
+> #all black now
+> 
+> #bulding model
+> ##final cleanup of data to remove feautre we dont need
+> str(full)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 24 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> full <- select(full, -PassengerId, -Name, -Ticket, -Cabin, -Parch)
+> 
+> head(full)
+  Survived Pclass    Sex Age SibSp    Fare Embarked
+1        0      3   male  22     1  7.2500        S
+2        1      1 female  38     1 71.2833        C
+3        1      3 female  26     0  7.9250        S
+4        1      1 female  35     1 53.1000        S
+5        0      3   male  35     0  8.0500        S
+6        0      3   male  24     0  8.4583        Q
+> str(full)
+'data.frame':	1309 obs. of  7 variables:
+ $ Survived: int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass  : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age     : num  22 38 26 35 35 24 54 2 27 14 ...
+ $ SibSp   : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Fare    : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked: Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> #survived, class, SibSp, Parch should be factor and not int
+> full$Survived <- factor(full$Survived)
+> full$Pclass <- factor(full$Pclass)
+> full$SibSp <- factor(full$SibSp)
+> str(full)
+'data.frame':	1309 obs. of  7 variables:
+ $ Survived: Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass  : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age     : num  22 38 26 35 35 24 54 2 27 14 ...
+ $ SibSp   : Factor w/ 7 levels "0","1","2","3",..: 2 2 1 2 1 1 1 4 1 2 ...
+ $ Fare    : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked: Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> #embarked has one blank level. ignore for now
+> # split the data  bACK TO train and test data sets
+> train.1 <- full[1:891,]
+> test.1 <- full[892:1309,]
+> str(train.1)
+'data.frame':	891 obs. of  7 variables:
+ $ Survived: Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass  : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age     : num  22 38 26 35 35 24 54 2 27 14 ...
+ $ SibSp   : Factor w/ 7 levels "0","1","2","3",..: 2 2 1 2 1 1 1 4 1 2 ...
+ $ Fare    : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked: Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> str(test.1)
+'data.frame':	418 obs. of  7 variables:
+ $ Survived: Factor w/ 2 levels "0","1": NA NA NA NA NA NA NA NA NA NA ...
+ $ Pclass  : Factor w/ 3 levels "1","2","3": 3 3 2 3 3 3 3 2 3 3 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age     : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp   : Factor w/ 7 levels "0","1","2","3",..: 1 2 1 1 2 1 1 2 1 3 ...
+ $ Fare    : num  7.83 7 9.69 8.66 12.29 ...
+ $ Embarked: Factor w/ 4 levels "","C","Q","S": 3 4 3 4 4 4 3 4 2 4 ...
+> 
+> ######
+> #training the model
+> ######
+> log.model <- glm(formula=Survived ~ . , family = binomial(link='logit'),data = train.1)
+> summary(log.model)
+
+Call:
+glm(formula = Survived ~ ., family = binomial(link = "logit"), 
+    data = train.1)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.8567  -0.5970  -0.4081   0.6023   2.5256  
+
+Coefficients:
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  1.869e+01  1.652e+03   0.011 0.990972    
+Pclass2     -1.088e+00  3.050e-01  -3.567 0.000361 ***
+Pclass3     -2.291e+00  3.088e-01  -7.417 1.20e-13 ***
+Sexmale     -2.658e+00  1.986e-01 -13.385  < 2e-16 ***
+Age         -4.381e-02  8.407e-03  -5.211 1.88e-07 ***
+SibSp1       1.241e-01  2.129e-01   0.583 0.559832    
+SibSp2      -2.011e-01  5.235e-01  -0.384 0.700810    
+SibSp3      -2.080e+00  7.133e-01  -2.916 0.003544 ** 
+SibSp4      -1.592e+00  7.392e-01  -2.154 0.031271 *  
+SibSp5      -1.592e+01  9.612e+02  -0.017 0.986787    
+SibSp8      -1.599e+01  7.585e+02  -0.021 0.983182    
+Fare         1.769e-03  2.310e-03   0.766 0.443690    
+EmbarkedC   -1.459e+01  1.652e+03  -0.009 0.992955    
+EmbarkedQ   -1.463e+01  1.652e+03  -0.009 0.992934    
+EmbarkedS   -1.494e+01  1.652e+03  -0.009 0.992787    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  771.26  on 876  degrees of freedom
+AIC: 801.26
+
+Number of Fisher Scoring iterations: 15
+
+> 
+> ######
+> #predictions
+> ######
+> str(train.1)
+'data.frame':	891 obs. of  7 variables:
+ $ Survived: Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass  : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age     : num  22 38 26 35 35 24 54 2 27 14 ...
+ $ SibSp   : Factor w/ 7 levels "0","1","2","3",..: 2 2 1 2 1 1 1 4 1 2 ...
+ $ Fare    : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked: Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> str(test.1)
+'data.frame':	418 obs. of  7 variables:
+ $ Survived: Factor w/ 2 levels "0","1": NA NA NA NA NA NA NA NA NA NA ...
+ $ Pclass  : Factor w/ 3 levels "1","2","3": 3 3 2 3 3 3 3 2 3 3 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age     : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp   : Factor w/ 7 levels "0","1","2","3",..: 1 2 1 1 2 1 1 2 1 3 ...
+ $ Fare    : num  7.83 7 9.69 8.66 12.29 ...
+ $ Embarked: Factor w/ 4 levels "","C","Q","S": 3 4 3 4 4 4 3 4 2 4 ...
+> model <- predict(log.model,newdata=test.1,type='response')
+> solution <-data.frame(PassengerID = df.test$PassengerId, Survived = model)
+> str(solution)
+'data.frame':	418 obs. of  2 variables:
+ $ PassengerID: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Survived   : num  0.0844 0.3883 0.0846 0.0865 0.657 ...
+> solution$Survived[solution$Survived < 0.5] <- 0
+> solution$Survived[solution$Survived >= 0.5] <- 1
+> head(solution)
+    PassengerID Survived
+892         892        0
+893         893        0
+894         894        0
+895         895        0
+896         896        1
+897         897        0
+> write.csv(solution, file = 'logistic_titanic_model_sol.csv', row.names= F)
+> 
+> 
+> dev.off()
+null device 
+          1 
+> 
+> proc.time()
+   user  system elapsed 
+  2.136   0.186   2.521 

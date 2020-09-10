@@ -1,0 +1,801 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE)
+> 
+> 
+> ## ----message=FALSE, warning=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Data input, assesment : 데이터 불러들이기, 확인하는 과정 
+> library(readr)           # Data input with readr::read_csv()
+> library(descr)           # descr::CrossTable() - 범주별 빈도수, 비율 수치로 확인
+> 
+> # Visualization
+> library(VIM)             # Missing values assesment used by VIM::aggr()
+Loading required package: colorspace
+Loading required package: grid
+VIM is ready to use.
+
+Suggestions and bug-reports can be submitted at: https://github.com/statistikat/VIM/issues
+
+Attaching package: ‘VIM’
+
+The following object is masked from ‘package:datasets’:
+
+    sleep
+
+> library(ggplot2)         # Used in almost visualization 
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(RColorBrewer)    # plot의 color 설정 
+> library(scales)          # plot setting - x, y 축 설정
+
+Attaching package: ‘scales’
+
+The following object is masked from ‘package:readr’:
+
+    col_factor
+
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> 
+> # Feature engineering, Data Pre-processing
+> # library(tidyverse)     # dplyr, ggplot2, purrr, etc... 
+> library(dplyr)           # Feature Engineering & Data Pre-processing 
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(purrr)           # Check missing values 
+
+Attaching package: ‘purrr’
+
+The following object is masked from ‘package:scales’:
+
+    discard
+
+Warning message:
+package ‘purrr’ was built under R version 3.6.2 
+> library(tidyr)           # tidyr::gather() 
+Warning message:
+package ‘tidyr’ was built under R version 3.6.2 
+> 
+> # Model generation  
+> library(randomForest)    # For Random Forest Modeling
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> # Model validation : 원래는 하는게 맞지만 이번 과정에서는 생략
+> # library(caret)           # caret::confusionMatrix() 
+> # library(ROCR)            # Plotting ROC Curve
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Multiple plot function
+> #
+> # ggplot objects can be passed in ..., or to plotlist (as a list of ggplot objects)
+> # - cols:   Number of columns in layout
+> # - layout: A matrix specifying the layout. If present, 'cols' is ignored.
+> #
+> # If the layout is something like matrix(c(1,2,3,3), nrow=2, byrow=TRUE),
+> # then plot 1 will go in the upper left, 2 will go in the upper right, and
+> # 3 will go all the way across the bottom.
+> #
+> 
+> multiplot <- function(..., plotlist = NULL, file, cols = 1, layout = NULL) {
++   library(grid)
++   
++   # Make a list from the ... arguments and plotlist
++   plots <- c(list(...), plotlist)
++   
++   numPlots = length(plots)
++   
++   # If layout is NULL, then use 'cols' to determine layout
++   if (is.null(layout)) {
++     # Make the panel
++     # ncol: Number of columns of plots
++     # nrow: Number of rows needed, calculated from # of cols
++     layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
++                      ncol = cols, nrow = ceiling(numPlots/cols))
++   }
++   
++   if (numPlots==1) {
++     print(plots[[1]])
++     
++   } else {
++     # Set up the page
++     grid.newpage()
++     pushViewport(viewport(layout = grid.layout(nrow(layout), ncol(layout))))
++     
++     # Make each plot, in the correct location
++     for (i in 1:numPlots) {
++       # Get the i,j matrix positions of the regions that contain this subplot
++       matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
++       
++       print(plots[[i]], vp = viewport(layout.pos.row = matchidx$row,
++                                       layout.pos.col = matchidx$col))
++     }
++   }
++ }
+> 
+> 
+> ## ----warning=FALSE, message=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- readr::read_csv('../input/train.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> test  <- readr::read_csv('../input/test.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> full <- dplyr::bind_rows(train, test)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full <- full %>%
++   dplyr::mutate(Survived = factor(Survived),
++                 Pclass   = factor(Pclass, ordered = T),
++                 Name     = factor(Name),
++                 Sex      = factor(Sex),
++                 Ticket   = factor(Ticket),
++                 Cabin    = factor(Cabin),
++                 Embarked = factor(Embarked))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> head(full, 10)
+[90m# A tibble: 10 x 12[39m
+   PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin
+         [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m    [3m[90m<ord>[39m[23m  [3m[90m<fct>[39m[23m [3m[90m<fct>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m
+[90m 1[39m           1 0        3      Brau… male     22     1     0 A/5 2…  7.25 [31mNA[39m   
+[90m 2[39m           2 1        1      Cumi… fema…    38     1     0 PC 17… 71.3  C85  
+[90m 3[39m           3 1        3      Heik… fema…    26     0     0 STON/…  7.92 [31mNA[39m   
+[90m 4[39m           4 1        1      Futr… fema…    35     1     0 113803 53.1  C123 
+[90m 5[39m           5 0        3      Alle… male     35     0     0 373450  8.05 [31mNA[39m   
+[90m 6[39m           6 0        3      Mora… male     [31mNA[39m     0     0 330877  8.46 [31mNA[39m   
+[90m 7[39m           7 0        1      McCa… male     54     0     0 17463  51.9  E46  
+[90m 8[39m           8 0        3      Pals… male      2     3     1 349909 21.1  [31mNA[39m   
+[90m 9[39m           9 1        3      John… fema…    27     0     2 347742 11.1  [31mNA[39m   
+[90m10[39m          10 1        2      Nass… fema…    14     1     0 237736 30.1  [31mNA[39m   
+[90m# … with 1 more variable: Embarked [3m[90m<fct>[90m[23m[39m
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> str(full)
+tibble [1,309 × 12] (S3: spec_tbl_df/tbl_df/tbl/data.frame)
+ $ PassengerId: num [1:1309] 1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Ord.factor w/ 3 levels "1"<"2"<"3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 156 287 531 430 23 826 775 922 613 855 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num [1:1309] 22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : num [1:1309] 1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : num [1:1309] 0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 721 817 915 66 650 374 110 542 478 175 ...
+ $ Fare       : num [1:1309] 7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 186 levels "A10","A11","A14",..: NA 107 NA 71 NA NA 164 NA NA NA ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+ - attr(*, "spec")=
+  .. cols(
+  ..   PassengerId = [32mcol_double()[39m,
+  ..   Survived = [32mcol_double()[39m,
+  ..   Pclass = [32mcol_double()[39m,
+  ..   Name = [31mcol_character()[39m,
+  ..   Sex = [31mcol_character()[39m,
+  ..   Age = [32mcol_double()[39m,
+  ..   SibSp = [32mcol_double()[39m,
+  ..   Parch = [32mcol_double()[39m,
+  ..   Ticket = [31mcol_character()[39m,
+  ..   Fare = [32mcol_double()[39m,
+  ..   Cabin = [31mcol_character()[39m,
+  ..   Embarked = [31mcol_character()[39m
+  .. )
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(full)
+  PassengerId   Survived   Pclass                                Name     
+ Min.   :   1   0   :549   1:323   Connolly, Miss. Kate            :   2  
+ 1st Qu.: 328   1   :342   2:277   Kelly, Mr. James                :   2  
+ Median : 655   NA's:418   3:709   Abbing, Mr. Anthony             :   1  
+ Mean   : 655                      Abbott, Master. Eugene Joseph   :   1  
+ 3rd Qu.: 982                      Abbott, Mr. Rossmore Edward     :   1  
+ Max.   :1309                      Abbott, Mrs. Stanton (Rosa Hunt):   1  
+                                   (Other)                         :1301  
+     Sex           Age            SibSp            Parch            Ticket    
+ female:466   Min.   : 0.17   Min.   :0.0000   Min.   :0.000   CA. 2343:  11  
+ male  :843   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000   1601    :   8  
+              Median :28.00   Median :0.0000   Median :0.000   CA 2144 :   8  
+              Mean   :29.88   Mean   :0.4989   Mean   :0.385   3101295 :   7  
+              3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7  
+              Max.   :80.00   Max.   :8.0000   Max.   :9.000   347082  :   7  
+              NA's   :263                                      (Other) :1261  
+      Fare                     Cabin      Embarked  
+ Min.   :  0.000   C23 C25 C27    :   6   C   :270  
+ 1st Qu.:  7.896   B57 B59 B63 B66:   5   Q   :123  
+ Median : 14.454   G6             :   5   S   :914  
+ Mean   : 33.295   B96 B98        :   4   NA's:  2  
+ 3rd Qu.: 31.275   C22 C26        :   4             
+ Max.   :512.329   (Other)        : 271             
+ NA's   :1         NA's           :1014             
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> VIM::aggr(full, prop = FALSE, combined = TRUE, numbers = TRUE,
++           sortVars = TRUE, sortCombs = TRUE)
+
+ Variables sorted by number of missings: 
+    Variable Count
+       Cabin  1014
+    Survived   418
+         Age   263
+    Embarked     2
+        Fare     1
+ PassengerId     0
+      Pclass     0
+        Name     0
+         Sex     0
+       SibSp     0
+       Parch     0
+      Ticket     0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full %>%
++   dplyr::summarize_all(funs(sum(is.na(.))/n()))
+[90m# A tibble: 1 x 12[39m
+  PassengerId Survived Pclass  Name   Sex   Age SibSp Parch Ticket    Fare Cabin
+        [3m[90m<dbl>[39m[23m    [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m   [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m
+[90m1[39m           0    0.319      0     0     0 0.201     0     0      0 7.64[90me[39m[31m-4[39m 0.775
+[90m# … with 1 more variable: Embarked [3m[90m<dbl>[90m[23m[39m
+Warning message:
+`funs()` is deprecated as of dplyr 0.8.0.
+Please use a list of either functions or lambdas: 
+
+  # Simple named list: 
+  list(mean = mean, median = median)
+
+  # Auto named with `tibble::lst()`: 
+  tibble::lst(mean, median)
+
+  # Using lambdas
+  list(~ mean(., trim = .2), ~ median(., na.rm = TRUE))
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # 각 feature의 결측치 비율 계산 -> Data Frame 속성 but 1행 12열 구조로 되어있음.
+> missing_values <- full %>%
++   dplyr::summarize_all(funs(sum(is.na(.))/n()))
+> 
+> # 위에서 구한 missing_values를 12X2 data frame 으로 생성 
+> missing_values <- tidyr::gather(missing_values,
++                                 key = "feature", value = "missing_pct")
+> 
+> # missing_values를 이용한 시각화 
+> missing_values %>% 
++   # Aesthetic setting : missing_pct 내림차순으로 정렬  
++   ggplot(aes(x = reorder(feature, missing_pct), y = missing_pct)) +
++   # Bar plot 
++   geom_bar(stat = "identity", fill = "red") +
++   # Title generation 
++   ggtitle("Rate of missing values in each features") +
++   # Title detail setting 
++   theme(plot.title = element_text(face = "bold",    # 글씨체 
++                                   hjust = 0.5,      # Horizon(가로비율) = 0.5
++                                   size = 15, color = "darkblue")) +
++   # x, y axis label setting 
++   labs(x = "Feature names", y = "Rate") + 
++   # Plot의 x, y축 변환 
++   coord_flip()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # 변수별 결측치 비율 계산
+> miss_pct <- purrr::map_dbl(full, function(x){round((sum(is.na(x))/length(x)) * 100, 1) })
+> 
+> # 결측치 비율이 0%보다 큰 변수들만 선택
+> miss_pct <- miss_pct[miss_pct > 0]
+> 
+> # Data Frame 생성 
+> data.frame(miss = miss_pct, var = names(miss_pct), row.names = NULL) %>%
++   # Aesthetic setting : miss 내림차순으로 정렬 
++   ggplot(aes(x = reorder(var, miss), y = miss)) + 
++   # Bar plot 
++   geom_bar(stat = 'identity', fill = 'red') +
++   # Plot title setting 
++   ggtitle("Rate of missing values") + 
++   # Title detail setting 
++   theme(plot.title = element_text(face = "bold",    # 글씨체 
++                                   hjust = 0.5,      # Horizon(가로비율) = 0.5
++                                   size = 15, color = "darkblue")) +
++   # x, y axis label setting 
++   labs(x = 'Feature names', y = 'Rate of missing values') +
++   # Plot의 x, y축 변환 
++   coord_flip()
+> 
+> 
+> ## ----message=FALSE, warning=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> age.p1 <- full %>% 
++   ggplot(aes(Age)) + 
++   # 히스토그램 그리기, 설정
++   geom_histogram(breaks = seq(0, 80, by = 1), # 간격 설정 
++                  col    = "red",              # 막대 경계선 색깔 
++                  fill   = "green",            # 막대 내부 색깔 
++                  alpha  = .5) +               # 막대 투명도 = 50% 
++   # Plot title
++   ggtitle("All Titanic passengers age hitogram") +
++   theme(plot.title = element_text(face = "bold",    # 글씨체 
++                                   hjust = 0.5,      # Horizon(가로비율) = 0.5
++                                   size = 15, color = "darkblue"))
+> 
+> age.p2 <- full %>% 
++   # test data set의 Survived == NA 인 값들 제외 
++   filter(!is.na(Survived)) %>% 
++   ggplot(aes(Age, fill = Survived)) + 
++   geom_density(alpha = .5) +
++   ggtitle("Titanic passengers age density plot") + 
++   theme(plot.title = element_text(face = "bold", hjust = 0.5,
++                                   size = 15, color = "darkblue"))
+> 
+> # multiplot layout 형식 지정
+> multi.layout = matrix(c(1, 1, 2, 2), 2, 2, byrow = T)
+> 
+> # 위에서 생성한 2개의 그래프 한 화면에 출력 
+> multiplot(age.p1, age.p2, layout = multi.layout)
+Warning messages:
+1: Removed 263 rows containing non-finite values (stat_bin). 
+2: Removed 177 rows containing non-finite values (stat_density). 
+> 
+> 
+> ## ----message=FALSE, warning=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full %>% 
++   # dplyr::group_by(), summarize() 를 이용해서 Pclass 빈도수 구하기
++   group_by(Pclass) %>% 
++   summarize(N = n()) %>% 
++   # Aesthetic setting 
++   ggplot(aes(Pclass, N)) +
++   geom_col() +
++   # Pclass 빈도수 plot에 출력 
++   geom_text(aes(label = N),        # Plot의 y에 해당하는 N(빈도수)를 매핑
++             size = 5,              # 글씨 크기 
++             vjust = 1.2,           # vertical(가로) 위치 설정 
++             color = "#FFFFFF") +   # 글씨 색깔 : 흰색
++   # Plot title 
++   ggtitle("Number of each Pclass's passengers") + 
++   # Title setting 
++   theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 15)) +
++   # x, y axis name change  
++   labs(x = "Pclass", y = "Count")
+`summarise()` ungrouping output (override with `.groups` argument)
+> 
+> 
+> ## ----message=FALSE, warning=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Histogram 
+> Fare.p1 <- full %>%
++   ggplot(aes(Fare)) + 
++   geom_histogram(col    = "yellow",
++                  fill   = "blue", 
++                  alpha  = .5) +
++   ggtitle("Histogram of passengers Fare") +
++   theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 15))
+> 
+> # Boxplot 
+> Fare.p2 <- full %>%
++   filter(!is.na(Survived)) %>% 
++   ggplot(aes(Survived, Fare)) + 
++   # 관측치를 회색점으로 찍되, 중복되는 부분은 퍼지게 그려줍니다.
++   geom_jitter(col = "gray") + 
++   # 상자그림 : 투명도 50% 
++   geom_boxplot(alpha = .5) + 
++   ggtitle("Boxplot of passengers Fare") +
++   theme(plot.title = element_text(face = "bold", hjust = 0.5, size = 15))
+> 
+> # multiplot layout 형식 지정
+> multi.layout = matrix(c(1, 1, 2, 2), 2, 2)
+> 
+> # 위에서 생성한 2개의 그래프 한 화면에 출력 
+> multiplot(Fare.p1, Fare.p2, layout = multi.layout)
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+Warning message:
+Removed 1 rows containing non-finite values (stat_bin). 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> sex.p1 <- full %>% 
++   dplyr::group_by(Sex) %>% 
++   summarize(N = n()) %>% 
++   ggplot(aes(Sex, N)) +
++   geom_col() +
++   geom_text(aes(label = N), size = 5, vjust = 1.2, color = "#FFFFFF") + 
++   ggtitle("Bar plot of Sex") +
++   labs(x = "Sex", y = "Count")
+`summarise()` ungrouping output (override with `.groups` argument)
+>   
+> sex.p2 <- full[1:891, ] %>% 
++   ggplot(aes(Sex, fill = Survived)) +
++   geom_bar(position = "fill") + 
++   scale_fill_brewer(palette = "Set1") +
++   scale_y_continuous(labels = percent) +
++   ggtitle("Survival Rate by Sex") + 
++   labs(x = "Sex", y = "Rate")
+> 
+> multi.layout = matrix(rep(c(1, 2), times = 2), 2, 2, byrow = T)
+> 
+> multiplot(sex.p1, sex.p2, layout = multi.layout)
+> 
+> mosaicplot(Survived ~ Sex,
++            data = full[1:891, ], col = TRUE,
++            main = "Survival rate by passengers gender")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full <- full %>%
++   # 결측치(NA)를 먼저 채우는데 결측치를 제외한 값들의 평균으로 채움.
++   mutate(Age = ifelse(is.na(Age), mean(full$Age, na.rm = TRUE), Age),
++          # Age 값에 따라 범주형 파생 변수 Age.Group 를 생성
++          Age.Group = case_when(Age < 13             ~ "Age.0012",
++                                Age >= 13 & Age < 18 ~ "Age.1317",
++                                Age >= 18 & Age < 60 ~ "Age.1859",
++                                Age >= 60            ~ "Age.60inf"),
++          # Chr 속성을 Factor로 변환 
++          Age.Group = factor(Age.Group))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full <- full %>% 
++   # SibSp, Parch와 1(본인)을 더해서 FamilySize라는 파생변수를 먼저 생성  
++   mutate(FamilySize = .$SibSp + .$Parch + 1,
++          # FamilySize 의 값에 따라서 범주형 파생 변수 FamilySized 를 생성 
++          FamilySized = dplyr::case_when(FamilySize == 1 ~ "Single",
++                                         FamilySize >= 2 & FamilySize < 5 ~ "Small",
++                                         FamilySize >= 5 ~ "Big"),
++          # Chr 속성인 FamilySized를 factor로 변환하고
++          # 집단 규모 크기에 따라 levels를 새로 지정
++          FamilySized = factor(FamilySized, levels = c("Single", "Small", "Big")))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # 우선 Name 열벡터만 추출해서 title 벡터에 저장 
+> title <- full$Name
+> 
+> # 정규표현식과 gsub()을 이용해서 성별과 관련성이 높은 이름만 추출해서 title 벡터로 저장 
+> title <- gsub("^.*, (.*?)\\..*$", "\\1", title)
+> 
+> # 위에서 저장한 title 벡터를 다시 full 에 저장하되, title 파생변수로 저장 
+> full$title <- title
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> unique(full$title)
+ [1] "Mr"           "Mrs"          "Miss"         "Master"       "Don"         
+ [6] "Rev"          "Dr"           "Mme"          "Ms"           "Major"       
+[11] "Lady"         "Sir"          "Mlle"         "Col"          "Capt"        
+[16] "the Countess" "Jonkheer"     "Dona"        
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # 범주별 빈도수, 비율 확인 
+> descr::CrossTable(full$title)
+   Cell Contents 
+|-------------------------|
+|                       N | 
+|           N / Row Total | 
+|-------------------------|
+
+|         Capt |          Col |          Don |         Dona |           Dr |
+|--------------|--------------|--------------|--------------|--------------|
+|            1 |            4 |            1 |            1 |            8 |
+|        0.001 |        0.003 |        0.001 |        0.001 |        0.006 |
+|--------------|--------------|--------------|--------------|--------------|
+
+|     Jonkheer |         Lady |        Major |       Master |         Miss |
+|--------------|--------------|--------------|--------------|--------------|
+|            1 |            1 |            2 |           61 |          260 |
+|        0.001 |        0.001 |        0.002 |        0.047 |        0.199 |
+|--------------|--------------|--------------|--------------|--------------|
+
+|         Mlle |          Mme |           Mr |          Mrs |           Ms |
+|--------------|--------------|--------------|--------------|--------------|
+|            2 |            1 |          757 |          197 |            2 |
+|        0.002 |        0.001 |        0.578 |        0.150 |        0.002 |
+|--------------|--------------|--------------|--------------|--------------|
+
+|          Rev |          Sir | the Countess |
+|--------------|--------------|--------------|
+|            8 |            1 |            1 |
+|        0.006 |        0.001 |        0.001 |
+|--------------|--------------|--------------|
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # 5개 범주로 단순화 시키는 작업 
+> full <- full %>%
++   # "%in%" 대신 "=="을 사용하게되면 Recyling Rule 때문에 원하는대로 되지 않습니다.
++   mutate(title = ifelse(title %in% c("Mlle", "Ms", "Lady", "Dona"), "Miss", title),
++          title = ifelse(title == "Mme", "Mrs", title),
++          title = ifelse(title %in% c("Capt", "Col", "Major", "Dr", "Rev", "Don",
++                                      "Sir", "the Countess", "Jonkheer"), "Officer", title),
++          title = factor(title))
+> 
+> # 파생변수 생성 후 각 범주별 빈도수, 비율 확인 
+> descr::CrossTable(full$title)
+   Cell Contents 
+|-------------------------|
+|                       N | 
+|           N / Row Total | 
+|-------------------------|
+
+|  Master |    Miss |      Mr |     Mrs | Officer |
+|---------|---------|---------|---------|---------|
+|      61 |     266 |     757 |     198 |      27 |
+|   0.047 |   0.203 |   0.578 |   0.151 |   0.021 |
+|---------|---------|---------|---------|---------|
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # 고유한(unique한) 범주의 갯수만 파악하려고 length()를 사용했습니다.
+> length(unique(full$Ticket))
+[1] 929
+> 
+> # 모두 출력하면 너무 지저분해서 10개만 출력했습니다.
+> head(summary(full$Ticket), 10)
+    CA. 2343         1601      CA 2144      3101295       347077       347082 
+          11            8            8            7            7            7 
+    PC 17608 S.O.C. 14879       113781        19950 
+           7            7            6            6 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full %>% 
++   # 티켓이 일치하는 11명의 승객들만 필터링 
++   filter(Ticket == "CA. 2343") %>% 
++   # 모든 변수에 대해 확인할 필요는 없으므로 아래 변수들만 보려고 합니다.
++   select(Pclass, Name, Age, FamilySized)
+[90m# A tibble: 11 x 4[39m
+   Pclass Name                                    Age FamilySized
+   [3m[90m<ord>[39m[23m  [3m[90m<fct>[39m[23m                                 [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m      
+[90m 1[39m 3      [90m"[39mSage, Master. Thomas Henry[90m"[39m           29.9 Big        
+[90m 2[39m 3      [90m"[39mSage, Miss. Constance Gladys[90m"[39m         29.9 Big        
+[90m 3[39m 3      [90m"[39mSage, Mr. Frederick[90m"[39m                  29.9 Big        
+[90m 4[39m 3      [90m"[39mSage, Mr. George John Jr[90m"[39m             29.9 Big        
+[90m 5[39m 3      [90m"[39mSage, Miss. Stella Anna[90m"[39m              29.9 Big        
+[90m 6[39m 3      [90m"[39mSage, Mr. Douglas Bullen[90m"[39m             29.9 Big        
+[90m 7[39m 3      [90m"[39mSage, Miss. Dorothy Edith \"Dolly\"[90m"[39m  29.9 Big        
+[90m 8[39m 3      [90m"[39mSage, Miss. Ada[90m"[39m                      29.9 Big        
+[90m 9[39m 3      [90m"[39mSage, Mr. John George[90m"[39m                29.9 Big        
+[90m10[39m 3      [90m"[39mSage, Master. William Henry[90m"[39m          14.5 Big        
+[90m11[39m 3      [90m"[39mSage, Mrs. John (Annie Bullen)[90m"[39m       29.9 Big        
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # 우선 ticket.unique가 모두 0이라고 저장함
+> ticket.unique <- rep(0, nrow(full))
+> 
+> # Ticket Feature에서 고유한 것들만 추출해서 tickets 벡터에 저장 
+> tickets <- unique(full$Ticket)
+> 
+> # 반복문을 중첩 활용해서 티켓이 같은 승객들만 추출 후, 각 티켓들의 길이(문자 갯수)를 추출해서 저장한다.
+> for (i in 1:length(tickets)) {
++   current.ticket <- tickets[i]
++   party.indexes <- which(full$Ticket == current.ticket)
++     # For loop 중첩 
++     for (k in 1:length(party.indexes)) {
++     ticket.unique[party.indexes[k]] <- length(party.indexes)
++     }
++   }
+> 
+> # 위에서 계산한 ticket.unique 을 파생변수로 저장 
+> full$ticket.unique <- ticket.unique
+> 
+> # ticket.unique에 따라 세가지 범주로 나눠서 ticket.size 변수 생성 
+> full <- full %>% 
++   mutate(ticket.size = case_when(ticket.unique == 1 ~ 'Single',
++                                  ticket.unique < 5 & ticket.unique >= 2 ~ "Small",
++                                  ticket.unique >= 5 ~ "Big"),
++          ticket.size = factor(ticket.size,
++                               levels = c("Single", "Small", "Big")))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$Embarked <- replace(full$Embarked,               # 치환할 Data$feature 지정
++                          which(is.na(full$Embarked)), # 결측치들만 찾기
++                          'S')                         # 치환할 값 지정 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$Fare <- replace(full$Fare, which(is.na(full$Fare)), 0)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # feature selection 전이므로 우선은 모든 변수들을 선택합니다.
+> train <- full[1:891, ]
+> 
+> test <- full[892:1309, ]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train %>% 
++   ggplot(aes(Pclass, fill = Survived)) + 
++   geom_bar(position = "fill") +
++   # plot 테마 설정 : 조금 더 선명한 색깔로 변환해준다.
++   scale_fill_brewer(palette = "Set1") +
++   # Y axis setting 
++   scale_y_continuous(labels = percent) +
++   # x, y 축 이름과 plot의 main title, sub title 설정 
++   labs(x = "Pclass", y = "Rate",
++        title = "Bar plot", subtitle = "How many people survived in each Pclass?")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> mosaicplot(Survived ~ Sex,
++            data = train, col = TRUE,
++            main = "Survival rate by passengers gender")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train %>% 
++   ggplot(aes(Embarked, fill = Survived)) +
++   geom_bar(position = "fill") + 
++   scale_fill_brewer(palette = "Set1") +
++   scale_y_continuous(labels = percent) +
++   labs(x = "Embarked", y = "Rate",
++        title = "Bar plot", subtitle = "How many people survived in each Embarked?")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train %>% 
++   ggplot(aes(FamilySized, fill = Survived)) + 
++   geom_bar(position = "fill") + 
++   scale_fill_brewer(palette = "Set1") + 
++   scale_y_continuous(labels = percent) +
++   labs(x = "FamilySized", y = "Rate",
++        title = "Bar plot", subtitle = "Survival rate by FamilySized")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train %>% 
++   ggplot(aes(Age.Group, fill = Survived)) + 
++   geom_bar(position = "fill") + 
++   scale_fill_brewer(palette = "Set1") + 
++   scale_y_continuous(labels = percent) +
++   labs(x = "Age group", y = "Rate",
++        title = "Bar plot", subtitle = "Survival rate by Age group")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train %>% 
++   ggplot(aes(title, fill = Survived)) + 
++   geom_bar(position = "fill") + 
++   scale_fill_brewer(palette = "Set1") + 
++   scale_y_continuous(labels = percent) +
++   labs(x = "title", y = "Rate",
++        title = "Bar plot", subtitle = "Survival rate by passengers title")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train %>% 
++   ggplot(aes(ticket.size, fill = Survived)) + 
++   geom_bar(position = "fill") + 
++   scale_fill_brewer(palette = "Set1") + 
++   scale_y_continuous(labels = percent) +
++   labs(x = "ticket.size", y = "Rate",
++        title = "Bar plot", subtitle = "Survival rate by ticket.size")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Id number 제외하고 실제로 사용할 7개 입력변수와 1개의 타겟변수를 선택, 저장 
+> train <- train %>% 
++   select("Pclass", "Sex", "Embarked", "FamilySized",
++          "Age.Group", "title", "ticket.size", "Survived")
+> 
+> # Submit을 위해서 Id 열벡터 추출해서 ID에 저장 
+> ID <- test$PassengerId
+> 
+> # Id와 Survived를 제외한 나머지 6개 변수들을 선택, 저장 
+> test <- test %>% 
++   select("Pclass", "Sex", "Embarked", "FamilySized",
++          "Age.Group", "title", "ticket.size")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # 재현성을 위해서 seed number를 설정해줍니다.
+> set.seed(1901)
+> 
+> titanic.rf <- randomForest(Survived ~ ., data = train, importance = T, ntree = 2000)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> importance(titanic.rf)
+                    0        1 MeanDecreaseAccuracy MeanDecreaseGini
+Pclass      47.360545 55.62872             66.31022        36.760810
+Sex         52.420408 35.59064             56.91694        54.419528
+Embarked    -6.251717 38.21176             28.54509         9.347211
+FamilySized 30.474466 30.59797             48.64847        18.023144
+Age.Group   14.657035 27.29525             29.44747        10.074983
+title       49.844635 43.18055             59.19629        76.104303
+ticket.size 41.578242 38.28502             60.90637        23.002893
+> 
+> varImpPlot(titanic.rf)
+> 
+> 
+> ## ----eval=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ## # Prediction
+> ## pred.rf <- predict(object = titanic.rf, newdata = test, type = "class")
+> ## 
+> ## # Data frame generation
+> ## submit <- data.frame(PassengerID = ID, Survived = pred.rf)
+> ## 
+> ## # Write the submit data frame to file : setwd()로 지정해놓은 폴더에 csv로 생성됩니다.
+> ## write.csv(submit, file = './titanic_submit.csv', row.names = F)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  6.422   0.330   6.912 

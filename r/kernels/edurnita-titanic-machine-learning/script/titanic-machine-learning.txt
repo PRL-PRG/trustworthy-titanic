@@ -1,0 +1,150 @@
+
+options(jupyter.plot_mimetypes = "image/png")
+
+#####################################################################################
+################################ TITANIC SURVIVAL ###################################
+#####################################################################################
+
+## STEP 1: First of all, I load the libraries and two functions that I will use later, one of them for calculating error rate
+## and another one for building a dendrogram 
+library(sandwich, verbose = FALSE, warn.conflicts = FALSE)
+library(lattice, verbose = FALSE, warn.conflicts = FALSE)
+library(ggplot2, verbose = FALSE, warn.conflicts = FALSE)
+library(caret, verbose = FALSE, warn.conflicts = FALSE)
+library(foreach, verbose = FALSE, warn.conflicts = FALSE)
+library(randomForest, verbose = FALSE, warn.conflicts = FALSE)
+
+to.dendrogram <- function(dfrep, rownum = 1, height.increment = 0.1){
+  
+  if(dfrep[rownum, 'status'] == -1){
+    rval <- list()
+    
+    attr(rval, "members") <- 1
+    attr(rval, "height") <- 0.0
+    attr(rval, "label") <- dfrep[rownum, 'prediction']
+    attr(rval, "leaf") <- TRUE
+    
+  }else{
+    left <- to.dendrogram(dfrep, dfrep[rownum, 'left daughter'], height.increment)
+    right <- to.dendrogram(dfrep, dfrep[rownum, 'right daughter'], height.increment)
+    rval <- list(left, right)
+    
+    attr(rval, "members") <- attr(left, "members") + attr(right, "members")
+    attr(rval, "height") <- max(attr(left, "height"), attr(right, "height")) + 
+      height.increment
+    attr(rval, "leaf") <- FALSE
+    attr(rval, "edgetext") <- dfrep[rownum, 'split var']
+  }
+  
+  class(rval) <- "dendrogram"
+  
+  return(rval)
+}
+
+err.rate <- function (x) {
+  num <- x$confusion[1] + x$confusion[4]
+  den <- x$confusion[1] + x$confusion[2]+x$confusion[3]+x$confusion[4]
+  ac <- 1 - (num / den)
+  ac <- ac * 100
+  return(ac)
+}
+
+## STEP 2: I load the datasets
+train <- read.csv("../input/train.csv", head = TRUE, sep = ",")
+test <- read.csv("../input/test.csv", head = TRUE, sep = ",")
+
+## STEP 3: Before making predictions, I have to analyze the datasets and clean all the mistakes
+str(train)
+str(test)
+
+summary(train)
+summary(test)
+
+## STEP 4: Cleaning the datasets
+# I select the variables that I will analyze
+dftrain <- train[,c(2, 3, 5, 6, 7, 8, 10, 12)]
+dftest <- test[,c(2, 4, 5, 6, 7, 9, 11)]
+
+# I create a variable called "Family" which is the sum of Parch and SibSp. I would like to test if this var will increase 
+# my model accuracy
+dftrain$Family <- dftrain$SibSp + dftrain$Parch
+dftest$Family <- dftest$SibSp + dftest$Parch
+
+# I transform into factors the vars "Pclass" and "Survived". Moreover, I transform the class of "Embarked" to character 
+# for replacing NAs later
+dftrain$Survived <- factor(dftrain$Survived, levels = 0:1, labels = c("Not survived", "Survived"))
+
+dftrain$Pclass <- as.factor(dftrain$Pclass)
+dftest$Pclass <- as.factor(dftest$Pclass)
+
+dftrain$Embarked <- as.character(dftrain$Embarked)
+
+# A randomForest doesn't deal with NAs so I am going to replace them
+dftrain$Age <- ifelse(is.na(dftrain$Age), mean(dftrain$Age, na.rm = TRUE), dftrain$Age)
+dftest$Age <- ifelse(is.na(dftest$Age), mean(dftest$Age, na.rm = TRUE), dftest$Age)
+
+which(dftrain$Embarked == "")
+dftrain$Embarked[c(62,830)] = "S"
+dftrain$Embarked <- factor(dftrain$Embarked)
+
+dftest$Fare <- ifelse(is.na(dftest$Fare), mean(dftest$Fare, na.rm = TRUE), dftest$Fare)
+
+summary(dftrain)
+summary(dftest)
+
+## STEP 5: MODELS
+# I will use randomForest. I will try some models and I will choose one which has the highest accuracy
+f1 <- Survived ~ Sex
+f2 <- Survived ~ Sex + Fare
+f3 <- Survived ~ Sex + Fare + Age
+f4 <- Survived ~ Sex + Fare + Age + Pclass
+f5 <- Survived ~ Sex + Fare + Age + Pclass + SibSp 
+f6 <- Survived ~ Sex + Fare + Age + Pclass + Parch
+f7 <- Survived ~ Sex + Fare + Age + Pclass + SibSp + Parch
+f8 <- Survived ~ Sex + Fare + Age + Pclass + Family
+f9 <- Survived ~ Sex + Fare + Age + Pclass + SibSp + Embarked
+f10 <- Survived ~ Sex + Fare + Age + Pclass + Parch + Embarked
+f11 <- Survived ~ Sex + Fare + Age + Pclass + Family + Embarked
+f12 <- Survived ~ Sex + Fare + Age + Pclass + SibSp + Parch + Embarked
+f13 <- Survived ~ Sex + Fare + Age + Pclass + Embarked
+
+set.seed(1234) #set seed
+
+md1 <- randomForest(f1, data = dftrain, ntree = 80, proximity = TRUE, importance = TRUE)
+md2 <- randomForest(f2, data = dftrain, ntree = 80, proximity = TRUE, importance = TRUE)
+md3 <- randomForest(f3, data = dftrain, ntree = 80, proximity = TRUE, importance = TRUE)
+md4 <- randomForest(f4, data = dftrain, ntree = 80, proximity = TRUE, importance = TRUE)
+md5 <- randomForest(f5, data = dftrain, ntree = 80, proximity = TRUE, importance = TRUE)
+md6 <- randomForest(f6, data = dftrain, ntree = 80, proximity = TRUE, importance = TRUE)
+md7 <- randomForest(f7, data = dftrain, ntree = 80, proximity = TRUE, importance = TRUE)
+md8 <- randomForest(f8, data = dftrain, ntree = 80, proximity = TRUE, importance = TRUE)
+md9 <- randomForest(f9, data = dftrain, ntree = 80, proximity = TRUE, importance = TRUE)
+md10 <- randomForest(f10, data = dftrain, ntree = 80, proximity = TRUE, importance = TRUE)
+md11 <- randomForest(f11, data = dftrain, ntree = 80, proximity = TRUE, importance = TRUE)
+md12 <- randomForest(f12, data = dftrain, ntree = 80, proximity = TRUE, importance = TRUE)
+md13 <- randomForest(f13, data = dftrain, ntree = 80, proximity = TRUE, importance = TRUE)
+
+ModelsErrRate <- round(c(err.rate(md1),err.rate(md2),err.rate(md3),err.rate(md4),err.rate(md5),err.rate(md6),err.rate(md7),err.rate(md8),err.rate(md9),err.rate(md10),err.rate(md11),err.rate(md12),err.rate(md13)),3)
+print(ModelsErrRate)
+
+# I can see that the best accuracy are for models 4, 8 and 11. I choose the model 4 because it obtains the same value as other but it is the simplest one.
+# I will plot the error rates and confusion matrix for this model
+plot(md4, main = "Error rate over trees")
+print(md4)
+
+## STEP 6: Now, I am going to obtain the dendrogram and variable's importance
+# Dendrogram instructions and plot
+tree <- getTree(md4, 1, labelVar = TRUE)
+d <- to.dendrogram(tree)
+str(d)
+plot(d,center=TRUE, leaflab = "none", edgePar = list(t.cex = 1, p.col = NA, p.lty = 0))
+MDSplot(md4, dftrain$Survived, k=2, palette = 1:3)
+
+#Importance of vars
+importance(md4)
+varImpPlot(md4, main = "Average Importance plots")
+
+
+## STEP 7: Predictions
+predictions <- predict(md4, dftest)
+results <- data.frame(test$PassengerId, predictions)

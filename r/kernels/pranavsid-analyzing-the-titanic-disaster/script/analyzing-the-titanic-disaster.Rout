@@ -1,0 +1,260 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> 
+> #Data cleansing
+> 
+> train$Survived<- as.factor(train$Survived)
+> train$Pclass<- as.factor(train$Pclass)
+> train$Name<- as.character(train$Name)
+> 
+> test$Pclass<- as.factor(test$Pclass)
+> test$Name<- as.character(test$Name)
+> 
+> # A priori I think Age, class, sex will determine the chances of survival. 
+> # Age: Senior citizen might have been given priority
+> # Class: Lower class is present on lower part of ship where flooding started
+> # Sex : Female and children were given preference over males
+> 
+> #summary statistics of training data
+> summary(train)
+  PassengerId    Survived Pclass      Name               Sex     
+ Min.   :  1.0   0:549    1:216   Length:891         female:314  
+ 1st Qu.:223.5   1:342    2:184   Class :character   male  :577  
+ Median :446.0            3:491   Mode  :character               
+ Mean   :446.0                                                   
+ 3rd Qu.:668.5                                                   
+ Max.   :891.0                                                   
+                                                                 
+      Age            SibSp           Parch             Ticket   
+ Min.   : 0.42   Min.   :0.000   Min.   :0.0000   1601    :  7  
+ 1st Qu.:20.12   1st Qu.:0.000   1st Qu.:0.0000   347082  :  7  
+ Median :28.00   Median :0.000   Median :0.0000   CA. 2343:  7  
+ Mean   :29.70   Mean   :0.523   Mean   :0.3816   3101295 :  6  
+ 3rd Qu.:38.00   3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6  
+ Max.   :80.00   Max.   :8.000   Max.   :6.0000   CA 2144 :  6  
+ NA's   :177                                      (Other) :852  
+      Fare                Cabin     Embarked
+ Min.   :  0.00              :687    :  2   
+ 1st Qu.:  7.91   B96 B98    :  4   C:168   
+ Median : 14.45   C23 C25 C27:  4   Q: 77   
+ Mean   : 32.20   G6         :  4   S:644   
+ 3rd Qu.: 31.00   C22 C26    :  3           
+ Max.   :512.33   D          :  3           
+                  (Other)    :186           
+> 
+> #summary statistics of training data
+> summary(test)
+  PassengerId     Pclass      Name               Sex           Age       
+ Min.   : 892.0   1:107   Length:418         female:152   Min.   : 0.17  
+ 1st Qu.: 996.2   2: 93   Class :character   male  :266   1st Qu.:21.00  
+ Median :1100.5   3:218   Mode  :character                Median :27.00  
+ Mean   :1100.5                                           Mean   :30.27  
+ 3rd Qu.:1204.8                                           3rd Qu.:39.00  
+ Max.   :1309.0                                           Max.   :76.00  
+                                                          NA's   :86     
+     SibSp            Parch             Ticket         Fare        
+ Min.   :0.0000   Min.   :0.0000   PC 17608:  5   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.0000   113503  :  4   1st Qu.:  7.896  
+ Median :0.0000   Median :0.0000   CA. 2343:  4   Median : 14.454  
+ Mean   :0.4474   Mean   :0.3923   16966   :  3   Mean   : 35.627  
+ 3rd Qu.:1.0000   3rd Qu.:0.0000   220845  :  3   3rd Qu.: 31.500  
+ Max.   :8.0000   Max.   :9.0000   347077  :  3   Max.   :512.329  
+                                   (Other) :396   NA's   :1        
+             Cabin     Embarked
+                :327   C:102   
+ B57 B59 B63 B66:  3   Q: 46   
+ A34            :  2   S:270   
+ B45            :  2           
+ C101           :  2           
+ C116           :  2           
+ (Other)        : 80           
+> 
+> # Fare data missing for one passenger who was in class 3 and started from 'S'. So this missing value
+> # can be replaced by median value of such passengers.
+> 
+> #index of the missing data = which(is.na(test$Fare))
+> # let us find the mean for such passengers
+> library(dplyr)    
+
+Attaching package: ‘dplyr’
+
+The following object is masked from ‘package:randomForest’:
+
+    combine
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> subset_1 = filter(test, Pclass == 3 & Embarked == "S")
+> summarise(subset_1,delay = mean(Fare, na.rm = TRUE))
+     delay
+1 13.91303
+> 
+> #Plug the mean in the test data
+> test$Fare[which(is.na(test$Fare))] = 13.91
+> summary(test)
+  PassengerId     Pclass      Name               Sex           Age       
+ Min.   : 892.0   1:107   Length:418         female:152   Min.   : 0.17  
+ 1st Qu.: 996.2   2: 93   Class :character   male  :266   1st Qu.:21.00  
+ Median :1100.5   3:218   Mode  :character                Median :27.00  
+ Mean   :1100.5                                           Mean   :30.27  
+ 3rd Qu.:1204.8                                           3rd Qu.:39.00  
+ Max.   :1309.0                                           Max.   :76.00  
+                                                          NA's   :86     
+     SibSp            Parch             Ticket         Fare        
+ Min.   :0.0000   Min.   :0.0000   PC 17608:  5   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.0000   113503  :  4   1st Qu.:  7.896  
+ Median :0.0000   Median :0.0000   CA. 2343:  4   Median : 14.454  
+ Mean   :0.4474   Mean   :0.3923   16966   :  3   Mean   : 35.575  
+ 3rd Qu.:1.0000   3rd Qu.:0.0000   220845  :  3   3rd Qu.: 31.472  
+ Max.   :8.0000   Max.   :9.0000   347077  :  3   Max.   :512.329  
+                                   (Other) :396                    
+             Cabin     Embarked
+                :327   C:102   
+ B57 B59 B63 B66:  3   Q: 46   
+ A34            :  2   S:270   
+ B45            :  2           
+ C101           :  2           
+ C116           :  2           
+ (Other)        : 80           
+> 
+> # From the summary we see that Age has missing values
+> # I feel we can use the Name title information to generate more relevant information than just
+> # using sex. I created a function to asses the titles and divide into different categories.
+> # Miss was used for unmarried ladies. This indicates a teen age or early twenties age
+> # Woman/Man refer to is female and male
+> # Master is a male kid.
+> 
+> Titles<-function(Name)
++ {
++   if (length(grep("Miss.",Name))>0) {return("Lady")}
++   else if (length(grep("Mrs.",Name))>0) {return("Woman")}
++   else if (length(grep("Mr.",Name))>0) {return("Man")}
++   else if (length(grep("Master.",Name))>0) {return("Child")}
++   else {return("Other")}
++ }
+> # creating a column title based on the title present in variable Name
+> title_data <-NULL
+> for(i in 1:nrow(train))
++ {
++   title_data<-c(title_data,Titles(train[i,4]))
++ }
+> train$title <-as.factor(title_data)
+> title_data <-NULL
+> for(i in 1:nrow(test))
++ {
++   title_data<-c(title_data,Titles(test[i,3]))
++ }
+> test$title <-as.factor(title_data)
+> 
+> # Create a random forrest model to predict the survival
+> #random forrest model
+> rf_data <- train[,c("Pclass","title","Fare")]
+> rf_newdata <- test[,c("Pclass","title","Fare")]
+> set.seed(12354)
+> rf_1 = randomForest(x=rf_data, y=train$Survived,ntree=1000)
+> rf_1
+
+Call:
+ randomForest(x = rf_data, y = train$Survived, ntree = 1000) 
+               Type of random forest: classification
+                     Number of trees: 1000
+No. of variables tried at each split: 1
+
+        OOB estimate of  error rate: 18.86%
+Confusion matrix:
+    0   1 class.error
+0 506  43  0.07832423
+1 125 217  0.36549708
+> rf_2 = predict(rf_1,newdata = rf_newdata)
+> rf_2
+  1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20 
+  0   1   0   0   1   0   1   0   1   0   0   0   1   0   1   1   0   0   1   1 
+ 21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40 
+  0   1   1   0   1   0   1   0   0   0   0   0   1   0   0   0   0   0   0   0 
+ 41  42  43  44  45  46  47  48  49  50  51  52  53  54  55  56  57  58  59  60 
+  0   0   0   1   1   0   0   0   1   1   0   0   1   1   0   0   0   0   0   1 
+ 61  62  63  64  65  66  67  68  69  70  71  72  73  74  75  76  77  78  79  80 
+  0   0   0   1   1   1   1   0   0   1   1   0   1   0   1   0   0   1   0   1 
+ 81  82  83  84  85  86  87  88  89  90  91  92  93  94  95  96  97  98  99 100 
+  1   0   0   0   0   0   1   0   0   1   1   0   1   0   0   0   1   0   1   0 
+101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 
+  1   0   0   0   0   0   0   0   0   0   0   1   1   1   1   0   0   1   0   1 
+121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 
+  1   0   1   0   0   1   0   0   0   0   0   0   0   0   0   0   0   0   0   0 
+141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 
+  0   1   0   0   0   0   0   0   0   0   1   0   0   1   0   0   1   1   0   1 
+161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 
+  1   1   1   0   0   0   0   0   1   0   0   0   0   0   0   1   1   0   1   1 
+181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200 
+  0   0   1   0   1   0   1   0   0   0   0   0   1   0   1   0   1   1   0   0 
+201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 
+  1   0   1   1   0   0   1   0   1   0   0   0   0   1   1   0   1   0   1   0 
+221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 
+  1   0   1   0   1   1   0   1   0   0   0   1   0   0   0   0   0   0   1   1 
+241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260 
+  1   1   0   0   0   0   1   0   1   0   1   0   0   0   0   0   0   0   1   0 
+261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 
+  0   0   1   1   0   0   0   0   0   0   0   0   1   1   0   1   0   0   0   0 
+281 282 283 284 285 286 287 288 289 290 291 292 293 294 295 296 297 298 299 300 
+  0   1   1   0   0   0   0   0   0   0   0   1   0   1   0   0   1   0   0   0 
+301 302 303 304 305 306 307 308 309 310 311 312 313 314 315 316 317 318 319 320 
+  0   0   0   0   1   1   0   1   0   0   0   0   0   1   1   1   0   0   0   0 
+321 322 323 324 325 326 327 328 329 330 331 332 333 334 335 336 337 338 339 340 
+  0   0   0   0   1   0   1   0   0   0   1   0   0   1   0   0   0   0   0   1 
+341 342 343 344 345 346 347 348 349 350 351 352 353 354 355 356 357 358 359 360 
+  0   0   0   1   1   1   0   1   0   1   1   0   0   0   0   0   1   0   0   1 
+361 362 363 364 365 366 367 368 369 370 371 372 373 374 375 376 377 378 379 380 
+  0   1   1   0   1   0   0   0   1   0   0   1   0   0   1   1   0   0   0   0 
+381 382 383 384 385 386 387 388 389 390 391 392 393 394 395 396 397 398 399 400 
+  0   0   0   1   0   1   0   0   0   0   0   1   0   0   0   1   0   1   0   0 
+401 402 403 404 405 406 407 408 409 410 411 412 413 414 415 416 417 418 
+  1   0   1   0   0   0   0   0   1   0   1   1   1   0   1   0   0   0 
+Levels: 0 1
+> # Arranging the solution based on the format asked
+> my_solution <- data.frame(PassengerID = test$PassengerId, Survived = rf_2)
+> # Saving the file to required format
+> write.csv(my_solution, file = "my_solution.csv",row.names = FALSE)
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  0.687   0.075   0.759 

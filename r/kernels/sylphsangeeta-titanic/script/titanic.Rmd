@@ -1,0 +1,420 @@
+---
+title: "Titanic Dataset Exploration"
+author: "Sangeeta"
+date : "19 june 2017"
+---
+
+#Question :  
+What kind of people survived for example kids,women,men 
+
+
+#Acquire Data 
+
+As the problem statement itself carring the two set of Data training data,test data
+Here we will just have a look of what kind of data it is .
+
+
+```{r}
+
+library(dplyr)
+
+
+train_df<-read.csv("../input/train.csv",stringsAsFactors=F)
+cat(paste('\ntest data structure having rows :\n', nrow(train_df)) )
+str(train_df)
+
+
+test_df<-read.csv("../input/test.csv",stringsAsFactors=F)
+cat(paste('\ntest data structure having rows :\n', nrow(test_df)) )
+str(test_df)
+
+
+```
+Insights:
+
+1. As from the above result we can see that training Data structure is having  one field extra that is "survived" as comapred to       testing data which we have to predict in this data 
+
+2. PasseengerId:Unique Id Assigned to each traveller
+
+3. Pclass : 1 for First Class
+            2 for Second Class
+            3 for third class
+            
+4.  Name : Name is with first name and Last name Mostly starting from the Mr.Miss And Mrs. Few caseswith Master and don etc .
+
+5.  Age :  Age of Passenger, few values are missing here
+
+6.  SibSp : Number of sibling or spouse 0 for none 
+
+7.  Parch : Number of parents/childern travelling  0 for none 
+
+8.  Ticket : Ticket Number 
+
+9.  Fare : how much each traveller paid for the travel
+
+10. Cabin : Cabin number allocated
+
+11. Embarked: Port of emabarkation C,S,Q 
+            
+             
+#Explore
+
+Now we will start exploring the data 
+
+First we will do Univariate analysis,which means finding the continous and categorical variable
+Continous Variable are : Passenger Id, PClass, Age,Sibsp,Parch,Ticekt Number ,Fare
+Categorical : Sex, Embarked 
+Character value Variable : Name ,Cabin,Ticekt 
+
+
+Get here the summary of relavant data like,pclass,age,sibsp,parch,fare to see the average  
+
+```{r}
+#Summary of 
+
+cat('\nSummary Of Pclass\n')
+summary(train_df$Pclass)
+
+cat('\nSummary Of Age\n')
+summary(train_df$Age)
+
+cat('\nSummary Of Sibsp A\n')
+summary(train_df$SibSp)
+
+cat('\nSummary Of Parch A\n')
+summary(train_df$Parch)
+
+cat('\nSummary Of Fare A\n')
+summary(train_df$Fare)
+
+```
+Insight:
+
+From the Results few things can be identified 
+
+1. Average age of traveller is around 29-30 and maximum age is 80
+
+2. very few people were traveling with siblings and maximum number of siblings/spouse is 8
+
+3.  Maximum number of parents/childern is 6
+
+4. Average Fare is around 14.45
+
+
+let see,from the given if we can find the Fare of first class, second class and third class
+Not sure it is required or not.
+
+```{r}
+
+
+fare_single_passenger<-subset(train_df,(train_df$SibSp == 0) & (train_df$Parch ==0),select=c(Pclass,Fare))
+
+fare_single_passenger
+
+fare_single_passenger<-aggregate(fare_single_passenger[, 2], list(fare_single_passenger$Pclass), mean)
+
+           
+cat(paste('\n\nAverage Fare of First Class ',fare_single_passenger[1,2]))
+cat(paste('\n\nAverage Fare of Second Class ',fare_single_passenger[2,2]))
+cat(paste('\n\nAverage Fare of Third Class ',fare_single_passenger[3,2]))
+
+
+
+
+
+```
+
+further will visualize the data between survival and other variates .
+
+here i am using the bar plot 
+
+```{r}
+
+library(ggplot2)  #library loaded
+
+#Bar Plot for  Survived Vs PClass 
+ggplot(train_df, aes(x=Pclass, y=Survived,fill=Pclass)) + geom_bar(stat="identity",width=0.3)+scale_x_continuous(breaks = c(1,2,3), labels = c("1", "2","3"))
+
+
+#Bar Plot for  Survived vs Age 
+ggplot(train_df, aes(x=Age, y=Survived,fill=Age)) + geom_bar(stat="identity",width=0.5)+scale_x_continuous(breaks = c(10,15,20,25,30,35,40,45,50,55,60,65,70,75,80), labels =c("10","15","20","25","30","35","40","45","50","55","60","65","70","75","80"))
+
+#Bar Plot  Survived  vs Sibsp
+ggplot(train_df, aes(x=SibSp, y=Survived,fill=SibSp)) + geom_bar(stat="identity",width=0.3)
+
+#Bar Plot  Survived Vs Parch 
+ggplot(train_df, aes(x=Parch, y=Survived,fill=Parch)) + geom_bar(stat="identity",width=0.3)
+
+
+#Bar Plot  Survived Vs Fare 
+ggplot(train_df, aes(x=Fare, y=Survived,fill=Fare)) + geom_bar(stat="identity",width=0.5)
+
+#Bar Plot Survived Vs Embarked 
+ggplot(train_df, aes(x=Embarked, y=Survived,fill=Embarked)) + geom_bar(stat="identity",width=0.3) 
+
+#Bar Plot  Survived Sex vs
+ggplot(train_df, aes(x=Sex, y=Survived,fill=Sex)) + geom_bar(stat="identity",width=0.5)
+
+```
+Insights:
+
+1.From the above few points number female who survived is more as compared to male 
+
+2. Can't predict much from the bar plot as there is no significant relationship seen
+
+
+
+Check the survival of group/family  travelling together and singleton here i will use the ticket Number as if people are sharing the same ticket Number ,more chances that they are family or group travelling together .
+
+
+```{r}
+
+lenofUniqueTicekt<-length(unique(train_df$Ticket))
+
+cat(paste('Number of uniques Ticket',lenofUniqueTicekt))
+
+
+FamGp_df<-train_df[duplicated(train_df[,"Ticket"])|duplicated(train_df[,"Ticket"],fromLast  = TRUE),] %>%
+          arrange(Ticket) %>%group_by(Ticket) %>% summarise(groupFmSize=n(),Survived=sum(Survived))
+
+
+
+
+FamGp_df
+
+
+
+```
+From the above table looks like possiblity of survival is little better  if travelling with group/Family 
+
+before going into more visulaization just wanted to check which variable is playing a significant role in predicticing the survival applying logistics regression as the dependent variable is in binary form (0,1 ) means survived or not .
+Removing few columns like name passengerID ticket,cabin as name and passenger ID is unique and cabin is having lots of missing data .Ticket is again character value not worth .
+
+```{r}
+
+training_model <- glm(Survived ~.-(Name+PassengerId +Ticket+Cabin),family=binomial(link='logit'),data=train_df,maxit=50)
+summary(training_model)
+
+```
+From the above result we can see the following
+
+1.SibSp, Fare and Embarked are not statistically significant.
+2.Sex has lowest p-Value indicating strong association between the gender and survival rate 
+
+
+Hence taking few Few more visualization related to Pclass,Sex,Age 
+
+```{r}
+library(ggplot2)
+#Draw thw chart for Male and female survivela
+
+ggplot(train_df, aes(Age, fill = factor(Survived))) + 
+  geom_histogram() + 
+  facet_grid(.~Sex)+theme_dark()
+
+```
+Insights
+
+Clearly from the graph that female of age between 12-42 survived and very few male survived between the same age group 
+so prediction make better add few more column like child ,FemaleAdult ,maleAdult category as they have Female  adult high possiblity of survival.
+
+
+
+Here on adding  both the data(training and test ), as need to filled the missing values in both  .
+
+```{r}
+#combine both the data  
+library(dplyr)
+
+titanic_df<-bind_rows(train_df,test_df)
+
+#check the totral number of rows just to verify 
+cat(paste('\ncomplete  data structure having rows :', nrow(titanic_df)) )
+#checking the structure as well
+str(titanic_df)
+
+
+
+
+```
+
+Add the Family size to each person 
+
+```{r}
+library(dplyr)
+
+nrow((titanic_df))
+
+
+#again recreate the Family/Group Size with whole data as we are going to add the family size in the test data to make prediction better 
+FamGp_df<-titanic_df[duplicated(titanic_df[,"Ticket"])|duplicated(titanic_df[,"Ticket"],fromLast  = TRUE),] %>%
+          arrange(Ticket) %>%group_by(Ticket) %>% summarise(groupFmSize=n(),Survived=sum(Survived))
+
+
+#keep only two column Ticket ,groupFmSize  
+FamGp_df <-FamGp_df[,c("Ticket","groupFmSize")]  
+
+#display the data
+
+FamGp_df
+
+
+
+```
+From the above we have got family/group size 
+which we will merge the groupFmSize to get the size in the whole
+
+
+```{r}
+
+library(dplyr)
+
+titanic_df<-merge(x=titanic_df,y=FamGp_df,by="Ticket",all=TRUE)
+
+#just to cross verify check the number of rows
+
+cat(paste('\ncomplete  data structure having rows :', nrow(titanic_df)) )
+
+
+
+#reorder the column value
+
+col_order<-c("PassengerId","Survived","Pclass","Name","Sex","Age","SibSp","Parch","Ticket","groupFmSize","Fare","Cabin","Embarked")
+
+titanic_df<-titanic_df[,col_order] %>% arrange(PassengerId)
+
+
+
+
+
+titanic_df
+
+
+
+```
+Replacing all the NA values in groupFamSize  with 0 
+
+```{r}
+titanic_df$groupFmSize[is.na(titanic_df$groupFmSize)]<-0
+titanic_df
+```
+
+Insights:
+
+From the above we got complete data Now let us analyze which all value are missing 
+
+No missing value in  data passenserId,Name,Sex,SibSp,Parch ,Ticket,Pclass
+Few Missing value in Age , Cabin and two missing value in Embarked and one missing value in fare
+
+
+here i am ignoring few of attributes which is not much useful as we saw earlier like embarked,cabin(having more missing value) and fare as well 
+
+
+check the how many data is missing  using the mice plot
+```{r}
+
+
+ library(VIM)
+
+
+ mice_plot <- aggr(titanic_df[,c("Age")], col=c('blue','red'),
+                    numbers=TRUE, sortVars=TRUE,
+                    labels=c("Age")
+                   , cex.axis=.7,
+                    gap=3, ylab=c("Missing data","Pattern"))
+```
+Install Package install.packages("Hmisc")
+
+filling  the missing value in Age with the impute method taking the meadin of the data
+
+```{r}
+library(Hmisc)
+titanic_df$Age <- with(titanic_df, impute(Age, median))
+titanic_df[,c("Age")]
+
+```
+now all the missing value in age has been filled 
+
+As we discussed earlier, now Adding column AgeCategory will add if <18 child female Adult if age >18 and sex is female and male Adult if age>18 and sex is male 
+
+
+```{r}
+
+titanic_df$AgeCategory[titanic_df$Age <= 18] <-'child'
+titanic_df$AgeCategory[titanic_df$Age > 18.00 & titanic_df$Sex =='female']<- 'FemaleAdult'
+titanic_df$AgeCategory[titanic_df$Age > 18.00 & titanic_df$Sex =='male']<- 'maleAdult'
+titanic_df$AgeCategory<-factor(titanic_df$AgeCategory)
+
+#just to verify the data 
+
+head(titanic_df[,c("PassengerId","Age","Sex","AgeCategory")],50)
+
+
+```
+
+Now all the required data has been filled and resturtured so splitting again the data into training and test data 
+
+```{r}
+final_train_df<-titanic_df[1:nrow(train_df),]
+final_test_df<-titanic_df[nrow(train_df)+1:nrow(test_df),]
+
+head(final_train_df)
+head(final_test_df)
+
+
+```
+
+#Predict 
+predicting the model on training data 
+here i am using decision tree to model 
+as we have seen only few variable are significant so considering only with Pclass,Age,Sex,AgeCategory,FamgpSize
+
+```{r}
+library("rpart")
+library("rpart.plot")
+rtree_fit <- rpart(Survived ~ Pclass+Age+factor(AgeCategory)+Sex+groupFmSize, 
+          final_train_df,method="class") 
+summary(rtree_fit)
+rpart.plot(rtree_fit,extra=104, box.palette="GnBu",
+branch.lty=3, shadow.col="gray", nn=TRUE)
+```
+Insights
+
+from the first level of tree shows out of total traveller only 38% survived while 62 % died
+and further only 19 % of male survievd however this ratio was more in case of women 
+
+#prediction
+```{r}
+ library(MASS) 
+
+
+survivalPrediction <- predict(rtree_fit,final_test_df,type="class")
+str(survivalPrediction)
+
+tableP<-table(survivalPrediction)
+pct <- round(tableP/sum(tableP) * 100)
+label<-c("0","1")
+lbls <- paste(label,'-',pct,'%')  # add percents to labels 
+ pie(tableP,col=c("red","yellow"),labels = lbls)  
+ 
+ #save the data in CSV file 
+predicted_df <- data.frame(PassengerID = final_test_df$PassengerId, Survived = survivalPrediction)
+head(predicted_df,200)
+
+
+write.csv(predicted_df, file = 'Titanic_Prediction_Rpart.csv', row.names = F)
+
+
+
+
+```
+
+#conclusion
+
+From the final data pie chart 65% people has been died while 35% has survived from disaster.
+
+
+This is my first Exploration .Any improvments and  suggestions always welcome:
+
+
+

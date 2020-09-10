@@ -1,0 +1,493 @@
+---
+title: "Using SVM to predict Titanic in R"
+author: "yu yang liu"
+date: "2017年3月11日"
+output: html_document
+---
+
+* load package
+```{r}
+library(ggplot2)
+library(dplyr)
+library(e1071)
+library(mice)
+library(randomForest)
+library(vcd)
+```
+
+
+#Viewing into data
+
+* load data
+* combine the train & test data
+```{r}
+train<-read.csv("../input/train.csv")
+test<-read.csv("../input/test.csv")
+full<-bind_rows(train,test) 
+```
+
+```{r}
+head(full)
+```
+The `PassengerId` & `Ticket` seem useless for our prediction, so first remove them from data
+```{r}
+full<-full[,-c(1,9)]
+```
+
+* transform `SibSp(Number of siblings/spouses aboard)` & `Parch(Number of parents/children aboard)` to `family`(family size)
+```{r}
+full$family<-full$SibSp+full$Parch+1
+```
+
+then I want to class family size to three part: `large: size>=5`, `small: 5>size>1` and `single: size=1`
+```{r}
+full$Familyd[full$family==1]<-"single"
+full$Familyd[full$family>1&full$family<5]<-"small"
+full$Familyd[full$family>=5]<-"large"
+full$Familyd<-as.factor(full$Familyd)
+```
+
+# How many NA we have in each columns
+
+```{r}
+apply(full,2,function(x)length(which(is.na(x))))
+```
+Thought it seem We have only 263 NA in `Age` and 1 NA in `Fare`  
+(Survived have 418 NA, but there all come from the test data)   
+let's use another method to look
+```{r}
+apply(full,2,function(x)length(which(x=="")))
+```
+I though the `"" or space` can also be considered as `NA`  
+At here, `Cabin` have 1014 NA, `Embarked` have 2 NA
+
+So how to deal with these NA?  
+I'll use these methods to deal wth NA  
+
+*  `Age`: mice  
+
+*  `Fare`: mice  
+
+*  `Embarked`: naiveBayes  
+
+*  `Cabin`: randomForest  
+
+### Deal with `Name`
+Before process the NA, let's treat the Name first(for predicting the NA in each variables later)
+
+* look at `Name`
+```{r}
+head(full$Name)
+```
+It seem hard to deal with `Name` directly, first convert them to specific format, like `Mr`, `Miss` and ect.
+
+```{r}
+full$Name<-gsub("(.*, )|(\\. .*)","",full$Name)
+table(full$Name)
+```
+
+And some `Name` have very rare frequency, put them to `Rare` in `Name` column
+```{r}
+a_name<-c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don','Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+full$Name[full$Name=="Mlle"]<-"Miss"
+full$Name[full$Name=="Ms"]<-"Miss"
+full$Name[full$Name=="Mme"]<-"Mrs"
+full$Name[full$Name %in% a_name]<-"Rare"
+table(full$Name)
+```
+
+
+
+#Deal with NA in each variable
+
+###Deal with NA in `Age` use mice
+as above, we have 263 NA in Age
+
+here, use `mice` to fill the NA in `Age`
+```{r}
+age_plot<-ggplot(full,aes(Age))+
+  geom_histogram(col="black",fill="white")+
+  labs(title="Have NA's")
+set.seed(123)
+age<-full[!is.na(full$Age),]
+age_pre<-mice(full[,-1],method = "rf")
+mice_output <- complete(age_pre)
+full$Age<-mice_output$Age
+age_plot1<-ggplot(full,aes(Age))+
+  geom_histogram(col="black",fill="white")+
+  labs(title="Remove NA's")
+```
+
+now how many NA in Age
+```{r}
+length(which(is.na(full$Age)))
+```
+
+And the distribution of Age(Have NA and without NA)
+
+```{r}
+gridExtra::grid.arrange(age_plot,age_plot1)
+```
+
+It seem the whole distribution not change a lot, right?  
+Then treat another variables
+
+###Deal with NA in `Fare` use mice
+```{r}
+full[which(is.na(full$Fare)),]$Fare<-mice_output[which(is.na(full$Fare)),]$Fare
+```
+
+now how many NA in Fare
+```{r}
+length(which(is.na(full$Fare)))
+```
+
+
+###Deal with NA in `Embarked` use naiveBayes
+```{r}
+full$Embarked<-as.factor(full$Embarked)
+embarked<-naiveBayes(Embarked~.-Embarked,full[,-c(1,9)])
+full[which(full$Embarked==""),]$Embarked<-predict(embarked,full$Embarked)[which(full$Embarked=="")]
+full$Embarked<-as.factor(as.character(full$Embarked))
+```
+
+now how many NA in Embarked
+```{r}
+length(which(full$Embarked==""))
+```
+
+
+
+###Deal with NA in `Cabin` with randomForest
+```{r}
+head(full$Cabin)
+```
+Also, very difficult to process it directly
+
+* How many NA in  Cabin
+```{r}
+length(which(full$Cabin==""))
+```
+
+* deal with Cabin  
+
+same as `Name`, I only want to keep the specific part in Cabin(the letter)
+```{r}
+full$Cabin<-as.character(full$Cabin)
+full$Cabin<-as.factor(sapply(full$Cabin,function(x)strsplit(x,"")[[1]][1]))
+```
+
+```{r}
+head(full$Cabin)
+```
+
+use randomForest to fill the NA of cabin  
+because the randomForest perform much better compare with logist regression & naive bayes, I choose this way to fill the Cabin
+```{r}
+##classify data to two part: cabin have no NA, cabin are all NA
+cabin<-full[!is.na(full$Cabin),]
+cabin0<-full[is.na(full$Cabin),]
+
+##convert interger & character to factor(randomForest can only deal with num & factor)
+for(i in 1:ncol(cabin)){
+  if(is.integer(cabin[,i])){
+    cabin[,i]<-as.factor(cabin[,i])
+  }else if(is.character(cabin[,i])){
+    cabin[,i]<-as.factor(cabin[,i])
+  }
+}
+for(i in 1:ncol(cabin0)){
+  if(is.integer(cabin0[,i])){
+    cabin0[,i]<-as.factor(cabin0[,i])
+  }else if(is.character(cabin0[,i])){
+    cabin0[,i]<-as.factor(cabin0[,i])
+  }
+}
+
+##convert cabin and cabin0 with same levels in factor
+for(i in 1:ncol(cabin0)){
+  if(is.factor(cabin0[,i])){
+    levels(cabin0[,i])<-union(levels(cabin0[,i]),levels(cabin[,i]))
+  }
+}
+for(i in 1:ncol(cabin)){
+  if(is.factor(cabin[,i])){
+    levels(cabin[,i])<-union(levels(cabin0[,i]),levels(cabin[,i]))
+  }
+}
+
+##use randomForest to fill the NA in Cabin
+set.seed(1)
+ranavi0<-randomForest::randomForest(Cabin~.-Cabin,na.omit(cabin[,-1]))
+full[is.na(full$Cabin),]$Cabin<-predict(ranavi0,cabin0[,-c(1,9)])
+```
+
+now how many NA in Cabin
+```{r}
+length(which(is.na(full$Cabin)))
+```
+
+#How many NA in data
+```{r}
+apply(full,2,function(x)length(which(is.na(x))))
+apply(full,2,function(x)length(which(x=="")))
+```
+have only 418 NA in `Survived`, but don't worry, it belong the `test.csv` data, our work is to predict them.  
+Then there have no NA in data(except in `Survived`)
+
+#The plot of each variable
+After finished the journey of dealing with NA, let's look into correlation between `Survived` and each variables
+
+* get `train` & `test` by seperating the `full`
+```{r}
+train<-full[!is.na(full$Survived),]
+test<-full[is.na(full$Survived),]
+```
+
+### view into data
+* train
+```{r}
+dim(train)
+head(train)
+str(train)
+```
+
+* test
+```{r}
+dim(test)
+head(test)
+str(test)
+```
+
+* load function
+```{r}
+my_mosaic<-function(file,xcolname,ycolname){
+  file<-file[,c(xcolname,ycolname)]          
+  cname<-c(xcolname,ycolname)                
+  a<-file[colnames(file)%in%cname]           
+  xname<-as.name(xcolname)         
+  yname<-as.name(ycolname)
+  prob<-signif(prop.table(table(a),1),digits = 2)
+  mosaic(prob,pop=F,shade = F,legend=T,rot_lables=c(0,90,0,0),
+         labeling_args = list(set_varnames=c(xname=xcolname,yname=ycolname)),
+         main = "Survived Rate")       
+  labeling_cells(text = prob,margin = 0)(prob) 
+}
+
+
+bar_function<-function(x){
+  a<-as.data.frame(table(train[ ,x],factor(train[,"Survived"])))
+  ggplot(a,aes(Var1,Freq,fill=Var2))+
+  geom_bar(stat="identity",position ="dodge")+
+  geom_text(aes(x=Var1,y=Freq,label=Freq),position = position_dodge(width = .8),vjust=-.2)+
+  labs(x=x,y="Freq",fill="Survived")
+}
+```
+
+
+
+### Pclass
+```{r}
+bar_function("Pclass")
+my_mosaic(train,"Pclass","Survived")
+```
+
+Most passenger were belong to class 3, but the survival rate of class 3 is least, only have 0.24  
+But when passenger’s class equal to 1, survival rate increase from 0.24 to 0.63.
+
+### Sex
+```{r}
+bar_function("Sex")
+my_mosaic(train,"Sex","Survived")
+```
+
+From these two plots, it's obvious to know that female have much higher survived rate.  
+
+
+### Name
+```{r}
+bar_function("Name")
+my_mosaic(train,"Name","Survived")
+```
+
+Same as the `Sex`, if we re-classify the `Name` by gender female(Miss & Mrs) and male(Master & Mr) and rare.  
+`The female part` have not too different from `female part in Sex`, two of them have about 70% survived rate.  
+However, in `male part`, `Mr` have 16%, same as `male part in Sex`, the different part is `Master`, 57% survived rate.  
+Let's us looking into barplot, `Master` have only 40 people, if the frenquency of `Master` increase, the result could be different.
+
+
+
+
+### Age
+```{r}
+ggplot(train,aes(as.factor(Survived),Age))+
+  geom_violin(aes(fill=Survived))+
+  labs(x="Survived")+
+  geom_hline(aes(yintercept=10),lty=2,lwd=1,col="red")+
+  scale_y_continuous(breaks = seq(0,80,10))+
+  theme(legend.position = "none")
+```
+
+From plot above, age lower than 10 have more change to survive,
+
+### Family size
+```{r}
+bar_function("family")
+
+my_mosaic(train,"Familyd","Survived")
+```
+
+from mosic plot, both large size family and single people have lower than 30% survived rate.  
+Interesting, family with small size have about 60% survived rate.
+
+
+### Fare & Embarked
+```{r}
+ggplot(train,aes(as.factor(Survived),Fare))+
+  geom_violin(aes(fill=Survived))+
+  labs(x="Survived")+
+  geom_hline(aes(yintercept=max(train[train$Survived==0,]$Fare)),lty=2,lwd=1,col="red")+
+  scale_y_continuous(breaks=c(seq(0,200,100),max(train[train$Survived==0,]$Fare),seq(300,500,100)))+
+  theme(legend.position = "none")
+```
+
+
+```{r}
+ggplot(train,aes(Fare))+
+  geom_histogram(data=train[train$Survived==0,],aes(fill="red"),colour="red",binwidth = 20,alpha=.3)+
+  geom_histogram(data=train[train$Survived==1,],aes(fill="blue"),colour="blue",binwidth = 20,alpha=.3)+
+  geom_vline(aes(xintercept=50),lty=2,lwd=.5)+
+  scale_colour_manual(name="Survived",values = c("red"="red","blue"="blue"),labels=c("red"=0,"blue"=1))+
+  scale_fill_manual(name="Survived",values = c("red"="red","blue"="blue"),labels=c("red"=0,"blue"=1))+
+  scale_x_continuous(breaks = c(0,50,seq(100,500,100)))+
+  labs(title="Fare by Embarked & Survived")+
+  theme(plot.title = element_text(hjust = .5))+
+  facet_grid(.~Embarked)
+```
+
+There have higher percent been died when your fare was less than 50, but as you paid more, the survived rate increase.  
+And most people paid less than 50 were came from Port S.
+
+#Prediction
+
+###Test the svm for Survived
+Before predict the `Survived` in `test.csv`, first find the best `gamma` & `cost` for `svm`
+
+
+
+* convert all integer & character to factor  
+```{r}
+##change Survived to factor
+full$Survived<-as.factor(full$Survived)
+
+
+for(i in c(1,2,3,6,7,10)){
+  if(is.integer(full[,i])){
+    full[,i]<-as.factor(full[,i])
+  }else if(is.character(full[,i])){
+    full[,i]<-as.factor(full[,i])
+  }
+}
+```
+
+* convert factor to dummy code
+
+if you are confusing why I convert the levels of each factor, there have a web: [Why not code binary inputs as 0 and 1?](http://www.faqs.org/faqs/ai-faq/neural-nets/part2/section-8.html),  
+this way can increase the accuracy of prediction.
+
+```{r}
+##
+levels(full$Pclass)<-seq(-1,1,length.out = length(levels(full$Pclass)))
+levels(full$Sex)<-seq(-1,1,length.out = length(levels(full$Sex))) 
+levels(full$SibSp)<-seq(-1,1,length.out = length(levels(full$SibSp)))
+levels(full$Parch)<-seq(-1,1,length.out = length(levels(full$Parch)))
+levels(full$Cabin)<-seq(-1,1,length.out = length(levels(full$Cabin)))
+levels(full$Embarked)<-seq(-1,1,length.out = length(levels(full$Embarked)))
+levels(full$Name)<-seq(-1,1,length.out = length(levels(full$Name)))
+levels(full$Familyd)<-seq(-1,1,length.out = length(levels(full$Familyd)))
+
+```
+
+* seperate data to `train` & `test`
+```{r}
+train<-full[!is.na(full$Survived),]
+test<-full[is.na(full$Survived),]
+```
+
+```{r}
+dim(train)
+dim(test)
+```
+
+```{r}
+head(train)
+```
+
+* randomly assign train to 80%-20%
+```{r}
+set.seed(123)
+train_train<-train[sample(seq_len(nrow(train)),floor(.8*nrow(train))),]
+set.seed(123)
+train_test<-train[-sample(seq_len(nrow(train)),floor(.8*nrow(train))),]
+```
+
+
+
+
+
+
+### Test the model
+
+* use  grid-search to find the best gamma & cost
+
+```{r}
+svm_test<-tune.svm(Survived~.-Survived,data=train_train,gamma = 2^c(-5:5),cost = 2^c(-5:5))
+plot(svm_test)
+```
+
+```{r}
+##the accurancy with each gamma and cost 
+d<-double(nrow(svm_test$performances))
+for(i in 1:nrow(svm_test$performances)){
+  b_svm<-svm(Survived~.-Survived,train_train,gamma=svm_test$performances[i,1],cost=svm_test$performances[i,2],type="C-classification")
+  b<-table(train_test[,1],predict(b_svm,train_test[,-1]))
+  d[i]<-sum(diag(b))/sum(b)
+}
+
+
+e<-data.frame(gamma=svm_test$performances[1],cost=svm_test$performances[2],error=svm_test$performances[3],dispersion=svm_test$performances[4],accrancy=d)
+e<-e[order(e$acc,decreasing = T),]
+head(e,10)  
+```
+
+* decrease the range
+```{r}
+svm_test1<-tune.svm(Survived~.-Survived,data=train_train,gamma = seq(0,1,.05),cost = seq(.05,4,.25))
+plot(svm_test1)
+```
+
+```{r}
+##the accurancy with each gamma and cost 
+d1<-double(nrow(svm_test1$performances))
+for(i in 1:nrow(svm_test1$performances)){
+  b_svm1<-svm(Survived~.-Survived,train_train,gamma=svm_test1$performances[i,1],cost=svm_test1$performances[i,2],type="C-classification")
+  b1<-table(train_test[,1],predict(b_svm1,train_test[,-1]))
+  d1[i]<-sum(diag(b1))/sum(b1)
+}
+
+
+e1<-data.frame(gamma=svm_test1$performances[1],cost=svm_test1$performances[2],error=svm_test1$performances[3],dispersion=svm_test1$performances[4],accrancy=d1)
+e1<-e1[order(e1$acc,decreasing = T),]
+head(e1,10)
+```
+when gamma=.05 & cost=1.8, the accrancy is about 88% 
+
+
+* use gamma & cost above to predict
+* set type equal C-classification
+```{r}
+final<-svm(Survived~.-Survived,train,gamma=.05,cost=1.80,type="C-classification")
+Survived<-predict(final,test[,-1])
+solution <- data.frame(PassengerId = 892:1309, Survived = Survived)
+write.csv(solution, file = 'svm_predicton.csv', row.names = F)
+```

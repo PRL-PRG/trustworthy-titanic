@@ -1,0 +1,260 @@
+---
+title: 'Prediction on Survivors for Titanic Data'
+author: 'Karthik Hegde'
+date: '12 August 2018'
+output:
+  html_document:
+    number_sections: true
+    toc: true
+    fig_width: 7
+    fig_height: 4.5
+    theme: readable
+    highlight: tango
+---
+
+#Introduction
+
+Hey, there! 
+This is my first project/kernel on Kaggle. I'm here to share how did I achieve the score of 0.79904 upon submission of this project.
+Since, I am a noob to this field,all comments/suggestions are welcome.
+
+I have tried to keep most of the things very simple here.
+
+I have covered following topics in the current project.
+
+* Data Preparation
+* Feature Engineering
+* Modelling and Prediction
+
+Loading all the required packages.
+
+```{r, message = FALSE}
+#Clear the workspace
+rm(list = ls())
+
+#load packages
+library(caret)
+library(e1071)
+library(rpart)
+library(rpart.plot)
+```
+
+##Importing the Titanic data to R
+
+```{r, message = FALSE}
+#Read the data
+trainTitanic = read.csv( "../input/train.csv", header = TRUE)
+testTitanic = read.csv( "../input/test.csv", header = TRUE)
+```
+
+Have a look at the datatypes of all the variables in both the test and train data.
+```{r, message = FALSE}
+str(trainTitanic)
+str(testTitanic)
+```
+
+# Data preparation
+
+We can clearly see that both the column has unequal number of columns. **_Survived_** column is missing from the _test_ data.
+So, to make both the data homogeneous, add "**_Survived_**" column in test data.
+
+```{r, message = FALSE}
+#Fill Survived column of test data to NA to make it homogeneous with the test data
+testTitanic$Survived = NA
+```
+## Combining two files
+
+It is always better to have a single consolidated dataframe to work on missing values. Hence, combine both test and train data to a single
+dataframe.
+
+```{r, message = FALSE}
+#Combine the data
+completeTitanic = rbind(trainTitanic, testTitanic)
+head(completeTitanic)
+```
+#Feature Engineering
+## Check for NULL and missing values in the data
+
+Let's look at the dataframe to check which columns have NULL or Missing values, along with its count.
+
+```{r, message = FALSE}
+sapply(completeTitanic[,-c(2)], function(x){sum(is.na(x))})
+sapply(completeTitanic[,-c(2)], function(x){sum(x == "")})
+```
+
+##Fill the NULL value of 'Fare' column
+
+```{r, message = FALSE}
+completeTitanic$Fare[is.na(completeTitanic$Fare)] = median(completeTitanic$Fare, na.rm = TRUE)
+```
+
+##Fill NULL values of 'Embarked' column
+
+Since there are very less number of missing values, we can replace it by 'S'.
+
+```{r, message = FALSE}
+#Fill the 'Embarked' with the mode, which is 'S'
+completeTitanic$Embarked[completeTitanic$Embarked == ""] <- 'S'
+```
+
+##Create a new column called 'Family Size'
+
+```{r, message = FALSE}
+# Create a new variable which contains siblings, spouse and individuals
+completeTitanic$FamilySize <- completeTitanic$SibSp + completeTitanic$Parch + 1
+```
+
+##Create one more new column for 'Title'.
+
+Extract the title from 'Name' column and place it inside 'Title'.
+
+```{r, message = FALSE}
+#Process the data to split the Titles in the name
+completeTitanic$Title <- sapply(as.character(completeTitanic$Name), FUN=function(x) {strsplit(x, split='[,.]')[[1]][2]})
+completeTitanic$Title <- sub(' ', '', completeTitanic$Title)
+```
+
+Since, we have too many title to look into, let's cut it down to major titles. Club all the special titles with the common titles.
+
+```{r, message = FALSE}
+#Before finding/filling the age, combine the sir names to most common ones.
+completeTitanic$Title <- as.character(completeTitanic$Title)
+completeTitanic$Title[completeTitanic$Title %in% c('Dona', 'Lady', 'the Countess', 'Ms', 'Mme', 'Mlle')] <- 'Mrs'
+completeTitanic$Title[completeTitanic$Title %in% c('Capt', 'Col', 'Don', 'Dr', 'Jonkheer', 'Major', 'Rev', 'Sir')] <- 'Others'
+
+#To check how many titles do we have now
+levels(as.factor(completeTitanic$Title))
+
+```
+
+Check the number of people in each title group.
+
+```{r, message = FALSE}
+#Check the number of people with Titles
+table(completeTitanic$Title)
+```
+
+##Fill NA is 'Age' column
+
+Since we have people under the different title, we could just replace NA with _median_ of the values in that particular title.
+
+```{r, message = FALSE}
+#Fill the ages with respect to their Title
+
+completeTitanic$Age[which(is.na(completeTitanic$Age) & completeTitanic$Title == 'Mr')] <- median(completeTitanic$Age[completeTitanic$Title == "Mr"],na.rm = TRUE)
+completeTitanic$Age[which(is.na(completeTitanic$Age) & completeTitanic$Title == 'Mrs')] <- median(completeTitanic$Age[completeTitanic$Title == "Mrs"],na.rm = TRUE)
+completeTitanic$Age[which(is.na(completeTitanic$Age) & completeTitanic$Title == 'Master')] <- median(completeTitanic$Age[completeTitanic$Title == "Master"],na.rm = TRUE)
+completeTitanic$Age[which(is.na(completeTitanic$Age) & completeTitanic$Title == 'Miss')] <- median(completeTitanic$Age[completeTitanic$Title == "Miss"],na.rm = TRUE)
+completeTitanic$Age[which(is.na(completeTitanic$Age) & completeTitanic$Title == 'Others')] <- median(completeTitanic$Age[completeTitanic$Title == "Others"],na.rm = TRUE)
+```
+
+Add one more Title for the people aged below 18
+```{r, message = FALSE}
+completeTitanic$Title[completeTitanic$Age < 18] <- 'Children'
+completeTitanic$Title <- factor(completeTitanic$Title)
+levels(completeTitanic$Title)
+```
+
+##Convert the necessary columns to factors
+```{r, message = FALSE}
+#Convert the datatypes to required format
+
+completeTitanic$Survived = factor(completeTitanic$Survived)
+completeTitanic$Pclass = factor(completeTitanic$Pclass)
+completeTitanic$Name = as.character(completeTitanic$Name)
+completeTitanic$Title = factor(completeTitanic$Title)
+
+#Check the summary of full data once again
+summary(completeTitanic)
+```
+
+##Remove the columns from the data which are redundant while building
+
+```{r, message = FALSE}
+#Now remove the redundant columns which we will not be used in the prediction algorithm
+columnToDelete <- c('Cabin', 'PassengerId', 'Name','Ticket')
+completeTitanic[,columnToDelete] <- NULL
+```
+##Seperate test and train data
+
+Now, seperate the test and train data from the modified data.
+```{r, message = FALSE}
+#Seperate Test and Train data from the combined data
+trainTitanicData <- head(completeTitanic, n = nrow(trainTitanic))
+testTitanicData <- tail(completeTitanic, n = nrow(testTitanic))
+```
+
+#Model building and Prediction
+
+##Using Decision Tree and K cross validation
+
+After a month of trial and error with all modelling algorithms, I have finally decided to use Decision Trees algorithm with k-cross validation to solve
+this problem.
+
+```{r, message = FALSE}
+#Model building and prediction part
+
+#Using Decision Tree and K cross validation
+
+#Use K cross validation to find the 'cp' parameter
+set.seed(1)
+numfold = trainControl(method = "cv", number = 10)    
+cpgrid = expand.grid(.cp=seq(0.01,0.7,0.01)) 
+cpVal = train(Survived~., data = trainTitanicData, method='rpart', trControl=numfold, tuneGrid=cpgrid)
+cpVal
+
+#Based on cpVal, replace cp in the decision tree model
+dec_tree <- rpart(Survived~., data = trainTitanicData, cp=0.02, method = 'class')
+prp(dec_tree)
+pv2 <- predict(dec_tree,type = 'class')
+table(trainTitanicData$Survived, pv2)
+```
+
+## Prediction on train dataset
+
+```{r, message = FALSE}
+#Predict and check for the train value
+
+predictTrain <- predict(dec_tree, type='class')
+actualTrain <- trainTitanicData$Survived
+table(predictTrain,actualTrain)
+```
+##Build a Confusion Matrix
+
+Build a Confusion Matrix to check few parameters like _Specificity_, _Sensitivity_, _Accuracy_ etc.
+
+```{r, message = FALSE}
+#Build a Confusion Matrix and check the different parameters
+confusionMatrix(predictTrain, actualTrain)
+
+#Check the precsion of the preicted data
+precision(predictTrain, actualTrain)
+```
+
+## Prediction on Test data
+```{r, message = FALSE}
+#Predict on Test data
+predictTest <- predict(dec_tree, newdata = testTitanicData, type='class')
+table(predictTest)
+```
+
+#Write the output to a file
+
+Create an empty dataframe with two columns "PassengerId" and "Survived". 
+
+```{r, message = FALSE}
+newdf_ <- data.frame(PassengerId =testTitanic$PassengerId, Survived = 0)
+newdf_$Survived <- predictTest
+
+#Write the file an output file
+write.csv(newdf_, 'output_file.csv', row.names = FALSE)
+```
+#Conclusion
+
+After the submission, I have received 0.79904. I look forward to improve this value and my model over the period of time. Also, I look forward to
+do more projects on Kaggle.
+
+Comments and feedbacks are welcome.
+
+I will shortly update the document with all the visualisations.
+Thank you!

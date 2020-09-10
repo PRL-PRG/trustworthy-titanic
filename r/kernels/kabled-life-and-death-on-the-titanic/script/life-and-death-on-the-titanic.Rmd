@@ -1,0 +1,285 @@
+---
+title: "Life and Death on the Titanic"
+author: "Kable Hunsinger"
+date: "February 8, 2017"
+output: 
+  html_document:
+    theme: spacelab
+    highlight: haddock
+    number_sections: false
+    toc: true
+    toc_float: true
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+For this challenge, we want to predict whether someonone lived or died following the Titanic shipwreck, based on other data we have about them. I will look at the data and try to find or create some useful features. These features will be used to build some predictive models with a random forest classification algorithm. The most promising model will be used to submit predictions for survival of passengers in the test set.
+
+### Goals
+
+* Data Analysis 
+* Feature Engineering
+* Modeling
+* Submit Predictions
+
+
+# Data Analysis / Feature Engineering
+
+After loading the data, we find the variables listed below. The next step will be examining each variable in turn.
+
+* PassengerID   - Unique identifier 
+* Survived      - Survived(1) or died(0)
+* Pclass        - Passenger's class (1,2,3)
+* Name          - Passenger's name
+* Sex           - Passenger's gender
+* Age           - Passenger's Age
+* SibSp         - # of siblings/spouses aboard
+* Parch         - # of parents/children aboard
+* Ticket        - Ticket #
+* Fare          - Ticket price
+* Cabin         - Cabin assignment 
+* Embarked      - Port of entry
+
+```{r, message = FALSE}
+# Load packages
+library('ggplot2')      # visualization
+library('dplyr')        # data manipulation
+library("stringr")      # string manipulation
+library('randomForest') # classification algorithm
+```
+
+```{r, message = FALSE, warning = FALSE}
+# Load data
+train <- read.csv('../input/train.csv', stringsAsFactors = F)
+test  <- read.csv('../input/test.csv', stringsAsFactors = F)
+# Combine train and test sets
+full  <- bind_rows(train, test)
+# Look at structure of data
+str(full)
+```
+
+### Pclass
+Intuition and anecdotal evidence suggest that first class passengers had higher survivability than third class passengers. Figure 1 confirms this hypothesis, and Pclass will likely be a useful feature for our model.
+```{r}
+ggplot(train, aes(x = Pclass, fill = factor(Survived))) +
+  geom_bar(position = 'dodge') +
+  labs(x = 'Pclass') +
+  ggtitle("Figure 1", subtitle = "Survival by Passenger Class")
+```
+
+### Name, Sex, Age ~> Title
+Obviously we don't want to fit a predictive model by name, but there may be useful information stored here. Let's look at some of the data:
+```{r}
+head(full$Name, 15)
+```
+
+Every passenger name includes a title, the most common of which are Mr., Mrs., Miss., and Master. This may be useful as a proxy for Sex and Age, and may save us the trouble of having to impute missing Age values. In Figure 2 we see Title has a lot of predictive power for survivability.
+```{r}
+extractTitle <- function(name) {
+  name <- as.character(name)
+  
+  if (length(grep("Miss.", name)) > 0) {
+    return ("Miss.")
+  } else if (length(grep("Master.", name)) > 0) {
+    return ("Master.")
+  } else if (length(grep("Mrs.", name)) > 0) {
+    return ("Mrs.")
+  } else if (length(grep("Mr.", name)) > 0) {
+    return ("Mr.")
+  } else {
+    return ("Other")
+  } 
+}
+
+titles <- NULL
+for (i in 1:nrow(full)) {
+  titles <- c(titles, extractTitle(full[i,"Name"]))
+}
+full$Title <- as.factor(titles)
+
+ggplot(full[1:891,], aes(x = Title, fill = factor(Survived))) +
+  geom_bar(position = 'dodge') +
+  labs(x = 'Title') +
+  ggtitle("Figure 2", subtitle = "Survival by Title")
+```
+
+### SibSp, Parch ~> Fsize
+The variables SibSp and Parch both hold information about how many people are travelling with a passenger, so it may be useful to combine these into a new family size variable. In Figure 3, you can see that passengers travelling in small families were more likely to survive than those travelling in large families or alone.
+```{r}
+full$Fsize <- as.factor(1 + full$SibSp + full$Parch)
+
+ggplot(full[1:891,], aes(x = Fsize, fill = factor(Survived))) +
+  geom_bar(position = 'dodge') +
+  labs(x = 'Fsize') +
+  ggtitle("Figure 3", subtitle ="Survival by Family Size")
+```
+
+### Ticket ~> T1
+The data in the Ticket variable is messy. Most rows appear to have a number (of varying length), some with various preceding letters. Extracting the first digit in the ticket number shows potential. In Figure 4, ticket numbers beginning with 1, 2, or 3 show at least superficial similarity to Pclass. 
+```{r}
+# Function for extracting first digit from alpha-numeric string
+extractT1 <- function(ticket) {
+  ticket <- as.character(ticket)
+  
+  library("stringi") # string manipulation
+  temp <- NULL
+  # Get a number from the ticket variable, else use zero
+  if (is.na(stri_extract_first_regex(ticket, "[0-9]+"))) {
+    temp <- 0
+  }
+  else {  
+    temp <- stri_extract_first_regex(ticket, "[0-9]+")
+  }
+  
+  # Take the first digit and cast it as an integer
+  temp <- as.integer(substr(temp, 1, 1))
+  return (temp)
+}
+
+tickets <- NULL
+# For each row in ticket column, pass it through the above function
+for (i in 1:nrow(full)) {
+  tickets <- c(tickets, extractT1(full[i,"Ticket"]))
+}
+# Store result in new variable
+full$T1 <- as.factor(tickets)
+
+ggplot(full[1:891,], aes(x = T1, fill = factor(Survived))) +
+  geom_bar(position = 'dodge') +
+  labs(x = 'T1') +
+  ggtitle("Figure 4", subtitle = "Survival by T1")
+```
+
+### Fare
+There is one NA value in the Fare column. Replacing it with the median fare for single, third class passengers departing from Southampton should suffice.
+```{r}
+summary(full$Fare)
+which(is.na(full$Fare))
+full[1044,]
+full$Fare[1044] <- median(full$Fare[which(full$Fsize == "1" & full$Pclass == "3" & full$Embarked == "S")], na.rm = TRUE)
+full$Fare[1044]
+```
+
+### Cabin
+Cabin is missing too many values to be useful. There may be a way to impute the missing values, but the degree of sparsity and the small size of the dataset would make the results questionable at best. The effort would likely serve us better elsewhere.
+
+### Embarked
+There are two values missing from the Embarked column. I am doubtful that this variable will be very helpful in the models, so we'll just fill the missing values with the mode.
+```{r}
+full$Embarked <- as.factor(full$Embarked)
+summary(full$Embarked)
+which(full$Embarked == "")
+full$Embarked[c(62, 830)] <- "S"
+full$Embarked <- factor(full$Embarked)
+```
+
+
+# Models
+
+It is finally time to create and compare some predictive models. All models in this report will use the randomForest algorithm.
+
+### rf.1
+For a benchmark model, we'll use Pclass and two of the engineered features, Title and Fsize, to predict survival. The OOB estimate of error looks pretty good at 18.18%.
+```{r}
+rf.train.1 <- full[1:891, c("Pclass", "Title", "Fsize")]
+
+rf.label <- as.factor(train$Survived)
+
+set.seed(1357)
+rf.1 <- randomForest(x = rf.train.1, y = rf.label,
+                     importance = TRUE, ntree = 1000)
+rf.1
+varImpPlot(rf.1)
+```
+
+### rf.2
+Including the Embarked variable in the model decreases our predictive power. Apparently it just obfuscates the underlying structure in the data.
+```{r}
+rf.train.2 <- full[1:891, c("Pclass", "Title", "Fsize", "Embarked")]
+
+set.seed(1357)
+rf.2 <- randomForest(x = rf.train.2, y = rf.label,
+                     importance = TRUE, ntree = 1000)
+rf.2
+varImpPlot(rf.2)
+```
+
+### rf.3
+This is interesting. Although sex can be mostly inferred from title, including the Sex variable explicitly improved the OOB error estimate by more than one and a half percentage points over our baseline rf.1 model. In adition, the Sex variable is now the second most predictive feature in our model.
+```{r}
+full$Sex <- as.factor(full$Sex)
+rf.train.3 <- full[1:891, c("Pclass", "Title", "Fsize", "Sex")]
+
+set.seed(1357)
+rf.3 <- randomForest(x = rf.train.3, y = rf.label,
+                     importance = TRUE, ntree = 1000)
+rf.3
+varImpPlot(rf.3)
+```
+
+### rf.4
+We have a slight improvement when including the engineered feature T1.
+```{r}
+rf.train.4 <- full[1:891, c("Pclass", "Title", "Fsize", "Sex", "T1")]
+
+set.seed(1357)
+rf.4 <- randomForest(x = rf.train.4, y = rf.label,
+                     importance = TRUE, ntree = 1000)
+rf.4
+varImpPlot(rf.4)
+```
+
+### rf.5
+Adding Fare to the model again degrades the performance slightly, likely obscuring information already contained in the Pclass and Fsize variables.
+```{r}
+rf.train.5 <- full[1:891, c("Pclass", "Title", "Fsize", "Sex", "T1", "Fare")]
+
+set.seed(1357)
+rf.5 <- randomForest(x = rf.train.5, y = rf.label,
+                     importance = TRUE, ntree = 1000)
+rf.5
+varImpPlot(rf.5)
+```
+
+
+# Conclusion
+
+We looked at the data, engineered some new features, and built some predictive models using the randomForest package in R. In this challenge, the subtext wasn't too surprising. Women and children really did come first on the Titanic, especially those travelling first class. If someone wanted to improve on the models in this report, the most obvious place to start would be with the Age variable. Imputing the missing values could make Age a valuable feature for predicting survival in this dataset.
+
+The most successful model I tried was rf.4, which made use of the variables Pclass and Sex, as well as the fabricated features Title, Fsize, and T1. We'll use this model for submission.
+
+```{r}
+# Split modified data back into train and test sets
+train <- full[1:891,]
+test <- full[892:1309,]
+
+# Rebuild the winning model
+set.seed(1357)
+rfm <- randomForest(factor(Survived) ~ Pclass + Title +
+                      Fsize + Sex + T1,
+                    data=train,
+                    importance=TRUE,
+                    ntree=1000)
+
+
+# Make a prediction on the test set and save the results to a file
+prediction <- predict(rfm, test)
+submit <- data.frame(PassengerID = test$PassengerId, Survived = prediction)
+write.csv(submit, file = "titanic_rf.csv", row.names = F)
+```
+
+# Notes
+
+I should mention and thank the sources I relied on the most to write this. 
+
+Megan Risdal's report "Exploring Survival on the Titanic".
+Youtube user David Langer and his video series "Intro to Data Science with R".
+I referred to the book "R for Data Science" by Hadley Wickham & Garrett Grolemund for some help getting acquainted with R. 
+
+
+---

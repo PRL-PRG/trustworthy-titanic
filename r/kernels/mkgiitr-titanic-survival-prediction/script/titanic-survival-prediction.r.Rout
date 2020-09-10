@@ -1,0 +1,449 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> ## Importing packages
+> 
+> # This R environment comes with all of CRAN and many other helpful packages preinstalled.
+> # You can see which packages are installed by checking out the kaggle/rstats docker image: 
+> # https://github.com/kaggle/docker-rstats
+> 
+> library(tidyverse) # metapackage with lots of helpful functions
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> 
+> ## Running code
+> 
+> # In a notebook, you can run a single code cell by clicking in the cell and then hitting 
+> # the blue arrow to the left, or by clicking in the cell and pressing Shift+Enter. In a script, 
+> # you can run code by highlighting the code you want to run and then clicking the blue arrow
+> # at the bottom of this window.
+> 
+> ## Reading in files
+> 
+> # You can access files from datasets you've added to this kernel in the "../input/" directory.
+> # You can see the files added to this kernel by running the code below. 
+> 
+> list.files(path = "../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> 
+> ## Saving data
+> 
+> # If you save any files or images, these will be put in the "output" directory. You 
+> # can see the output directory by committing and running your kernel (using the 
+> # Commit & Run button) and then checking out the compiled version of your kernel.
+> 
+> #Loading library
+> library(tidyverse)
+> library('ggplot2') # visualization
+> library('ggthemes') # visualization
+> library('scales') # visualization
+
+Attaching package: ‘scales’
+
+The following object is masked from ‘package:purrr’:
+
+    discard
+
+The following object is masked from ‘package:readr’:
+
+    col_factor
+
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> library('dplyr') # data manipulation
+> library('mice') # imputation
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library('randomForest') # classification algorithm
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> #Checking the files loaded into kernel
+> list.files(path = "../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> 
+> #Checking the working directory
+> getwd()
+[1] "/Users/alex/MachineLearning/TrustworthyML/KaggleCrawler/Aviral/korpus-master/notebooks/r/kernels/mkgiitr-titanic-survival-prediction/script"
+> #loading the data files
+> train <- read.csv("../input/train.csv",stringsAsFactors=F )
+> test <- read.csv("../input/test.csv",stringsAsFactors=F)
+> 
+> full <- bind_rows(train,test)
+> #Checking the structure of data
+> str(full)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> 
+> #Create the user define function for descriptive analysis
+> var_summ <- function(x){
++     if(class(x)=="numeric"){
++         var_type=class(x)
++         n <- length(x)
++         n_miss <- sum(is.na(x))
++         mean <- mean(x,na.rm=T)
++         std <- sd(x,na.rm=T)
++         min <- min(x,na.rm=T)
++         max <- max(x,na.rm=T)
++         return(c(var_type=var_type,n=n,n_miss=n_miss,mean=mean,std=std,min=min,max=max))
++     }
++     else{
++         var_type=class(x)
++         n = length(x)
++         n_miss = sum(is.na(x))
++          return(c(n=n,n_miss=n_miss))
++     }
++ }
+> 
+> #checking the variable is numeric or not.
+> num_var <- sapply(full,is.numeric)
+> 
+> #apply above defined function on the data
+> num_data <- t(data.frame(apply(full[num_var],2,var_summ)))
+> num_data
+            var_type  n      n_miss mean                std                
+PassengerId "numeric" "1309" "0"    "655"               "378.020061196052" 
+Survived    "numeric" "1309" "418"  "0.383838383838384" "0.486592454264858"
+Pclass      "numeric" "1309" "0"    "2.29488158899924"  "0.837836018970127"
+Age         "numeric" "1309" "263"  "29.881137667304"   "14.4134932112713" 
+SibSp       "numeric" "1309" "0"    "0.498854087089381" "1.0416583905961"  
+Parch       "numeric" "1309" "0"    "0.385026737967914" "0.865560275349515"
+Fare        "numeric" "1309" "1"    "33.2954792813456"  "51.7586682391741" 
+            min    max       
+PassengerId "1"    "1309"    
+Survived    "0"    "1"       
+Pclass      "1"    "3"       
+Age         "0.17" "80"      
+SibSp       "0"    "8"       
+Parch       "0"    "9"       
+Fare        "0"    "512.3292"
+> cat_data <- data.frame(apply(full[!num_var],2,var_summ))
+> cat_data
+       Name  Sex Ticket Cabin Embarked
+n      1309 1309   1309  1309     1309
+n_miss    0    0      0     0        0
+> 
+> 
+> 
+> #playing with name variable-extracting title of name
+> full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+> 
+> #Checking title with gender
+> table(full$Sex,full$Title)
+        
+         Capt Col Don Dona  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs
+  female    0   0   0    1   1        0    1     0      0  260    2   1   0 197
+  male      1   4   1    0   7        1    0     2     61    0    0   0 757   0
+        
+          Ms Rev Sir the Countess
+  female   2   0   0            1
+  male     0   8   1            0
+> #combined the rare title into group
+> rare_title <- c("Capt","Col","Don","Dona","Dr","Jonkheer","Lady","Major","Mlle","Mme","Ms","Rev","Sir","the Countess")
+> 
+> full$Title[full$Title %in% rare_title] <- "rare_title"
+> 
+> #Show title count by sex.
+> table(full$Sex,full$Title)
+        
+         Master Miss  Mr Mrs rare_title
+  female      0  260   0 197          9
+  male       61    0 757   0         25
+> 
+> # Finally, grab surname from passenger name
+> full$Surname <- sapply(full$Name,  
++                       function(x) strsplit(x, split = '[,.]')[[1]][1])
+> 
+> #family size calculation
+> full$Fsize <- full$Parch+full$SibSp+1
+> 
+> #create a family variable
+> full$Family <- paste(full$Surname, full$Fsize, sep='_')
+> 
+> ggplot(full[1:891,], aes(x = Fsize, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge') +
++   scale_x_continuous(breaks=c(1:11)) +
++   labs(x = 'Family Size') +
++   theme_few()
+> 
+> #grouping family by its size
+> full$FsizeD[full$Fsize==1] <- "Singleton"
+> full$FsizeD[full$Fsize<5 & full$Fsize>1]  <- "Small"
+> full$FsizeD[full$Fsize>4] <- "Large"
+> 
+> #Checking survival by familysize
+> table(full$Survive,full$FsizeD)
+   
+    Large Singleton Small
+  0    52       374   123
+  1    10       163   169
+> 
+> # Create a Deck Variable
+> full$Cabin[1:28]
+ [1] ""            "C85"         ""            "C123"        ""           
+ [6] ""            "E46"         ""            ""            ""           
+[11] "G6"          "C103"        ""            ""            ""           
+[16] ""            ""            ""            ""            ""           
+[21] ""            "D56"         ""            "A6"          ""           
+[26] ""            ""            "C23 C25 C27"
+> strsplit(full$Cabin[2],NULL)[[1]][1]
+[1] "C"
+> full$Deck <- factor(sapply(full$Cabin,function(x) strsplit(x,NULL)[[1]][1]))
+> table(full$Deck)                           
+
+ A  B  C  D  E  F  G  T 
+22 65 94 46 41 21  5  1 
+> 
+> 
+> #Missing Value Treatment
+> unique(full$Embarked)
+[1] "S" "C" "Q" "" 
+> table(full$Embarked)
+
+      C   Q   S 
+  2 270 123 914 
+> full[c(62,830),]
+    PassengerId Survived Pclass                                      Name
+62           62        1      1                       Icard, Miss. Amelie
+830         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Cabin Embarked Title Surname Fsize
+62  female  38     0     0 113572   80   B28           Miss   Icard     1
+830 female  62     0     0 113572   80   B28            Mrs   Stone     1
+     Family    FsizeD Deck
+62  Icard_1 Singleton    B
+830 Stone_1 Singleton    B
+> 
+> #removing missing value
+> embarked_value <- full %>% filter(PassengerId !=62 & PassengerId !=830)
+> 
+> # Use ggplot2 to visualize embarkment, passenger class, & median fare
+> ggplot(embarked_value,aes(x=Embarked,y=Fare, fill=factor(Pclass)))+
++ geom_boxplot()+
++ geom_hline(aes(yintercept=80), colour='red', linetype='dashed', lwd=2)+
++ scale_y_continuous(labels=dollar_format())+
++ theme_few()
+Warning message:
+Removed 1 rows containing non-finite values (stat_boxplot). 
+> 
+> # Since their fare was $80 for 1st class, they most likely embarked from 'C'
+> full$Embarked[c(62,830)] <- 'C'
+> 
+> 
+> #Fare missing Value Treatmet
+> full[is.na(full$Fare),]
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked Title Surname Fsize   Family    FsizeD Deck
+1044   3701   NA              S    Mr  Storey     1 Storey_1 Singleton <NA>
+> full[1044,]
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked Title Surname Fsize   Family    FsizeD Deck
+1044   3701   NA              S    Mr  Storey     1 Storey_1 Singleton <NA>
+> 
+> #cheking fare distribution for class=3 & embarked=S
+> ggplot(full[full$Pclass==3 & full$Embarked=='S',],aes(x=Fare))+
++ geom_density(fill='#99d6ff',alpha=0.4)+
++ geom_vline(aes(xintercept=median(Fare,na.rm=T)),colour='red',linetype='dashed',lwd=1)+
++ scale_x_continuous(labels=dollar_format())+
++ theme_few()
+Warning message:
+Removed 1 rows containing non-finite values (stat_density). 
+> 
+> # Replace missing fare value with median fare for class/embarkment
+> full$Fare[1044] <- median(full[full$Pclass==3 & full$Embarked=='S',]$Fare,na.rm=T)
+> 
+> #Age missing value treatment with predictive imputation
+> #no of missing age value
+> sum(is.na(full$Age))
+[1] 263
+> 
+> #we are going to use MICE imputation
+> factor_vars <- c('PassengerId','Pclass','Sex','Embarked','Title','Surname','Family','FsizeD')
+> full[factor_vars] <- lapply(full[factor_vars],function(x) as.factor(x))
+> 
+> # Set a random seed
+> set.seed(129)
+> 
+> # Perform mice imputation, excluding certain less-than-useful variables:
+> mice_mod <- mice(full[, !names(full) %in% c('PassengerId','Name','Ticket','Cabin','Family','Surname','Survived')], method='rf')
+
+ iter imp variable
+  1   1  Age  Deck
+  1   2  Age  Deck
+  1   3  Age  Deck
+  1   4  Age  Deck
+  1   5  Age  Deck
+  2   1  Age  Deck
+  2   2  Age  Deck
+  2   3  Age  Deck
+  2   4  Age  Deck
+  2   5  Age  Deck
+  3   1  Age  Deck
+  3   2  Age  Deck
+  3   3  Age  Deck
+  3   4  Age  Deck
+  3   5  Age  Deck
+  4   1  Age  Deck
+  4   2  Age  Deck
+  4   3  Age  Deck
+  4   4  Age  Deck
+  4   5  Age  Deck
+  5   1  Age  Deck
+  5   2  Age  Deck
+  5   3  Age  Deck
+  5   4  Age  Deck
+  5   5  Age  Deck
+Warning message:
+Number of logged events: 50 
+> 
+> #save the complete output
+> mice_output <- complete(mice_mod)                            
+> 
+> # Plot age distributions
+> par(mfrow=c(1,2))
+> hist(full$Age, freq=F, main='Age: Original Data', 
++   col='darkgreen', ylim=c(0,0.04))
+> hist(mice_output$Age, freq=F, main='Age: MICE Output', 
++   col='lightgreen', ylim=c(0,0.04))
+> 
+> #now replace the age to mice age
+> full$Age <- mice_output$Age
+> sum(is.na(full$Age))
+[1] 0
+> 
+> 
+> # Create the column child, and indicate whether child or adult
+> full$Child[full$Age < 18] <- 'Child'
+> full$Child[full$Age >= 18] <- 'Adult'
+> 
+> # Show counts
+> table(full$Child, full$Survived)
+       
+          0   1
+  Adult 484 269
+  Child  65  73
+> 
+> # Adding Mother variable
+> full$Mother <- 'Not Mother'
+> full$Mother[full$Sex == 'female' & full$Parch > 0 & full$Age > 18 & full$Title != 'Miss'] <- 'Mother'
+> 
+> # Show counts
+> table(full$Mother, full$Survived)
+            
+               0   1
+  Mother      16  39
+  Not Mother 533 303
+> 
+> # Finish by factorizing our two new factor variables
+> full$Child  <- factor(full$Child)
+> full$Mother <- factor(full$Mother)
+> 
+> #Now all the variable is treated & going for the prediction using randomforest
+> # Split the data back into a train set and a test set
+> train <- full[1:891,]
+> test <- full[892:1309,]
+> 
+> 
+> #Building the Model
+> #set seed
+> set.seed(101)
+> 
+> #build the model using random forest
+> rf_model <- randomForest(factor(Survived)~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+Title+FsizeD+Child+Mother,data=train)
+> rf_model
+
+Call:
+ randomForest(formula = factor(Survived) ~ Pclass + Sex + Age +      SibSp + Parch + Fare + Embarked + Title + FsizeD + Child +      Mother, data = train) 
+               Type of random forest: classification
+                     Number of trees: 500
+No. of variables tried at each split: 3
+
+        OOB estimate of  error rate: 17.06%
+Confusion matrix:
+    0   1 class.error
+0 496  53  0.09653916
+1  99 243  0.28947368
+> #Giving 16.61% Error which we can accept right now
+> 
+> #Applyin the model to test data set to predict
+> prediction <- predict(rf_model,test)
+> 
+> #Save the prediction into data frame
+> solution <- data.frame(PassengerID=test$PassengerId,Survived=prediction)
+> table(solution$Survived)
+
+  0   1 
+266 152 
+> 
+> #Write solution to a csv file
+> write.csv(solution,'rf_model_solution.csv',row.names=F)
+> 
+> 
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 26.240   0.493  26.882 

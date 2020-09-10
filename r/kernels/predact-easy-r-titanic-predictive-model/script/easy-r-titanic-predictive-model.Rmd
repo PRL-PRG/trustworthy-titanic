@@ -1,0 +1,334 @@
+---
+title: "Easy R Titanic Kernel (Please Upvote if you like or learned from my Kernel here)"
+author: "Roger Rosales"
+output:
+  html_document:
+    number_sections: true
+    toc: true
+---
+
+I really appreciate if you <strong>UPVOTE</strong> this kernel and my other kernels. I am trying to get up to Kaggle Expert. Thank you!
+
+This R markdown predictive model for the Titanic dataset is more about the process of creating a Kaggle Kernel, 
+how to read in data using Kaggle's pathways, and how to export your predictions for submission.
+I hope you enjoy it!
+
+
+# Load in the Titanic datasets
+
+```{r}
+titanic.train <- read.csv("../input/train.csv");
+titanic.test  <- read.csv("../input/test.csv");
+```
+
+## Check that the datasets looks okay.
+```{r}
+head(titanic.train)
+tail(titanic.train)
+summary(titanic.train)
+str(titanic.train)
+
+
+head(titanic.test)
+tail(titanic.test)
+summary(titanic.test)
+str(titanic.test) #no survived variable in the test set
+```
+
+
+# Time to clean up the data
+
+1. Combine the two datasets and cleanup as one dataset
+
+2. Look for missing values
+
+3. Change the types of the columns if needed
+
+
+
+
+## Let's combine the two files and then do the cleanup.
+
+We will create a flag column to indicate which row is coming from training vs. the test set.
+
+```{r}
+titanic.train$IsTrainSet <- TRUE
+titanic.test$IsTrainSet <- FALSE
+```
+
+Before we can combine the two datasets, they have to have the same columns.
+
+But the test set is missing Survived.
+
+We can create a Survived column in the test set.
+
+First check that the column names are the same expect for Survived
+
+```{r}
+names(titanic.train)
+names(titanic.test)
+```
+
+Yes the column names match.
+
+Now we can create the Survived column in the test set.
+
+```{r}
+titanic.test$Survived <- NA
+```
+
+Now we can combine the two datasets by rbind.
+
+```{r}
+titanic.full <- rbind(titanic.train , titanic.test)
+```
+
+Let's make a table() on IsTrainSet
+
+There should be 891 in the training and 418 in the test.
+
+```{r}
+table(titanic.full$IsTrainSet)
+```
+
+
+## Now let's look for missing values.
+
+Investigate Embarked column
+
+```{r}
+table(titanic.full$Embarked)
+```
+
+There are 2 missing values. Also note that the mode is "S".
+
+Filter your data to Embarked = '' and replace with the mode of S.
+
+```{r}
+titanic.full[titanic.full$Embarked == "",] 
+```
+
+Both first class females are from Cabin B28.
+
+```{r}
+table(titanic.full$Sex,titanic.full$Embarked)
+table(titanic.full$Pclass,titanic.full$Embarked)
+```
+
+Consideration: Build a model to predict their Embarked.
+
+```{r}
+titanic.full[titanic.full$Embarked == "","Embarked"] <- "S"
+table(titanic.full$Embarked)
+```
+
+No more missing values!
+
+Investigate the Age column.
+
+```{r}
+table(is.na(titanic.full$Age))
+```
+
+There are 263 values are missing age. Not good!
+
+Replace the missing Age values with median.
+
+Run median function, make sure to remove NAs in the calculation.
+
+```{r}
+median(titanic.full$Age,na.rm = TRUE)
+```
+
+The median is 28.
+
+Try assigning ages based on gender and adult vs. child.
+
+If you are 17+ and male, you are called Mr.
+
+If you are a female and Miss title, you are not married.
+
+```{r}
+titanic.males <- titanic.full[titanic.full$Sex == "male",]
+
+median(titanic.males$Age,na.rm = TRUE)
+
+medianAgeMale <- median(titanic.males$Age,na.rm = TRUE)
+
+titanic.full[is.na(titanic.full$Age)&titanic.full$Sex == 'male',
+             "Age"] <- medianAgeMale
+
+titanic.females <- titanic.full[titanic.full$Sex == "female",]
+
+median(titanic.females$Age,na.rm = TRUE)
+
+medianAgeFemale <- median(titanic.females$Age,na.rm = TRUE)
+
+titanic.full[is.na(titanic.full$Age)&titanic.full$Sex == 'female',
+             "Age"] <- medianAgeFemale
+```
+
+
+Check for missing values again.
+```{r}
+table(is.na(titanic.full$Age))
+```
+
+Investigate the Fare column.
+
+```{r}
+table(is.na(titanic.full$Fare))
+```
+
+One missing FARE value.
+
+
+Let's create a decision tree to determine the missing fare.
+
+```{r}
+library("rpart")
+
+library("rpart.plot")
+
+fare_dt <- rpart(Fare ~ Pclass + Parch + Sex + SibSp,
+                 data=titanic.full)
+
+rpart.plot(fare_dt, type=1, extra=101)
+
+MissingFare <- titanic.full[is.na(titanic.full$Fare),]
+MissingFare
+
+titanic.full[is.na(titanic.full$Fare),"Fare"] <- 12
+```
+
+Check the missing FARE again.
+
+```{r}
+table(is.na(titanic.full$Fare))
+```
+
+
+## Change the types of the columns if needed.
+
+Change Pclass, Sex, and Embarked to factor.
+
+```{r}
+str(titanic.full)
+titanic.full$Pclass <- as.factor(titanic.full$Pclass)
+titanic.full$Sex <- as.factor(titanic.full$Sex)
+titanic.full$Embarked <- as.factor(titanic.full$Embarked)
+```
+
+
+
+
+# Split the full data out again
+
+```{r}
+titanic.train <- titanic.full[titanic.full$IsTrainSet == TRUE,]
+titanic.test <- titanic.full[titanic.full$IsTrainSet == FALSE,]
+nrow(titanic.train)
+nrow(titanic.test)
+```
+
+Set the Survived column in the train set.
+
+```{r}
+titanic.train$Survived <- as.factor(titanic.train$Survived)
+str(titanic.train)
+```
+
+# Let's visualize some data
+```{r}
+library(ggplot2)
+g <- ggplot(data=titanic.train, aes(x=Sex,fill=Survived)) + geom_bar()+
+  theme_grey(base_size = 14)
+g
+
+g <- ggplot(data=titanic.train, aes(x=Pclass,fill=Survived)) + geom_bar()+
+  theme_grey(base_size = 14)
+g
+
+g <- ggplot(data=titanic.train, aes(x=Embarked,fill=Survived)) + geom_bar() +
+  theme_grey(base_size = 14)
+g
+
+g <- ggplot(data=titanic.train, aes(x=SibSp,fill=Survived)) + geom_bar() +
+  theme_grey(base_size = 14)
+g
+
+g <- ggplot(data=titanic.train, aes(x=Age)) + geom_density()
+g
+
+g <- ggplot(data=titanic.train, aes(x=Fare)) + geom_density()+
+  facet_grid(~Pclass)
+g
+
+g <- ggplot(data=titanic.train, aes(x=Pclass,y=Fare))+
+  geom_boxplot()
+
+g
+
+# Jitter Plot by Class and Survived
+g <- ggplot(data=titanic.train, aes(x=Pclass,y=Fare,
+                                    color=Survived))+ geom_jitter() + ggtitle("Titanic Survival by Class")
+
+g
+
+
+# Jitter Plot by Class, Gender and Survived
+#Same chart but for Males only
+g <- ggplot(data=titanic.train[titanic.train$Sex == "male",], aes(x=Pclass,y=Fare,
+                                    color=Survived))+ geom_jitter() + ggtitle("Titanic Survival by Class: Males Only")
+
+g
+
+
+#Same chart but for Females only
+g <- ggplot(data=titanic.train[titanic.train$Sex == "female",], aes(x=Pclass,y=Fare,
+                                    color=Survived))+ geom_jitter() + ggtitle("Titanic Survival by Class: Females Only")
+
+g
+
+
+
+
+```
+
+Wow look at those Females who were in the 3rd class. Many of them didn't survive!
+
+
+# Create the random forest predictive model
+
+
+```{r message=FALSE, warnings=FALSE}
+library("randomForest")
+```
+
+```{r}
+survived.equation <- "Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked"
+survived.formula <- as.formula(survived.equation)
+
+
+titanic.model <- randomForest(formula=survived.formula,
+             data=titanic.train,
+             ntree = 500,
+             mtry = 3,
+             nodesize = 0.01*nrow(titanic.train)
+             )
+
+Survived <- predict(titanic.model,newdata=titanic.test)
+```
+
+# Get ready to submit predictions into Kaggle
+
+```{r}
+PassengerId <- titanic.test$PassengerId
+output.df <- as.data.frame(PassengerId)
+
+output.df$Survived <- Survived
+
+write.csv(output.df,"titanic_kaggle_submission.csv",row.names = FALSE)
+```
+
+Again, I really appreciate if you <strong>UPVOTE</strong> this kernel and my other kernels. I am trying to get up to Kaggle Expert. Thank you!

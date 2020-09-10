@@ -1,0 +1,144 @@
+
+This is my report of Titanic dataset.
+
+Step 1:Importing the required libraries
+
+```{r warning=FALSE,message=FALSE}
+library(readr)
+library(mice)
+library(ROCR)
+```
+Let's import the data set.To run on kaggle we have to give the path of data that's available on the server.
+```{r warning=FALSE,message=FALSE}
+trainOr <- read.csv("../input/train.csv")
+```
+View the training data.But I will skip it because most of the readers are familiar as to how the data looks like.
+
+Setting the seed and splitting the data into train and test for validation purposes
+```{r warning=FALSE,message=FALSE}
+set.seed(3)
+trainOr1<-trainOr
+ind<-sample(2,nrow(trainOr),replace=T,prob=c(0.7,0.3))
+trainOr1<-trainOr[ind==1,]
+testOr1<-trainOr[ind==2,]
+```
+
+Removing columns which are not required in analysis
+```{r warning=FALSE,message=FALSE}
+trainOr1<-trainOr1[,c(2,3,5,6,7,8,12)]
+testOr1<-testOr1[,c(2,3,5,6,7,8,12)]
+```
+
+To convert variables of type character into factors we can make use of the 
+unclass function.Various methods are used but I used this method to let people 
+(and myself know) of this cool feature of R
+
+```{r warning=FALSE,message=FALSE}
+trainOr1<-as.data.frame(unclass(trainOr1))
+testOr1<-as.data.frame(unclass(testOr1))
+
+```
+Converting attributes such as Pclass and Gender to factors
+
+```{r warning=FALSE,message=FALSE}
+cols<-colnames(trainOr1[,c(1,2)])
+trainOr1[,cols] <- data.frame(apply(trainOr1[cols], 2, as.factor))
+
+cols<-colnames(testOr1[,c(1,2)])
+testOr1[,cols] <- data.frame(apply(testOr1[cols], 2, as.factor))
+
+```
+
+Checking how many missing values are there and then using mice package in R
+which stands for multiple imputation using chained equation.The basis of chosing the first iteration is that it resembles the distribution of the age.The distribution of the age can be seen by deleting all the missing values first and then calling the #plot(density(train$Age))
+
+```{r warning=FALSE,message=FALSE}
+colSums(is.na(trainOr1))
+tempData <- mice(trainOr1,m=5,maxit=50,meth='pmm',seed=500)
+trainOr1<-complete(tempData,1)
+tempDatatest <- mice(testOr1,m=5,maxit=50,meth='pmm',seed=500)
+testOr1<-complete(tempDatatest,1)
+```
+
+
+Since the attribute to be predicted is a binary variable , let's use logistic
+regression model.
+Note: The only problem that I see with logistic regression model is that
+if x(independent variables)[y(independent variable)] are having some collinearity
+or for a slight change in x(movement along the x-axis(of all the combined variables)) may indicate a sharp change in y-values which if interpreted may not make much sense.
+
+```{r warning=FALSE,message=FALSE}
+train.model<-glm(Survived~Sex+Pclass+Age+SibSp+Parch+Embarked,family ="binomial",data=trainOr1)
+```
+
+Once we build our model we need to test our model on the test data and hence the division that was made earlier.To build an AUC curve we will make use of the
+ROCR package in R.
+
+```{r warning=FALSE,message=FALSE}
+predtest<-predict(train.model,newdata=testOr1,type = 'response' )
+pred<-prediction(predtest,testOr1$Survived)
+```
+The beauty of ROCR package is that the object pred has in it all the information that are required for analysis.You name it :tpr,fpr,Sensitivy,Specificity etc.
+
+Now plotting graph of accuracy and cutoff to determing the maximum accuracy point.
+
+```{r warning=FALSE,message=FALSE}
+eval<-performance(pred,'acc')
+plot(eval)
+```
+Now plotting an AUC curve using tpr and fpr which are already calculated by pred.
+
+
+```{r warning=FALSE,message=FALSE}
+eval1<-performance(pred,'tpr','fpr')
+plot(eval1,colorize=T)
+auc<-performance(pred,"auc")
+auc<-unlist(slot(auc,"y.values"))
+auc<-round(auc,digits=2)
+legend(0.8,0.4,auc,title="AUC",cex=1,merge = T)
+```
+
+Printing the cutoff and the accuracy
+
+
+```{r warning=FALSE,message=FALSE}
+max<-which.max(slot(eval,"y.values")[[1]])
+acc<-slot(eval,"y.values")[[1]][max]
+cut<-slot(eval,"x.values")[[1]][max]
+print(c(accuracy=acc,cutoff=cut))
+
+```
+If you want to increase your accuracy probably you will have to discover more patterns in the data.My objective was to understand how it works on Kaggle so I am not going to do all those kind of things.Maybe in another pass I will do some feature engineering and also correlation among the family members.Eg.Father is alive chances of being children being alive and so on.
+
+
+```{r warning=FALSE,message=FALSE}
+testOr  <- read.csv("../input/test.csv")
+testOr<-testOr[,c(2,4,5,6,7,11)]
+testOr<-as.data.frame(unclass(testOr))
+cols<-colnames(testOr)[1]
+testOr[cols] <- data.frame(apply(testOr[cols],2,FUN = as.factor))
+tempData <- mice(testOr,m=5,maxit=50,meth='pmm',seed=500)
+testOr<-complete(tempData,1)
+survivaltest<-predict(train.model,newdata=testOr,type = 'response' )
+survivaltest<-as.data.frame(survivaltest)
+
+```
+
+
+Writing an output to a file for submission
+
+```{r warning=FALSE,message=FALSE}
+survivalpred=rep(0,418)
+survivalpred[survivaltest>0.64]=1
+survivalpred<-as.data.frame(survivalpred)
+
+```
+write.csv(survivalpred,file = "C:/Users/Aadish/Desktop/Survival.csv")
+
+
+
+
+
+
+
+

@@ -1,0 +1,47 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # SANG's random test 1 - I'm testing a decision tree structure 
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> library(rattle)
+Loading required package: tibble
+Loading required package: bitops
+Rattle: A free graphical interface for data science with R.
+Version 5.4.0 Copyright (c) 2006-2020 Togaware Pty Ltd.
+Type 'rattle()' to shake, rattle, and roll your data.
+
+Attaching package: ‘rattle’
+
+The following object is masked from ‘package:randomForest’:
+
+    importance
+
+Warning messages:
+1: package ‘rattle’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+> library(rpart.plot)
+Loading required package: rpart
+> library(RColorBrewer)
+> library(tree)
+Error in library(tree) : there is no package called ‘tree’
+Execution halted

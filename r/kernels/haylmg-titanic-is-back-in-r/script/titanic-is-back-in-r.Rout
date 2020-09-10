@@ -1,0 +1,331 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ---- warning = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- read.csv('../input/train.csv')
+> test <- read.csv('../input/test.csv')
+> 
+> 
+> ## ---- message = FALSE, warning = FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #for decision trees
+> library(rpart) 
+> 
+> #for cforest
+> library(party) 
+Loading required package: grid
+Loading required package: mvtnorm
+Loading required package: modeltools
+Loading required package: stats4
+Loading required package: strucchange
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: sandwich
+Warning messages:
+1: package ‘party’ was built under R version 3.6.2 
+2: package ‘zoo’ was built under R version 3.6.2 
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Adding a column of NA (missing) values in test
+> test$Survived <- NA     
+> 
+> # row binding train and test
+> combi  <- rbind(train, test) 
+> 
+> # taking a look at the structure of combi
+> str(combi) #or View(combi)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> 
+> ## ---- warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # 1 is for the passenger himself/herself
+> combi$FamilySize <- combi$SibSp + combi$Parch + 1          
+> 
+> 
+> ## ---- warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #to display the first 6 records in the Name column
+> head(combi$Name) 
+[1] Braund, Mr. Owen Harris                            
+[2] Cumings, Mrs. John Bradley (Florence Briggs Thayer)
+[3] Heikkinen, Miss. Laina                             
+[4] Futrelle, Mrs. Jacques Heath (Lily May Peel)       
+[5] Allen, Mr. William Henry                           
+[6] Moran, Mr. James                                   
+1307 Levels: Abbing, Mr. Anthony ... Zakarian, Mr. Ortin
+> 
+> 
+> ## ---- warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # first converting to character type
+> combi$Name <- as.character(combi$Name)
+> 
+> strsplit(combi$Name[1], split = '[,.]')
+[[1]]
+[1] "Braund"       " Mr"          " Owen Harris"
+
+> 
+> 
+> ## ---- warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> strsplit(combi$Name[1], split = '[,.]')[[1]][2]
+[1] " Mr"
+> 
+> 
+> ## ---- warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combi$Title <- sapply(combi$Name, FUN = function(x){ strsplit(x, split = '[,.]')[[1]][2]})
+> 
+> 
+> ## ---- warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #substitute the first occurrence of a white space with nothing
+> combi$Title <- sub(' ', '', combi$Title) 
+> 
+> 
+> ## ---- warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(combi$Title)
+
+        Capt          Col          Don         Dona           Dr     Jonkheer 
+           1            4            1            1            8            1 
+        Lady        Major       Master         Miss         Mlle          Mme 
+           1            2           61          260            2            1 
+          Mr          Mrs           Ms          Rev          Sir the Countess 
+         757          197            2            8            1            1 
+> 
+> 
+> ## ---- warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # The titles 'Mme' and 'Mlle' are merged into one 'Mlle' and similarly, for others. 
+> # %in% is used to satisfy the logical OR condition, means if the title is one among the titles
+> # in the given vector, condition is satisfied. Below is the way:
+>     
+> combi$Title[combi$Title %in% c('Mme', 'Mlle')] <- 'Mlle'
+> combi$Title[combi$Title %in% c('Capt', 'Don', 'Jonkheer', 'Major', 'Sir')] <- 'Sir'
+> combi$Title[combi$Title %in% c('Dona', 'Lady', 'Ms', 'the Countess', 'Mlle')] <- 'Lady'
+> 
+> #To change into factor (datatype that contains categories)
+> combi$Title <- factor(combi$Title) 
+> table(combi$Title)
+
+   Col     Dr   Lady Master   Miss     Mr    Mrs    Rev    Sir 
+     4      8      8     61    260    757    197      8      6 
+> 
+> 
+> ## ---- warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combi$Surname <- sapply(combi$Name, FUN = function(x){ strsplit(x, split = '[,.]')[[1]][1]})
+> 
+> 
+> ## ---- warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # pasting the two columns together
+> combi$FamilyId <- paste(as.character(combi$FamilySize), combi$Surname, sep = '') 
+> 
+> # as obvious below, those with family size less than or equal to 2 will be designated as Small
+> combi$FamilyId[combi$FamilySize <= 2] <- 'Small'
+> 
+> 
+> ## ---- warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # famId, a temporary variable, will store the FamilyId with their frequencies
+> famId <- data.frame(table(combi$FamilyId))
+> 
+> # Now, famId will only contain records with frequency or number of passengers in that family 
+> # less than or equal to 2
+> famId <- famId[famId$Freq <= 2, ]
+> 
+> # Any FamilyId existing in famId would then be declared 'Small'
+> combi$FamilyId[combi$FamilyId %in% famId$Var1] <- 'Small'
+> 
+> # finally converting to factor
+> combi$FamilyId <- factor(combi$FamilyId)
+> 
+> table(combi$FamilyId)
+
+       11Sage       3Abbott       3Boulos       3Bourke        3Brown 
+           11             3             3             3             4 
+    3Caldwell      3Collyer      3Compton       3Coutts       3Crosby 
+            3             3             3             3             3 
+      3Danbom       3Davies        3Dodge         3Drew        3Elias 
+            3             5             3             3             3 
+   3Goldsmith         3Hart      3Hickman      3Johnson       3Klasen 
+            3             3             3             3             3 
+      3Mallet        3McCoy     3Moubarek        3Nakid     3Navratil 
+            3             3             3             3             3 
+     3Peacock        3Peter        3Quick      3Rosblom       3Samaan 
+            3             3             3             3             3 
+   3Sandstrom      3Spedden      3Taussig       3Thayer        3Touma 
+            3             3             3             3             3 
+3van Billiard     3Van Impe        3Wells         3Wick      3Widener 
+            3             3             3             3             3 
+     4Allison      4Baclini       4Becker       4Carter         4Dean 
+            4             4             4             4             4 
+      4Herman     4Johnston      4Laroche         4West         5Ford 
+            4             4             4             4             5 
+     5Lefebre      5Palsson      5Ryerson      6Fortune       6Panula 
+            5             5             5             6             6 
+        6Rice        6Skoog    7Andersson      7Asplund      8Goodwin 
+            6             6             9             7             8 
+        Small 
+         1074 
+> 
+> 
+> ## ---- warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #creating a column of NA values first
+> combi$Deck <- NA  
+> 
+> #NULL splits at each position
+> combi$Deck <- sapply(as.character(combi$Cabin), function(x){ strsplit(x, NULL)[[1]][1]}) 
+> combi$Deck <- factor(combi$Deck)
+> summary(combi$Deck)
+   A    B    C    D    E    F    G    T NA's 
+  22   65   94   46   41   21    5    1 1014 
+> 
+> 
+> ## ---- warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(combi)
+  PassengerId      Survived          Pclass          Name          
+ Min.   :   1   Min.   :0.0000   Min.   :1.000   Length:1309       
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median : 655   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295                     
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :1309   Max.   :1.0000   Max.   :3.000                     
+                NA's   :418                                        
+     Sex           Age            SibSp            Parch            Ticket    
+ female:466   Min.   : 0.17   Min.   :0.0000   Min.   :0.000   CA. 2343:  11  
+ male  :843   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000   1601    :   8  
+              Median :28.00   Median :0.0000   Median :0.000   CA 2144 :   8  
+              Mean   :29.88   Mean   :0.4989   Mean   :0.385   3101295 :   7  
+              3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7  
+              Max.   :80.00   Max.   :8.0000   Max.   :9.000   347082  :   7  
+              NA's   :263                                      (Other) :1261  
+      Fare                     Cabin      Embarked   FamilySize    
+ Min.   :  0.000                  :1014    :  2    Min.   : 1.000  
+ 1st Qu.:  7.896   C23 C25 C27    :   6   C:270    1st Qu.: 1.000  
+ Median : 14.454   B57 B59 B63 B66:   5   Q:123    Median : 1.000  
+ Mean   : 33.295   G6             :   5   S:914    Mean   : 1.884  
+ 3rd Qu.: 31.275   B96 B98        :   4            3rd Qu.: 2.000  
+ Max.   :512.329   C22 C26        :   4            Max.   :11.000  
+ NA's   :1         (Other)        : 271                            
+     Title       Surname                FamilyId         Deck     
+ Mr     :757   Length:1309        Small     :1074   C      :  94  
+ Miss   :260   Class :character   11Sage    :  11   B      :  65  
+ Mrs    :197   Mode  :character   7Andersson:   9   D      :  46  
+ Master : 61                      8Goodwin  :   8   E      :  41  
+ Dr     :  8                      7Asplund  :   7   A      :  22  
+ Lady   :  8                      6Fortune  :   6   (Other):  27  
+ (Other): 18                      (Other)   : 194   NA's   :1014  
+> 
+> 
+> ## ---- warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # first creating the decision tree on the training data, or only the rows that contain a value for Age column
+> fitAge <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + FamilySize, data = combi[!(is.na(combi$Age)), ], method = "anova")
+> 
+> # now putting the predicted Age values in the rows that have NA in their Age column
+> combi$Age[is.na(combi$Age)] <- predict(fitAge, combi[is.na(combi$Age), ])
+> 
+> 
+> ## ---- warning = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # which row(s) has NA in the Fare column
+> which(is.na(combi$Fare))  
+[1] 1044
+> 
+> # median value assigned to the NA value.
+> combi$Fare[1044] <- median(combi$Fare, na.rm = TRUE)
+> 
+> 
+> ## ---- warning = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # which row has blank as Embarked
+> which(combi$Embarked == '')
+[1]  62 830
+> 
+> combi$Embarked[c(62,830)] = 'S'
+> 
+> 
+> ## ---- warning = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fitDeck <- rpart(Deck ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + FamilySize + Age, data = combi[!(is.na(combi$Deck)), ], method = "class")
+> 
+> combi$Deck[is.na(combi$Deck)] <- predict(fitDeck, combi[is.na(combi$Deck), ], type = "class")
+> 
+> 
+> ## ---- warning = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # create a temporary data frame storing Ticket values
+> tempo <- data.frame(table(combi$Ticket))
+> 
+> # store only those Ticket values that belong to more than one passenger
+> tempo <- tempo[tempo$Freq > 1, ]
+> 
+> tempo$Fare <- 0
+> 
+> # run a nested loop to extract the Fare values for the Ticket values in tempo
+> for(i in 1:nrow(combi)) {
++   for(j in 1:nrow(tempo)) {
++     if(combi$Ticket[i] == tempo$Var1[j]) {
++       tempo$Fare[j] = combi$Fare[i] } } } 
+> 
+> # calculate the Fare per passenger
+> tempo$Fare <- tempo$Fare / tempo$Freq
+> 
+> # put back the Fare per passenger values to the combi data frame
+> for(i in 1:nrow(combi)) {
++   for(j in 1:nrow(tempo)) {
++     if(combi$Ticket[i] == tempo$Var1[j]) {
++       combi$Fare[i] = tempo$Fare[j] } } }
+> 
+> 
+> 
+> ## ---- warning = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # 1:891 means 1 to 891(included)
+> train <- combi[1:891, ]
+> test <- combi[892:1309, ]
+> 
+> 
+> ## ---- warning = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # setting the seed so that everytime the model is created, random numbers produced would be the same
+> set.seed(400)
+> 
+> # the way of building a model is quite similar to how we made a couple of decision trees
+> # ntree specifies number of trees as base learners and mtry is for the number of variables to be used in each tree 
+> fit <- cforest(factor(Survived) ~ Pclass + Age + Sex + SibSp + Parch + Fare + Embarked + Title + FamilySize + FamilyId + Deck, data = train, controls = cforest_unbiased(ntree = 2000, mtry = 3))
+> 
+> # making a bar plot of the importance of predictor variables for the model
+> par(las = 2)
+> barplot(varimp(fit))
+> 
+> 
+> ## ---- warning = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # our model operating upon the test set
+> Prediction <- predict(fit, test, OOB = TRUE, type = "response")
+> 
+> # create the submit data frame
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+Error in data.frame(PassengerId = test$PassengerId, Survived = Prediction) : 
+  arguments imply differing number of rows: 418, 891
+Execution halted

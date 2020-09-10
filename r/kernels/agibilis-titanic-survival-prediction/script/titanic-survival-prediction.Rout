@@ -1,0 +1,425 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # data assessment/visualizations
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> # data wrangling
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+[32m✓[39m [34mpurrr  [39m 0.3.4     
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘tibble’ was built under R version 3.6.2 
+2: package ‘tidyr’ was built under R version 3.6.2 
+3: package ‘purrr’ was built under R version 3.6.2 
+4: package ‘dplyr’ was built under R version 3.6.2 
+> # model 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library('randomForest')
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Useful data quality function for missing values
+> 
+> checkColumn = function(df,colname){
++   
++   testData = df[[colname]]
++   numMissing = max(sum(is.na(testData)|is.nan(testData)|testData==''),0)
++ 
++   
++   if (class(testData) == 'numeric' | class(testData) == 'Date' | class(testData) == 'difftime' | class(testData) == 'integer'){
++     list('col' = colname,'class' = class(testData), 'num' = length(testData) - numMissing, 'numMissing' = numMissing, 'numInfinite' = sum(is.infinite(testData)), 'avgVal' = mean(testData,na.rm=TRUE), 'minVal' = round(min(testData,na.rm = TRUE)), 'maxVal' = round(max(testData,na.rm = TRUE)))
++   } else{
++     list('col' = colname,'class' = class(testData), 'num' = length(testData) - numMissing, 'numMissing' = numMissing, 'numInfinite' = NA,  'avgVal' = NA, 'minVal' = NA, 'maxVal' = NA)
++   }
++   
++ }
+> checkAllCols = function(df){
++   resDF = data.frame()
++   for (colName in names(df)){
++     resDF = rbind(resDF,as.data.frame(checkColumn(df=df,colname=colName)))
++   }
++   resDF
++ }
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- read.csv("../input/train.csv",header = T, stringsAsFactors = F,
++                   comment.char = "",na.strings=c("NA","NaN", ""))
+> #str(train)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> test  <- read.csv('../input/test.csv', header = T, stringsAsFactors = F,
++                   comment.char = "",na.strings=c("NA","NaN", ""))
+> #str(test)
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train$set <- "train"
+> test$set  <- "test"
+> test$Survived <- NA
+> full <- rbind(train, test)
+> head(full)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked   set
+1        A/5 21171  7.2500  <NA>        S train
+2         PC 17599 71.2833   C85        C train
+3 STON/O2. 3101282  7.9250  <NA>        S train
+4           113803 53.1000  C123        S train
+5           373450  8.0500  <NA>        S train
+6           330877  8.4583  <NA>        Q train
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # dataset dimensions
+> dim(full)
+[1] 1309   13
+> # Unique values per column
+> lapply(full, function(x) length(unique(x))) 
+$PassengerId
+[1] 1309
+
+$Survived
+[1] 3
+
+$Pclass
+[1] 3
+
+$Name
+[1] 1307
+
+$Sex
+[1] 2
+
+$Age
+[1] 99
+
+$SibSp
+[1] 7
+
+$Parch
+[1] 8
+
+$Ticket
+[1] 929
+
+$Fare
+[1] 282
+
+$Cabin
+[1] 187
+
+$Embarked
+[1] 4
+
+$set
+[1] 2
+
+> head(full)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked   set
+1        A/5 21171  7.2500  <NA>        S train
+2         PC 17599 71.2833   C85        C train
+3 STON/O2. 3101282  7.9250  <NA>        S train
+4           113803 53.1000  C123        S train
+5           373450  8.0500  <NA>        S train
+6           330877  8.4583  <NA>        Q train
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> missing_values <- full %>% summarize_all(funs(sum(is.na(.))/n()))
+Warning message:
+`funs()` is deprecated as of dplyr 0.8.0.
+Please use a list of either functions or lambdas: 
+
+  # Simple named list: 
+  list(mean = mean, median = median)
+
+  # Auto named with `tibble::lst()`: 
+  tibble::lst(mean, median)
+
+  # Using lambdas
+  list(~ mean(., trim = .2), ~ median(., na.rm = TRUE))
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+> missing_values
+  PassengerId  Survived Pclass Name Sex       Age SibSp Parch Ticket
+1           0 0.3193277      0    0   0 0.2009167     0     0      0
+          Fare     Cabin    Embarked set
+1 0.0007639419 0.7746371 0.001527884   0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # pivot the rows by feature (colnames) 
+> missing_values <- gather(missing_values, key="feature", value="missing_pct")
+> # ploting the missing NA values percentage
+> missing_values %>% 
++   ggplot(aes(x=reorder(feature,-missing_pct),y=missing_pct)) +
++   geom_bar(stat="identity",fill="red")+
++   theme_bw()+coord_flip()+
++   scale_size_area()+
++   ylab("Missing %")+xlab("Var/Cols")
+>   
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$FamSize <- full$SibSp + full$Parch + 1
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$Surname <- sapply(full$Name,  
++                       function(x) strsplit(x, split = '[,.]')[[1]][1])
+> 
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$Title <- gsub("^.*, (.*?)\\..*$", "\\1", full$Name)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(full$Sex,full$Title)
+        
+         Capt Col Don Dona  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs
+  female    0   0   0    1   1        0    1     0      0  260    2   1   0 197
+  male      1   4   1    0   7        1    0     2     61    0    0   0 757   0
+        
+          Ms Rev Sir the Countess
+  female   2   0   0            1
+  male     0   8   1            0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(data=full,aes(y=Age,x=Title, fill=Sex))+
++       geom_boxplot(alpha=0.7) +
++       #   geom_boxplot(outlier.colour = "red",outlier.shape = 8, outlier.size = 3)+
++         theme(axis.text.x = element_text(angle=65, vjust=0.6)) 
+Warning message:
+Removed 263 rows containing non-finite values (stat_boxplot). 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ##Engineer features based on all the passengers with the same ticket
+> ticket.unique <- rep(0, nrow(full))
+> tickets <- unique(full$Ticket)
+> 
+> for (i in 1:length(tickets)) {
++   current.ticket <- tickets[i]
++   party.indexes <- which(full$Ticket == current.ticket)
++   
++   
++   for (k in 1:length(party.indexes)) {
++     ticket.unique[party.indexes[k]] <- length(party.indexes)
++   }
++ }
+> 
+> full$ticket.unique <- ticket.unique
+> 
+> 
+> full$ticket.size[full$ticket.unique == 1]   <- 'Single'
+> full$ticket.size[full$ticket.unique < 5 & full$ticket.unique>= 2]   <- 'Small'
+> full$ticket.size[full$ticket.unique >= 5]   <- 'Big'
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full[full$Title %in% 'the Countess',]
+    PassengerId Survived Pclass
+760         760        1      1
+                                                        Name    Sex Age SibSp
+760 Rothes, the Countess. of (Lucy Noel Martha Dyer-Edwards) female  33     0
+    Parch Ticket Fare Cabin Embarked   set FamSize Surname        Title
+760     0 110152 86.5   B77        S train       1  Rothes the Countess
+    ticket.unique ticket.size
+760             3       Small
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full[full$Embarked %in% NA,]
+    PassengerId Survived Pclass                                      Name
+62           62        1      1                       Icard, Miss. Amelie
+830         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Cabin Embarked   set FamSize Surname
+62  female  38     0     0 113572   80   B28     <NA> train       1   Icard
+830 female  62     0     0 113572   80   B28     <NA> train       1   Stone
+    Title ticket.unique ticket.size
+62   Miss             2       Small
+830   Mrs             2       Small
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(data=full[full$Pclass %in% '1',],aes(y=Fare,x=Embarked,fill=Embarked))+
++       geom_boxplot(alpha=0.5) +
++         theme(axis.text.x = element_text(angle=65, vjust=0.6))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #temporal <- subset(full, Pclass==1 & Fare>78 & Fare <84)
+> #temporal[order(temporal$Surname),]
+> #temporal <- subset(full, Ticket=="12749")
+> #temporal[order(temporal$Surname),]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$Embarked <- replace(full$Embarked, which(is.na(full$Embarked)), 'C') 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full[full$Fare %in% NA,]
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked  set FamSize Surname Title ticket.unique
+1044   3701   NA  <NA>        S test       1  Storey    Mr             1
+     ticket.size
+1044      Single
+> summary(full[full$Fare %in% NA,])
+  PassengerId      Survived       Pclass      Name               Sex           
+ Min.   :1044   Min.   : NA   Min.   :3   Length:1           Length:1          
+ 1st Qu.:1044   1st Qu.: NA   1st Qu.:3   Class :character   Class :character  
+ Median :1044   Median : NA   Median :3   Mode  :character   Mode  :character  
+ Mean   :1044   Mean   :NaN   Mean   :3                                        
+ 3rd Qu.:1044   3rd Qu.: NA   3rd Qu.:3                                        
+ Max.   :1044   Max.   : NA   Max.   :3                                        
+                NA's   :1                                                      
+      Age           SibSp       Parch      Ticket               Fare    
+ Min.   :60.5   Min.   :0   Min.   :0   Length:1           Min.   : NA  
+ 1st Qu.:60.5   1st Qu.:0   1st Qu.:0   Class :character   1st Qu.: NA  
+ Median :60.5   Median :0   Median :0   Mode  :character   Median : NA  
+ Mean   :60.5   Mean   :0   Mean   :0                      Mean   :NaN  
+ 3rd Qu.:60.5   3rd Qu.:0   3rd Qu.:0                      3rd Qu.: NA  
+ Max.   :60.5   Max.   :0   Max.   :0                      Max.   : NA  
+                                                           NA's   :1    
+    Cabin             Embarked             set               FamSize 
+ Length:1           Length:1           Length:1           Min.   :1  
+ Class :character   Class :character   Class :character   1st Qu.:1  
+ Mode  :character   Mode  :character   Mode  :character   Median :1  
+                                                          Mean   :1  
+                                                          3rd Qu.:1  
+                                                          Max.   :1  
+                                                                     
+   Surname             Title           ticket.unique ticket.size       
+ Length:1           Length:1           Min.   :1     Length:1          
+ Class :character   Class :character   1st Qu.:1     Class :character  
+ Mode  :character   Mode  :character   Median :1     Mode  :character  
+                                       Mean   :1                       
+                                       3rd Qu.:1                       
+                                       Max.   :1                       
+                                                                       
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(full[full$Pclass == '3' & full$Embarked == 'S' & full$ticket.size =='Single', ], 
++   aes(x = Fare)) +
++   geom_density(fill = '#99d6ff', alpha=0.4) + 
++   geom_vline(aes(xintercept=median(Fare, na.rm=T)),
++     colour='red', linetype='dashed', lwd=1) 
+Warning message:
+Removed 1 rows containing non-finite values (stat_density). 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> mean(full[full$Pclass == '3' & full$Embarked == 'S' & full$ticket.size =='Single',]$Fare,na.rm=T,trim=0.2)
+[1] 7.914277
+> full$Fare[1044] <- mean(full[full$Pclass == '3' & full$Embarked == 'S' & full$ticket.size =='Single',]$Fare,na.rm=T,trim=0.2)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full <- full %>% mutate( Age = ifelse(is.na(Age), mean(full$Age, na.rm=TRUE), Age),
++   `Age Group` = case_when(  Age < 13 ~ "Age.0012", 
++                              Age >= 13 & Age < 18 ~ "Age.1317",
++                              Age >= 18 & Age < 60 ~ "Age.1859",
++                              Age >= 60 ~ "Age.60Ov"))
+> 
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Set a random seed
+> set.seed(1023)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Perform mice imputation, excluding certain less-than-useful variables:
+> mice_mod <- mice(full[, !names(full) %in% 
++                       c('PassengerId','Name','Ticket','Cabin','Family','Surname','Survived','Embarked','ticket.size')],
++                  method='rf') 
+Error in parse(text = x, keep.source = FALSE) : 
+  <text>:1:73: unexpected symbol
+1: Pclass ~ 0+Sex+Age+SibSp+Parch+Fare+set+FamSize+Title+ticket.unique+Age Group
+                                                                            ^
+Calls: mice ... formula -> formula.character -> formula -> eval -> parse
+Execution halted

@@ -1,0 +1,395 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> ## Importing packages
+> 
+> # This R environment comes with all of CRAN and many other helpful packages preinstalled.
+> # You can see which packages are installed by checking out the kaggle/rstats docker image: 
+> # https://github.com/kaggle/docker-rstats
+> 
+> library(tidyverse) # metapackage with lots of helpful functions
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> 
+> dados = read.csv('../input/train.csv', sep = ',', header = T)
+> 
+> # Convertendo sexo para numérica (1 = male)
+> dados$Sexo = 0
+> dados[which(dados$Sex == 'Male'), 'Sexo'] = 1
+> 
+> dados = dados %>% select(c('Survived', 'Age', 'Sexo', 'Fare', 'SibSp', 'Parch', 'Pclass'))
+> 
+> # XGBoost
+> library(xgboost)
+
+Attaching package: ‘xgboost’
+
+The following object is masked from ‘package:dplyr’:
+
+    slice
+
+Warning message:
+package ‘xgboost’ was built under R version 3.6.2 
+> 
+> # Caret para fazer o split da amostra (treino e teste)
+> library(caret)
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+> 
+> # Número de linhas no data frame
+> nrow(dados)
+[1] 891
+> 
+> # Dividindo a amostra em treino e teste
+> 
+> p_treino = .9 # proporção de casos para amostra de treino
+> 
+> # Usando o caret, podemos dividir a amostra preservando a proporção entre sobreviventes e não-sobreviventes
+> indice_treino = createDataPartition(dados$Survived, times = 1, p = p_treino)
+> 
+> # Testando
+> table(dados[indice_treino$Resample1, 'Survived']) / sum(table(dados[indice_treino$Resample1, 'Survived']))
+
+        0         1 
+0.6147132 0.3852868 
+> table(dados[-indice_treino$Resample1, 'Survived']) / sum(table(dados[-indice_treino$Resample1, 'Survived']))
+
+        0         1 
+0.6292135 0.3707865 
+> 
+> # Criando amostra de treino e teste
+> train = dados[indice_treino$Resample1,]
+> test = dados[-indice_treino$Resample1, ]
+> 
+> X_train = as.matrix(train %>% select(c(Sexo, Fare, Age, Parch, SibSp, Pclass)))
+> y_train = as.matrix(train$Survived)
+> 
+> X_test = as.matrix(test %>% select(c(Sexo, Fare, Age, Parch, SibSp, Pclass)))
+> y_test = as.matrix(test$Survived)
+> 
+> # Treinando um modelo na amostra de treino
+> lista_n = c(3, 10, 100, 200, 500, 1000)
+> res = data.frame(nrounds = NA, erro_treino = NA, erro_teste = NA)
+> for(i in 1:length(lista_n)) {
++     print(paste0("Rodando xgboost com ", lista_n[i], " rounds."))
++     mod1 = xgboost(data = X_train, label = y_train, nrounds = lista_n[i], verbose = 0, objective = 'binary:logistic')
++     erro_treino = mod1$evaluation_log$train_error[length(mod1$evaluation_log$train_error)]
++     y_pred = predict(mod1, X_test)    
++     y_pred = ifelse(y_pred > 0, 1, 0)
++     tmp = data.frame(previsto = y_pred, real = y_test)
++     erro_teste = 1 - sum(tmp$previsto == tmp$real) / nrow(tmp)
++     res = rbind(res, data.frame(nrounds = lista_n[i], erro_treino = erro_treino, erro_teste = erro_teste))
++ }
+[1] "Rodando xgboost com 3 rounds."
+[1] "Rodando xgboost com 10 rounds."
+[1] "Rodando xgboost com 100 rounds."
+[1] "Rodando xgboost com 200 rounds."
+[1] "Rodando xgboost com 500 rounds."
+[1] "Rodando xgboost com 1000 rounds."
+> 
+> 
+> dt.plot = data.frame(x = mod1$evaluation_log$iter, y = mod1$evaluation_log$train_error)
+> g = ggplot(data = dt.plot, aes(x = x, y = y))
+> g + geom_line() + geom_point() + annotate('text', label = 'Note como o erro de treino não para de cair', x = 500, y = 0.15, color = 'black')
+> 
+> # Fazendo cross-validation 
+> 
+> # Construindo as matrizes para o xgboost
+> X = as.matrix(dados %>% select(c(Sexo, Fare, Age, Parch, SibSp, Pclass)))
+> y = as.matrix(dados$Survived)
+> 
+> # Teste: executando o cross-validation uma vez
+> # nfold = 5 significa que a função vai dividir a base de dados em 5 fatias e vai treinar o modelo 5 vezes (cada vez deixando uma fatia de fora
+> # para fazer o papel de amostra de teste)
+> cv.res = xgb.cv(data = X, label = y, nfold = 5, nrounds = 100, max_depth = 6, objective = 'binary:logistic')
+[1]	train-error:0.228958+0.006523	test-error:0.304156+0.025498 
+[2]	train-error:0.218853+0.007618	test-error:0.300816+0.024588 
+[3]	train-error:0.210996+0.008184	test-error:0.299680+0.022839 
+[4]	train-error:0.205668+0.009533	test-error:0.291809+0.012828 
+[5]	train-error:0.200336+0.011320	test-error:0.292938+0.015396 
+[6]	train-error:0.195566+0.009560	test-error:0.295186+0.012855 
+[7]	train-error:0.196408+0.011928	test-error:0.294043+0.016724 
+[8]	train-error:0.190234+0.011351	test-error:0.287320+0.012557 
+[9]	train-error:0.188270+0.012941	test-error:0.279468+0.021510 
+[10]	train-error:0.187709+0.011825	test-error:0.287333+0.020728 
+[11]	train-error:0.183781+0.009483	test-error:0.298563+0.019566 
+[12]	train-error:0.180414+0.006395	test-error:0.299686+0.022635 
+[13]	train-error:0.175363+0.010242	test-error:0.299686+0.026727 
+[14]	train-error:0.175363+0.009615	test-error:0.298556+0.018138 
+[15]	train-error:0.172278+0.009230	test-error:0.299686+0.023988 
+[16]	train-error:0.167227+0.008564	test-error:0.296309+0.015466 
+[17]	train-error:0.165546+0.008849	test-error:0.296316+0.015975 
+[18]	train-error:0.159655+0.009903	test-error:0.295192+0.018242 
+[19]	train-error:0.159936+0.008331	test-error:0.298556+0.015914 
+[20]	train-error:0.156006+0.007743	test-error:0.296316+0.017484 
+[21]	train-error:0.154324+0.008089	test-error:0.295186+0.016699 
+[22]	train-error:0.152078+0.008570	test-error:0.299680+0.014786 
+[23]	train-error:0.145904+0.004462	test-error:0.304181+0.017624 
+[24]	train-error:0.143660+0.003763	test-error:0.301934+0.018288 
+[25]	train-error:0.141695+0.004801	test-error:0.304193+0.026132 
+[26]	train-error:0.140012+0.006054	test-error:0.305304+0.024323 
+[27]	train-error:0.135804+0.006209	test-error:0.297439+0.016616 
+[28]	train-error:0.134402+0.007948	test-error:0.306428+0.020073 
+[29]	train-error:0.132999+0.008421	test-error:0.306428+0.020073 
+[30]	train-error:0.129351+0.008918	test-error:0.305304+0.018069 
+[31]	train-error:0.125422+0.007774	test-error:0.304187+0.019736 
+[32]	train-error:0.123459+0.009289	test-error:0.307552+0.020340 
+[33]	train-error:0.121492+0.010436	test-error:0.306434+0.023612 
+[34]	train-error:0.118126+0.005048	test-error:0.306428+0.025847 
+[35]	train-error:0.116723+0.004490	test-error:0.307558+0.027981 
+[36]	train-error:0.113918+0.003405	test-error:0.304193+0.026132 
+[37]	train-error:0.112235+0.004478	test-error:0.308681+0.023748 
+[38]	train-error:0.111112+0.002906	test-error:0.308688+0.025599 
+[39]	train-error:0.107463+0.003128	test-error:0.304193+0.024383 
+[40]	train-error:0.106061+0.004031	test-error:0.304193+0.024640 
+[41]	train-error:0.104658+0.004847	test-error:0.301946+0.025863 
+[42]	train-error:0.105220+0.003889	test-error:0.303070+0.025284 
+[43]	train-error:0.103817+0.004464	test-error:0.305317+0.025951 
+[44]	train-error:0.103536+0.003407	test-error:0.300822+0.024650 
+[45]	train-error:0.102695+0.003414	test-error:0.301946+0.026347 
+[46]	train-error:0.101853+0.004062	test-error:0.303070+0.026023 
+[47]	train-error:0.101012+0.005507	test-error:0.301946+0.025371 
+[48]	train-error:0.100732+0.006883	test-error:0.300829+0.026910 
+[49]	train-error:0.097926+0.006753	test-error:0.300829+0.025955 
+[50]	train-error:0.096523+0.005813	test-error:0.301952+0.029560 
+[51]	train-error:0.095400+0.005127	test-error:0.303076+0.027720 
+[52]	train-error:0.094277+0.005862	test-error:0.300822+0.028454 
+[53]	train-error:0.093996+0.004955	test-error:0.300822+0.030385 
+[54]	train-error:0.093435+0.005152	test-error:0.306434+0.028461 
+[55]	train-error:0.093435+0.004997	test-error:0.304187+0.027718 
+[56]	train-error:0.089788+0.002689	test-error:0.313176+0.024691 
+[57]	train-error:0.088947+0.004069	test-error:0.312058+0.028573 
+[58]	train-error:0.087544+0.004155	test-error:0.313182+0.028980 
+[59]	train-error:0.087824+0.003310	test-error:0.312058+0.029443 
+[60]	train-error:0.087263+0.004042	test-error:0.312058+0.028573 
+[61]	train-error:0.086421+0.003848	test-error:0.314306+0.029122 
+[62]	train-error:0.084737+0.003416	test-error:0.317676+0.033883 
+[63]	train-error:0.082493+0.003633	test-error:0.312058+0.031514 
+[64]	train-error:0.085018+0.003320	test-error:0.317676+0.030758 
+[65]	train-error:0.083895+0.002263	test-error:0.319924+0.030242 
+[66]	train-error:0.081931+0.002622	test-error:0.317676+0.028411 
+[67]	train-error:0.081931+0.003298	test-error:0.314299+0.023012 
+[68]	train-error:0.079967+0.002964	test-error:0.314299+0.023285 
+[69]	train-error:0.078844+0.002424	test-error:0.315423+0.023941 
+[70]	train-error:0.077162+0.002388	test-error:0.317670+0.025551 
+[71]	train-error:0.076600+0.002776	test-error:0.317670+0.025796 
+[72]	train-error:0.074637+0.004327	test-error:0.323288+0.032172 
+[73]	train-error:0.073795+0.003056	test-error:0.318794+0.028989 
+[74]	train-error:0.074356+0.002696	test-error:0.317670+0.027685 
+[75]	train-error:0.074075+0.003727	test-error:0.316547+0.029009 
+[76]	train-error:0.074076+0.004039	test-error:0.315423+0.028735 
+[77]	train-error:0.073234+0.003162	test-error:0.313176+0.028490 
+[78]	train-error:0.073234+0.003283	test-error:0.313176+0.027817 
+[79]	train-error:0.071550+0.003236	test-error:0.313170+0.025137 
+[80]	train-error:0.071550+0.003236	test-error:0.314293+0.024283 
+[81]	train-error:0.070428+0.002900	test-error:0.317658+0.024675 
+[82]	train-error:0.069026+0.004414	test-error:0.315417+0.025165 
+[83]	train-error:0.069586+0.004147	test-error:0.315417+0.025165 
+[84]	train-error:0.068745+0.003897	test-error:0.317670+0.026520 
+[85]	train-error:0.068183+0.003054	test-error:0.315423+0.026447 
+[86]	train-error:0.067622+0.003032	test-error:0.317670+0.024798 
+[87]	train-error:0.066500+0.003651	test-error:0.314299+0.024603 
+[88]	train-error:0.065939+0.002692	test-error:0.315417+0.024659 
+[89]	train-error:0.065658+0.004318	test-error:0.315417+0.024659 
+[90]	train-error:0.063694+0.003851	test-error:0.318788+0.022283 
+[91]	train-error:0.063133+0.003459	test-error:0.321041+0.027677 
+[92]	train-error:0.063413+0.002265	test-error:0.321041+0.031113 
+[93]	train-error:0.062571+0.003290	test-error:0.322165+0.032551 
+[94]	train-error:0.061729+0.003980	test-error:0.318794+0.028989 
+[95]	train-error:0.062291+0.004510	test-error:0.319917+0.028695 
+[96]	train-error:0.061168+0.004999	test-error:0.321022+0.023820 
+[97]	train-error:0.061168+0.004999	test-error:0.318775+0.020969 
+[98]	train-error:0.060888+0.005078	test-error:0.319905+0.022956 
+[99]	train-error:0.060888+0.004758	test-error:0.315404+0.021803 
+[100]	train-error:0.060327+0.005111	test-error:0.313157+0.022342 
+> 
+> # Fazendo o gráfico do erro de treino x erro de teste
+> dt.plot = data.frame(iter = cv.res$evaluation_log$iter, test = cv.res$evaluation_log$test_error_mean, train = cv.res$evaluation_log$train_error_mean)
+> 
+> # Preciso dessa biblioteca para usar a função melt
+> library(reshape)
+
+Attaching package: ‘reshape’
+
+The following object is masked from ‘package:dplyr’:
+
+    rename
+
+The following objects are masked from ‘package:tidyr’:
+
+    expand, smiths
+
+> 
+> # Essa função tem o efeito de transformar duas colunas (test e train) em uma coluna "valor" e uma coluna "variável"
+> # Por exemplo, em vez de ter uma linha
+> #
+> #   id  |  test  |  train
+> #   1   |   0.5  |   0.3
+> #
+> # Passamos a ter duas linhas
+> #
+> #   id  |  variable  |  value
+> #    1  |   test     | 0.5
+> #    1  |   train    | 0.3
+> #
+> # Essa operação é útil para fazermos o gráfico das duas linhas com cores diferentes, conforme ggplot abaixo
+> dt.plot = melt(data = dt.plot, measure.vars = c('test', 'train'), id.vars = 'iter')
+> 
+> g = ggplot(data = dt.plot, aes(x = iter, y = value, color = variable))
+> g + geom_line() + geom_point() + labs(color = 'Erro') + xlab("Número de modelos") + ylab("Erro") + 
++ annotate("text", label = "Note como o erro de teste para de cair, \nenquanto o erro de treino continua caindo...", x = 25, y = 0.25, color = "black") 
+> 
+> # Fazendo cross-validation para um parâmetro (max_depth)
+> 
+> # Lista de valores possíveis
+> lista_max_depth = c(1, 2, 3, 6, 10, 20)
+> 
+> df.erro = data.frame(max_depth = NA, erro_medio = NA)
+> for(l in lista_max_depth) {
++     print(paste0("Testando max_depth = ", l))
++     # Rodo o cross-validation com o valor atual de lista_max_depth
++     cv.res = xgb.cv(data = X, label = y, nfold = 5, nrounds = 50, max_depth = l, verbose = F, objective='binary:logistic')
++     
++     # Guardo o erro de teste médio
++     erro = mean(cv.res$evaluation_log$test_error_mean)
++     df.erro = rbind(df.erro, data.frame(max_depth = l, erro_medio = erro))
++ }
+[1] "Testando max_depth = 1"
+[1] "Testando max_depth = 2"
+[1] "Testando max_depth = 3"
+[1] "Testando max_depth = 6"
+[1] "Testando max_depth = 10"
+[1] "Testando max_depth = 20"
+> df.erro = df.erro[2:nrow(df.erro),]
+> 
+> # Visualizando resultados
+> # Valor ótimo foi max_depth = 3
+> df.erro
+  max_depth erro_medio
+2         1  0.2895470
+3         2  0.2910767
+4         3  0.2906070
+5         6  0.3018174
+6        10  0.3182345
+7        20  0.3326209
+> 
+> # Rodando cross-validation para dois parâmetros
+> # Existem vários outros parâmetros que podem ser otimizados
+> # Ver a lista em https://xgboost.readthedocs.io/en/latest/parameter.html#parameters-for-tree-booster
+> lista_max_depth = c(2, 3, 10)
+> lista_colsample_bytree = c(2/6,3/6,4/6,5/6)
+> 
+> df.res = data.frame(max_depth = NA, colsample_bytree = NA, erro_medio = NA)
+> for(max_depth in lista_max_depth) {
++     for(colsample_bytree in lista_colsample_bytree){
++         print(paste0("Testando max_depth = ", max_depth, " e colsample_bytree = ", colsample_bytree))
++         # Rodo o cross-validation com o valor atual dos parâmetros
++         cv.res = xgb.cv(data = X, label = y, nfold = 5, nrounds = 50, max_depth = max_depth, colsample_bytree = colsample_bytree, verbose = F, objective='binary:logistic')
++ 
++         # Guardo o erro de teste médio
++         erro = mean(cv.res$evaluation_log$test_error_mean)
++         df.res = rbind(df.res, data.frame(max_depth = max_depth, colsample_bytree = colsample_bytree, erro_medio = erro))
++     }
++ }
+[1] "Testando max_depth = 2 e colsample_bytree = 0.333333333333333"
+[1] "Testando max_depth = 2 e colsample_bytree = 0.5"
+[1] "Testando max_depth = 2 e colsample_bytree = 0.666666666666667"
+[1] "Testando max_depth = 2 e colsample_bytree = 0.833333333333333"
+[1] "Testando max_depth = 3 e colsample_bytree = 0.333333333333333"
+[1] "Testando max_depth = 3 e colsample_bytree = 0.5"
+[1] "Testando max_depth = 3 e colsample_bytree = 0.666666666666667"
+[1] "Testando max_depth = 3 e colsample_bytree = 0.833333333333333"
+[1] "Testando max_depth = 10 e colsample_bytree = 0.333333333333333"
+[1] "Testando max_depth = 10 e colsample_bytree = 0.5"
+[1] "Testando max_depth = 10 e colsample_bytree = 0.666666666666667"
+[1] "Testando max_depth = 10 e colsample_bytree = 0.833333333333333"
+> 
+> df.res = df.res[2:nrow(df.res), ]
+> 
+> # Avaliando resultados
+> # Ordeno o data frame em ordem crescente do erro_medio
+> df.res[order(df.res$erro_medio),]
+   max_depth colsample_bytree erro_medio
+2          2        0.3333333  0.2779768
+3          2        0.5000000  0.2781905
+9          3        0.8333333  0.2797829
+7          3        0.5000000  0.2814775
+6          3        0.3333333  0.2847375
+10        10        0.3333333  0.2871266
+4          2        0.6666667  0.2887229
+12        10        0.6666667  0.2911699
+11        10        0.5000000  0.2950724
+8          3        0.6666667  0.2975128
+5          2        0.8333333  0.3019509
+13        10        0.8333333  0.3106464
+> # O melhor resultado foi com max_depth = 3 e colsample_bytree = 0.333 
+> 
+> # Treinando o modelo com os melhores parâmetros
+> max_depth = 3
+> colsample_bytree = 1 / 3
+> mod.opt = xgboost(data = X, label = y, nrounds = 50, verbose = 0, max_depth = max_depth, colsample_bytree = colsample_bytree, objective = 'binary:logistic')
+> 
+> 
+> # Amostra de teste Kaggle
+> test = read.csv('../input/test.csv')
+> 
+> # Preenchendo missing de Age e Fare
+> test[which(is.na(test$Age)), 'Age'] = mean(test$Age, na.rm = T)
+> test[which(is.na(test$Fare)), 'Fare'] = mean(test$Fare, na.rm = T)
+> test$Sexo = 0
+> test[which(dados$Sex == 'Male'), 'Sexo'] = 1
+> 
+> X_test = as.matrix(test %>% select(c(Sexo, Fare, Age, Parch, SibSp, Pclass)))
+> 
+> # Calculando previsões para submeter à competição
+> res = predict(mod.opt, X_test)
+> 
+> # Aplicando o threshold: se a probabilidade prevista for maior que t, considero que a previsão é "sobrevivente"
+> t = 0.5
+> pres = ifelse(res > t, 1, 0)
+> 
+> submit = data.frame(PassengerId = test$PassengerId, Survived = pres)
+> write.csv(submit, "submit_XG.csv", row.names = F)
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 48.351   1.100   6.912 

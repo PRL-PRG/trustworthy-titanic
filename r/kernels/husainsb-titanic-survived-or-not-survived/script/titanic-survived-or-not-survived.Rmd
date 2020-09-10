@@ -1,0 +1,582 @@
+---
+title: 'Titanic: Survived or Not Survived?'
+author: "Husain Battiwala"
+date: "12 March 2018"
+output:
+  html_document: 
+    number_sections: true
+    toc: true
+---
+
+```{r setup, include=FALSE,echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE,results = TRUE,warning=FALSE)
+```
+
+#First thing first
+
+Hello! In this analysis our aim is to build and train our algorithm on training set to predict where a person will Survive or not. Then our final model will be tested on test data set to calculate overall accuracy of our model.
+Let's first load all necessary packages that we will require in this entire process of data analysis and building model.
+
+```{r setwd,echo=FALSE,results=FALSE}
+#setwd('D://R Files//titanic set')
+```
+```{r packages,results=FALSE,warning=FALSE}
+#install.packages("lattice")  #for plots
+library(lattice)
+#install.packages("data.table")  #for data table
+library(data.table)
+#install.packages("ggplot2") #for beautiful plots
+library(ggplot2)
+#install.packages("dplyr")  #for manipulations
+library(dplyr)
+#install.packages("caret")  
+library(caret)              #for training and building different models
+#install.packages("e1071")
+library(e1071)              #for Naive Bayes and SVM
+#install.packages("randomForest") 
+library(randomForest)       #for Random Forest
+#install.packages("fastAdaboost")  
+library(fastAdaboost)       # for AdaBoost
+#install.packages("ROCR")  
+library(ROCR)               #For ROC curve
+```
+
+Now let's load training set into R and check for various fields present in it.
+
+```{r load_train}
+rms_t <- read.csv('../input/train.csv',header = T,quote = '"')
+names(rms_t)
+```
+
+#Exploratory Data Analysis
+
+This is the fun part and yes, the most important part of the entire process. This require science and proper understanding of the data we have.
+Let's check how many have survived and how many have not in the unfortunate incident of Titanic.
+
+##Gender-wise survival rate
+First, check Survival rates by Gender.
+0 > Not Survived
+1 > Survived
+
+```{r survival_sex}
+table(rms_t$Survived)
+
+survival_rate <- as.matrix(table(rms_t$Survived,rms_t$Sex))
+
+survival_df <- as.data.frame(table(rms_t$Survived,rms_t$Sex))
+names(survival_df)<-c('Survived','Sex','Freq')
+barchart(survival_df$Freq ~ survival_df$Sex | survival_df$Survived)
+```
+
+It is clearly seen that Females have Survived more than the Males.
+Around 74% of females and 19% of males have survived. Hence, females were given higher priority while evacuation.
+
+##Class-wise survival rate
+
+Now let's check survival rates by Passenger Class.
+
+```{r survival_class}
+survival_class_df <- as.data.frame(table(rms_t$Survived,rms_t$Pclass))
+names(survival_class_df)<-c('Survived','PClass','Freq')
+barchart(survival_class_df$Freq ~ survival_class_df$PClass | survival_class_df$Survived)
+
+survival_class_dt <- as.data.table(survival_class_df)
+survival_class_dt[,100*Freq/sum(Freq),PClass]
+```
+
+From above bar-chart and figures it can be seen that highest preference were given to 1st Class passengers while rescuing and then to 2nd Class and 3rd Class.
+So, elite got first preference and middle-class/economy passengers were given last preference.
+
+##What's in name?
+
+Let's figure out if name or more precisely title of Passenger plays important role while evacuation.
+There is nor direct field exists which gives title of passenger. We can extract this info from 'Name' column using regular expressions.
+
+```{r extract_title}
+rms_t$title<-gsub(' ','',gsub('(.*,)|(\\..*)','',rms_t$Name,fixed=F,perl = T))
+t(table(rms_t$title,rms_t$Sex))
+```
+
+Oh!! there are so many distinct values of title. Let's combine not-so-important titles into some common title.
+We will consider final titles as Master,Mr,Mrs and Miss. Rest all will be converted into these titles according to their Sex and Age for ease of analysis.
+
+```{r convert_title,warning=FALSE}
+rms_t %>% group_by(title) %>%summarise(mean(Age,na.rm = T))
+
+rms_t <- within(rms_t,title[title %in% c('Capt','Col','Don','Dr','Major','Sir','Rev','Jonkheer') & Sex=='male'] <- 'Mr')
+rms_t <- within(rms_t,title[Age<30 & Sex=='female'] <- 'Miss')
+rms_t <- within(rms_t,title[Age>=30 & Sex=='female'] <- 'Mrs')
+
+table(rms_t$title)
+
+ggplot(data = rms_t,aes(title,Age,fill=title))+geom_violin()
+```
+
+From above violin plot it can be seen that Master and Mr passengers are nearly mutually exclusive and same for Miss and Mrs.
+Now let's find average age, mean or median, as it doesn't really matter and assign those to passengers with no age.
+
+```{r mean_age}
+summary(subset(rms_t,title=='Master',Age))  #avg 5
+summary(subset(rms_t,title=='Mr',Age)) # avg 33
+summary(subset(rms_t,title=='Miss',Age)) #avg 18
+summary(subset(rms_t,title=='Mrs',Age)) #avg 40
+
+rms_t <- within(rms_t,Age[title=='Mrs' & is.na(Age)] <- 40)
+rms_t <- within(rms_t,Age[title=='Miss' & is.na(Age)] <- 18)
+rms_t <- within(rms_t,Age[title=='Mr' & is.na(Age)] <- 33)
+rms_t <- within(rms_t,Age[title=='Master' & is.na(Age)] <- 5)
+
+table(rms_t$title,rms_t$Survived)
+
+survival_title_df <- as.data.frame(table(rms_t$Survived,rms_t$title))
+
+barchart(survival_title_df$Freq ~ survival_title_df$Var2 | survival_title_df$Var1)
+
+survival_title_dt <- as.data.table(survival_title_df)
+names(survival_title_dt)<-c("Survived","title","Freq")
+survival_title_dt[,.(Survived,100*Freq/sum(Freq)),title]
+```
+
+It can be seen from above bar-chart and figures that older ladies were given 1st preference and  older men the least while rescuing. Hence order of preference while rescuing is like Mrs>Miss>Master>Mr
+
+##From where they belong?
+
+Now let's check if passengers embarkation port has any relation with survival rates.
+
+```{r survival_embark}
+summary(rms_t$Embarked)
+str(rms_t$Embarked)
+table(rms_t$Survived,rms_t$Embarked)
+```
+
+From above results, it is seen that passengers who embarked on port 'C' has survival rate of 55%, for port 'Q' it's 40% and port 'S' it's 34%.
+So, preference while rescuing passengers was **C > Q > S**.
+
+Also, from summary of field 'Embarked', we can see that 2 passengers Embarkation port are blank *(not NA)*. Let's try to find what could be their embarkation port using the other fields like ticket fare and class, as this would serve as best measures to find unknown port.
+
+```{r view_2missing_embark}
+subset(rms_t,Embarked=="",select = c("Pclass","Fare"))
+```
+
+So they belong to 1st class and ticket fare is 80. We would use this info to find port of Embarkation using some plots.
+
+```{r plot_embarked}
+ggplot(rms_t,aes(Embarked,Fare))+facet_grid(.~Pclass) + geom_boxplot() + geom_hline(aes(yintercept=80,col="red"))
+```
+
+In above box plot, we pass a red line through y-axis of 80 which is Fare. It can be seen that this red line passes exactly through average fare of port 'C' for 1st class.
+Hence, we can conclude that missing embarkation port for 2 passengers is 'C'.
+
+Now let's assign field Embarked with value **C**.
+
+```{r impute_embarked}
+rms_t<-within(rms_t,Embarked[Embarked==""]<-'C')
+
+ggplot(rms_t,aes(Embarked,fill=factor(Survived)))+ geom_histogram(stat='count')+  facet_grid(.~Sex)
+```
+
+We have plotted counts of Survived/Not Survived against Embarked group by Sex.
+It is been seen that females have survived greater than males.
+
+#Feature Engineering
+
+In data set we have different variables like **Parch** (Parents and Children count) and **SibSp** (Siblings and Spouse(s)). These variables will tell us family sizes like singles, small or large.
+
+We will analyse if family sizes plays important role while rescue operation.
+
+Let's construct a new variable to categorize family sizes. This is known as **Feature Engineering**. This plays pivotal role in any analysis.
+
+We will first extract Surname of each passenger and then combine it with Sibsp and Parch to derive family size for each passenger.
+
+```{r fmly_size}
+rms_t$Surname <- gsub(',.*','',rms_t$Name,fixed=F,perl = T)
+
+rms_fmly <- as.data.frame(list('surname'=rms_t$Surname,'fsize'=rms_t$SibSp + rms_t$Parch + 1,'survived'=rms_t$Survived))
+```
+
+Now, we will check relation between Family size and Survival rate of passengers.
+
+```{r fmly_size_sruvival}
+rms_fmly<-transform(rms_fmly,Dead=0L,Living=0L)
+
+rms_fmly <- within(rms_fmly,{Dead[survived==0]<-1L
+                            Living[survived==1]<-1L})
+
+rms_fmly_sum <- rms_fmly %>% group_by(surname,fsize) %>% summarise(Dead=sum(Dead),Living=sum(Living))
+
+rms_fmly_melt<-melt(rms_fmly_sum[,c('surname','fsize','Dead','Living')],c('surname','fsize'),c('Dead','Living'))
+
+rms_fmly_melt <- rms_fmly_melt %>% group_by(fsize,variable) %>% summarise(avg=mean(value))
+
+ggplot(rms_fmly_melt,aes(fsize,y=avg,fill=variable)) + geom_bar(position="dodge",stat="identity")+scale_x_continuous(breaks=c(1:11)) 
+```
+
+So here is graph which shows average no. of Dead or Living according to each family size. 
+We find a trend that no. of Dead increases as family size increases, whereas no. of Living decreases as family size increases i.e. after size of 4.
+
+Now let's categorize family size into 3 categories:
+
+1. Family size = 1 then **single** 
+2. Family size > 1 and < 5 then **small** 
+3. Family size > 5 then **large** 
+
+```{r fsize_category}
+rms_fmly$size.desc[rms_fmly$fsize==1] <- 'single' 
+rms_fmly$size.desc[rms_fmly$fsize>1 & rms_fmly$fsize<5] <- 'small' 
+rms_fmly$size.desc[rms_fmly$fsize>=5] <- 'large' 
+mosaicplot( table(rms_fmly$size.desc,rms_fmly$survived),color = T)
+```
+
+Above mosaic plot shows that Small families survived most, while Large and Singles suffered then huge loss.
+
+These family categories will be merged to original data set.
+
+```{r merge_fsize}
+rms_full<-merge(rms_t,rms_fmly,by.x ="Surname",by.y = "surname" )
+rms_t<-subset(rms_full,select=-c(fsize:Living))
+
+rms_t <- rms_t %>% group_by(PassengerId) %>% summarise_all(.funs = function(x) {min(as.character(x))})
+```
+
+Let's check ticket fares of all passengers.
+
+```{r chk_fares}
+rms_t$Fare <- as.double(rms_t$Fare)
+summary(rms_t$Fare)
+count(subset(rms_t,Fare==0))
+```
+
+So there are 15 passengers whose ticket fare is 0. Let's try to find what could be their on basis of port of Embarkation and class of travel.
+
+```{r chk_fares_by_class_embark}
+ggplot(rms_t,aes(x=Embarked,y=Fare,fill=factor(Pclass)))+geom_boxplot()
+```
+
+We will now assign average fares to rows where Fare is 0 basis Pclass and Embarked variables.
+
+```{r zero_fare_impute}
+rms_t$Fare[rms_t$Embarked=='S' & rms_t$Pclass==1 & rms_t$Fare==0] <- median(rms_t$Fare[rms_t$Embarked=='S' & rms_t$Pclass==1])
+rms_t$Fare[rms_t$Embarked=='S' & rms_t$Pclass==2 & rms_t$Fare==0] <- median(rms_t$Fare[rms_t$Embarked=='S' & rms_t$Pclass==2])
+rms_t$Fare[rms_t$Embarked=='S' & rms_t$Pclass==3 & rms_t$Fare==0] <- median(rms_t$Fare[rms_t$Embarked=='S' & rms_t$Pclass==3])
+```
+
+Now let's see if there are any missing values in important variables. This is necessary because most modelling techniques doesn't work on NA/missing values.
+
+```{r chk_NA}
+sapply(names(rms_t),FUN = function(x) {sum(is.na(x))})
+```
+
+There are no NAs but Cabin variable contains many missing values. We will not further analyse and impute this field as it is not so significant for predicting Survived variable. It's not worth the effort.
+So we will leave it as it is.
+
+Now let's assign proper data-types to different fields.
+We will convert character to factors for categorical variables.
+
+```{r final_groom}
+rms_t<- rms_t %>% mutate_if(is.character,as.factor)
+rms_t$Parch <- as.integer(rms_t$Parch)
+rms_t$SibSp <- as.integer(rms_t$SibSp)
+rms_t$Age <- as.double(rms_t$Age)
+t(lapply(rms_t,class))
+```
+
+Final grooming is done. Categorical variables are now represented as factors and numeric as numeric.
+Now let's get our hands dirty on building models and getting predictions.
+
+#Building models
+
+##Partioning the data set
+
+Let's partition our original train data set into 2 sub-sets:
+
+* Training set: Here we will train our models. (80% of original training set)
+* Test set: Here we will test the predictions and accuracy of each of our models.  (20% of original training set)
+
+We will use caret package to achieve this functionality as it will help in proper partitioning of data by considering different categories of each variables in partitions.
+
+```{r partition}
+set.seed(123)
+trainnew<-createDataPartition(y=rms_t$Survived,p = .8,list = F)
+rms_train <- rms_t[trainnew,] #80% training set
+rms_test <- rms_t[-trainnew,] #20% test set
+
+dim(rms_train); dim(rms_test)
+```
+
+##Logistic Regression
+
+###Building Model
+Since our response is categorical type we will use Logistic Regression which will give estimated probability for a linear combination of predictors.
+
+Logistic regression will give probability of variable 'Survived' being '1' for a linear combination of predictors.
+
+We will consider important predictors to achieve optimum accuracy while keeping model simple. For this we have chosen predictors as Sex, Pclass, Age, size.desc, title and response variable is Survived (0 or 1).
+
+Let's fit model on training set.
+```{r logit_model,warning=FALSE}
+set.seed(123)
+rms_fit <- glm(formula =Survived~Sex+Pclass+Age+size.desc+title,data=rms_train,family = "binomial")
+summary(rms_fit)
+p<-predict(rms_fit,rms_train,type = "response")
+```
+
+From summary of model we can conclude:
+1. Difference between Null Deviance and Residual Deviance is high. It means by adding predictors we much of deviance in fitted values are explained by our model.
+2. By looking at p-values against each predictors, most of them has p-values<0.05 (5%) i.e. most of them are statistically significant.
+
+Since we have got probabilities as response in **p** variable, we have to decide a cut-off probability through which we will categorize response to be 1 or 0.
+
+* p > cut-off = 1
+* p <= cut-off = 0
+
+To gain optimum accuracy and to balance Specificity and Sensitivity parameters we will plot ROC and impose it with different cut-off values to find best possible cut-off value.
+
+```{r roc}
+pred<-prediction(p,rms_train$Survived)
+perf<-performance(pred,'tpr','fpr')
+plot(perf,col="blue",print.cutoffs.at=c(.4,.5,.7))
+```
+
+We see from above ROC plot that at cut-off 0.4, TPR (Sensitivity) is about 80% and Specificity (1-FPR) is also about 80%.
+
+After decreasing cut-off beyond 0.4 we do not find much gain in TPR (curve tends to be horizontal). Hence we select 0.4 to be ideal cut-off.
+Now let's make predictions by choosing 0.4 as cutoff and calculate the accuracy of model.
+
+```{r precitions_logit}
+c<-confusionMatrix(table(ifelse(p>0.4,1,0),rms_train$Survived))
+c
+acc<-round(c$overall[[1]]*100,2)
+```
+
+Accuracy of our model is `r acc`% and Kappa is beyond 60%. Specificity and Sensitivity are above 80%. That's pretty good results.
+
+###Cross Validation
+
+Let's do some CV to avoid being misjudged by Accuracy results due to overfitting.
+We will do 10-Fold CV repeated 3 times using objects of **caret** package.
+
+```{r CV_10fold-rep3,warning=FALSE}
+set.seed(123)
+model.10x3fold<-train(Survived~Sex+Pclass+Age+size.desc+title,data=rms_train,
+                      method = "glm",
+                      trControl = trainControl(method = "repeatedcv",number = 10,repeats = 3,verboseIter = F))
+model.10x3fold
+
+acc<-round(model.10x3fold$results[[2]]*100,2)
+```
+
+Accuracy of `r acc`% proves that our model is pretty good and there are no overfitting cases observed.
+
+##Random Forest
+
+Random Forest (RF) is one of widely used ML algorithm for CART method. It is quite popular for classification predictions with pretty high accuracy compared to other algorithms.
+
+Here we will consider extra parameter Embarked because after much testing and CV of different models with different combo of predictors, I chose to include Embarked as it gives better accuracy.
+
+Since RF is based on re-sampling of data and predictors, it is always good to set seed to some specific value, so code/model can be reproduced and will give same results.
+
+```{r rf}
+set.seed(123)
+model.rf <- randomForest(y=rms_train$Survived,x=rms_train[,c("Sex","Pclass","Age","size.desc","Embarked")],importance=T,keep.forest = T)
+plot(model.rf)
+legend("topright",colnames(model.rf$err.rate),col=1:3,fill=1:3)
+varImpPlot(model.rf,scale = F)
+pred_cart<-predict(model.rf,rms_train)
+c<-confusionMatrix(table(pred_cart,rms_train$Survived))
+c
+acc<-round(c$overall[[1]]*100,2)
+```
+
+It can be seen from Error plot of RF, that overall error rate of model (OOB) is around 20%, which is in acceptable limits.
+
+Also, variable importance plot Sex is most important variable and Embarked is least important. If you remove Embarked variable from model, accuracy will be decreased by 2-3%.
+
+Overall accuracy of model is around `r acc`% which is pretty high. That's the beauty of RF.
+
+##SVM
+
+SVM are good modelling techniques when you have smaller data set, as similar to our case. We will use Radial Basis Function kernel of SVM.
+
+When training our model on training set we will also employ 10-fold CV to avoid any overfitting issues.
+
+```{r svm,warning=FALSE}
+set.seed(123)
+model.svm<-train(Survived~Sex+Pclass+Age+size.desc+title,data=rms_train,
+                 method="svmRadial",
+                 trControl = trainControl (method="cv" ,number=10, verboseIter = F))
+
+p<-predict(model.svm,rms_train)
+c<-confusionMatrix(table(p,rms_train$Survived))
+c
+acc<-round(c$overall[[1]]*100,2)
+```
+
+As we can see from above results, accuracy from SVM model is `r acc`%, which is quite impressive.
+
+##Boosting
+
+###AdaBoost
+
+We will employ the most common boosting algorithm that is Adaptive Boosting. It is specifically designed to be used when response is binary (2 classes).
+
+We will employ just 3-fold CV as boosting itself is computationally intensive technique.
+```{r adaboost,warning=FALSE}
+set.seed(123)
+model.ada<-train(as.factor(Survived)~Sex+Pclass+Age+size.desc+title,data=rms_train,method="adaboost", trControl = trainControl(method = "cv",number = 3,verboseIter = F))
+p<-predict(model.ada,rms_train)
+c<-confusionMatrix(table(p,rms_train$Survived))
+c
+acc<-round(c$overall[[1]]*100,2)
+```
+
+The accuracy of AdaBoost is whopping `r acc`% on sub-training set. No doubt boosting are most widely used algorithms in competitions like Kaggle.
+
+#Predictions on sub-test sets
+
+So we have build and trained our different models on sub-Training set. Accuracy parameter will be best judge on untouched data set i.e. sub-test set.
+
+We will pick our trained models one-by-one, make predictions on sub-test set and calculate its Accuracy.
+
+Then best model fit will be applied to original test set to compute the output of Survived variable against each Passenger.
+
+```{r pred_rms_test,echo=FALSE}
+
+p<-predict(rms_fit,rms_test,type='response')
+c<-confusionMatrix(table(ifelse(p>0.4,1,0),rms_test$Survived))
+acc<-round(c$overall[[1]]*100,2)
+print(c('Accuracy(%) from Logistic Model:',acc),quote = F)
+
+p<-predict(model.rf,rms_test)
+c<-confusionMatrix(table(p,rms_test$Survived))
+acc<-round(c$overall[[1]]*100,2)
+print(c('Accuracy(%) from Random Forest:',acc),quote = F)
+
+p<-predict(model.svm,rms_test)
+c<-confusionMatrix(table(p,rms_test$Survived))
+acc<-round(c$overall[[1]]*100,2)
+print(c('Accuracy(%) from SVM-RBF:',acc),quote = F)
+
+p<-predict(model.ada,rms_test)
+c<-confusionMatrix(table(p,rms_test$Survived))
+acc<-round(c$overall[[1]]*100,2)
+print(c('Accuracy(%) from AdaBoost:',acc),quote = F)
+```
+
+#Final Predictions
+
+In this section we will predict original test set into Survived (1) and Not Survived (0). Here we will not be calculating accuracy as we do not have actual Survival results (truth) against each passenger.
+
+First we have to do some Feature Engineering to derive predictors like **title** and **size.desc**, without them our model won't be able to predict the response (0/1).
+
+Let's import test data set first into R.
+
+```{r test_set}
+test_set <- read.csv('../input/test.csv',header = T,quote = '"')
+names(rms_test)
+```
+
+As you can see there is no Survived variable. This we will predict in this section.
+
+##Feature Engineering
+
+###Title variable
+
+Let's generate title variable from Name variable like how we had done before on Training set.
+
+```{r title_var}
+test_set$title<-gsub(' ','',gsub('(.*,)|(\\..*)','',test_set$Name,fixed=F,perl = T))
+
+test_set <- within(test_set,title[title %in% c('Capt','Col','Don','Dr','Major','Sir','Rev','Jonkheer') & Sex=='male'] <- 'Mr')
+test_set <- within(test_set,title[Age<30 & Sex=='female'] <- 'Miss')
+test_set <- within(test_set,title[Age>=30 & Sex=='female'] <- 'Mrs')
+
+t(table(test_set$title,test_set$Sex))
+```
+
+Here there is extra title **Ms** of 1 passenger whose Age is missing.
+This passenger doesn't have Spouse or Children. Hence we can assume her to be young female.
+
+So we will convert her title to 'Miss' so our model can use this as predictor.
+
+```{r ms_miss}
+test_set[test_set$title=='Ms',]
+test_set <- within(test_set,title[title=='Ms' & Sex=='female'] <- 'Miss')
+
+t(table(test_set$title,test_set$Sex))
+```
+
+###Impute Age variable
+
+```{r na_age}
+sum(is.na(test_set$Age))
+```
+
+There are around 86 passengers whose Age is missing.
+We will use average Age of different Titles which we had computed in training set. We will NOT compute average age in Test set.
+This is **fundamental principal of pre-processing**. All pre-processing in Test set should happen by using computations of Training set, else it will lead to bias and hence wrong predictions.
+
+```{r impute_age}
+test_set <- within(test_set,Age[title=='Mrs' & is.na(Age)] <- 40)
+test_set <- within(test_set,Age[title=='Miss' & is.na(Age)] <- 18)
+test_set <- within(test_set,Age[title=='Mr' & is.na(Age)] <- 33)
+test_set <- within(test_set,Age[title=='Master' & is.na(Age)] <- 5)
+
+ggplot(data = test_set,aes(title,Age,fill=title))+geom_violin()
+```
+
+###Family Size variable
+
+Here we will find out **size.desc** (Family size) of each passenger.
+We had already computed family size according to different Surname in the training set. But there can be extra Surname/family names in test set which didn't appear in training set.
+So for this we will calculate family sizes of test set, merge this result with family size of training set and then update original test set with this complete set of family size by Surname i.e. to update **size.desc** variable of test set.
+
+```{r size.desc}
+test_set$Surname <- gsub(',.*','',test_set$Name,fixed=F,perl = T) #Extract Surname of each passenger
+
+test_fmly <- as.data.frame(list('surname'=test_set$Surname,'fsize'=test_set$SibSp + test_set$Parch + 1))  #calculate Family size
+
+
+rms_fmly_subset<-subset(rms_fmly,select = 1:2)
+all_fmly <-rbind(test_fmly,rms_fmly_subset) #Merge family size of training and test set
+
+all_fmly$size.desc[all_fmly$fsize==1] <- 'single' 
+all_fmly$size.desc[all_fmly$fsize>1 & all_fmly$fsize<5] <- 'small' 
+all_fmly$size.desc[all_fmly$fsize>=5] <- 'large' 
+
+#Merge family size on original test set using Surname variable
+test_full<-merge(test_set,all_fmly,by.x ="Surname",by.y = "surname" )
+test_set<-subset(test_full,select=-c(fsize))
+
+test_set<- test_set %>% group_by(PassengerId) %>% summarise_all(.funs = function(x) {min(as.character(x))})
+
+names(rms_test)
+```
+
+We will now convert data type of variables to their expected form or similar to what we had build our model on. Characters to Factors and some to numeric.
+
+```{r cast_datatypes}
+test_set<- test_set %>% mutate_if(is.character,as.factor)
+test_set$Parch <- as.integer(test_set$Parch)
+test_set$SibSp <- as.integer(test_set$SibSp)
+test_set$Age <- as.double(test_set$Age)
+t(lapply(test_set,class))
+```
+
+So we are ready with all important predictors and imputation. Now let's head to predict Survived variable.
+
+##Predictions
+
+From previous stats, I choose SVM to be the final model through which Test set response variable will be predicted.
+
+```{r pred_test}
+test_set$Survived<-predict(model.svm,test_set)
+#write.csv(test_set[,c("PassengerId","Survived")],"test_file.csv",quote = F,row.names = F)
+```
+
+#Conclusion
+
+Finally I am done with predictive modelling. I am newbie in data analytics and this is my first attempt to complete a beginner's level project. Finally many months hard work paid off.
+
+Most important thing about data science is not Data. It is second most important thing. Most important is **Question**. What you want to achieve? If correct question is not been answered or not being understood correctly, then it won't lead to fruitful results.
+
+If you like my work request you to vote for it. Thank you for being patient in this complete analysis.

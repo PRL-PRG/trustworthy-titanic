@@ -1,0 +1,408 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> titanic.train <- read.csv("../input/train.csv", stringsAsFactors=FALSE)
+> titanic.test <- read.csv("../input/test.csv",  stringsAsFactors=FALSE)
+> 
+> # Check the type of variables
+> str(titanic.train)    
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> str(titanic.train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> # Check Summary of data
+> summary(titanic.train)
+  PassengerId       Survived          Pclass          Name          
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000   Length:891        
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median :446.0   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309                     
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000                     
+                                                                    
+     Sex                 Age            SibSp           Parch       
+ Length:891         Min.   : 0.42   Min.   :0.000   Min.   :0.0000  
+ Class :character   1st Qu.:20.12   1st Qu.:0.000   1st Qu.:0.0000  
+ Mode  :character   Median :28.00   Median :0.000   Median :0.0000  
+                    Mean   :29.70   Mean   :0.523   Mean   :0.3816  
+                    3rd Qu.:38.00   3rd Qu.:1.000   3rd Qu.:0.0000  
+                    Max.   :80.00   Max.   :8.000   Max.   :6.0000  
+                    NA's   :177                                     
+    Ticket               Fare           Cabin             Embarked        
+ Length:891         Min.   :  0.00   Length:891         Length:891        
+ Class :character   1st Qu.:  7.91   Class :character   Class :character  
+ Mode  :character   Median : 14.45   Mode  :character   Mode  :character  
+                    Mean   : 32.20                                        
+                    3rd Qu.: 31.00                                        
+                    Max.   :512.33                                        
+                                                                          
+> summary(titanic.train)
+  PassengerId       Survived          Pclass          Name          
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000   Length:891        
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median :446.0   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309                     
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000                     
+                                                                    
+     Sex                 Age            SibSp           Parch       
+ Length:891         Min.   : 0.42   Min.   :0.000   Min.   :0.0000  
+ Class :character   1st Qu.:20.12   1st Qu.:0.000   1st Qu.:0.0000  
+ Mode  :character   Median :28.00   Median :0.000   Median :0.0000  
+                    Mean   :29.70   Mean   :0.523   Mean   :0.3816  
+                    3rd Qu.:38.00   3rd Qu.:1.000   3rd Qu.:0.0000  
+                    Max.   :80.00   Max.   :8.000   Max.   :6.0000  
+                    NA's   :177                                     
+    Ticket               Fare           Cabin             Embarked        
+ Length:891         Min.   :  0.00   Length:891         Length:891        
+ Class :character   1st Qu.:  7.91   Class :character   Class :character  
+ Mode  :character   Median : 14.45   Mode  :character   Mode  :character  
+                    Mean   : 32.20                                        
+                    3rd Qu.: 31.00                                        
+                    Max.   :512.33                                        
+                                                                          
+> 
+> # Check missing values in Train data
+> sum(is.na(titanic.train))
+[1] 177
+> 
+> # Age
+> sum(is.na(titanic.train$Age))
+[1] 177
+> 
+> # Embarked
+> table(titanic.train$Embarked)
+
+      C   Q   S 
+  2 168  77 644 
+> 
+> #Fare
+> sum(is.na(titanic.train$Fare))
+[1] 0
+> 
+> # Check missing values in test data
+> sum(is.na(titanic.test))
+[1] 87
+> 
+> # Age
+> sum(is.na(titanic.test$Age))
+[1] 86
+> 
+> # Embarked
+> table(titanic.test$Embarked)
+
+  C   Q   S 
+102  46 270 
+> 
+> #Fare
+> sum(is.na(titanic.test$Fare))
+[1] 1
+> 
+> # Merge the training and test data for fill the missing values
+> # Number of Columns
+> ncol(titanic.train)
+[1] 12
+> ncol(titanic.test)
+[1] 11
+> 
+> # Identify training and testing data set
+> titanic.train$isTrainSet <- TRUE
+> titanic.test$isTrainSet <- FALSE
+> 
+> # Columns name
+> colnames(titanic.train)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"    "isTrainSet" 
+> colnames(titanic.test)
+ [1] "PassengerId" "Pclass"      "Name"        "Sex"         "Age"        
+ [6] "SibSp"       "Parch"       "Ticket"      "Fare"        "Cabin"      
+[11] "Embarked"    "isTrainSet" 
+> 
+> # Add one new column in test data set and the column name is "Survived"
+> titanic.test$Survived <- NA
+> 
+> # Check dimension of both data
+> dim(titanic.train)
+[1] 891  13
+> dim(titanic.test)
+[1] 418  13
+> 
+> # Now our data is ready to merging
+> 
+> Titanic.full <- rbind(titanic.train, titanic.test)
+> 
+> # You can also this line
+> #Titanic.full <-  dplyr::bind_rows(titanic.train, titanic.test)
+> 
+> 418 + 891
+[1] 1309
+> 
+> # Check missing values
+> sum(is.na(Titanic.full))
+[1] 682
+> 
+> # Now fill the missing values of the variables "Age", "Fare", "Embarked"
+> # Embarked
+> table(Titanic.full$Embarked)
+
+      C   Q   S 
+  2 270 123 914 
+> Titanic.full[Titanic.full$Embarked == '', "Embarked"] <- 'S'
+> 
+> # Age
+> table(is.na(Titanic.full$Age))
+
+FALSE  TRUE 
+ 1046   263 
+> sum(is.na(Titanic.full$Age))
+[1] 263
+> 
+> titanic.age_median <- median(Titanic.full$Age, na.rm = TRUE)
+> Titanic.full[is.na(Titanic.full$Age), "Age"] <- titanic.age_median
+> 
+> # Fare
+> table(is.na(Titanic.full$Fare))
+
+FALSE  TRUE 
+ 1308     1 
+> sum(is.na(Titanic.full$Fare))
+[1] 1
+> 
+> titanic.fare_median <- median(Titanic.full$Fare, na.rm = TRUE)
+> Titanic.full[is.na(Titanic.full$Fare), "Fare"] <- titanic.fare_median
+> 
+> # Convert the Chr to Factor some variables like "Pclass", "Sex", "Embarked"
+> Titanic.full$Pclass <- as.factor(Titanic.full$Pclass)
+> Titanic.full$Sex <- as.factor(Titanic.full$Sex)
+> Titanic.full$Embarked <- as.factor(Titanic.full$Embarked)
+> 
+> # Check the structure of all variables
+> str(Titanic.full)
+'data.frame':	1309 obs. of  13 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 28 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+ $ isTrainSet : logi  TRUE TRUE TRUE TRUE TRUE TRUE ...
+> 
+> # Now split the data in training and testing
+> titanic.train <- Titanic.full[Titanic.full$isTrainSet == TRUE,]
+> titanic.test <- Titanic.full[Titanic.full$isTrainSet == FALSE,]
+> 
+> # Again check the missing values for training and testing data
+> # Train
+> sum(is.na(titanic.train$Age))
+[1] 0
+> sum(is.na(titanic.train$Fare))
+[1] 0
+> sum(is.na(titanic.train$Embarked))
+[1] 0
+> 
+> # Test
+> sum(is.na(titanic.test$Age))
+[1] 0
+> sum(is.na(titanic.test$Fare))
+[1] 0
+> sum(is.na(titanic.test$Embarked))
+[1] 0
+> 
+> sum(is.na(titanic.train))
+[1] 0
+> sum(is.na(titanic.test))
+[1] 418
+> 
+> # Remove "isTrainSet" column from the tranig and test data and also remove "Survived" from the test dataset
+> titanic.train$isTrainSet <- NULL
+> titanic.test$isTrainSet <- NULL
+> titanic.test$Survived <- NULL
+> 
+> # The variable name "Survived" chr to Factor in training dataset
+> titanic.train$Survived <- as.factor(titanic.train$Survived)
+> 
+> # Apply randomForest in traing data set
+> # All variables or columns names
+> colnames(titanic.train)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"   
+> 
+> # "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"
+> # "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+> # "Cabin"       "Embarked"  
+> 
+> # Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked
+> 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> rf <- randomForest(formula = Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, data = titanic.train, ntree = 300)
+> print(rf)
+
+Call:
+ randomForest(formula = Survived ~ Pclass + Sex + Age + SibSp +      Parch + Fare + Embarked, data = titanic.train, ntree = 300) 
+               Type of random forest: classification
+                     Number of trees: 300
+No. of variables tried at each split: 2
+
+        OOB estimate of  error rate: 16.39%
+Confusion matrix:
+    0   1 class.error
+0 508  41  0.07468124
+1 105 237  0.30701754
+> attributes(rf)
+$names
+ [1] "call"            "type"            "predicted"       "err.rate"       
+ [5] "confusion"       "votes"           "oob.times"       "classes"        
+ [9] "importance"      "importanceSD"    "localImportance" "proximity"      
+[13] "ntree"           "mtry"            "forest"          "y"              
+[17] "test"            "inbag"           "terms"          
+
+$class
+[1] "randomForest.formula" "randomForest"        
+
+> # We get out of bag error 16.61% and the accuracy is 83.39%
+> 
+> # Prediction with training data set and confusion matrix
+> library(caret)
+Loading required package: lattice
+Loading required package: ggplot2
+
+Attaching package: ‘ggplot2’
+
+The following object is masked from ‘package:randomForest’:
+
+    margin
+
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(lubridate)
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+Warning message:
+package ‘lubridate’ was built under R version 3.6.2 
+> library(lattice)
+> library(ggplot2)
+> 
+> prd.train <- predict(rf, titanic.train)
+> print(head(prd.train))
+1 2 3 4 5 6 
+0 1 0 1 0 0 
+Levels: 0 1
+> # confusionMatrix(prd.train, titanic.train$Survived)
+> 
+> # Prediction with test data set
+> prd.test <- predict(rf, titanic.test)
+> print(head(prd.test))
+892 893 894 895 896 897 
+  0   0   0   0   0   0 
+Levels: 0 1
+> print(tail(prd.test))
+1304 1305 1306 1307 1308 1309 
+   0    0    1    0    0    1 
+Levels: 0 1
+> 
+> # Error rate of RandomForest
+> plot(rf)
+> # In plot we see when the numbers of trees are increses the the OOB error is decreses so we need to chose number of tree is 100-150
+> 
+> # We need "PassengerId" and "Survived" for submitting the result in kaggle.
+> PassengerId <- titanic.test$PassengerId
+> str(PassengerId)
+ int [1:418] 892 893 894 895 896 897 898 899 900 901 ...
+> 
+> # Convert in to dataframe
+> PassengerId.df <- as.data.frame(PassengerId)
+> str(PassengerId.df)
+'data.frame':	418 obs. of  1 variable:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+> 
+> # Now fill the "Survived" column in the PassengerId.df
+> PassengerId.df$Survived <- prd.test
+> 
+> tail(PassengerId.df)
+    PassengerId Survived
+413        1304        0
+414        1305        0
+415        1306        1
+416        1307        0
+417        1308        0
+418        1309        1
+> 
+> # Export the data in CSV format.
+> write.csv(PassengerId.df, file = "Titanic_Kaggle_Submission.csv", row.names = FALSE) 
+> 
+> 
+> 
+> 
+> 
+> 
+> # No. of nodes for the trees
+> hist(treesize(rf), main = "no of nodes per tress", col = "green")
+> 
+> # Check which variables play the importance in the model
+> varImpPlot(rf)
+> 
+> # Top 5
+> varImpPlot(rf, sort = TRUE, n.var = 5)
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  1.756   0.190   2.093 

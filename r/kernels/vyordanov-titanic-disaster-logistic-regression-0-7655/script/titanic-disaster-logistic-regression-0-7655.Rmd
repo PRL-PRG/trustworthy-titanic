@@ -1,0 +1,158 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+This is my first Kaggle kernel. Here I am going to predict who is going to survive the Titanic distaster using logistic regression. First let's load the datasets provided by Kaggle.
+
+```{r datasets}
+train = read.csv("../input/train.csv", stringsAsFactors = F)
+test = read.csv("../input/test.csv", stringsAsFactors = F)
+```
+
+Next let's inspect the training dataset, I are currently not focusing on the testing dataset as its structure is equivalent with the training dataset and only the number of observations will be different.
+
+```{r structure train}
+str(train)
+```
+
+Here is the place to include some information about the variables:
+
+* PassengerId - ID of the passenger (this will definately be exluded from our regression model)
+* Survived - factor variable indicating if the passenger survived (1) or not (0) the accident
+* Pclass - factor variable indicating the ticket class 1st (upper), 2nd (middle) or 3rd (lower)
+* Name - name of the passenger
+* Sex - gender of the passenger
+* Age - fractional if less than 1 and in form xx.5 if estimated
+* SibSp - number of siblings / spouses aboard the Titanic
+* Parch - number of parents / children aboard the Titanic
+* Ticket - ticket number
+* Fare - passenger fare
+* Cabin - cabin number
+* Embarked - facotr variable indicating the port of embarkation C (Cherbourg), Q (Queenstown), S (Southampton)
+
+This reminds me that I need to convert some variables:
+
+```{r}
+train$Survived = as.factor(as.character(train$Survived))
+train$Pclass = as.factor(as.character(train$Pclass))
+train$Sex = as.factor(as.character(train$Sex))
+train$Embarked = as.factor(as.character(train$Embarked))
+
+test$Pclass = as.factor(as.character(test$Pclass))
+test$Sex = as.factor(as.character(test$Sex))
+test$Embarked = as.factor(as.character(test$Embarked))
+```
+
+Let's continue with our data exploration:
+
+```{r summary train}
+summary(train)
+```
+
+From the summary I can see that there are 177 missing observations for the Age variable. I need to investigate this further in order to decide what to do with these 177 observations. Thus I will make a subset of the training dataset containing only the observations with missing age.
+
+```{r subset with missing Age}
+missing = subset(train, is.na(Age))
+summary(missing)
+```
+
+Looking on the summary doesn't bring much insight if these passenger do have something in common, other that the missing Age. Thus I will inspect this visually.
+
+```{r histogram 1}
+library(ggplot2)
+
+ggplot() + 
+    geom_histogram(data = train, mapping = aes(x = Fare), fill = "blue", bins = 5) +
+    geom_histogram(data = missing, mapping = aes(x = Fare), fill = "red", bins = 5) + 
+    facet_grid(.~ Pclass)
+```
+
+From this graph we can notice that most of the passengers with missing Age also have common Pclass value of 3. Here is a summary table of that:
+
+```{r Pclass table for missing}
+table(missing$Pclass, missing$Sex)
+```
+
+If we simply omit these observations in our logistics regression model we will introduce selection bias in our model as we will remove mostly male, low-fare, low-class passengers. Thus we want to impute the missing data
+
+```{r imputation, message=FALSE, warning=FALSE, results='hide'}
+library(mice)
+imputed = complete(mice(train,m=5,maxit=50,meth='pmm',seed=500))
+```
+
+```{r Age distribution after imputation, warning=FALSE}
+ggplot() +
+    geom_histogram(data = imputed, mapping = aes(x = Age), fill = "red", bins = 10) +
+    geom_histogram(data = train, mapping = aes(x = Age), fill = "black", bins = 10, alpha = 0.4) +
+    facet_grid(. ~ Sex)
+```
+
+After the imputation I do not have anymore missing data and the Age distribution among women and men seems to be unchanged. Before continuing with my exploratory data analysis I want to construct a dummy baseline model for prediction:
+
+```{r dummy model}
+table(train$Survived)
+```
+
+My baseline model will predict that Survived = 0, no matter what and it will be accurate in approximately 62% (549/891) of the cases (which is pretty big accuracy by the way). Thus I need to build a logistic regression model later which can beat that. But before that I need to identify the significant variables which can help to improve my prediction score.
+
+```{r exploratory 1, warning=FALSE}
+ggplot() +
+    geom_histogram(data = imputed, mapping = aes(x = Survived, fill = factor(Sex)), alpha = 0.8, stat="count")
+```
+
+
+```{r exploratory 2}
+ggplot() +
+    geom_histogram(data = imputed, mapping = aes(x = Age, fill = factor(Survived)), bins = 10) +
+    facet_grid(. ~ Sex)
+```
+
+```{r exploratory 3, warning=FALSE}
+ggplot() +
+    geom_histogram(data = imputed, mapping = aes(x = Pclass, fill = factor(Survived)), stat="count") +
+    facet_grid(. ~ Sex)
+```
+
+```{r exploratory 4, warning=FALSE}
+ggplot() +
+    geom_histogram(data = imputed, mapping = aes(x = SibSp, fill = factor(Survived)), stat="count") +
+    facet_grid(. ~ Sex)
+```
+
+```{r exploratory 5, warning=FALSE}
+ggplot() +
+    geom_histogram(data = imputed, mapping = aes(x = Parch, fill = factor(Survived)), stat="count") +
+    facet_grid(. ~ Sex)
+```
+
+```{r exploratory 6, warning=FALSE}
+ggplot() +
+    geom_histogram(data = imputed, mapping = aes(x = Embarked, fill = factor(Survived)), stat="count") +
+    facet_grid(. ~ Sex)
+```
+
+Building my first logistic regression model
+
+```{r model1 training, warnings=FALSE}
+imputed = subset(imputed, select = -c(PassengerId))
+model1 = glm(Survived ~ Sex + Pclass + Embarked + SibSp, data = imputed, family=binomial)
+predict1 = predict(model1, type="response")
+
+a = table(imputed$Survived, predict1 >= 0.5)
+
+TP = a[2,2] # true positives
+TN = a[1,1] # true negatives
+FP = a[1,2] # false positives
+FN = a[2,1] # false negatives
+
+sensitivity = TP/(TP+FN)
+specificity = TN/(TN+FN)
+accuracy = (TN + TP)/(TN + TP + FP + FN)
+```
+
+The accuracy of this model is 79.2% on the training set. Let's submit this version and see how it will get scored in Kaggle.
+
+```{r model1 testing, warnings=FALSE}
+prediction <- predict(model1, newdata=test, type = "response")
+solution <- data.frame(PassengerID = test$PassengerId, Survived = round(prediction, 0))
+write.csv(solution, file = 'model1_Solution.csv', row.names = F)
+```

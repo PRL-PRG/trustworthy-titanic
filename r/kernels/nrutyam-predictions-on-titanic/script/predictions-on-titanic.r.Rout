@@ -1,0 +1,1743 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> #Loading all packages
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(plyr)
+------------------------------------------------------------------------------
+You have loaded plyr after dplyr - this is likely to cause problems.
+If you need functions from both plyr and dplyr, please load plyr first, then dplyr:
+library(plyr); library(dplyr)
+------------------------------------------------------------------------------
+
+Attaching package: ‘plyr’
+
+The following objects are masked from ‘package:dplyr’:
+
+    arrange, count, desc, failwith, id, mutate, rename, summarise,
+    summarize
+
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> library(bit64)
+Loading required package: bit
+Attaching package bit
+package:bit (c) 2008-2012 Jens Oehlschlaegel (GPL-2)
+creators: bit bitwhich
+coercion: as.logical as.integer as.bit as.bitwhich which
+operator: ! & | xor != ==
+querying: print length any all min max range sum summary
+bit access: length<- [ [<- [[ [[<-
+for more help type ?bit
+
+Attaching package: ‘bit’
+
+The following object is masked from ‘package:base’:
+
+    xor
+
+Attaching package bit64
+package:bit64 (c) 2011-2012 Jens Oehlschlaegel
+creators: integer64 seq :
+coercion: as.integer64 as.vector as.logical as.integer as.double as.character as.bin
+logical operator: ! & | xor != == < <= >= >
+arithmetic operator: + - * / %/% %% ^
+math: sign abs sqrt log log2 log10
+math: floor ceiling trunc round
+querying: is.integer64 is.vector [is.atomic} [length] format print str
+values: is.na is.nan is.finite is.infinite
+aggregation: any all min max range sum prod
+cumulation: diff cummin cummax cumsum cumprod
+access: length<- [ [<- [[ [[<-
+combine: c rep cbind rbind as.data.frame
+WARNING don't use as subscripts
+WARNING semantics differ from integer
+for more help type ?bit64
+
+Attaching package: ‘bit64’
+
+The following object is masked from ‘package:bit’:
+
+    still.identical
+
+The following objects are masked from ‘package:base’:
+
+    :, %in%, is.double, match, order, rank
+
+> library(Amelia)
+Loading required package: Rcpp
+## 
+## Amelia II: Multiple Imputation
+## (Version 1.7.6, built: 2019-11-24)
+## Copyright (C) 2005-2020 James Honaker, Gary King and Matthew Blackwell
+## Refer to http://gking.harvard.edu/amelia/ for more information
+## 
+> library(e1071)
+> options(scipen=999)
+> 
+> #Accessing the datasets from Kaggle
+> train<-read.csv('../input/train.csv')
+> test<-read.csv('../input/test.csv')
+> 
+> #Checking the structures
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> str(test)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : Factor w/ 418 levels "Abbott, Master. Eugene Joseph",..: 210 409 273 414 182 370 85 58 5 104 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : Factor w/ 77 levels "","A11","A18",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+> 
+> sapply(train,summary)
+$PassengerId
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    1.0   223.5   446.0   446.0   668.5   891.0 
+
+$Survived
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.0000  0.0000  0.0000  0.3838  1.0000  1.0000 
+
+$Pclass
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  1.000   2.000   3.000   2.309   3.000   3.000 
+
+$Name
+                                      Abbing, Mr. Anthony 
+                                                        1 
+                              Abbott, Mr. Rossmore Edward 
+                                                        1 
+                         Abbott, Mrs. Stanton (Rosa Hunt) 
+                                                        1 
+                                      Abelson, Mr. Samuel 
+                                                        1 
+                    Abelson, Mrs. Samuel (Hannah Wizosky) 
+                                                        1 
+                           Adahl, Mr. Mauritz Nils Martin 
+                                                        1 
+                                          Adams, Mr. John 
+                                                        1 
+           Ahlin, Mrs. Johan (Johanna Persdotter Larsson) 
+                                                        1 
+                               Aks, Mrs. Sam (Leah Rosen) 
+                                                        1 
+                              Albimona, Mr. Nassef Cassem 
+                                                        1 
+                                   Alexander, Mr. William 
+                                                        1 
+                              Alhomaki, Mr. Ilmari Rudolf 
+                                                        1 
+                                           Ali, Mr. Ahmed 
+                                                        1 
+                                         Ali, Mr. William 
+                                                        1 
+                            Allen, Miss. Elisabeth Walton 
+                                                        1 
+                                 Allen, Mr. William Henry 
+                                                        1 
+                           Allison, Master. Hudson Trevor 
+                                                        1 
+                             Allison, Miss. Helen Loraine 
+                                                        1 
+          Allison, Mrs. Hudson J C (Bessie Waldo Daniels) 
+                                                        1 
+                                   Allum, Mr. Owen George 
+                                                        1 
+          Andersen-Jensen, Miss. Carla Christine Nielsine 
+                                                        1 
+                                      Anderson, Mr. Harry 
+                                                        1 
+                  Andersson, Master. Sigvard Harald Elias 
+                                                        1 
+                       Andersson, Miss. Ebba Iris Alfrida 
+                                                        1 
+                        Andersson, Miss. Ellis Anna Maria 
+                                                        1 
+                          Andersson, Miss. Erna Alexandra 
+                                                        1 
+                     Andersson, Miss. Ingeborg Constanzia 
+                                                        1 
+                        Andersson, Miss. Sigrid Elisabeth 
+                                                        1 
+                              Andersson, Mr. Anders Johan 
+                                                        1 
+             Andersson, Mr. August Edvard ("Wennerstrom") 
+                                                        1 
+Andersson, Mrs. Anders Johan (Alfrida Konstantia Brogren) 
+                                                        1 
+                               Andreasson, Mr. Paul Edvin 
+                                                        1 
+                               Andrew, Mr. Edgardo Samuel 
+                                                        1 
+                        Andrews, Miss. Kornelia Theodosia 
+                                                        1 
+                                   Andrews, Mr. Thomas Jr 
+                                                        1 
+     Angle, Mrs. William A (Florence "Mary" Agnes Hughes) 
+                                                        1 
+            Appleton, Mrs. Edward Dale (Charlotte Lamson) 
+                                                        1 
+                                Arnold-Franchi, Mr. Josef 
+                                                        1 
+            Arnold-Franchi, Mrs. Josef (Josefine Franchi) 
+                                                        1 
+                                  Artagaveytia, Mr. Ramon 
+                                                        1 
+                                          Asim, Mr. Adola 
+                                                        1 
+                    Asplund, Master. Clarence Gustaf Hugo 
+                                                        1 
+                        Asplund, Master. Edvin Rojj Felix 
+                                                        1 
+                           Asplund, Miss. Lillian Gertrud 
+                                                        1 
+Asplund, Mrs. Carl Oscar (Selma Augusta Emilia Johansson) 
+                                                        1 
+        Astor, Mrs. John Jacob (Madeleine Talmadge Force) 
+                                                        1 
+                                    Attalah, Miss. Malake 
+                                                        1 
+                                     Attalah, Mr. Sleiman 
+                                                        1 
+                            Aubart, Mme. Leontine Pauline 
+                                                        1 
+                                   Augustsson, Mr. Albert 
+                                                        1 
+                                     Ayoub, Miss. Banoura 
+                                                        1 
+                               Backstrom, Mr. Karl Alfred 
+                                                        1 
+  Backstrom, Mrs. Karl Alfred (Maria Mathilda Gustafsson) 
+                                                        1 
+                                   Baclini, Miss. Eugenie 
+                                                        1 
+                            Baclini, Miss. Helene Barbara 
+                                                        1 
+                           Baclini, Miss. Marie Catherine 
+                                                        1 
+                    Baclini, Mrs. Solomon (Latifa Qurban) 
+                                                        1 
+                                        Badt, Mr. Mohamed 
+                                                        1 
+                                 Bailey, Mr. Percy Andrew 
+                                                        1 
+                                        Balkic, Mr. Cerin 
+                                                        1 
+                                  Ball, Mrs. (Ada E Hall) 
+                                                        1 
+                            Banfield, Mr. Frederick James 
+                                                        1 
+                                    Barah, Mr. Hanna Assi 
+                                                        1 
+                                    Barbara, Miss. Saiide 
+                                                        1 
+                          Barbara, Mrs. (Catherine David) 
+                                                        1 
+                             Barber, Miss. Ellen "Nellie" 
+                                                        1 
+                     Barkworth, Mr. Algernon Henry Wilson 
+                                                        1 
+                                   Barton, Mr. David John 
+                                                        1 
+                               Bateman, Rev. Robert James 
+                                                        1 
+                                      Baumann, Mr. John D 
+                                                        1 
+                                 Baxter, Mr. Quigg Edmond 
+                                                        1 
+          Baxter, Mrs. James (Helene DeLaudeniere Chaput) 
+                                                        1 
+                                    Bazzani, Miss. Albina 
+                                                        1 
+                                        Beane, Mr. Edward 
+                                                        1 
+                        Beane, Mrs. Edward (Ethel Clarke) 
+                                                        1 
+                               Beavan, Mr. William Thomas 
+                                                        1 
+                                Becker, Master. Richard F 
+                                                        1 
+                              Becker, Miss. Marion Louise 
+                                                        1 
+                            Beckwith, Mr. Richard Leonard 
+                                                        1 
+         Beckwith, Mrs. Richard Leonard (Sallie Monypeny) 
+                                                        1 
+                                    Beesley, Mr. Lawrence 
+                                                        1 
+                                    Behr, Mr. Karl Howell 
+                                                        1 
+                               Bengtsson, Mr. John Viktor 
+                                                        1 
+                             Berglund, Mr. Karl Ivar Sven 
+                                                        1 
+                               Berriman, Mr. William John 
+                                                        1 
+                                      Betros, Mr. Tannous 
+                                                        1 
+                                    Bidois, Miss. Rosalie 
+                                                        1 
+                                            Bing, Mr. Lee 
+                                                        1 
+                        Birkeland, Mr. Hans Martin Monsen 
+                                                        1 
+                                  Bishop, Mr. Dickinson H 
+                                                        1 
+                  Bishop, Mrs. Dickinson H (Helen Walton) 
+                                                        1 
+                                   Bissette, Miss. Amelia 
+                                                        1 
+                Bjornstrom-Steffansson, Mr. Mauritz Hakan 
+                                                        1 
+                             Blackwell, Mr. Stephen Weart 
+                                                        1 
+                                         Blank, Mr. Henry 
+                                                        1 
+                                 Bonnell, Miss. Elizabeth 
+                                                        1 
+                                Bostandyeff, Mr. Guentcho 
+                                                        1 
+                                  Boulos, Miss. Nourelain 
+                                                        1 
+                                        Boulos, Mr. Hanna 
+                                                        1 
+                                                  (Other) 
+                                                      792 
+
+$Sex
+female   male 
+   314    577 
+
+$Age
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.42   20.12   28.00   29.70   38.00   80.00     177 
+
+$SibSp
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  0.000   0.000   0.000   0.523   1.000   8.000 
+
+$Parch
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.0000  0.0000  0.0000  0.3816  0.0000  6.0000 
+
+$Ticket
+         1601        347082      CA. 2343       3101295        347088 
+            7             7             7             6             6 
+      CA 2144        382652  S.O.C. 14879        113760        113781 
+            6             5             5             4             4 
+        17421         19950          2666        347077        349909 
+            4             4             4             4             4 
+         4133          LINE      PC 17757    W./C. 6608        110152 
+            4             4             4             4             3 
+       110413         13502        230080        239853         24160 
+            3             3             3             3             3 
+       248727         29106        345773        347742         35273 
+            3             3             3             3             3 
+       363291        371110    C.A. 31921    C.A. 34651  F.C.C. 13529 
+            3             3             3             3             3 
+     PC 17572      PC 17582      PC 17755      PC 17760 SC/Paris 2123 
+            3             3             3             3             3 
+       110465        111361        113505        113572        113776 
+            2             2             2             2             2 
+       113789        113798        113803        113806         11668 
+            2             2             2             2             2 
+        11751         11767         11967         12749         13507 
+            2             2             2             2             2 
+        16966         17453         17474         19877         19928 
+            2             2             2             2             2 
+        19943         19996        220845        230136        230433 
+            2             2             2             2             2 
+       231919        237736        239865        243847        244252 
+            2             2             2             2             2 
+       244367        248738        250644        250647        250649 
+            2             2             2             2             2 
+       250655          2627         26360          2651          2653 
+            2             2             2             2             2 
+         2659          2661          2665          2668          2678 
+            2             2             2             2             2 
+         2691          2699         28403          2908         29750 
+            2             2             2             2             2 
+      3101278         31027        345764        347054        347080 
+            2             2             2             2             2 
+       349237         35281        358585        364516       (Other) 
+            2             2             2             2           617 
+
+$Fare
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00    7.91   14.45   32.20   31.00  512.33 
+
+$Cabin
+                        B96 B98     C23 C25 C27              G6         C22 C26 
+            687               4               4               4               3 
+              D            E101              F2             F33             B18 
+              3               3               3               3               2 
+            B20             B22             B28             B35             B49 
+              2               2               2               2               2 
+             B5     B51 B53 B55 B57 B59 B63 B66         B58 B60             B77 
+              2               2               2               2               2 
+           C123            C124            C125            C126              C2 
+              2               2               2               2               2 
+            C52             C65             C68             C78             C83 
+              2               2               2               2               2 
+            C92             C93             D17             D20             D26 
+              2               2               2               2               2 
+            D33             D35             D36            E121             E24 
+              2               2               2               2               2 
+            E25             E33             E44             E67              E8 
+              2               2               2               2               2 
+          F G73              F4             A10             A14             A16 
+              2               2               1               1               1 
+            A19             A20             A23             A24             A26 
+              1               1               1               1               1 
+            A31             A32             A34             A36              A5 
+              1               1               1               1               1 
+             A6              A7            B101            B102             B19 
+              1               1               1               1               1 
+             B3             B30             B37             B38             B39 
+              1               1               1               1               1 
+             B4             B41             B42             B50             B69 
+              1               1               1               1               1 
+            B71             B73             B78             B79             B80 
+              1               1               1               1               1 
+        B82 B84             B86             B94            C101            C103 
+              1               1               1               1               1 
+           C104            C106            C110            C111            C118 
+              1               1               1               1               1 
+           C128            C148             C30             C32             C45 
+              1               1               1               1               1 
+            C46             C47             C49             C50         (Other) 
+              1               1               1               1              49 
+
+$Embarked
+      C   Q   S 
+  2 168  77 644 
+
+> sapply(test,summary)
+$PassengerId
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  892.0   996.2  1100.5  1100.5  1204.8  1309.0 
+
+$Pclass
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  1.000   1.000   3.000   2.266   3.000   3.000 
+
+$Name
+                                  Abbott, Master. Eugene Joseph 
+                                                              1 
+                                    Abelseth, Miss. Karen Marie 
+                                                              1 
+                                  Abelseth, Mr. Olaus Jorgensen 
+                                                              1 
+                       Abrahamsson, Mr. Abraham August Johannes 
+                                                              1 
+                      Abrahim, Mrs. Joseph (Sophie Halaut Easu) 
+                                                              1 
+                                      Aks, Master. Philip Frank 
+                                                              1 
+                                 Aldworth, Mr. Charles Augustus 
+                                                              1 
+                           Allison, Mr. Hudson Joshua Creighton 
+                                                              1 
+                                    Andersen, Mr. Albert Karvin 
+                                                              1 
+                         Andersson, Miss. Ida Augusta Margareta 
+                                                              1 
+                                    Andersson, Mr. Johan Samuel 
+                                                              1 
+                                       Andrew, Mr. Frank Thomas 
+                                                              1 
+                                           Angheloff, Mr. Minko 
+                                                              1 
+                                           Angle, Mr. William A 
+                                                              1 
+                                 Aronsson, Mr. Ernst Axel Algot 
+                                                              1 
+                                                Ashby, Mr. John 
+                                                              1 
+                                    Asplund, Master. Carl Edgar 
+                                                              1 
+                                   Asplund, Master. Filip Oscar 
+                                                              1 
+                     Asplund, Mr. Carl Oscar Vilhelm Gustafsson 
+                                                              1 
+                                     Asplund, Mr. Johan Charles 
+                                                              1 
+                          Assaf Khalil, Mrs. Mariana (Miriam")" 
+                                                              1 
+                                              Assaf, Mr. Gerios 
+                                                              1 
+                                                 Assam, Mr. Ali 
+                                                              1 
+                                         Astor, Col. John Jacob 
+                                                              1 
+                                            Baccos, Mr. Raffull 
+                                                              1 
+                                     Badman, Miss. Emily Louisa 
+                                                              1 
+                                 Baimbrigge, Mr. Charles Robert 
+                                                              1 
+                                             Barry, Miss. Julia 
+                                                              1 
+                                           Beattie, Mr. Thomson 
+                                                              1 
+                                     Beauchamp, Mr. Henry James 
+                                                              1 
+                                   Becker, Miss. Ruth Elizabeth 
+                                                              1 
+               Becker, Mrs. Allen Oliver (Nellie E Baumgardner) 
+                                                              1 
+                                        Bentham, Miss. Lilian W 
+                                                              1 
+                                          Betros, Master. Seman 
+                                                              1 
+                                              Bird, Miss. Ellen 
+                                                              1 
+                                            Birnbaum, Mr. Jakob 
+                                                              1 
+                                   Bjorklund, Mr. Ernst Herbert 
+                                                              1 
+                                        Bonnell, Miss. Caroline 
+                                                              1 
+                                       Borebank, Mr. John James 
+                                                              1 
+                                     Botsford, Mr. William Hull 
+                                                              1 
+                                           Boulos, Master. Akar 
+                                                              1 
+                                       Bowen, Miss. Grace Scott 
+                                                              1 
+                                           Bowenur, Mr. Solomon 
+                                                              1 
+                                   Bradley, Miss. Bridget Delia 
+                                                              1 
+                                        Brady, Mr. John Bertram 
+                                                              1 
+                                   Braf, Miss. Elin Ester Maria 
+                                                              1 
+                                             Brandeis, Mr. Emil 
+                                                              1 
+                                       Brobeck, Mr. Karl Rudolf 
+                                                              1 
+                                      Brown, Miss. Edith Eileen 
+                                                              1 
+                 Brown, Mrs. John Murray (Caroline Lane Lamson) 
+                                                              1 
+                            Bryhl, Miss. Dagmar Jenny Ingeborg  
+                                                              1 
+                                       Buckley, Miss. Katherine 
+                                                              1 
+                                            Buckley, Mr. Daniel 
+                                                              1 
+                Bucknell, Mrs. William Robert (Emma Eliza Ward) 
+                                                              1 
+                                        Burns, Miss. Mary Delia 
+                                                              1 
+                                             Cacic, Miss. Manda 
+                                                              1 
+                                           Cacic, Mr. Jego Grga 
+                                                              1 
+                                   Caldwell, Mr. Albert Francis 
+                                                              1 
+                                           Canavan, Mr. Patrick 
+                                                              1 
+               Candee, Mrs. Edward (Helen Churchill Hungerford) 
+                                                              1 
+                                              Caram, Mr. Joseph 
+                                                              1 
+Cardeza, Mrs. James Warburton Martinez (Charlotte Wardle Drake) 
+                                                              1 
+                                      Carlsson, Mr. Carl Robert 
+                                                              1 
+                                            Carr, Miss. Jeannie 
+                                                              1 
+                                         Carrau, Mr. Jose Pedro 
+                                                              1 
+                                        Carver, Mr. Alfred John 
+                                                              1 
+                                         Case, Mr. Howard Brown 
+                                                              1 
+    Cassebeer, Mrs. Henry Arthur Jr (Eleanor Genevieve Fosdick) 
+                                                              1 
+         Cavendish, Mrs. Tyrell William (Julia Florence Siegel) 
+                                                              1 
+        Chaffee, Mrs. Herbert Fuller (Carrie Constance Toogood) 
+                                                              1 
+                Chapman, Mrs. John Henry (Sara Elizabeth Lawry) 
+                                                              1 
+                                    Chaudanson, Miss. Victorine 
+                                                              1 
+                                       Chevre, Mr. Paul Romaine 
+                                                              1 
+                          Chisholm, Mr. Roderick Robert Crispin 
+                                                              1 
+                                  Christy, Mrs. (Alice Frances) 
+                                                              1 
+                                    Chronopoulos, Mr. Demetrios 
+                                                              1 
+                                       Clark, Mr. Walter Miller 
+                                                              1 
+                  Clark, Mrs. Walter Miller (Virginia McDowell) 
+                                                              1 
+                                  Clarke, Mr. Charles Valentine 
+                                                              1 
+                                           Colbert, Mr. Patrick 
+                                                              1 
+                                   Collett, Mr. Sidney C Stuart 
+                                                              1 
+                               Compton, Mr. Alexander Taylor Jr 
+                                                              1 
+          Compton, Mrs. Alexander Taylor (Mary Eliza Ingersoll) 
+                                                              1 
+                                       Conlon, Mr. Thomas Henry 
+                                                              1 
+                                           Connolly, Miss. Kate 
+                                                              1 
+                                     Cook, Mrs. (Selena Rogers) 
+                                                              1 
+                                                Cor, Mr. Bartol 
+                                                              1 
+                                                  Cor, Mr. Ivan 
+                                                              1 
+                          Corbett, Mrs. Walter H (Irene Colvin) 
+                                                              1 
+            Corey, Mrs. Percy C (Mary Phyllis Elizabeth Miller) 
+                                                              1 
+           Cornell, Mrs. Robert Clifford (Malvina Helen Lamson) 
+                                                              1 
+                                   Cotterill, Mr. Henry Harry"" 
+                                                              1 
+                 Coutts, Mrs. William (Winnie Minnie" Treanor)" 
+                                                              1 
+                                      Crafton, Mr. John Bertram 
+                                                              1 
+                                       Cribb, Miss. Laura Alice 
+                                                              1 
+     Crosby, Mrs. Edward Gifford (Catherine Elizabeth Halstead) 
+                                                              1 
+                                      Cumings, Mr. John Bradley 
+                                                              1 
+                                              Daher, Mr. Shedid 
+                                                              1 
+                         Daly, Miss. Margaret Marcella Maggie"" 
+                                                              1 
+                                                        (Other) 
+                                                            319 
+
+$Sex
+female   male 
+   152    266 
+
+$Age
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.17   21.00   27.00   30.27   39.00   76.00      86 
+
+$SibSp
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.0000  0.0000  0.0000  0.4474  1.0000  8.0000 
+
+$Parch
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.0000  0.0000  0.0000  0.3923  0.0000  9.0000 
+
+$Ticket
+          PC 17608             113503           CA. 2343              16966 
+                 5                  4                  4                  3 
+            220845             347077         C.A. 31029           PC 17483 
+                 3                  3                  3                  3 
+SOTON/O.Q. 3101315             112378             113781              11778 
+                 3                  2                  2                  2 
+             12749              13050              13236              13508 
+                 2                  2                  2                  2 
+             13695              19950              21228             230136 
+                 2                  2                  2                  2 
+             24065               2650               2660               2662 
+                 2                  2                  2                  2 
+             28220              29103             315153              33638 
+                 2                  2                  2                  2 
+            347072             350405              36928           A/5. 851 
+                 2                  2                  2                  2 
+            C 4001          C.A. 2315         C.A. 33112            CA 2144 
+                 2                  2                  2                  2 
+          CA 31352       F.C.C. 13534           PC 17756        S.O./P.P. 2 
+                 2                  2                  2                  2 
+      S.O.C. 14879         W./C. 6607             110469             110489 
+                 2                  2                  1                  1 
+            110813             111163             112051             112058 
+                 1                  1                  1                  1 
+            112377             112901             113038             113044 
+                 1                  1                  1                  1 
+            113054             113059             113509             113773 
+                 1                  1                  1                  1 
+            113778             113780             113790             113791 
+                 1                  1                  1                  1 
+            113795             113796             113801              11753 
+                 1                  1                  1                  1 
+             11765              11767              11769              11770 
+                 1                  1                  1                  1 
+             11813               1222              13567              13905 
+                 1                  1                  1                  1 
+              1601              17463              17464              17475 
+                 1                  1                  1                  1 
+             17765              17770              19877              19924 
+                 1                  1                  1                  1 
+             19928               2003             211535              21332 
+                 1                  1                  1                  1 
+            220844             226875             228414             233478 
+                 1                  1                  1                  1 
+            233734             235509             236853             236854 
+                 1                  1                  1                  1 
+            237216             237249             237393             237670 
+                 1                  1                  1                  1 
+            237734             237735             237789            (Other) 
+                 1                  1                  1                264 
+
+$Fare
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+  0.000   7.896  14.454  35.627  31.500 512.329       1 
+
+$Cabin
+                            A11             A18             A21             A29 
+            327               1               1               1               1 
+            A34              A9             B10             B11             B24 
+              2               1               1               1               1 
+            B26             B36             B41             B45     B51 B53 B55 
+              1               1               1               2               1 
+    B52 B54 B56 B57 B59 B63 B66         B58 B60             B61             B69 
+              1               3               1               1               1 
+            B71             B78            C101            C105            C106 
+              1               1               2               1               1 
+           C116            C130            C132         C22 C26     C23 C25 C27 
+              2               1               1               1               2 
+            C28             C31             C32             C39             C46 
+              1               2               1               1               1 
+            C51             C53             C54         C55 C57              C6 
+              1               1               1               2               2 
+        C62 C64              C7             C78             C80             C85 
+              1               1               2               2               1 
+            C86             C89             C97               D         D10 D12 
+              1               2               1               1               1 
+            D15             D19             D21             D22             D28 
+              1               1               1               1               1 
+            D30             D34             D37             D38             D40 
+              1               1               1               1               1 
+            D43             E31             E34         E39 E41             E45 
+              1               1               2               1               1 
+            E46             E50             E52             E60               F 
+              1               1               1               1               1 
+          F E46           F E57           F G63              F2             F33 
+              1               1               1               1               1 
+             F4              G6 
+              2               1 
+
+$Embarked
+  C   Q   S 
+102  46 270 
+
+> 
+> # *** Str output shows that Test dataset has one variable missing, i.e Survived *** #
+> #Hence, let's create the variable Survived in test and assign missing values to it as of now
+> test$Survived<-NA
+> 
+> # *** Sapply with summary gives missing values information in all variables *** # 
+> #To verify for any missing data
+> missmap(train)
+> missmap(test)
+> 
+> #Missing values are reported in both the datasets for different variables
+> #In order to handle them we need to combine both the datasets and then treat blank values
+> #While treating blank values, we will exclude Survived as this is yet to be predicted for test
+> both<-rbind(train,test)
+> 
+> sapply(both,summary)
+$PassengerId
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+      1     328     655     655     982    1309 
+
+$Survived
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+ 0.0000  0.0000  0.0000  0.3838  1.0000  1.0000     418 
+
+$Pclass
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  1.000   2.000   3.000   2.295   3.000   3.000 
+
+$Name
+                                     Connolly, Miss. Kate 
+                                                        2 
+                                         Kelly, Mr. James 
+                                                        2 
+                                      Abbing, Mr. Anthony 
+                                                        1 
+                              Abbott, Mr. Rossmore Edward 
+                                                        1 
+                         Abbott, Mrs. Stanton (Rosa Hunt) 
+                                                        1 
+                                      Abelson, Mr. Samuel 
+                                                        1 
+                    Abelson, Mrs. Samuel (Hannah Wizosky) 
+                                                        1 
+                           Adahl, Mr. Mauritz Nils Martin 
+                                                        1 
+                                          Adams, Mr. John 
+                                                        1 
+           Ahlin, Mrs. Johan (Johanna Persdotter Larsson) 
+                                                        1 
+                               Aks, Mrs. Sam (Leah Rosen) 
+                                                        1 
+                              Albimona, Mr. Nassef Cassem 
+                                                        1 
+                                   Alexander, Mr. William 
+                                                        1 
+                              Alhomaki, Mr. Ilmari Rudolf 
+                                                        1 
+                                           Ali, Mr. Ahmed 
+                                                        1 
+                                         Ali, Mr. William 
+                                                        1 
+                            Allen, Miss. Elisabeth Walton 
+                                                        1 
+                                 Allen, Mr. William Henry 
+                                                        1 
+                           Allison, Master. Hudson Trevor 
+                                                        1 
+                             Allison, Miss. Helen Loraine 
+                                                        1 
+          Allison, Mrs. Hudson J C (Bessie Waldo Daniels) 
+                                                        1 
+                                   Allum, Mr. Owen George 
+                                                        1 
+          Andersen-Jensen, Miss. Carla Christine Nielsine 
+                                                        1 
+                                      Anderson, Mr. Harry 
+                                                        1 
+                  Andersson, Master. Sigvard Harald Elias 
+                                                        1 
+                       Andersson, Miss. Ebba Iris Alfrida 
+                                                        1 
+                        Andersson, Miss. Ellis Anna Maria 
+                                                        1 
+                          Andersson, Miss. Erna Alexandra 
+                                                        1 
+                     Andersson, Miss. Ingeborg Constanzia 
+                                                        1 
+                        Andersson, Miss. Sigrid Elisabeth 
+                                                        1 
+                              Andersson, Mr. Anders Johan 
+                                                        1 
+             Andersson, Mr. August Edvard ("Wennerstrom") 
+                                                        1 
+Andersson, Mrs. Anders Johan (Alfrida Konstantia Brogren) 
+                                                        1 
+                               Andreasson, Mr. Paul Edvin 
+                                                        1 
+                               Andrew, Mr. Edgardo Samuel 
+                                                        1 
+                        Andrews, Miss. Kornelia Theodosia 
+                                                        1 
+                                   Andrews, Mr. Thomas Jr 
+                                                        1 
+     Angle, Mrs. William A (Florence "Mary" Agnes Hughes) 
+                                                        1 
+            Appleton, Mrs. Edward Dale (Charlotte Lamson) 
+                                                        1 
+                                Arnold-Franchi, Mr. Josef 
+                                                        1 
+            Arnold-Franchi, Mrs. Josef (Josefine Franchi) 
+                                                        1 
+                                  Artagaveytia, Mr. Ramon 
+                                                        1 
+                                          Asim, Mr. Adola 
+                                                        1 
+                    Asplund, Master. Clarence Gustaf Hugo 
+                                                        1 
+                        Asplund, Master. Edvin Rojj Felix 
+                                                        1 
+                           Asplund, Miss. Lillian Gertrud 
+                                                        1 
+Asplund, Mrs. Carl Oscar (Selma Augusta Emilia Johansson) 
+                                                        1 
+        Astor, Mrs. John Jacob (Madeleine Talmadge Force) 
+                                                        1 
+                                    Attalah, Miss. Malake 
+                                                        1 
+                                     Attalah, Mr. Sleiman 
+                                                        1 
+                            Aubart, Mme. Leontine Pauline 
+                                                        1 
+                                   Augustsson, Mr. Albert 
+                                                        1 
+                                     Ayoub, Miss. Banoura 
+                                                        1 
+                               Backstrom, Mr. Karl Alfred 
+                                                        1 
+  Backstrom, Mrs. Karl Alfred (Maria Mathilda Gustafsson) 
+                                                        1 
+                                   Baclini, Miss. Eugenie 
+                                                        1 
+                            Baclini, Miss. Helene Barbara 
+                                                        1 
+                           Baclini, Miss. Marie Catherine 
+                                                        1 
+                    Baclini, Mrs. Solomon (Latifa Qurban) 
+                                                        1 
+                                        Badt, Mr. Mohamed 
+                                                        1 
+                                 Bailey, Mr. Percy Andrew 
+                                                        1 
+                                        Balkic, Mr. Cerin 
+                                                        1 
+                                  Ball, Mrs. (Ada E Hall) 
+                                                        1 
+                            Banfield, Mr. Frederick James 
+                                                        1 
+                                    Barah, Mr. Hanna Assi 
+                                                        1 
+                                    Barbara, Miss. Saiide 
+                                                        1 
+                          Barbara, Mrs. (Catherine David) 
+                                                        1 
+                             Barber, Miss. Ellen "Nellie" 
+                                                        1 
+                     Barkworth, Mr. Algernon Henry Wilson 
+                                                        1 
+                                   Barton, Mr. David John 
+                                                        1 
+                               Bateman, Rev. Robert James 
+                                                        1 
+                                      Baumann, Mr. John D 
+                                                        1 
+                                 Baxter, Mr. Quigg Edmond 
+                                                        1 
+          Baxter, Mrs. James (Helene DeLaudeniere Chaput) 
+                                                        1 
+                                    Bazzani, Miss. Albina 
+                                                        1 
+                                        Beane, Mr. Edward 
+                                                        1 
+                        Beane, Mrs. Edward (Ethel Clarke) 
+                                                        1 
+                               Beavan, Mr. William Thomas 
+                                                        1 
+                                Becker, Master. Richard F 
+                                                        1 
+                              Becker, Miss. Marion Louise 
+                                                        1 
+                            Beckwith, Mr. Richard Leonard 
+                                                        1 
+         Beckwith, Mrs. Richard Leonard (Sallie Monypeny) 
+                                                        1 
+                                    Beesley, Mr. Lawrence 
+                                                        1 
+                                    Behr, Mr. Karl Howell 
+                                                        1 
+                               Bengtsson, Mr. John Viktor 
+                                                        1 
+                             Berglund, Mr. Karl Ivar Sven 
+                                                        1 
+                               Berriman, Mr. William John 
+                                                        1 
+                                      Betros, Mr. Tannous 
+                                                        1 
+                                    Bidois, Miss. Rosalie 
+                                                        1 
+                                            Bing, Mr. Lee 
+                                                        1 
+                        Birkeland, Mr. Hans Martin Monsen 
+                                                        1 
+                                  Bishop, Mr. Dickinson H 
+                                                        1 
+                  Bishop, Mrs. Dickinson H (Helen Walton) 
+                                                        1 
+                                   Bissette, Miss. Amelia 
+                                                        1 
+                Bjornstrom-Steffansson, Mr. Mauritz Hakan 
+                                                        1 
+                             Blackwell, Mr. Stephen Weart 
+                                                        1 
+                                         Blank, Mr. Henry 
+                                                        1 
+                                 Bonnell, Miss. Elizabeth 
+                                                        1 
+                                Bostandyeff, Mr. Guentcho 
+                                                        1 
+                                                  (Other) 
+                                                     1208 
+
+$Sex
+female   male 
+   466    843 
+
+$Age
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.17   21.00   28.00   29.88   39.00   80.00     263 
+
+$SibSp
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.0000  0.0000  0.0000  0.4989  1.0000  8.0000 
+
+$Parch
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  0.000   0.000   0.000   0.385   0.000   9.000 
+
+$Ticket
+          CA. 2343               1601            CA 2144            3101295 
+                11                  8                  8                  7 
+            347077             347082           PC 17608       S.O.C. 14879 
+                 7                  7                  7                  7 
+            113781              19950             347088             382652 
+                 6                  6                  6                  6 
+            113503              16966             220845             349909 
+                 5                  5                  5                  5 
+              4133           PC 17757         W./C. 6608             113760 
+                 5                  5                  5                  4 
+             12749              17421             230136              24160 
+                 4                  4                  4                  4 
+              2666              36928          C.A. 2315         C.A. 33112 
+                 4                  4                  4                  4 
+        C.A. 34651               LINE           PC 17483           PC 17755 
+                 4                  4                  4                  4 
+          PC 17760      SC/Paris 2123         W./C. 6607             110152 
+                 4                  4                  4                  3 
+            110413              11767              13502              19877 
+                 3                  3                  3                  3 
+             19928             230080             239853             248727 
+                 3                  3                  3                  3 
+            248738              26360               2650               2653 
+                 3                  3                  3                  3 
+              2661               2662               2668               2678 
+                 3                  3                  3                  3 
+             28220              29103              29106              29750 
+                 3                  3                  3                  3 
+            315153              33638             345773             347080 
+                 3                  3                  3                  3 
+            347742              35273             363291             367226 
+                 3                  3                  3                  3 
+            370129             371110          A/4 48871           A/5. 851 
+                 3                  3                  3                  3 
+            C 4001          C.A. 2673         C.A. 31921         C.A. 37671 
+                 3                  3                  3                  3 
+      F.C.C. 13529           PC 17558           PC 17569           PC 17572 
+                 3                  3                  3                  3 
+          PC 17582           PC 17756           PC 17758           PC 17761 
+                 3                  3                  3                  3 
+           PP 9549    S.C./PARIS 2079         C.A. 31029 SOTON/O.Q. 3101315 
+                 3                  3                  3                  3 
+            110465             110813             111361             112058 
+                 2                  2                  2                  2 
+            113059             113505             113509             113572 
+                 2                  2                  2                  2 
+            113773             113776             113789             113796 
+                 2                  2                  2                  2 
+            113798             113803             113806            (Other) 
+                 2                  2                  2                947 
+
+$Fare
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+  0.000   7.896  14.454  33.295  31.275 512.329       1 
+
+$Cabin
+                    C23 C25 C27 B57 B59 B63 B66              G6         B96 B98 
+           1014               6               5               5               4 
+        C22 C26             C78               D              F2             F33 
+              4               4               4               4               4 
+             F4             A34     B51 B53 B55         B58 B60            C101 
+              4               3               3               3               3 
+           E101             E34             B18             B20             B22 
+              3               3               2               2               2 
+            B28             B35             B41             B49              B5 
+              2               2               2               2               2 
+            B69             B71             B77             B78            C106 
+              2               2               2               2               2 
+           C123            C124            C125            C126              C2 
+              2               2               2               2               2 
+            C32             C46             C52             C54         C62 C64 
+              2               2               2               2               2 
+            C65             C68              C7             C83             C85 
+              2               2               2               2               2 
+            C86             C92             C93         D10 D12             D15 
+              2               2               2               2               2 
+            D17             D19             D20             D21             D26 
+              2               2               2               2               2 
+            D28             D30             D33             D35             D36 
+              2               2               2               2               2 
+            D37            E121             E24             E25             E31 
+              2               2               2               2               2 
+            E33             E44             E46             E50             E67 
+              2               2               2               2               2 
+             E8           F G63           F G73             B45            C116 
+              2               2               2               2               2 
+            C31         C55 C57              C6             C80             C89 
+              2               2               2               2               2 
+            A10             A14             A16             A19             A20 
+              1               1               1               1               1 
+            A23             A24             A26             A31             A32 
+              1               1               1               1               1 
+            A36              A5              A6              A7            B101 
+              1               1               1               1               1 
+           B102             B19              B3             B30         (Other) 
+              1               1               1               1              88 
+
+$Embarked
+      C   Q   S 
+  2 270 123 914 
+
+> 
+> #Treating NAs in Age variable
+> aggregate(Age~Sex,both,mean)
+     Sex      Age
+1 female 28.68709
+2   male 30.58523
+> #_____________________________#
+> #       Sex    Age            #
+> #       female 28.68709       #
+> #       male   30.58523       #
+> #_____________________________#
+> #Replacing missing ages by mean of the gender
+> for (i in 1:nrow(both)){
++   if(both$Sex[i]=="male" && is.na(both$Age[i])==TRUE){
++     both$Age[i]<-30.58
++   }
++   else if(both$Sex[i]=="female" && is.na(both$Age[i])==TRUE){
++     both$Age[i]<-28.68
++   }
++   else {
++     both$Age[i]<-both$Age[i]
++   }
++ }
+> 
+> #Treating blanks in Embarked variable
+> #PassengerId(62,830) with missing info in Embarked belong to Pclass 1 & have paid an amount of 80
+> aggregate(Fare~Pclass+Embarked,both,range)
+   Pclass Embarked   Fare.1   Fare.2
+1       1           80.0000  80.0000
+2       1        C  25.7417 512.3292
+3       2        C  12.0000  41.5792
+4       3        C   4.0125  22.3583
+5       1        Q  90.0000  90.0000
+6       2        Q   9.6875  12.3500
+7       3        Q   6.7500  29.1250
+8       1        S   0.0000 263.0000
+9       2        S   0.0000  73.5000
+10      3        S   0.0000  69.5500
+> #Output indicates that for Pclass-1, an amount of 80 is accepted for boarding points 'C' & 'S'
+> #To select one among these 2 options, lets check for the frequency of each boarding points
+> table(both$Embarked)
+
+      C   Q   S 
+  2 270 123 914 
+> #_____________________#
+> #      C   Q   S      #
+> #     270 123 914     #
+> #_____________________#
+> #Output indicates 'S' has the highest value
+> #Replacing missing Embarked values by the most occurring level
+> both$Embarked[c(62, 830)]<-'S'
+> 
+> #Treating NA in Fare variable
+> #PassengerId(1044) with missing info in Fare belongs to Pclass 3
+> aggregate(Fare~Pclass,both,median)
+  Pclass    Fare
+1      1 60.0000
+2      2 15.0458
+3      3  8.0500
+> #___________________________#
+> #     Pclass    Fare        #
+> #      1       60.0000      # 
+> #      2       15.0458      #
+> #      3       8.0500       #
+> #___________________________#
+> #Replacing missing Fare by median of the Pclass
+> both$Fare[c(1044)]<-8.05
+> 
+> #Checking blank values in Cabin variable
+> t=count(both, 'Cabin')
+> t
+              Cabin freq
+1                   1014
+2               A10    1
+3               A14    1
+4               A16    1
+5               A19    1
+6               A20    1
+7               A23    1
+8               A24    1
+9               A26    1
+10              A31    1
+11              A32    1
+12              A34    3
+13              A36    1
+14               A5    1
+15               A6    1
+16               A7    1
+17             B101    1
+18             B102    1
+19              B18    2
+20              B19    1
+21              B20    2
+22              B22    2
+23              B28    2
+24               B3    1
+25              B30    1
+26              B35    2
+27              B37    1
+28              B38    1
+29              B39    1
+30               B4    1
+31              B41    2
+32              B42    1
+33              B49    2
+34               B5    2
+35              B50    1
+36      B51 B53 B55    3
+37  B57 B59 B63 B66    5
+38          B58 B60    3
+39              B69    2
+40              B71    2
+41              B73    1
+42              B77    2
+43              B78    2
+44              B79    1
+45              B80    1
+46          B82 B84    1
+47              B86    1
+48              B94    1
+49          B96 B98    4
+50             C101    3
+51             C103    1
+52             C104    1
+53             C106    2
+54             C110    1
+55             C111    1
+56             C118    1
+57             C123    2
+58             C124    2
+59             C125    2
+60             C126    2
+61             C128    1
+62             C148    1
+63               C2    2
+64          C22 C26    4
+65      C23 C25 C27    6
+66              C30    1
+67              C32    2
+68              C45    1
+69              C46    2
+70              C47    1
+71              C49    1
+72              C50    1
+73              C52    2
+74              C54    2
+75          C62 C64    2
+76              C65    2
+77              C68    2
+78               C7    2
+79              C70    1
+80              C78    4
+81              C82    1
+82              C83    2
+83              C85    2
+84              C86    2
+85              C87    1
+86              C90    1
+87              C91    1
+88              C92    2
+89              C93    2
+90              C95    1
+91              C99    1
+92                D    4
+93          D10 D12    2
+94              D11    1
+95              D15    2
+96              D17    2
+97              D19    2
+98              D20    2
+99              D21    2
+100             D26    2
+101             D28    2
+102             D30    2
+103             D33    2
+104             D35    2
+105             D36    2
+106             D37    2
+107             D45    1
+108             D46    1
+109             D47    1
+110             D48    1
+111             D49    1
+112             D50    1
+113             D56    1
+114              D6    1
+115              D7    1
+116              D9    1
+117             E10    1
+118            E101    3
+119             E12    1
+120            E121    2
+121             E17    1
+122             E24    2
+123             E25    2
+124             E31    2
+125             E33    2
+126             E34    3
+127             E36    1
+128             E38    1
+129             E40    1
+130             E44    2
+131             E46    2
+132             E49    1
+133             E50    2
+134             E58    1
+135             E63    1
+136             E67    2
+137             E68    1
+138             E77    1
+139              E8    2
+140           F E69    1
+141           F G63    2
+142           F G73    2
+143              F2    4
+144             F33    4
+145             F38    1
+146              F4    4
+147              G6    5
+148               T    1
+149             A11    1
+150             A18    1
+151             A21    1
+152             A29    1
+153              A9    1
+154             B10    1
+155             B11    1
+156             B24    1
+157             B26    1
+158             B36    1
+159             B45    2
+160     B52 B54 B56    1
+161             B61    1
+162            C105    1
+163            C116    2
+164            C130    1
+165            C132    1
+166             C28    1
+167             C31    2
+168             C39    1
+169             C51    1
+170             C53    1
+171         C55 C57    2
+172              C6    2
+173             C80    2
+174             C89    2
+175             C97    1
+176             D22    1
+177             D34    1
+178             D38    1
+179             D40    1
+180             D43    1
+181         E39 E41    1
+182             E45    1
+183             E52    1
+184             E60    1
+185               F    1
+186           F E46    1
+187           F E57    1
+> 1014/1309
+[1] 0.7746371
+> # *** Output shows Cabin data missing for 1014 records, which is 77% of the total observations *** #
+> #We don't have enough information to predict for this variable, so we are not treating it#
+> 
+> #Changing data types in both
+> both$Ticket<-as.character(both$Ticket)
+> both$Name<-as.character(both$Name)
+> 
+> missmap(both)
+> 
+> # *** Let's look into all variables and try to derive new variables for our analysis *** #
+> 
+> # *** Women and children were given first preference to use lifeboat *** #
+> #We have no direct information whether the passenger was a child or adult
+> #Hence this has to be derived. We can take the help of the variable Age
+> #If 0, means not a child; 1, means a child
+> #Generic formula applied if age < 18 then considered as child
+> both$IsChild<-ifelse(both$Age < 18,1,0)
+> 
+> # *** Checking SibSp & Parch *** #
+> #As per description: No of siblings / spouses aboard the Titanic is denoted by SibSp
+> #As per description: No of parents / children aboard the Titanic is denoted by Parch
+> #Using these fields, let's find out the family size of each passenger
+> both$Fsize<-both$SibSp+both$Parch+1
+> table(both$Fsize)
+
+  1   2   3   4   5   6   7   8  11 
+790 235 159  43  22  25  16   8  11 
+> #Further classifying using newly derived variable Fsize
+> both$Fcat <- 'Large'
+> both$Fcat[both$Fsize==1] <- 'Single'
+> both$Fcat[both$Fsize > 1 & both$Fsize <= 4] <- 'Small'
+> 
+> # *** Checking Name *** #
+> head(both$Name)
+[1] "Braund, Mr. Owen Harris"                            
+[2] "Cumings, Mrs. John Bradley (Florence Briggs Thayer)"
+[3] "Heikkinen, Miss. Laina"                             
+[4] "Futrelle, Mrs. Jacques Heath (Lily May Peel)"       
+[5] "Allen, Mr. William Henry"                           
+[6] "Moran, Mr. James"                                   
+> both$Title<-sapply(both$Name, FUN=function(x) {strsplit(x,split='[,.]')[[1]][2]})
+> both$Title<-gsub(' ', '', both$Title)
+> table(both$Title)
+
+       Capt         Col         Don        Dona          Dr    Jonkheer 
+          1           4           1           1           8           1 
+       Lady       Major      Master        Miss        Mlle         Mme 
+          1           2          61         260           2           1 
+         Mr         Mrs          Ms         Rev         Sir theCountess 
+        757         197           2           8           1           1 
+> #Titles with very low counts to be collated into one object
+> lowcnt_title <- c('Dona', 'Lady', 'Capt', 'Col', 'Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer','theCountess')
+> #Classifying further
+> both$Title[both$Title %in% c('Ms', 'Mlle')] <- 'Miss'
+> both$Title[both$Title == 'Mme'] <- 'Mrs'
+> both$Title[both$Title %in% lowcnt_title] <- 'Others'
+> table(both$Title)
+
+Master   Miss     Mr    Mrs Others 
+    61    264    757    198     29 
+> 
+> # *** Naives Bayes approach used for our prediction, here independent variables should be factor in nature *** #
+> #Keeping this into picture, we will convert Fare & Age into different categories for analysis
+> 
+> # *** Categorizing Fare *** #
+> both$Fare2<-'30+'
+> both$Fare2[both$Fare < 30 & both$Fare >= 20] <- '20-30'
+> both$Fare2[both$Fare < 20 & both$Fare >= 10] <- '10-20'
+> both$Fare2[both$Fare < 10] <- '<10'
+> 
+> # *** Categorizing Age *** #
+> both$Age2<-'Above 50'
+> both$Age2[both$Age <= 50 & both$Age > 40] <- '41-50'
+> both$Age2[both$Age <= 40 & both$Age > 30] <- '31-40'
+> both$Age2[both$Age <= 30 & both$Age > 20] <- '21-30'
+> both$Age2[both$Age <= 20 & both$Age > 10] <- '11-20'
+> both$Age2[both$Age <= 10] <- 'Within 10'
+> 
+> #Changing data types in both
+> both$Title<-as.factor(both$Title)
+> both$Fcat<-as.factor(both$Fcat)
+> both$SibSp<-as.factor(both$SibSp)
+> both$Parch<-as.factor(both$Parch)
+> both$Pclass<-as.factor(both$Pclass)
+> both$Fare2<-as.factor(both$Fare2)
+> both$IsChild<-as.factor(both$IsChild)
+> both$Age2<-as.factor(both$Age2)
+> 
+> 
+> # *** As missing values treatment & feature engineering are done, let's split the datasets *** #
+> data_train<-both[1:891,]
+> data_test<-both[892:1309,]
+> 
+> #In this challenge, we have been asked to complete the analysis of what sorts of people were likely to survive. 
+> #In particular, to apply the tools of machine learning to predict which passengers survived the tragedy.
+> #We will apply Naive Bayes & SVM techniques
+> #First to find out the count of people survived
+> table(data_train$Survived)
+
+  0   1 
+549 342 
+> #Taking percentage
+> prop.table(table(data_train$Survived))
+
+        0         1 
+0.6161616 0.3838384 
+> # *** Output shows only 38% Survived the tragedy, meaning a majority of people on board died *** # 
+> #Keeping this into picture, lets assume all died in data_test dataset
+> data_test$Survived<-0
+> 
+> #Let's find out the count of people survived based on their gender
+> table(data_train$Sex,data_train$Survived)
+        
+           0   1
+  female  81 233
+  male   468 109
+> #Taking percentage
+> prop.table(table(data_train$Sex,data_train$Survived),1)
+        
+                 0         1
+  female 0.2579618 0.7420382
+  male   0.8110919 0.1889081
+> # *** Output indicates that gender of the person really affected the chances of survival *** #
+> 
+> #Checking with Sex & IsChild together
+> t=count(data_train, c('Survived','IsChild', 'Sex'))
+> t
+  Survived IsChild    Sex freq
+1        0       0 female   64
+2        0       0   male  433
+3        0       1 female   17
+4        0       1   male   35
+5        1       0 female  195
+6        1       0   male   86
+7        1       1 female   38
+8        1       1   male   23
+> # *** Output still shows gender an important variable for depicting survival rate *** #
+> 
+> #Checking with Embarked variable
+> boxplot(data_train$Survived~data_train$Embarked)
+> table(data_train$Embarked,data_train$Survived)
+   
+      0   1
+      0   0
+  C  75  93
+  Q  47  30
+  S 427 219
+> prop.table(table(data_train$Embarked,data_train$Survived),1)
+   
+            0         1
+                       
+  C 0.4464286 0.5535714
+  Q 0.6103896 0.3896104
+  S 0.6609907 0.3390093
+> # *** Output says people departed from point C have a better survival rate *** #
+> 
+> #Checking with Pclass variable
+> boxplot(data_train$Survived~data_train$Pclass)
+> table(data_train$Pclass,data_train$Survived)
+   
+      0   1
+  1  80 136
+  2  97  87
+  3 372 119
+> prop.table(table(data_train$Pclass,data_train$Survived),1)
+   
+            0         1
+  1 0.3703704 0.6296296
+  2 0.5271739 0.4728261
+  3 0.7576375 0.2423625
+> # *** Output says people with Pclass-1 have a better survival rate *** #
+> 
+> #Checking no of survived persons with Pclass & Embarked
+> aggregate(Survived~Pclass+Embarked,data_train,sum)
+  Pclass Embarked Survived
+1      1        C       59
+2      2        C        9
+3      3        C       25
+4      1        Q        1
+5      2        Q        2
+6      3        Q       27
+7      1        S       76
+8      2        S       76
+9      3        S       67
+> 
+> #Checking no of survived persons with Pclass, Sex & Embarked
+> aggregate(Survived~Pclass+Sex+Embarked,data_train,sum)
+   Pclass    Sex Embarked Survived
+1       1 female        C       42
+2       2 female        C        7
+3       3 female        C       15
+4       1   male        C       17
+5       2   male        C        2
+6       3   male        C       10
+7       1 female        Q        1
+8       2 female        Q        2
+9       3 female        Q       24
+10      1   male        Q        0
+11      2   male        Q        0
+12      3   male        Q        3
+13      1 female        S       48
+14      2 female        S       61
+15      3 female        S       33
+16      1   male        S       28
+17      2   male        S       15
+18      3   male        S       34
+> # *** Female has better chances of survival, so let's assume all females in data_test survived *** #
+> data_test$Survived<-ifelse(data_test$Sex=="female",1,0)
+> 
+> #Changing Survived variable into factor
+> data_train$Survived<-as.factor(data_train$Survived)
+> data_test$Survived<-as.factor(data_test$Survived)
+> 
+> ###Creating Our Model with Naive Bayes method
+> data_1<- data_train[,c("Survived","Pclass","Sex","SibSp","Parch","Fare2","Embarked","Fcat","Title","Age2")]
+> data_test1<-data_test[,c(2,3,5,7,8,12,15,16,17,18)]
+> nb_model<-naiveBayes(Survived~.,data=data_1)
+> nb_model
+
+Naive Bayes Classifier for Discrete Predictors
+
+Call:
+naiveBayes.default(x = X, y = Y, laplace = laplace)
+
+A-priori probabilities:
+Y
+        0         1 
+0.6161616 0.3838384 
+
+Conditional probabilities:
+   Pclass
+Y           1         2         3
+  0 0.1457195 0.1766849 0.6775956
+  1 0.3976608 0.2543860 0.3479532
+
+   Sex
+Y      female      male
+  0 0.1475410 0.8524590
+  1 0.6812865 0.3187135
+
+   SibSp
+Y             0           1           2           3           4           5
+  0 0.724954463 0.176684882 0.027322404 0.021857923 0.027322404 0.009107468
+  1 0.614035088 0.327485380 0.038011696 0.011695906 0.008771930 0.000000000
+   SibSp
+Y             8
+  0 0.012750455
+  1 0.000000000
+
+   Parch
+Y             0           1           2           3           4           5
+  0 0.810564663 0.096539162 0.072859745 0.003642987 0.007285974 0.007285974
+  1 0.681286550 0.190058480 0.116959064 0.008771930 0.000000000 0.002923977
+   Parch
+Y             6           9
+  0 0.001821494 0.000000000
+  1 0.000000000 0.000000000
+
+   Fare2
+Y         <10     10-20     20-30       30+
+  0 0.4899818 0.1876138 0.1420765 0.1803279
+  1 0.1959064 0.2222222 0.1695906 0.4122807
+
+   Embarked
+Y                     C         Q         S
+  0 0.0000000 0.1366120 0.0856102 0.7777778
+  1 0.0000000 0.2719298 0.0877193 0.6403509
+
+   Fcat
+Y        Large     Single      Small
+  0 0.09471767 0.68123862 0.22404372
+  1 0.02923977 0.47660819 0.49415205
+
+   Title
+Y       Master       Miss         Mr        Mrs     Others
+  0 0.03096539 0.10018215 0.79417122 0.04735883 0.02732240
+  1 0.06725146 0.38011696 0.23684211 0.29239766 0.02339181
+
+   Age2
+Y        11-20      21-30      31-40      41-50   Above 50  Within 10
+  0 0.12932605 0.29690346 0.35336976 0.09653916 0.07650273 0.04735883
+  1 0.12865497 0.35087719 0.24853801 0.09649123 0.06432749 0.11111111
+
+> 
+> #Predicting Survival rate in test dataset
+> nb_test_predict <- predict(nb_model,data_test1[,-1])
+> 
+> #Confusion matrix
+> table(pred=nb_test_predict,true=data_test1$Survived)
+    true
+pred   0   1
+   0 230   9
+   1  36 143
+> 
+> #Determining accuracy from confusion matrix
+> mean(nb_test_predict==data_test1$Survived)
+[1] 0.8923445
+> #____________________________Accuracy rate from Naive Bayes approach is 0.8923445_________________________#
+> 
+> ###Checking Our Model with SVM method
+> svm_model<-svm(Survived~.,data=data_1)
+> svm_model
+
+Call:
+svm(formula = Survived ~ ., data = data_1)
+
+
+Parameters:
+   SVM-Type:  C-classification 
+ SVM-Kernel:  radial 
+       cost:  1 
+
+Number of Support Vectors:  440
+
+> 
+> #Predicting Survival rate in test dataset
+> svm_test_predict <- predict(svm_model,data_test1[,-1])
+> 
+> #Confusion matrix
+> table(pred=svm_test_predict,true=data_test1$Survived)
+    true
+pred   0   1
+   0 257   3
+   1   9 149
+> 
+> #Determining accuracy from confusion matrix
+> mean(svm_test_predict==data_test1$Survived)
+[1] 0.9712919
+> #____________________________Accuracy rate from SVM approach is 0.9712919___________________________________#
+> 
+> 
+> # *** Building the output dataset with SVM & exporting it into csv *** #
+> MyOutput<-data.frame(PassengerId=data_test$PassengerId,Survived=svm_test_predict)
+> write.csv(MyOutput,"MyOutput.csv",row.names = FALSE)
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  0.846   0.091   0.942 

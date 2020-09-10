@@ -1,0 +1,90 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> library(tidyverse);library(mlr)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+Loading required package: ParamHelpers
+'mlr' is in maintenance mode since July 2019. Future development
+efforts will go into its successor 'mlr3' (<https://mlr3.mlr-org.com>).
+> 
+> list.files(path = "../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> ## Saving data
+> parallel::detectCores()
+[1] 12
+> # If you save any files or images, these will be put in the "output" directory. You 
+> # can see the output directory by committing and running your kernel (using the 
+> # Commit & Run button) and then checking out the compiled version of your kernel.
+> 
+> dt <- read.csv("../input/train.csv")
+> 
+> 
+> dt$PassengerId <- NULL
+> dt$Name <- NULL
+> dt$Ticket <- NULL
+> dt$Cabin <- NULL
+> 
+> dt$Survived <- factor(dt$Survived)
+> dt$Pclass <- factor(dt$Pclass)
+> dt$SibSp <- factor(dt$SibSp)
+> dt$Parch <- factor(dt$Parch)
+> 
+> tsk <- makeClassifTask(data=dt,target="Survived")
+> tsk <- smote(tsk,rate = 1.61)
+> 
+> lrn.cforest <- makeLearner("classif.cforest")
+> ps.cforest <- makeParamSet(
++   makeIntegerParam("ntree",lower=500, upper=700),
++   makeIntegerParam("mtry",lower=2, upper = 8)
++ )
+> 
+> ctrl <- makeTuneControlIrace(budget = 100)
+> 
+> parallelMap::parallelStartSocket(4)
+Starting parallelization in mode=socket with cpus=4.
+> rslt.cforest <- tuneParams(learner = lrn.cforest,
++                            task=tsk,
++                            resampling = cv3, 
++                            par.set = ps.cforest, 
++                            control = ctrl
++                            )
+[Tune] Started tuning learner classif.cforest for parameter set:
+         Type len Def     Constr Req Tunable Trafo
+ntree integer   -   - 500 to 700   -    TRUE     -
+mtry  integer   -   -     2 to 8   -    TRUE     -
+With control class: TuneControlIrace
+Imputation value: 1
+Error in requirePackages("irace", why = "tuneIrace", default.method = "load") : 
+  For tuneIrace please install the following packages: irace
+Calls: tuneParams -> sel.func -> requirePackages -> stopf
+Execution halted

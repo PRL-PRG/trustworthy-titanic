@@ -1,0 +1,370 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> rm(list = ls())
+> library(data.table)
+> library(Matrix)
+> library(xgboost)
+Warning message:
+package ‘xgboost’ was built under R version 3.6.2 
+> library(caret)
+Loading required package: lattice
+Loading required package: ggplot2
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following object is masked from ‘package:xgboost’:
+
+    slice
+
+The following objects are masked from ‘package:data.table’:
+
+    between, first, last
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> 
+> 
+> cat("Read data")
+Read data> 
+> df_train <- fread('../input/train.csv', sep=",", na.strings = "NA")
+> df_test  <- fread('../input/test.csv' , sep=",", na.strings = "NA")
+> 
+> 
+> df_test %>% summarise_each(funs(sum(is.na(.))))
+  PassengerId Pclass Name Sex Age SibSp Parch Ticket Fare Cabin Embarked
+1           0      0    0   0  86     0     0      0    1     0        0
+Warning messages:
+1: `summarise_each_()` is deprecated as of dplyr 0.7.0.
+Please use `across()` instead.
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+2: `funs()` is deprecated as of dplyr 0.8.0.
+Please use a list of either functions or lambdas: 
+
+  # Simple named list: 
+  list(mean = mean, median = median)
+
+  # Auto named with `tibble::lst()`: 
+  tibble::lst(mean, median)
+
+  # Using lambdas
+  list(~ mean(., trim = .2), ~ median(., na.rm = TRUE))
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+> df_train %>% summarise_each(funs(sum(is.na(.))))
+  PassengerId Survived Pclass Name Sex Age SibSp Parch Ticket Fare Cabin
+1           0        0      0    0   0 177     0     0      0    0     0
+  Embarked
+1        0
+> df_test[is.na(df_test$Age),"Age"] <- mean(df_test$Age, na.rm = TRUE)
+> df_train[is.na(df_train$Age),"Age"] <- mean(df_train$Age, na.rm = TRUE)
+> 
+> 
+> 
+> data = rbind(df_train,df_test,fill=T)
+> data$Title <- gsub('(.*, )|(\\..*)', '', data$Name)
+> 
+> rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
++                 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+> 
+> # Also reassign mlle, ms, and mme accordingly
+> data$Title[data$Title == 'Mlle']        <- 'Miss' 
+> data$Title[data$Title == 'Ms']          <- 'Miss'
+> data$Title[data$Title == 'Mme']         <- 'Mrs' 
+> data$Title[data$Title %in% rare_title]  <- 'Rare Title'
+> 
+> data$Surname <- sapply(data$Name,  
++                        function(x) strsplit(x, split = '[,.]')[[1]][1])
+> 
+> # Create a family size variable including the passenger themselves
+> data$Fsize <- data$SibSp + data$Parch + 1
+> 
+> data$FsizeD[data$Fsize == 1] <- 'singleton'
+> data$FsizeD[data$Fsize < 5 & data$Fsize > 1] <- 'small'
+> data$FsizeD[data$Fsize > 4] <- 'large'
+> 
+> data$isAlone <- 0
+> data[data$Fsize == 1,"isAlone"] <- 1
+> 
+> 
+> data$Deck <- factor(sapply(data$Cabin, function(x) unlist(strsplit(x, NULL)[[1]][1])))
+> 
+> data <- data[,-c("Ticket","Name","Surname", "Cabin", "Deck")]
+> ohe_feats = c('Pclass', "Sex",'SibSp' ,'Parch', 'Embarked', 'Title', 'FsizeD', 'isAlone','Fsize')
+> 
+> 
+> for (f in ohe_feats){
++     levels = unique(data[[f]])
++     data[[f]] = factor(data[[f]], level = levels)
++ }
+> 
+> 
+> 
+> train = data[data$PassengerId %in% df_train$PassengerId,]
+> y_train <- train[!is.na(Survived),Survived]
+> train = train[,Survived:=NULL]
+> train = train[,PassengerId:=NULL]
+> train_sparse <- data.matrix(train)
+> 
+> test = data[data$PassengerId  %in% df_test$PassengerId,]
+> test_ids <- test[,PassengerId]
+> test[,Survived:=NULL]
+> test[,PassengerId:=NULL]
+> test_sparse <- data.matrix(test)
+> 
+> dtrain <- xgb.DMatrix(data=train_sparse, label=y_train)
+> dtest <- xgb.DMatrix(data=test_sparse);
+> 
+> gc()
+          used  (Mb) gc trigger  (Mb) limit (Mb) max used  (Mb)
+Ncells 2015848 107.7    3847205 205.5         NA  2884582 154.1
+Vcells 3501260  26.8    8388608  64.0      16384  5476133  41.8
+> 
+> # Params for xgboost
+> param <- list(booster = "gbtree",
++               eval_metric = "auc", 
++               objective = "binary:logistic",
++               eta = .11,
++               gamma = 1,
++               max_depth = 6,
++               min_child_weight = 1,
++               subsample = .7,
++               colsample_bytree = .7)
+> 
+> 
+> rounds = 72
+> mpreds = data.table(id=test_ids)
+> 
+> for(random.seed.num in 1:10) {
++   print(paste("[", random.seed.num , "] training xgboost begin ",sep=""," : ",Sys.time()))
++   set.seed(random.seed.num)
++   xgb_model <- xgb.train(data = dtrain,
++                          params = param,
++                          watchlist = list(train = dtrain),
++                          nrounds = rounds,
++                          verbose = 1,
++                          print_every_n = 5)
++   
++   vpreds = predict(xgb_model,dtest) 
++   mpreds = cbind(mpreds, vpreds)    
++   colnames(mpreds)[random.seed.num+1] = paste("pred_seed_", random.seed.num, sep="")
++ }
+[1] "[1] training xgboost begin  : 2020-09-10 13:45:06"
+[1]	train-auc:0.880876 
+[6]	train-auc:0.903730 
+[11]	train-auc:0.912049 
+[16]	train-auc:0.920943 
+[21]	train-auc:0.930557 
+[26]	train-auc:0.936410 
+[31]	train-auc:0.940000 
+[36]	train-auc:0.943688 
+[41]	train-auc:0.945640 
+[46]	train-auc:0.947235 
+[51]	train-auc:0.950095 
+[56]	train-auc:0.951776 
+[61]	train-auc:0.955062 
+[66]	train-auc:0.957469 
+[71]	train-auc:0.960843 
+[72]	train-auc:0.961365 
+[1] "[2] training xgboost begin  : 2020-09-10 13:45:06"
+[1]	train-auc:0.790555 
+[6]	train-auc:0.906427 
+[11]	train-auc:0.915828 
+[16]	train-auc:0.919963 
+[21]	train-auc:0.934836 
+[26]	train-auc:0.939047 
+[31]	train-auc:0.941707 
+[36]	train-auc:0.944894 
+[41]	train-auc:0.946298 
+[46]	train-auc:0.949302 
+[51]	train-auc:0.950862 
+[56]	train-auc:0.953014 
+[61]	train-auc:0.956465 
+[66]	train-auc:0.957706 
+[71]	train-auc:0.960287 
+[72]	train-auc:0.960154 
+[1] "[3] training xgboost begin  : 2020-09-10 13:45:06"
+[1]	train-auc:0.780747 
+[6]	train-auc:0.908534 
+[11]	train-auc:0.915711 
+[16]	train-auc:0.924123 
+[21]	train-auc:0.931353 
+[26]	train-auc:0.937595 
+[31]	train-auc:0.941289 
+[36]	train-auc:0.945627 
+[41]	train-auc:0.948463 
+[46]	train-auc:0.950351 
+[51]	train-auc:0.953078 
+[56]	train-auc:0.954537 
+[61]	train-auc:0.958497 
+[66]	train-auc:0.960167 
+[71]	train-auc:0.963448 
+[72]	train-auc:0.963490 
+[1] "[4] training xgboost begin  : 2020-09-10 13:45:07"
+[1]	train-auc:0.819472 
+[6]	train-auc:0.895586 
+[11]	train-auc:0.912036 
+[16]	train-auc:0.926983 
+[21]	train-auc:0.932701 
+[26]	train-auc:0.937398 
+[31]	train-auc:0.941920 
+[36]	train-auc:0.946559 
+[41]	train-auc:0.949485 
+[46]	train-auc:0.952066 
+[51]	train-auc:0.953874 
+[56]	train-auc:0.957299 
+[61]	train-auc:0.958785 
+[66]	train-auc:0.959906 
+[71]	train-auc:0.960273 
+[72]	train-auc:0.960273 
+[1] "[5] training xgboost begin  : 2020-09-10 13:45:07"
+[1]	train-auc:0.878650 
+[6]	train-auc:0.914369 
+[11]	train-auc:0.921340 
+[16]	train-auc:0.924712 
+[21]	train-auc:0.931894 
+[26]	train-auc:0.936253 
+[31]	train-auc:0.940397 
+[36]	train-auc:0.945779 
+[41]	train-auc:0.950197 
+[46]	train-auc:0.953405 
+[51]	train-auc:0.955552 
+[56]	train-auc:0.958492 
+[61]	train-auc:0.961538 
+[66]	train-auc:0.963030 
+[71]	train-auc:0.964193 
+[72]	train-auc:0.964731 
+[1] "[6] training xgboost begin  : 2020-09-10 13:45:07"
+[1]	train-auc:0.878828 
+[6]	train-auc:0.905623 
+[11]	train-auc:0.915759 
+[16]	train-auc:0.924858 
+[21]	train-auc:0.934373 
+[26]	train-auc:0.938328 
+[31]	train-auc:0.943550 
+[36]	train-auc:0.945677 
+[41]	train-auc:0.949251 
+[46]	train-auc:0.951986 
+[51]	train-auc:0.952955 
+[56]	train-auc:0.955448 
+[61]	train-auc:0.958196 
+[66]	train-auc:0.961086 
+[71]	train-auc:0.961773 
+[72]	train-auc:0.961927 
+[1] "[7] training xgboost begin  : 2020-09-10 13:45:07"
+[1]	train-auc:0.845506 
+[6]	train-auc:0.902124 
+[11]	train-auc:0.920129 
+[16]	train-auc:0.925598 
+[21]	train-auc:0.933662 
+[26]	train-auc:0.937723 
+[31]	train-auc:0.941976 
+[36]	train-auc:0.945635 
+[41]	train-auc:0.948788 
+[46]	train-auc:0.951352 
+[51]	train-auc:0.956313 
+[56]	train-auc:0.957962 
+[61]	train-auc:0.960026 
+[66]	train-auc:0.961834 
+[71]	train-auc:0.962542 
+[72]	train-auc:0.962441 
+[1] "[8] training xgboost begin  : 2020-09-10 13:45:07"
+[1]	train-auc:0.879462 
+[6]	train-auc:0.890814 
+[11]	train-auc:0.915250 
+[16]	train-auc:0.923071 
+[21]	train-auc:0.928935 
+[26]	train-auc:0.933438 
+[31]	train-auc:0.936487 
+[36]	train-auc:0.941209 
+[41]	train-auc:0.944924 
+[46]	train-auc:0.949746 
+[51]	train-auc:0.950034 
+[56]	train-auc:0.952495 
+[61]	train-auc:0.954590 
+[66]	train-auc:0.956154 
+[71]	train-auc:0.957552 
+[72]	train-auc:0.957200 
+[1] "[9] training xgboost begin  : 2020-09-10 13:45:07"
+[1]	train-auc:0.881150 
+[6]	train-auc:0.911437 
+[11]	train-auc:0.910781 
+[16]	train-auc:0.921087 
+[21]	train-auc:0.931172 
+[26]	train-auc:0.938903 
+[31]	train-auc:0.942104 
+[36]	train-auc:0.944697 
+[41]	train-auc:0.948135 
+[46]	train-auc:0.949991 
+[51]	train-auc:0.952138 
+[56]	train-auc:0.954979 
+[61]	train-auc:0.956636 
+[66]	train-auc:0.958319 
+[71]	train-auc:0.959959 
+[72]	train-auc:0.959783 
+[1] "[10] training xgboost begin  : 2020-09-10 13:45:07"
+[1]	train-auc:0.862126 
+[6]	train-auc:0.899117 
+[11]	train-auc:0.910992 
+[16]	train-auc:0.922480 
+[21]	train-auc:0.928139 
+[26]	train-auc:0.934245 
+[31]	train-auc:0.937824 
+[36]	train-auc:0.942061 
+[41]	train-auc:0.944578 
+[46]	train-auc:0.946801 
+[51]	train-auc:0.949171 
+[56]	train-auc:0.951009 
+[61]	train-auc:0.954710 
+[66]	train-auc:0.957118 
+[71]	train-auc:0.958194 
+[72]	train-auc:0.958396 
+> 
+> mpreds_2 = mpreds[, id:= NULL]
+> mpreds_2 = mpreds_2[, y := rowMeans(.SD)]
+> 
+> mpreds_2[mpreds_2$y <= 0.5,"x"] <- 0
+> mpreds_2[mpreds_2$y > 0.5,"x"] <- 1
+> 
+> 
+> submission = data.table(PassengerId=test_ids, Survived=mpreds_2$x)
+> write.table(submission, "titanic_xgboost.csv", sep=",", dec=".", quote=FALSE, row.names=FALSE)
+> 
+> 
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  8.451   0.207   2.262 

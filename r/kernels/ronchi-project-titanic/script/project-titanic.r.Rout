@@ -1,0 +1,315 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # load in packages we'll use
+> library(tidyverse) # utility functions
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(rpart) # for regression trees
+> library(randomForest) # for random forests
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library(dplyr)
+> library(ggplot2)
+> 
+> train <- read.csv("../input/train.csv", stringsAsFactors=FALSE)
+> test <- read_csv("../input/test.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> 
+> summary(train)
+  PassengerId       Survived          Pclass          Name          
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000   Length:891        
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median :446.0   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309                     
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000                     
+                                                                    
+     Sex                 Age            SibSp           Parch       
+ Length:891         Min.   : 0.42   Min.   :0.000   Min.   :0.0000  
+ Class :character   1st Qu.:20.12   1st Qu.:0.000   1st Qu.:0.0000  
+ Mode  :character   Median :28.00   Median :0.000   Median :0.0000  
+                    Mean   :29.70   Mean   :0.523   Mean   :0.3816  
+                    3rd Qu.:38.00   3rd Qu.:1.000   3rd Qu.:0.0000  
+                    Max.   :80.00   Max.   :8.000   Max.   :6.0000  
+                    NA's   :177                                     
+    Ticket               Fare           Cabin             Embarked        
+ Length:891         Min.   :  0.00   Length:891         Length:891        
+ Class :character   1st Qu.:  7.91   Class :character   Class :character  
+ Mode  :character   Median : 14.45   Mode  :character   Mode  :character  
+                    Mean   : 32.20                                        
+                    3rd Qu.: 31.00                                        
+                    Max.   :512.33                                        
+                                                                          
+> summary(test)
+  PassengerId         Pclass          Name               Sex           
+ Min.   : 892.0   Min.   :1.000   Length:418         Length:418        
+ 1st Qu.: 996.2   1st Qu.:1.000   Class :character   Class :character  
+ Median :1100.5   Median :3.000   Mode  :character   Mode  :character  
+ Mean   :1100.5   Mean   :2.266                                        
+ 3rd Qu.:1204.8   3rd Qu.:3.000                                        
+ Max.   :1309.0   Max.   :3.000                                        
+                                                                       
+      Age            SibSp            Parch           Ticket         
+ Min.   : 0.17   Min.   :0.0000   Min.   :0.0000   Length:418        
+ 1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.0000   Class :character  
+ Median :27.00   Median :0.0000   Median :0.0000   Mode  :character  
+ Mean   :30.27   Mean   :0.4474   Mean   :0.3923                     
+ 3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.0000                     
+ Max.   :76.00   Max.   :8.0000   Max.   :9.0000                     
+ NA's   :86                                                          
+      Fare            Cabin             Embarked        
+ Min.   :  0.000   Length:418         Length:418        
+ 1st Qu.:  7.896   Class :character   Class :character  
+ Median : 14.454   Mode  :character   Mode  :character  
+ Mean   : 35.627                                        
+ 3rd Qu.: 31.500                                        
+ Max.   :512.329                                        
+ NA's   :1                                              
+> 
+> # there are two methods to replace NA below is another method but I'm using the other option
+> # another method to replace NA
+> #age.mean <- mean(train$Age, na.rm=TRUE)
+> #train$Age[is.na(train$Age)] = age.mean
+> 
+> # fix the train data due to NA issue
+> avg <- median(train$Age, na.rm = TRUE)
+> train$Age <- replace(train$Age,is.na(train$Age),avg)
+> 
+> # fix the test data due to NA issue
+> avg <- median(test$Age, na.rm = TRUE)
+> test$Age <- replace(test$Age,is.na(test$Age),avg)
+> 
+> # there is also one NA under FARE for test data and this will be fixed as well.
+> avg <- median(test$Fare, na.rm = TRUE)
+> test$Fare <- replace(test$Fare,is.na(test$Fare),avg)
+> 
+> 
+> library(gridExtra)
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:randomForest’:
+
+    combine
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> library(grid)
+> 
+> # tidy one rows with no embarkation point and just put them to C ( 2 records only)
+> subset(train,!(Embarked %in% c('C','Q','S')))
+    PassengerId Survived Pclass                                      Name
+62           62        1      1                       Icard, Miss. Amelie
+830         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Cabin Embarked
+62  female  38     0     0 113572   80   B28         
+830 female  62     0     0 113572   80   B28         
+> train$Embarked[!(train$Embarked %in% c('C','Q','S'))] <- 'C'
+> 
+> # ggplot using geom_bar for some of the features
+> a <- ggplot(train, aes(x = factor(Sex), fill = factor(Survived))) + geom_bar(position='dodge')   
+> b <- ggplot(train, aes(x = factor(Pclass), fill = factor(Survived))) + geom_bar(position='dodge')   
+> c <- ggplot(train, aes(x = factor(Parch), fill = factor(Survived))) + geom_bar(position='dodge')   
+> d <- ggplot(train, aes(x = factor(SibSp), fill = factor(Survived))) + geom_bar(position='dodge')   
+> e <- ggplot(train, aes(x = factor(Embarked), fill = factor(Survived))) + geom_bar(position='dodge')   
+> 
+> grid.arrange(a,b,c,d,e, ncol=2)
+> 
+> 
+> 
+> ggplot(train, aes(x = factor(Embarked), fill = factor(Survived))) + geom_bar(position='dodge')  + facet_grid(Pclass~.)
+> 
+> train$AgeGrp[train$Age<=12] <- 'Kids'
+> train$AgeGrp[train$Age>12 & train$Age<=55] <- 'Adults'
+> train$AgeGrp[train$Age>55] <- 'Seniors'
+> train$AgeGrp <- factor(train$AgeGrp)
+> 
+> prop.table(table(train$AgeGrp))*100
+
+   Adults      Kids   Seniors 
+87.766554  7.744108  4.489338 
+> 
+> train %>% filter(AgeGrp != 'Adults') %>% ggplot(aes(x = factor(Sex), fill = factor(Survived))) + geom_bar(position='dodge') + facet_grid(AgeGrp~Pclass)
+> 
+> # group to determine family/single
+> train$status <- 'Family'
+> train$status[train$Parch==0 & train$SibSp==0] <- 'Single'
+> train$status <- factor(train$status)
+> 
+> # work out the composition of the data
+> a <- prop.table(table(train$status)) * 100
+> b <- table(train$status)
+> rbind(Pctg = a,Count = b)
+         Family    Single
+Pctg   39.73064  60.26936
+Count 354.00000 537.00000
+> 
+> train %>% ggplot(aes(x = factor(status), fill = factor(Survived))) + geom_bar(position='dodge') + facet_grid(.~Pclass)
+> 
+> # Machine learning one using 10 fold validation
+> library(caret)
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+> train$Survived <- factor(train$Survived)
+> 
+> 
+> # create 10 fold validation
+> control <- trainControl(method="cv", number=10)
+> metric <- "Accuracy"
+> 
+> # Random Forest
+> set.seed(7)
+> fit.rf <- train(Survived ~ Sex + Pclass + AgeGrp + status + Fare, data=train, method="rf", metric=metric, trControl=control)
+> 
+> # based on the summary above, I decided to use random forest as my model
+> # let's see confusion matrix against training data to see how accurate it is
+> # put the result to another field called Survived2 and you prob will see accuracy around 84%, roughly about the same with 10 fold testing above
+> 
+> train$Survived2 <- predict(fit.rf,train)
+> confusionMatrix(train$Survived2,train$Survived)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction   0   1
+         0 522  66
+         1  27 276
+                                          
+               Accuracy : 0.8956          
+                 95% CI : (0.8737, 0.9149)
+    No Information Rate : 0.6162          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.7745          
+                                          
+ Mcnemar's Test P-Value : 8.134e-05       
+                                          
+            Sensitivity : 0.9508          
+            Specificity : 0.8070          
+         Pos Pred Value : 0.8878          
+         Neg Pred Value : 0.9109          
+             Prevalence : 0.6162          
+         Detection Rate : 0.5859          
+   Detection Prevalence : 0.6599          
+      Balanced Accuracy : 0.8789          
+                                          
+       'Positive' Class : 0               
+                                          
+> 
+> 
+> test$AgeGrp[test$Age<=12] <- 'Kids'
+Warning message:
+Unknown or uninitialised column: `AgeGrp`. 
+> test$AgeGrp[test$Age>12 & test$Age<=55] <- 'Adults'
+> test$AgeGrp[test$Age>55] <- 'Seniors'
+> test$AgeGrp <- factor(test$AgeGrp)
+> 
+> 
+> test$status <- 'Family'
+> test$status[test$Parch==0 & test$SibSp==0] <- 'Single'
+> test$status <- factor(test$status)
+> test$status <- factor(test$status)
+> 
+> summary(test)
+  PassengerId         Pclass          Name               Sex           
+ Min.   : 892.0   Min.   :1.000   Length:418         Length:418        
+ 1st Qu.: 996.2   1st Qu.:1.000   Class :character   Class :character  
+ Median :1100.5   Median :3.000   Mode  :character   Mode  :character  
+ Mean   :1100.5   Mean   :2.266                                        
+ 3rd Qu.:1204.8   3rd Qu.:3.000                                        
+ Max.   :1309.0   Max.   :3.000                                        
+      Age            SibSp            Parch           Ticket         
+ Min.   : 0.17   Min.   :0.0000   Min.   :0.0000   Length:418        
+ 1st Qu.:23.00   1st Qu.:0.0000   1st Qu.:0.0000   Class :character  
+ Median :27.00   Median :0.0000   Median :0.0000   Mode  :character  
+ Mean   :29.60   Mean   :0.4474   Mean   :0.3923                     
+ 3rd Qu.:35.75   3rd Qu.:1.0000   3rd Qu.:0.0000                     
+ Max.   :76.00   Max.   :8.0000   Max.   :9.0000                     
+      Fare            Cabin             Embarked             AgeGrp   
+ Min.   :  0.000   Length:418         Length:418         Adults :374  
+ 1st Qu.:  7.896   Class :character   Class :character   Kids   : 25  
+ Median : 14.454   Mode  :character   Mode  :character   Seniors: 19  
+ Mean   : 35.577                                                      
+ 3rd Qu.: 31.472                                                      
+ Max.   :512.329                                                      
+    status   
+ Family:165  
+ Single:253  
+             
+             
+             
+             
+> 
+> # now let's apply the model to test data
+> test$Survived <-  predict(fit.rf,test)
+> 
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+> write.csv(submit, file = "titanic3.csv", row.names = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+ 12.098   0.505  12.681 

@@ -1,0 +1,387 @@
+####简介
+一个实际的数据挖掘项目包括6个阶段
+#####1)提出正确的问题
+问题本身确定了挖掘的对向与目标
+#####2)数据采集
+利用文件的i/o函数，JDBC/ODBC,网络爬虫技术从不同的系统，例如文件，数据库或internet采集数据，称为原始数据。由于原始数据存在存在格式的无序性与差异性问题，要利用分析工具与可视化程序来处理它们。
+#####3)数据清洗
+包括数据解析，排序，合并，筛选，缺失值插补以其其它各种数据转化和数据组织过程，最终得到一个合适数据分析的数据结构。
+#####4)基础数据分析
+进行基本的探索性数据分析，包括计算数据的汇总，采用基本的统计，聚类以及可视化方法来帮助用户更好的理解数据的特征，还可以通过图形来展现发现数据的主要性质，变化趋势，以及孤立点等。
+#####5)高级数据分析
+我们可以通过描述性统计得到有关数据特征的一个大概特征。但是我们希望从中得到一个大致推论，让用户以此为依据根据输入参数预测数据特征，这就必须借用机器学习的方法基于训练数据生成预测模型，在根据预测模型根据给定输入预测输出。
+#####6)模型评估
+为了评估生成的模型是否在给定领域能够得到最优的结果，还要进行模型的筛选。该任务通常包括多个步骤，包括参数的预处理，参数调优，机器学习算法切换。
+下列样例子，我们将根据titanic获救乘客的数据，进行一个简单的数据挖掘，具体内容是从数据源kaggle取得数据（可能要fc),完成数据清洗，执行基本的数据分析分析，判断哪些属性对逃生概率有重要的影响。再执行深度数据挖掘，构建分类算法，根据给定的输入数据预测逃生概率。最后进行模型评估并取得预测模型。
+####从csv读取数据
+#####1)从kaggle下载数据
+https://www.kaggle.com/c/titanic/data
+#####2)设置路径
+```
+> setwd("d:/R-TT")
+> getwd()
+[1] "d:/R-TT"
+```
+#####3)使用read.csv读取数据
+```
+#读取之后用str（）查看，""之间没有空格
+> train.data = read.csv("titanic.csv",na.strings = c("NA",""))
+> str(train.data)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 147 levels "A10","A14","A16",..: NA 82 NA 56 NA NA 130 NA NA NA ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+> train.data$Survived = factor(train.data$Survived)
+> train.data$Pclass = factor(train.data$Pclass)
+> str(train.data)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 147 levels "A10","A14","A16",..: NA 82 NA 56 NA NA 130 NA NA NA ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+```
+#####4)注意
+na.strings 代表缺失数据的值(转化为NA)，不参与运算
+####3.根据数据类型进行转化
+```
+#将int型数据转化成factor型.与上面对比有两列数据转化为factor
+> train.data$Survived = factor(train.data$Survived)
+> train.data$Pclass = factor(train.data$Pclass)
+> str(train.data)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 147 levels "A10","A14","A16",..: NA 82 NA 56 NA NA 130 NA NA NA ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+```
+Survived(0=NO,1=YES)和Pclass(1=1st,2=2nd,3=3rd)都属于定类变量，我们使用factor函数将这两个变量转化为类型因子
+####4.检查缺失值
+#####1)做准备
+将属性Survived和Pclass转换为因子类型
+R用NA(not available)代表缺失值，用NaN代表（not a number）代表不存在的值
+#####2)进行操作
+```
+#用is.na()判断当成属于值是否包含NA值
+ is.na(train.data$Age)
+  [1] FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+ [16] FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE  TRUE  TRUE
+ [31] FALSE  TRUE  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE
+ [46]  TRUE  TRUE  TRUE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE
+ [61] FALSE FALSE FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+ [76] FALSE  TRUE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE
+ [91] FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE
+[106] FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[121] FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE
+[136] FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[151] FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE FALSE FALSE
+[166] FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE
+[181]  TRUE  TRUE FALSE FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[196] FALSE  TRUE FALSE  TRUE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[211] FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE
+[226] FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE
+[241]  TRUE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE
+[256] FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE
+[271]  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE
+[286] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE  TRUE FALSE
+[301]  TRUE  TRUE FALSE  TRUE  TRUE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[316] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE
+[331]  TRUE FALSE FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[346] FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE  TRUE
+[361] FALSE FALSE FALSE FALSE  TRUE FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE
+[376]  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE
+[391] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[406] FALSE FALSE FALSE FALSE  TRUE  TRUE  TRUE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE FALSE
+[421]  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE  TRUE FALSE FALSE  TRUE FALSE FALSE FALSE
+[436] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE
+[451] FALSE  TRUE FALSE FALSE  TRUE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE
+[466] FALSE  TRUE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE
+[481] FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE
+[496]  TRUE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE
+[511] FALSE  TRUE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE  TRUE
+[526] FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE
+[541] FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE
+[556] FALSE FALSE  TRUE FALSE FALSE  TRUE FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE  TRUE FALSE
+[571] FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE  TRUE
+[586] FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE  TRUE FALSE  TRUE FALSE
+[601] FALSE  TRUE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE  TRUE  TRUE FALSE
+[616] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE
+[631] FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE
+[646] FALSE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE  TRUE FALSE FALSE  TRUE FALSE FALSE FALSE
+[661] FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE
+[676] FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[691] FALSE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[706] FALSE FALSE FALSE FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE
+[721] FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE
+[736] FALSE FALSE FALSE  TRUE  TRUE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[751] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE
+[766] FALSE  TRUE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE  TRUE FALSE  TRUE FALSE
+[781] FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE  TRUE  TRUE FALSE
+[796] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[811] FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[826]  TRUE  TRUE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE  TRUE
+[841] FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE
+[856] FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE  TRUE FALSE
+[871] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE
+[886] FALSE FALSE FALSE  TRUE FALSE FALSE
+#is.na()进行了标记，用sum()统计缺失值总数
+> sum(is.na(train.data$Age) == TRUE)
+[1] 177
+#用缺失总数除以非缺失数来计算缺失比例
+> sum(is.na(train.data$Age) == TRUE)/length(train.data$Age)
+[1] 0.1986532
+#用sapply函数来计算所有属性缺失值的比例：
+> sapply(train.data, function(df){
++   sum(is.na(df==TRUE))/length(df)
++ })
+PassengerId    Survived      Pclass        Name         Sex         Age       SibSp       Parch 
+0.000000000 0.000000000 0.000000000 0.000000000 0.000000000 0.198653199 0.000000000 0.000000000 
+     Ticket        Fare       Cabin    Embarked 
+0.000000000 0.000000000 0.771043771 0.002244669 
+#除了观察缺失值的比例，我们可以使用Amelia包对缺失值进行可视化处理
+> library(Rcpp)
+> library(Amelia)
+#使用missmap函数绘制缺失值示意图
+> missmap(train.data,main = "MISSINGMAP")
+
+```
+![titanic数据集缺失值图](http://img.blog.csdn.net/20170526161247951?watermark/2/text/aHR0cDovL2Jsb2cuY3Nkbi5uZXQvZGluZ21pbmcwMDE=/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70/gravity/SouthEast)
+
+####5.插补缺失值
+1）执行以下操作增补缺失值
+```
+#首先列出出发港口的分布。增加了useNA = "alays"的参数设置，展示train.data中最大的两个港口个数
+> table(train.data$Embarked,useNA = "always")
+
+   C    Q    S <NA> 
+ 168   77  644    2 
+#将其中两个缺失值处理为概率最大的两个港口
+> train.data$Embarked[which(is.na(train.data$Embarked))] = 'S'
+> table(train.data$Embarked,useNA = "always")
+
+   C    Q    S <NA> 
+ 168   77  646    0 
+#AGE有很多缺失值，考虑到age与称乎Name在很大的相关性，我们可以根据将其所属年龄的平均值进行插补。
+#首先将name 转化成character
+>train.data$Name = as.character(train.data$Name)
+
+#strsplit（）把字符串按照某个规则进行拆分，\\s表示   空格,回车,换行等空白符,  +号表示一个或多个的意思,这里我们只摘抄了后面几行展示分类规则。
+>strsplit(train.data$Name,"\\s+")
+
+.......
+[[883]]
+[1] "Dahlberg," "Miss."     "Gerda"     "Ulrika"   
+
+[[884]]
+[1] "Banfield," "Mr."       "Frederick" "James"    
+
+[[885]]
+[1] "Sutehall," "Mr."       "Henry"     "Jr"       
+
+[[886]]
+[1] "Rice,"     "Mrs."      "William"   "(Margaret" "Norton)"  
+
+[[887]]
+[1] "Montvila," "Rev."      "Juozas"   
+
+[[888]]
+[1] "Graham,"  "Miss."    "Margaret" "Edith"   
+
+[[889]]
+[1] "Johnston,"  "Miss."      "Catherine"  "Helen"      "\"Carrie\""
+
+[[890]]
+[1] "Behr,"  "Mr."    "Karl"   "Howell"
+
+[[891]]
+[1] "Dooley," "Mr."     "Patrick"
+
+
+
+
+
+#生成的strsplit是列表形式，unlist()取消列表，这里我们只摘抄了后面几行展示这个过程
+>unlist(strsplit(train.data$Name,"\\s+"))
+......
+[3598] "Mr."                     "Henry"                   "Jr"                     
+[3601] "Rice,"                   "Mrs."                    "William"                
+[3604] "(Margaret"               "Norton)"                 "Montvila,"              
+[3607] "Rev."                    "Juozas"                  "Graham,"                
+[3610] "Miss."                   "Margaret"                "Edith"                  
+[3613] "Johnston,"               "Miss."                   "Catherine"              
+[3616] "Helen"                   "\"Carrie\""              "Behr,"                  
+[3619] "Mr."                     "Karl"                    "Howell"                 
+[3622] "Dooley,"                 "Mr."                     "Patrick"  
+
+#用table计算其出现的频次，
+table_words = table(unlist(strsplit(train.data$Name,"\\s+")))
+#我们用（"\\."）做为一种正则表达式，做为一种筛选的条件，sort()进行排序
+> sort(table_words [grep("\\.",names(table_words))],decreasing = TRUE)
+
+      Mr.     Miss.      Mrs.   Master.       Dr.      Rev.      Col.    Major.     Mlle. 
+      517       182       125        40         7         6         2         2         2 
+    Capt. Countess.      Don. Jonkheer.        L.     Lady.      Mme.       Ms.      Sir. 
+        1         1         1         1         1         1         1         1         1 
+#为了找到包含缺失值的不同人群，我们使用stringr包提供的str_match函数来匹配包含符号“.的子字符串，然后使用cbind函数将列拼在一起，最后，用table函数来获得缺失值的统计信息，并对每种人群进行计数
+> library(stringr)
+> tb = cbind(train.data$Age,str_match(train.data$Name,"[a-zA-Z]+\\."))
+#tb的左侧列出了年龄包括缺省值，右侧列出了正式表达形式
+> tb
+
+       [,1]   [,2]       
+
+  [1,] "22"   "Mr."      
+
+  [2,] "38"   "Mrs."     
+
+  [3,] "26"   "Miss."    
+
+  [4,] "35"   "Mrs."     
+
+  [5,] "35"   "Mr."      
+
+  [6,] NA     "Mr."      
+
+  [7,] "54"   "Mr."      
+
+  [8,] "2"    "Master."  
+
+  [9,] "27"   "Mrs."     
+
+ [10,] "14"   "Mrs."     
+
+ [11,] "4"    "Miss."    
+
+ [12,] "58"   "Miss."    
+
+ [13,] "20"   "Mr."      
+
+ [14,] "39"   "Mr."      
+
+ [15,] "14"   "Miss."    
+
+ [16,] "55"   "Mrs."     
+
+ [17,] "2"    "Master."  
+
+ [18,] NA     "Mr."      
+
+ [19,] "31"   "Mrs."     
+
+ [20,] NA     "Mrs."   
+
+#将为含有缺失值的对应列找出来
+
+> tb[is.na(tb[,1]),2]
+  [1] "Mr."     "Mr."     "Mrs."    "Mr."     "Miss."   "Mr."     "Mrs."    "Miss."   "Mr."    
+ [10] "Mr."     "Mr."     "Mr."     "Miss."   "Mr."     "Mr."     "Mr."     "Master." "Mr."    
+ [19] "Mr."     "Miss."   "Mr."     "Mr."     "Mr."     "Mr."     "Miss."   "Mr."     "Mr."    
+ [28] "Miss."   "Mrs."    "Mr."     "Mr."     "Master." "Mrs."    "Mr."     "Master." "Miss."  
+ [37] "Mr."     "Mr."     "Mrs."    "Mr."     "Miss."   "Mr."     "Mr."     "Mr."     "Miss."  
+ [46] "Miss."   "Miss."   "Miss."   "Mr."     "Mrs."    "Mr."     "Miss."   "Mr."     "Miss."  
+ [55] "Mr."     "Mr."     "Mr."     "Mr."     "Miss."   "Mr."     "Miss."   "Mr."     "Miss."  
+ [64] "Mr."     "Miss."   "Mrs."    "Mr."     "Mrs."    "Mr."     "Mr."     "Miss."   "Miss."  
+ [73] "Mr."     "Mrs."    "Miss."   "Mrs."    "Mr."     "Mr."     "Miss."   "Mr."     "Mr."    
+ [82] "Mr."     "Mrs."    "Mr."     "Mr."     "Mr."     "Mrs."    "Mr."     "Mr."     "Mr."    
+ [91] "Mrs."    "Mr."     "Mr."     "Mr."     "Mr."     "Mr."     "Mr."     "Mr."     "Miss."  
+[100] "Mr."     "Mr."     "Mr."     "Miss."   "Mr."     "Mr."     "Mr."     "Mr."     "Mr."    
+[109] "Mr."     "Mr."     "Mrs."    "Mr."     "Mr."     "Mr."     "Mr."     "Mr."     "Mr."    
+[118] "Miss."   "Mr."     "Miss."   "Mrs."    "Mr."     "Mr."     "Miss."   "Miss."   "Mr."    
+[127] "Mr."     "Mr."     "Mr."     "Miss."   "Mr."     "Mr."     "Mr."     "Mr."     "Mr."    
+[136] "Mr."     "Mr."     "Miss."   "Mr."     "Mr."     "Mrs."    "Mr."     "Miss."   "Mr."    
+[145] "Miss."   "Master." "Mr."     "Mr."     "Miss."   "Mr."     "Mr."     "Mr."     "Mr."    
+[154] "Mr."     "Dr."     "Mr."     "Mr."     "Mr."     "Mr."     "Mr."     "Mr."     "Miss."  
+[163] "Mr."     "Mr."     "Mr."     "Mr."     "Mr."     "Mr."     "Mr."     "Mr."     "Mr."    
+[172] "Mrs."    "Mr."     "Miss."   "Mr."     "Mr."     "Miss."  
+
+#对其进行统计
+
+> table(tb[is.na(tb[,1]),2])
+
+    Dr. Master.   Miss.     Mr.    Mrs. 
+
+      1       4      36     119      17 
+
+#如果某个人群包含缺失值，插补的方式是将每一类人群平均值计算出来（不包含缺失值）,grepl检索目标行命令，"Mr\\."的\\表示绝对匹配
+> mean.mr = mean(train.data$Age[grepl("Mr\\.",train.data$Name)&!is.na(train.data$Age)])
+> 
+> mean.mrs = mean(train.data$Age[grepl("Mrs\\.",train.data$Name)&!is.na(train.data$Age)])
+> 
+> mean.dr = mean(train.data$Age[grepl("Dr\\.",train.data$Name)&!is.na(train.data$Age)])
+> 
+> mean.miss = mean(train.data$Age[grepl("Miss\\.",train.data$Name)&!is.na(train.data$Age)])
+> 
+> mean.master = mean(train.data$Age[grepl("Master\\.",train.data$Name)&!is.na(train.data$Age)])
+
+#将每类人的人属性均值插补到缺失值中
+> train.data$Age[grepl("Mr\\.",train.data$Name)&!is.na(train.data$Age)] = mean.mr
+> 
+> train.data$Age[grepl("Mrs\\.",train.data$Name)&!is.na(train.data$Age)] = mean.mrs
+> 
+> train.data$Age[grepl("Dr\\.",train.data$Name)&!is.na(train.data$Age)] = mean.miss
+> 
+> train.data$Age[grepl("Master\\.",train.data$Name)&!is.na(train.data$Age)] = mean.master
+
+#对于缺失值，我们考虑他们的身份，将其所属人群的年龄平均值来插补缺失值，不过。对于Cabin属性，由于该属性缺失太多，没有办法从其它参考属性来推断，进一步分析中不在尝试使用该属性。
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

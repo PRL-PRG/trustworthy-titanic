@@ -1,0 +1,358 @@
+---
+title: "Predicting Survival of Titanic Passengers"
+author: "Caleb Lau"
+date: '2017-02-21'
+output:
+  html_document:
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_float: no
+  pdf_document:
+    number_sections: yes
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 10, fig.align = "center")
+```
+
+# Introduction
+
+This notebook explores the data set from kaggle's [*Titanic: Machine Learning from Disaster*](https://www.kaggle.com/c/titanic) competition. I begin with brief exploratory data analysis of the training dataset to look for patterns in the data.  I then perform some basic feature engineering to extract a few more potentially-meaningful variables from the existing data. Finally, I grow a random forest model to make some final predictions.
+
+This analysis was conducted using R and the following packages:
+
+```{r, message = FALSE}
+library(dplyr)            # For data frame manipulation and the %>%  pipe
+library(ggplot2)          # For visualizations
+library(gridExtra)        # For plotting multiple plots
+library(mice)             # multivariate imputation by chained equations
+library(randomForest)     # random forest model
+```
+
+# Exploratory data analysis
+
+## Loading and checking the data
+
+```{r, message = FALSE}
+
+train <- read.csv("../input/train.csv")   # For initial EDA and training of the predictive model
+
+```
+
+```{r}
+str(train, give.attr = FALSE)
+```
+
+The training data consist of 12 variables, including the target variable `Survived`, and a total of 891 observations. There are a number of factors in the dataset, but I will leave them as is for now and factorize them during my feature engineering to ensure consistency across both datasets.
+
+For the preliminary exploratory data analysis, my primary goal is to create some meaningful visualizations and check if there are any obvious patterns that I should be wary of. I use training dataset as is for this, assuming that the training data and testing data are *randomly split* samples from the total population.
+
+## Initial visualizations
+
+### Overall survival
+
+I start with a quick glimpse of our target variable, `Survived`, which is binary variable with '1' meaning the passenger survived and '0' meaning the passenger died:
+
+```{r, message = TRUE, fig.align = "center"}
+
+# setting standard colors for consistency in plots
+group_colors <- c("0" = "tomato", "1" = "limegreen", "male" = "skyblue", "female" = "pink")
+
+train$Survived <- factor(train$Survived)
+ggplot (train, aes(x = Survived)) + 
+  geom_bar(fill = c("0" = "tomato", "1" = "limegreen")) +
+  labs(title = "Survival on the Titanic", x = "Survival", y = "Number of Passengers")
+
+```
+
+The plot above shows that overall, **more passengers died than survived.** 
+
+### Age and gender
+
+Next I want to learn more about the demographics of the passengers.
+
+```{r, message = FALSE, warning = FALSE}
+ggplot(train, aes(x = Sex)) + 
+  geom_bar(aes(fill = Survived), position = "fill") +
+  scale_fill_manual(values = group_colors) +
+  labs(title = "Survival by Sex", x = "Sex", y = "Proportion of Passengers")
+
+```
+
+```{r, message = FALSE, warning = FALSE}
+ggplot(train, aes(x = Age)) + 
+  geom_histogram(aes(fill = Sex), binwidth = 2) +
+  scale_fill_manual(values = group_colors) +
+  labs(title = "Distribution of Passenger Age by Sex", x = "Age", y = "Number of Passengers")
+
+```
+
+```{r, message = FALSE, warning = FALSE}
+ggplot (train, aes(x = Age)) + 
+  geom_histogram(aes(fill = Survived), binwidth = 2) +
+  scale_fill_manual(values = group_colors) +
+  labs(title = "Distribution of Passenger Age by Survival", x = "Age", y = "Number of Passengers")
+
+```
+
+
+The plots above show that that overall, **there were more male passengers than female passengers on board ** and that **most passengers were between the ages of ~18  to ~40**. They also show that distribution of age by survival was flatter, i.e. survival was less varied across age groups. Finally, we see that gender appears to have been a key factor in whether or not a passenger survived, with major **preference towards female survival.** 
+
+### Passenger class, fare, and origin
+
+The following graphs will explore the distribution of passengers based on some additional variables of interest.
+
+```{r, message = FALSE, warning = FALSE}
+ggplot (train, aes(x = Pclass)) + 
+  geom_bar(aes(fill = Survived)) +
+  scale_fill_manual(values = group_colors) +
+  labs(title = "Distribution of Passenger Class by Survival", x = "Passenger Class", y = "Number of Passengers")
+
+```
+
+```{r, message = FALSE, warning = FALSE}
+ggplot (train, aes(x = Fare)) + 
+  geom_histogram(aes(fill = Survived), binwidth = 10) +
+  scale_fill_manual(values = group_colors) +
+  labs(title = "Distribution of Journey Fare by Survival", x = "Fare Paid", y = "Number of Passengers")
+
+```
+
+```{r, message = FALSE, warning = FALSE}
+ggplot (train, aes(x = Embarked)) + 
+  geom_bar(aes(fill = Survived)) +
+  scale_fill_manual(values = group_colors) +
+  labs(title = "Distribution of Journey Origin by Survival", x = "Origin (port of embarkment)", y = "Number of Passengers")
+
+```
+
+The above plots are useful for understanding the overall distributions of various factors within the dataset, however there appear to be **no obvious patterns** that should be given special attention.
+
+
+# Feature engineering
+
+In this section, I begin with loading the test dataset and binding it with the training dataset in order to ensure that any additional features are engineered in both sets. 
+
+```{r, message = FALSE, warning = FALSE}
+test <- read.csv("../input/test.csv")   # For running the predictive model
+test$Survived <- NA                 # Adding the missing varriable to the test set
+combined <- bind_rows(train, test)  # For performing feature engineering on the entire data set
+```
+
+```{r, message = TRUE}
+str(combined, give.attr = FALSE)
+```
+
+The combined dataset now consists of of 1309 observations.
+
+## Missing data imputation
+
+Let's begin by counting how many missing values we have in each variable of the dataset.
+
+```{r, message = TRUE}
+
+sapply(combined, function(x) sum(is.na(x)))
+
+```
+
+The `Survived` variable obviously has 418 missing values (this is what we're trying to predict!). There are 4 other variables with missing data: `Age`, `Fare`, `Cabin`, and `Embarked`.
+
+With 1014 out of 1309 values missing in the `Cabin` variable, there is not enough data to be able to impute reasonabe or meaningful values to this variable. We will disregard this variable for now. 
+
+For the other variables, `Age`, `Fare`, and `Embarked`, we will use the `mice` package to impute values using chained equations. 
+
+In order to use this, I will begin by factorizing all the factor variables:
+
+```{r, message = TRUE}
+
+combined$Survived <- factor(combined$Survived)
+combined$Pclass <- factor(combined$Pclass)
+combined$Sex <- factor(combined$Sex)
+combined$Embarked <- factor(combined$Embarked)
+str(combined, give.attr = FALSE)
+
+```
+
+Next we will use the `mice` function to create a dataset with the imputed missing values.
+
+```{r, message = FALSE, warning = FALSE}
+
+set.seed(1234)    # set seed for reproduceible results
+
+imputes <- mice(combined[c("Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked")], method = "rf") # imputed using random forest methods
+imputes_output <- complete(imputes)
+```
+
+### Verification of imputed values
+
+Now let's review the imputed values against the training values to make sure nothing has gone wrong. We'll create some visualizations to review for any skew or patterns that our imputed values have created.
+
+```{r, message = FALSE, warning = FALSE}
+impute_age <- ggplot(imputes_output, aes(x = Age)) + 
+  geom_histogram(binwidth = 2, fill = "thistle") +
+  labs(x = "Imputed Age")
+age <- ggplot(train, aes(x = Age)) + geom_histogram(binwidth = 2)
+grid.arrange(age, impute_age, ncol = 2)
+```
+
+```{r, message = FALSE, warning = FALSE}
+impute_fare <- ggplot(imputes_output, aes(x = Fare)) + 
+  geom_histogram(binwidth = 10, fill = "thistle") +
+  labs(x = "Imputed Fare Paid")
+fare <- ggplot(train, aes(x = Fare)) + geom_histogram(binwidth = 10) + labs(x = "Fare Paid")
+grid.arrange(fare, impute_fare, ncol = 2)
+```
+
+```{r, message = FALSE, warning = FALSE}
+impute_embarked <- ggplot(imputes_output, aes(x = Embarked)) + 
+  geom_bar(fill = "thistle") +
+  labs(x = "Imputed Origin")
+embarked <- ggplot(train, aes(x = Embarked)) + geom_bar() + labs(x = "Origin")
+grid.arrange(embarked, impute_embarked, ncol = 2)
+```
+
+The plots above show no obvious changes to the datasets as a resullt of the missing value imputation. Assuming the missing values were not extreme outliers, we should be good to go. The next step is to update our dataset with the missing values.
+
+```{r, message = FALSE, warning = FALSE}
+
+combined$Age <- imputes_output$Age
+combined$Fare <- imputes_output$Fare
+combined$Embarked <- imputes_output$Embarked
+
+```
+
+Finally, let's verify the number of NA's in our dataset now.
+
+```{r, message = TRUE}
+
+sapply(combined, function(x) sum(is.na(x)))
+
+```
+
+## String Extraction
+
+When looking at the dataset, I see that the `Name` variable contains quite a bit of information that may be useful to have as a separate variable. In particular, each string in the `Name` variable also contains information regarding each passenger's title (e.g. Mr., Mrs, etc.). Let's extract the title from each name and create a new variable called `Title`.
+
+
+```{r, message = FALSE, warning = FALSE}
+
+combined$Title <- factor(gsub('(.*, )|(\\..*)', '', combined$Name))
+table(combined$Title)
+
+```
+
+## Creating a Calculated Variable
+
+Two variables that we haven't looked at in much detail yet are the `SibSp` and `Parch` variables, which tell us how many siblings and spouses or parents and children each passenger had on board with them on the ship. Let's add these two variables together and create a new variable called `FamSize`. I'm also curious to see what the distribution of this variable looks like, so I'll plot a quick histogram.
+
+```{r, message = FALSE, warning = FALSE}
+
+combined$FamSize <- combined$SibSp + combined$Parch + 1 
+
+ggplot(combined, aes(x = FamSize)) + 
+  geom_bar() +
+  labs(x = "Family Size", y = "Number of Passengers", title = "Family Size of Passengers")
+
+```
+
+I also want to create a variable that considers whether the passenger is a child or an adult, to see if perhaps children were given preference on the lifeboats.
+
+```{r, message = FALSE, warning = FALSE}
+
+combined$child <- NA
+combined$child[combined$Age <= 16] <- TRUE
+combined$child[combined$Age > 16] <- FALSE
+
+str(combined, give.attr = FALSE)
+
+```
+
+I don't want to overdo the feature engineering and create more variables than are meaningful, so that concludes the feature engineering portion of this data analysis. The last thing do to before growing a random forest and making predictions is to split up our combined dataset back into the training and testing sets.
+
+```{r, message = FALSE, warning = FALSE}
+
+train <- combined[1:891,]
+test <- combined[892:1309,]
+
+```
+
+
+# Prediction
+
+## Growing the random forest
+
+Using a random forest of decision trees, I can avoid the risk of overfitting and also randomize variable selection by with bagging (i.e. bootstrapping). I use the following block of code to grow a 1000 tree random forest object and record the tree errors.
+
+```{r, message = TRUE, warning = FALSE}
+
+rf_titanic <- randomForest(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamSize + child, data = train, ntree = 1000)
+
+```
+
+Now let's take a look at the out ot bag (OOB) errors that we recorded from our model. As we can see, the model seems to have stabilized by the 500th tree.
+
+```{r, message = TRUE, warning = FALSE}
+
+rf_titanic
+plot(rf_titanic)
+```
+
+Finally, let's review the variable importance in our model. We can see from the table below that the most important variables were `Title`, `Fare`, `Sex`, and `Age`.
+
+```{r, message = TRUE, warning = FALSE, fig.width= 10, fig.height=10}
+
+vimp <- importance(rf_titanic)
+vimp_df <- data.frame(Var = row.names(vimp), vimp)
+vimp_df %>% arrange(desc(MeanDecreaseGini))
+
+```
+
+
+## Making predictions
+
+We're now ready to fit the model to our test data and make our predictions, write them into a .csv file and upload to kaggle.
+
+```{r, message = TRUE, warning = FALSE, fig.width= 10, fig.height=10}
+
+predicted <- predict(rf_titanic, newdata = test)
+
+solution <- data.frame(PassengerID = test$PassengerId, Survived = predicted)
+
+write.csv(solution, "solution.csv", row.names = FALSE)
+
+```
+
+## A little test
+
+I'm also curious how I would have performed if I had simply used the mice package to impute the 'missing' survival data to the test dataset using the `rf` method from the `mice`package.
+
+```{r, message = TRUE, warning = FALSE, fig.width= 10, fig.height=10}
+
+set.seed(1234)    # set seed for reproduceible results
+
+combined2 <- combined
+
+imputetest <- mice(combined2[c("Survived", "Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked")], method = "rf") # imputed using random forest methods
+imputetest_output <- complete(imputetest)
+
+combined2$Survived <- imputetest_output$Survived
+
+solution2 <- data.frame(PassengerId = combined2$PassengerId, Survived = combined2$Survived)
+
+write.csv(solution2[892:1309,], "solution2.csv", row.names = FALSE)
+
+```
+
+Submitting solution2.csv resulted in a drop in accuracy, as expected. 
+
+
+# Conclusion
+
+This notebook was intended to be an exercise for me to get used to developing data exploration notebooks. Please feel free to share any comments or feedback for improvements. 
+
+Thanks!
+
+
+----------------------------------------------------------

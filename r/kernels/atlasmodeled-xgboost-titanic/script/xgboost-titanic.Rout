@@ -1,0 +1,196 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This script trains a Random Forest model based on the data,
+> # saves a sample submission, and plots the relative importance
+> # of the variables in making predictions
+> 
+> # Download 1_random_forest_r_submission.csv from the output below
+> # and submit it through https://www.kaggle.com/c/titanic-gettingStarted/submissions/attach
+> # to enter this getting started competition!
+> 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> #library(randomForest)
+> library(caret)
+Loading required package: lattice
+> library(xgboost); #getNamespaceExports("xgboost")
+Warning message:
+package ‘xgboost’ was built under R version 3.6.2 
+> library(Matrix)
+> library(data.table)
+> library(pROC)
+Type 'citation("pROC")' for a citation.
+
+Attaching package: ‘pROC’
+
+The following objects are masked from ‘package:stats’:
+
+    cov, smooth, var
+
+> 
+> sessionInfo()
+R version 3.6.1 (2019-07-05)
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+Running under: macOS Catalina 10.15.4
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/3.6/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/3.6/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] pROC_1.16.2       data.table_1.12.8 Matrix_1.2-17     xgboost_1.2.0.1  
+[5] caret_6.0-86      lattice_0.20-38   ggplot2_3.3.2    
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.4.6         pillar_1.4.4         compiler_3.6.1      
+ [4] gower_0.2.1          plyr_1.8.6           class_7.3-15        
+ [7] iterators_1.0.12     tools_3.6.1          rpart_4.1-15        
+[10] ipred_0.9-9          lubridate_1.7.9      lifecycle_0.2.0     
+[13] tibble_3.0.1         gtable_0.3.0         nlme_3.1-140        
+[16] pkgconfig_2.0.3      rlang_0.4.7          foreach_1.5.0       
+[19] rstudioapi_0.11      prodlim_2019.11.13   stringr_1.4.0       
+[22] withr_2.2.0          dplyr_1.0.2          generics_0.0.2      
+[25] vctrs_0.3.4          recipes_0.1.12       stats4_3.6.1        
+[28] nnet_7.3-12          grid_3.6.1           tidyselect_1.1.0    
+[31] glue_1.4.1           R6_2.4.1             survival_3.1-12     
+[34] lava_1.6.7           reshape2_1.4.4       purrr_0.3.4         
+[37] magrittr_1.5         ModelMetrics_1.2.2.2 splines_3.6.1       
+[40] MASS_7.3-53          scales_1.1.1         codetools_0.2-16    
+[43] ellipsis_0.3.1       timeDate_3043.102    colorspace_1.4-1    
+[46] stringi_1.4.6        munsell_0.5.0        crayon_1.3.4        
+> 
+> set.seed(1)
+> train <- read.csv("../input/train.csv", stringsAsFactors=FALSE)
+> test  <- read.csv("../input/test.csv",  stringsAsFactors=FALSE)
+> 
+> extractFeatures <- function(data) {
++   features <- c("Pclass",
++                 "Age",
++                 "Sex",
++                 "Parch",
++                 "SibSp",
++                 "Fare",
++                 "Embarked",
++                 "Survived")
++   fea <- data[,features]
++   fea$Age[is.na(fea$Age)] <- -1
++   fea$Fare[is.na(fea$Fare)] <- median(fea$Fare, na.rm=TRUE)
++   fea$Embarked[fea$Embarked==""] = "S"
++   fea$Sex      <- as.factor(fea$Sex)
++   fea$Embarked <- as.factor(fea$Embarked)
++   fea$Survived <- as.factor(fea$Survived)
++   return(fea)
++ }
+> 
+> features <- c("Pclass",
++                 "Age",
++                 "Sex",
++                 "Parch",
++                 "SibSp",
++                 "Fare",
++                 "Embarked",
++                 "Survived")
+>                 
+> #train <- extractFeatures(train)
+> train <- data.table(train[,names(train) %in% features], keep.rownames = FALSE)
+> #train <- train[, features, with=FALSE] 
+> #train$Survived <- as.factor(train$Survived)
+> str(train)
+Classes ‘data.table’ and 'data.frame':	891 obs. of  8 variables:
+ $ Survived: int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass  : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Sex     : chr  "male" "female" "female" "female" ...
+ $ Age     : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp   : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch   : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Fare    : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked: chr  "S" "C" "S" "S" ...
+ - attr(*, ".internal.selfref")=<externalptr> 
+> 
+> ggplot(train) + geom_bar(aes(x=factor(Survived)))
+> 
+> #rf <- randomForest(extractFeatures(train), as.factor(train$Survived), ntree=100, importance=TRUE)
+> 
+> trainIndex <- createDataPartition(train$Survived, p = .8, list = FALSE, times = 1)
+> train_set <- train[trainIndex,] ; str(train_set)
+Classes ‘data.table’ and 'data.frame':	713 obs. of  8 variables:
+ $ Survived: int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass  : int  3 1 3 1 3 3 1 3 3 3 ...
+ $ Sex     : chr  "male" "female" "female" "female" ...
+ $ Age     : num  22 38 26 35 35 NA 54 2 27 4 ...
+ $ SibSp   : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch   : int  0 0 0 0 0 0 0 1 2 1 ...
+ $ Fare    : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked: chr  "S" "C" "S" "S" ...
+ - attr(*, ".internal.selfref")=<externalptr> 
+> test_set <- train[-trainIndex,]
+> 
+> Surv_train <- as.numeric(as.factor(train_set$Survived))-1
+> Surv_test <- as.numeric(as.factor(test_set$Survived))-1
+> train_features <- subset(train_set, select = -c(Survived))
+> test_features <- subset(test_set, select = -c(Survived))
+> 
+> # perform one-hot encoding
+> #xgb.train <- sparse.model.matrix(Survived~.-1, data = train_set); str(xgb.train)
+> xgb.train <- xgb.DMatrix(as.matrix(sapply(train_features, as.numeric)), label=Surv_train); str(xgb.train)
+Warning messages:
+1: In lapply(X = X, FUN = FUN, ...) : NAs introduced by coercion
+2: In lapply(X = X, FUN = FUN, ...) : NAs introduced by coercion
+Class 'xgb.DMatrix' <externalptr> 
+ - attr(*, ".Dimnames")=List of 2
+  ..$ : NULL
+  ..$ : chr [1:7] "Pclass" "Sex" "Age" "SibSp" ...
+> xgb.test <- xgb.DMatrix(as.matrix(sapply(test_features, as.numeric)), label=Surv_test)
+Warning messages:
+1: In lapply(X = X, FUN = FUN, ...) : NAs introduced by coercion
+2: In lapply(X = X, FUN = FUN, ...) : NAs introduced by coercion
+> 
+> output_vector = train_set[,Survived] == 1 ; str(output_vector)
+ logi [1:713] FALSE TRUE TRUE TRUE FALSE FALSE ...
+> 
+> model <- xgboost(data = xgb.train, max_depth = 5,
++                  nrounds = 2, objective = "binary:logistic", eval_metric = "auc", maximize = TRUE)
+[1]	train-auc:0.795291 
+[2]	train-auc:0.815749 
+> 
+> 
+> pred <- predict(model,xgb.test)
+> plot.roc(Surv_test, pred, print.auc=T, print.auc.y=0.5) 
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+> 
+> 
+> #submission <- data.frame(PassengerId = test$PassengerId)
+> #submission$Survived <- predict(rf, extractFeatures(test))
+> #write.csv(submission, file = "1_random_forest_r_submission.csv", row.names=FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  2.081   0.158   2.021 

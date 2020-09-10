@@ -1,0 +1,283 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> 
+> train <- read_csv("../input/train.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test <- read_csv("../input/test.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> class(train)
+[1] "spec_tbl_df" "tbl_df"      "tbl"         "data.frame" 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> glimpse(train)
+Rows: 891
+Columns: 12
+$ PassengerId [3m[90m<dbl>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+$ Survived    [3m[90m<dbl>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+$ Pclass      [3m[90m<dbl>[39m[23m 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Braund, Mr. Owen Harris", "Cumings, Mrs. John Bradley (F…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "female", "female", "male", "male", "ma…
+$ Age         [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+$ SibSp       [3m[90m<dbl>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+$ Parch       [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "A/5 21171", "PC 17599", "STON/O2. 3101282", "113803", "3…
+$ Fare        [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+$ Cabin       [3m[90m<chr>[39m[23m NA, "C85", NA, "C123", NA, NA, "E46", NA, NA, NA, "G6", "…
+$ Embarked    [3m[90m<chr>[39m[23m "S", "C", "S", "S", "S", "Q", "S", "S", "S", "C", "S", "S…
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> glimpse(test)
+Rows: 418
+Columns: 11
+$ PassengerId [3m[90m<dbl>[39m[23m 892, 893, 894, 895, 896, 897, 898, 899, 900, 901, 902, 90…
+$ Pclass      [3m[90m<dbl>[39m[23m 3, 3, 2, 3, 3, 3, 3, 2, 3, 3, 3, 1, 1, 2, 1, 2, 2, 3, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Kelly, Mr. James", "Wilkes, Mrs. James (Ellen Needs)", "…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "male", "male", "female", "male", "fema…
+$ Age         [3m[90m<dbl>[39m[23m 34.5, 47.0, 62.0, 27.0, 22.0, 14.0, 30.0, 26.0, 18.0, 21.…
+$ SibSp       [3m[90m<dbl>[39m[23m 0, 1, 0, 0, 1, 0, 0, 1, 0, 2, 0, 0, 1, 1, 1, 1, 0, 0, 1, …
+$ Parch       [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "330911", "363272", "240276", "315154", "3101298", "7538"…
+$ Fare        [3m[90m<dbl>[39m[23m 7.8292, 7.0000, 9.6875, 8.6625, 12.2875, 9.2250, 7.6292, …
+$ Cabin       [3m[90m<chr>[39m[23m NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, "B45", NA…
+$ Embarked    [3m[90m<chr>[39m[23m "Q", "S", "Q", "S", "S", "S", "Q", "S", "C", "S", "S", "S…
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(train)
+  PassengerId       Survived          Pclass          Name          
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000   Length:891        
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median :446.0   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309                     
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000                     
+                                                                    
+     Sex                 Age            SibSp           Parch       
+ Length:891         Min.   : 0.42   Min.   :0.000   Min.   :0.0000  
+ Class :character   1st Qu.:20.12   1st Qu.:0.000   1st Qu.:0.0000  
+ Mode  :character   Median :28.00   Median :0.000   Median :0.0000  
+                    Mean   :29.70   Mean   :0.523   Mean   :0.3816  
+                    3rd Qu.:38.00   3rd Qu.:1.000   3rd Qu.:0.0000  
+                    Max.   :80.00   Max.   :8.000   Max.   :6.0000  
+                    NA's   :177                                     
+    Ticket               Fare           Cabin             Embarked        
+ Length:891         Min.   :  0.00   Length:891         Length:891        
+ Class :character   1st Qu.:  7.91   Class :character   Class :character  
+ Mode  :character   Median : 14.45   Mode  :character   Mode  :character  
+                    Mean   : 32.20                                        
+                    3rd Qu.: 31.00                                        
+                    Max.   :512.33                                        
+                                                                          
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(test)
+  PassengerId         Pclass          Name               Sex           
+ Min.   : 892.0   Min.   :1.000   Length:418         Length:418        
+ 1st Qu.: 996.2   1st Qu.:1.000   Class :character   Class :character  
+ Median :1100.5   Median :3.000   Mode  :character   Mode  :character  
+ Mean   :1100.5   Mean   :2.266                                        
+ 3rd Qu.:1204.8   3rd Qu.:3.000                                        
+ Max.   :1309.0   Max.   :3.000                                        
+                                                                       
+      Age            SibSp            Parch           Ticket         
+ Min.   : 0.17   Min.   :0.0000   Min.   :0.0000   Length:418        
+ 1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.0000   Class :character  
+ Median :27.00   Median :0.0000   Median :0.0000   Mode  :character  
+ Mean   :30.27   Mean   :0.4474   Mean   :0.3923                     
+ 3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.0000                     
+ Max.   :76.00   Max.   :8.0000   Max.   :9.0000                     
+ NA's   :86                                                          
+      Fare            Cabin             Embarked        
+ Min.   :  0.000   Length:418         Length:418        
+ 1st Qu.:  7.896   Class :character   Class :character  
+ Median : 14.454   Mode  :character   Mode  :character  
+ Mean   : 35.627                                        
+ 3rd Qu.: 31.500                                        
+ Max.   :512.329                                        
+ NA's   :1                                              
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> setdiff(names(train), names(test)) 
+[1] "Survived"
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summarise(train, SurvivalRate = sum(Survived)/nrow(train)*100)
+[90m# A tibble: 1 x 1[39m
+  SurvivalRate
+         [3m[90m<dbl>[39m[23m
+[90m1[39m         38.4
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> baseline_solution <- data.frame(PassengerID = test$PassengerId, Survived = 0)
+> # To submit this as an entry, just un-comment the next line and submit the .csv file 
+> # write.csv(baseline_solution, file = 'baseline_model.csv', row.names = F) 
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic <- full_join(train, test)
+Joining, by = c("PassengerId", "Pclass", "Name", "Sex", "Age", "SibSp", "Parch", "Ticket", "Fare", "Cabin", "Embarked")
+> glimpse(titanic)
+Rows: 1,309
+Columns: 12
+$ PassengerId [3m[90m<dbl>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+$ Survived    [3m[90m<dbl>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+$ Pclass      [3m[90m<dbl>[39m[23m 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Braund, Mr. Owen Harris", "Cumings, Mrs. John Bradley (F…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "female", "female", "male", "male", "ma…
+$ Age         [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+$ SibSp       [3m[90m<dbl>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+$ Parch       [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "A/5 21171", "PC 17599", "STON/O2. 3101282", "113803", "3…
+$ Fare        [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+$ Cabin       [3m[90m<chr>[39m[23m NA, "C85", NA, "C123", NA, NA, "E46", NA, NA, NA, "G6", "…
+$ Embarked    [3m[90m<chr>[39m[23m "S", "C", "S", "S", "S", "Q", "S", "S", "S", "C", "S", "S…
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(forcats)
+> titanic <- titanic %>%
++                 mutate(Survived = factor(Survived)) %>%
++                 mutate(Survived = fct_recode(Survived, "No" = "0", "Yes" = "1"))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic <- titanic %>%
++         mutate(Sex = factor(Sex)) %>%
++         mutate(Sex = fct_recode(Sex, "Female" = "female", "Male" = "male"))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(titanic[1:891,], aes(Sex, fill=Survived)) +
++            geom_bar(position = "fill") +
++            ylab("Survival Rate") +
++            geom_hline(yintercept = (sum(train$Survived)/nrow(train)), col = "white", lty = 2) +
++            ggtitle("Survival Rate by Gender")
+> 
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(stringr)
+> titanic <- mutate(titanic, Title = str_sub(Name, str_locate(Name, ",")[ , 1] + 2, str_locate(Name, "\\.")[ , 1] - 1))
+> 
+> titanic %>% group_by(Title) %>%
++               summarise(count = n()) %>%
++               arrange(desc(count))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 18 x 2[39m
+   Title        count
+   [3m[90m<chr>[39m[23m        [3m[90m<int>[39m[23m
+[90m 1[39m Mr             757
+[90m 2[39m Miss           260
+[90m 3[39m Mrs            197
+[90m 4[39m Master          61
+[90m 5[39m Dr               8
+[90m 6[39m Rev              8
+[90m 7[39m Col              4
+[90m 8[39m Major            2
+[90m 9[39m Mlle             2
+[90m10[39m Ms               2
+[90m11[39m Capt             1
+[90m12[39m Don              1
+[90m13[39m Dona             1
+[90m14[39m Jonkheer         1
+[90m15[39m Lady             1
+[90m16[39m Mme              1
+[90m17[39m Sir              1
+[90m18[39m the Countess     1
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic <- titanic %>%
++           mutate(Mother = factor(ifelse(c(titanic$Title == "Mrs" | titanic$Title == "Mme" | titanic$Title == "the Countess" | titanic$Title == "Dona" | titanic$Title == "Lady") & titanic$Parch > 0, "Yes", "No"))) 
+> 
+> ggplot(titanic[1:891,], aes(x = Mother, fill = Survived)) +
++           geom_bar(position = "fill") +
++           ylab("Survival Rate") +
++           geom_hline(yintercept = (sum(train$Survived)/nrow(train)), col = "white", lty = 2) +
++           ggtitle("Survival Rate by Motherhood Status")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic <- titanic %>%
++           mutate(Title = factor(Title)) %>%
++           mutate(Title = fct_collapse(Title, "Miss" = c("Mlle", "Ms"), "Mrs" = "Mme", 
++                                       "Ranked" = c( "Major", "Dr", "Capt", "Col", "Rev"),
++                                       "Royalty" = c("Lady", "Dona", "the Countess", "Don", "Sir", "Jonkheer"))) 
+> 
+> ggplot(titanic[1:891,], aes(x = Title, fill = Survived)) +
++           geom_bar(position = "fill") +
++           ylab("Survival Rate") +
++           geom_hline(yintercept = (sum(train$Survived)/nrow(train)), col = "white", lty = 2) +
++           ggtitle("Survival Rate by Title")
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(qdap)
+Error in library(qdap) : there is no package called ‘qdap’
+Execution halted

@@ -1,0 +1,219 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> rm(list = ls())
+> 
+> input.dir <- './../input/'
+> 
+> library(MASS)
+> 
+> removedColumnsIndex <- function(data, columIds) {
++     setdiff(colnames(data), columIds)
++ }
+> 
+> columnsToNumeric <- function(data, columIds) {
++     for (i in columIds) {
++         data[,i] <- as.numeric(data[,i])
++     }
++     return(data)
++ }
+> 
+> regressionAge <- function(data) {
++     columns.to.remove <- c('Name', 'Cabin', 'Ticket', 'PassengerId')
++     data2 <- data[,removedColumnsIndex(data, columns.to.remove)]
++     
++     
++     data.train <- data2[!is.na(data2[,'Age']),]    
++     data.model <- lm( Age ~ . , data = data.train)
++     data.test <- data2[is.na(data2[,'Age']),]
++     
++     data[is.na(data[,'Age']),'Age'] <- predict(data.model, data.test)
++     return(data)
++ }
+> 
+> preprocessData <- function(data) {
++     columns.to.remove <- c('Name', 'Cabin', 'Ticket')
++     data.cleaned <- data[,removedColumnsIndex(data, columns.to.remove)]
++ 
++     columns.to.numeric <- c('Sex', 'Embarked')
++     data.cleaned <- columnsToNumeric(data.cleaned, columns.to.numeric)
++     
++     columns.to.scale <- setdiff(colnames(data.cleaned), c('PassengerId', 'Survived'))
++     data.cleaned[,columns.to.scale] <- scale(data.cleaned[,columns.to.scale])
++     data.cleaned[is.na(data.cleaned)] <- 0
++     
++     
++     return(data.cleaned)
++ }
+> 
+> predictData <- function(model, data) {
++     
++     data.prediction <- cbind(data[,'PassengerId'] , as.numeric(predict(model, data)$class) - 1)
++     colnames(data.prediction) <- c('PassengerId', 'Survived')
++ 
++     return(data.prediction)
++ }
+> 
+> plotWithPCA <- function(data) {
++     data.pca <- princomp(data[,removedColumnsIndex(data, 'Survived')])
++     plot(data.pca$scores[,1:2], col = as.numeric(data[,'Survived']) + 2, pch = 20)
++ }
+> 
+> plotWithLDA <- function(obj, data) {
++     plot(as.matrix(data[,removedColumnsIndex(data, 'Survived')]) %*% obj$scaling, 
++          jitter(rep(0, dim(data)[1])), col = data[,'Survived'] + 2, 
++          ylim = c(-0.05, 0.05), xlab = "", ylab = "", pch = 20)
++ }
+> 
+> data.train <- read.csv(paste(input.dir, 'train.csv', sep =""))
+> data.test <- read.csv(paste(input.dir, 'test.csv', sep =""))
+> 
+> summary(data.train)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked
+            :687    :  2   
+ B96 B98    :  4   C:168   
+ C23 C25 C27:  4   Q: 77   
+ G6         :  4   S:644   
+ C22 C26    :  3           
+ D          :  3           
+ (Other)    :186           
+> 
+> head(data.train)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> 
+> data.global <- regressionAge(rbind(data.train[,removedColumnsIndex(data, 'Survived')], data.test))
+> data.train[,'Age'] <- data.global[1:dim(data.train)[1], 'Age']
+> data.test[,'Age'] <- data.global[-c(1:dim(data.train)[1]), 'Age']
+> 
+> data.train.use <- preprocessData(data.train)
+> head(data.train.use)
+  PassengerId Survived     Pclass       Sex        Age      SibSp      Parch
+1           1        0  0.8269128  0.737281  0.3880069  0.4325504 -0.4734077
+2           2        1 -1.5652278 -1.354813  1.3497236  0.4325504 -0.4734077
+3           3        1  0.8269128 -1.354813  2.5037836 -0.4742788 -0.4734077
+4           4        1 -1.5652278 -1.354813 -0.1890231  0.4325504 -0.4734077
+5           5        0  0.8269128  0.737281 -0.5737098 -0.4742788 -0.4734077
+6           6        0  0.8269128  0.737281 -1.1892084 -0.4742788 -0.4734077
+        Fare   Embarked
+1 -0.5021631  0.5876361
+2  0.7864036 -1.9115703
+3 -0.4885799  0.5876361
+4  0.4204941  0.5876361
+5 -0.4860644  0.5876361
+6 -0.4778481 -0.6619671
+> 
+> pairs(data.train.use[, -c(1, 2)], col = as.numeric(data.train.use[, 2]) + 2, pch = 20)
+> 
+> plotWithPCA(data.train.use)
+> 
+> data.test.use <- preprocessData(data.test)
+> head(data.test.use)
+  PassengerId     Pclass        Sex Age      SibSp      Parch       Fare
+1         892  0.8724364  0.7550242   0 -0.4988722 -0.3997686 -0.4972133
+2         893  0.8724364 -1.3212923   0  0.6162539 -0.3997686 -0.5120449
+3         894 -0.3154412  0.7550242   0 -0.4988722 -0.3997686 -0.4639745
+4         895  0.8724364  0.7550242   0 -0.4988722 -0.3997686 -0.4823083
+5         896  0.8724364 -1.3212923   0  0.6162539  0.6191539 -0.4174692
+6         897  0.8724364  0.7550242   0 -0.4988722 -0.3997686 -0.4722471
+    Embarked
+1 -0.4703517
+2  0.6999282
+3 -0.4703517
+4  0.6999282
+5  0.6999282
+6  0.6999282
+> 
+> data.classifier.formula <- as.factor(Survived) ~ .
+> 
+> data.classifier.lda <- lda(data.classifier.formula, data.train.use, prior = c(0.7, 0.3))
+> 
+> table(as.numeric(predict(data.classifier.lda, data.train.use)$class) - 1, data.train.use[,2])
+   
+      0   1
+  0 486 111
+  1  63 231
+> 
+> mean(as.numeric(predict(data.classifier.lda, data.train.use)$class) - 1 == data.train.use[,2])
+[1] 0.8047138
+> 
+> plotWithLDA(data.classifier.lda, data.train.use)
+> 
+> data.test.prediction.lda <- predictData(data.classifier.lda, data.test.use)
+> 
+> head(data.test.prediction.lda)
+     PassengerId Survived
+[1,]         892        0
+[2,]         893        1
+[3,]         894        0
+[4,]         895        0
+[5,]         896        1
+[6,]         897        0
+> 
+> write.csv(data.test.prediction.lda, file = "prediction-lda.csv", row.names = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  0.316   0.047   0.360 

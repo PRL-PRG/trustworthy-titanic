@@ -1,0 +1,507 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # load packages
+> library(readr)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(stringr)
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> library(caret)
+Loading required package: lattice
+> library(caTools)
+> 
+> # load data
+> 
+> train_titanic <- read_csv("../input/train.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test_titanic <- read_csv("../input/test.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test_titanic$Survived <- NA
+> 
+> full_titanic <- bind_rows(train_titanic, test_titanic)
+> 
+> # summarize things
+> 
+> summary(full_titanic)
+  PassengerId      Survived          Pclass          Name          
+ Min.   :   1   Min.   :0.0000   Min.   :1.000   Length:1309       
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median : 655   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295                     
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :1309   Max.   :1.0000   Max.   :3.000                     
+                NA's   :418                                        
+     Sex                 Age            SibSp            Parch      
+ Length:1309        Min.   : 0.17   Min.   :0.0000   Min.   :0.000  
+ Class :character   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000  
+ Mode  :character   Median :28.00   Median :0.0000   Median :0.000  
+                    Mean   :29.88   Mean   :0.4989   Mean   :0.385  
+                    3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000  
+                    Max.   :80.00   Max.   :8.0000   Max.   :9.000  
+                    NA's   :263                                     
+    Ticket               Fare            Cabin             Embarked        
+ Length:1309        Min.   :  0.000   Length:1309        Length:1309       
+ Class :character   1st Qu.:  7.896   Class :character   Class :character  
+ Mode  :character   Median : 14.454   Mode  :character   Mode  :character  
+                    Mean   : 33.295                                        
+                    3rd Qu.: 31.275                                        
+                    Max.   :512.329                                        
+                    NA's   :1                                              
+> str(full_titanic)
+tibble [1,309 × 12] (S3: spec_tbl_df/tbl_df/tbl/data.frame)
+ $ PassengerId: num [1:1309] 1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : num [1:1309] 0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : num [1:1309] 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr [1:1309] "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr [1:1309] "male" "female" "female" "female" ...
+ $ Age        : num [1:1309] 22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : num [1:1309] 1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : num [1:1309] 0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr [1:1309] "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num [1:1309] 7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr [1:1309] NA "C85" NA "C123" ...
+ $ Embarked   : chr [1:1309] "S" "C" "S" "S" ...
+ - attr(*, "spec")=
+  .. cols(
+  ..   PassengerId = [32mcol_double()[39m,
+  ..   Survived = [32mcol_double()[39m,
+  ..   Pclass = [32mcol_double()[39m,
+  ..   Name = [31mcol_character()[39m,
+  ..   Sex = [31mcol_character()[39m,
+  ..   Age = [32mcol_double()[39m,
+  ..   SibSp = [32mcol_double()[39m,
+  ..   Parch = [32mcol_double()[39m,
+  ..   Ticket = [31mcol_character()[39m,
+  ..   Fare = [32mcol_double()[39m,
+  ..   Cabin = [31mcol_character()[39m,
+  ..   Embarked = [31mcol_character()[39m
+  .. )
+> 
+> # clean up data; survived, sex, pclass, and embarked should be factors
+> 
+> full_titanic$Sex <- as.factor(full_titanic$Sex)
+> full_titanic$Embarked <- as.factor(full_titanic$Embarked)
+> full_titanic$Survived <- as.factor(full_titanic$Survived)
+> full_titanic$Pclass <- as.factor(full_titanic$Pclass) # this won't be a linear relationship
+> 
+> # get last names
+> 
+> full_titanic$Lastname <- sapply(full_titanic$Name,
++                                 function(x) strsplit(x, split = ',')[[1]][1])
+> 
+> # create family size (+1 to include individual him-/herself)
+> 
+> full_titanic$Famsize <- full_titanic$SibSp + full_titanic$Parch + 1
+> hist(full_titanic$Famsize)
+>   
+> # identify families based on a combination of name and size ... 
+> # not going to use it here though ...
+> 
+> full_titanic$Fam <- with(full_titanic, paste(Lastname, Famsize, sep = ""))
+> full_titanic$Fam <- as.factor(full_titanic$Fam)
+> summary(full_titanic$Fam)
+         Sage11      Andersson7        Goodwin8        Asplund7        Fortune6 
+             11               9               8               7               6 
+        Panula6           Rice6          Skoog6         Davies3           Ford5 
+              6               6               6               5               5 
+         Kelly1        Lefebre5        Palsson5        Ryerson5        Allison4 
+              5               5               5               5               4 
+       Baclini4         Becker4          Brown3          Cacic1         Carter4 
+              4               4               4               4               4 
+          Dean4         Harper2         Herman4      Johansson1       Johnston4 
+              4               4               4               4               4 
+       Laroche4          Smith1           West4         Abbott3         Boulos3 
+              4               4               4               3               3 
+        Bourke3       Caldwell3       Carlsson1        Collyer3        Compton3 
+              3               3               3               3               3 
+           Cor1         Coutts3         Crosby3           Daly1         Danbom3 
+              3               3               3               3               3 
+         Dodge3           Drew3          Elias3          Flynn1      Goldsmith3 
+              3               3               3               3               3 
+          Hart3        Hickman3        Johnson1        Johnson3       Karlsson1 
+              3               3               3               3               3 
+         Keane1         Klasen3         Mallet3          McCoy3       Moubarek3 
+              3               3               3               3               3 
+         Nakid3       Navratil3        Nilsson1         Olsson1      Oreskovic1 
+              3               3               3               3               3 
+       Peacock3          Peter3          Quick3        Rosblom3         Samaan3 
+              3               3               3               3               3 
+     Sandstrom3        Spedden3       Svensson1        Taussig3         Thayer3 
+              3               3               3               3               3 
+         Touma3   van Billiard3       Van Impe3          Wells3           Wick3 
+              3               3               3               3               3 
+       Widener3       Williams1       Abelseth1        Abelson2            Aks2 
+              3               3               2               2               2 
+           Ali1          Allen1      Andersson1         Andrew1          Angle2 
+              2               2               2               2               2 
+Arnold-Franchi2          Astor2        Attalah1        Barbara2         Baxter2 
+              2               2               2               2               2 
+         Beane2       Beckwith3         Betros1         Bishop2        Bonnell1 
+              2               2               2               2               2 
+         Bowen1        Bradley1         Braund2          Brown1         (Other) 
+              2               2               2               2             973 
+> 
+> # create a variable for title
+> 
+> full_titanic$Title <- gsub("^.*, (.*?)\\..*$", "\\1", full_titanic$Name)
+> table(full_titanic$Title)
+
+        Capt          Col          Don         Dona           Dr     Jonkheer 
+           1            4            1            1            8            1 
+        Lady        Major       Master         Miss         Mlle          Mme 
+           1            2           61          260            2            1 
+          Mr          Mrs           Ms          Rev          Sir the Countess 
+         757          197            2            8            1            1 
+> 
+> # make flag for foreign name (maybe they had difficulty communicating): Jonkheer, Mlle, Mmme, etc.
+> # I cannot identify Monsieur vs Mister; there are also lots of non-Anglo-Saxon names with "normal"
+> # titles, but maybe it signifies something it they put a foreign title down
+> # also reassign some other titles to have more meaningful categories
+> # Jonkheer could go with foreign or noble
+> 
+> foreign <- c("Jonkheer", "Don", "Dona", "Mlle", "Mme")
+> full_titanic$Title[full_titanic$Title %in% foreign] <- "foreign"
+> 
+> military <- c("Capt", "Col", "Major")
+> full_titanic$Title[full_titanic$Title %in% military] <- "military"
+> 
+> noble <- c("Lady", "Sir", "the Countess")
+> full_titanic$Title[full_titanic$Title %in% noble] <- "noble"
+> 
+> # unclear whether Ms's were married or not; going with Miss 
+> full_titanic[which(full_titanic$Title == "Ms"),]
+[90m# A tibble: 2 x 16[39m
+  PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin
+        [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m  [3m[90m<chr>[39m[23m [3m[90m<fct>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m
+[90m1[39m         444 1        2      Reyn… fema…    28     0     0 230434 13    [31mNA[39m   
+[90m2[39m         980 [31mNA[39m       3      O'Do… fema…    [31mNA[39m     0     0 364856  7.75 [31mNA[39m   
+[90m# … with 5 more variables: Embarked [3m[90m<fct>[90m[23m, Lastname [3m[90m<chr>[90m[23m, Famsize [3m[90m<dbl>[90m[23m,[39m
+[90m#   Fam [3m[90m<fct>[90m[23m, Title [3m[90m<chr>[90m[23m[39m
+> full_titanic$Title[full_titanic$Title == "Ms"] <- "Miss"
+>   
+> full_titanic$Title <- as.factor(full_titanic$Title)
+> table(full_titanic$Title)
+
+      Dr  foreign   Master military     Miss       Mr      Mrs    noble 
+       8        6       61        7      262      757      197        3 
+     Rev 
+       8 
+> 
+> # Fare is per ticket based on patterns, e.g., full_titanic[which(full_titanic$Fare == 512.3292),]
+> 
+> # calculate TicketN = how many people per ticket
+> 
+> full_titanic <- full_titanic %>%
++   group_by(Ticket) %>%
++   mutate(TicketN = n()) %>%
++   ungroup()
+> 
+> # calculate Farepp = fare per person
+> full_titanic <- mutate(full_titanic, Farepp = Fare / TicketN)
+> class(full_titanic$Farepp)
+[1] "numeric"
+> summary(full_titanic$Farepp)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.00    7.55    8.05   14.76   15.01  128.08       1 
+> 
+> # impute missing data for fare using median class and port of embarkation
+> # use Farepp since a singleton
+> 
+> full_titanic[which(is.na(full_titanic$Fare)),]
+[90m# A tibble: 1 x 18[39m
+  PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin
+        [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m  [3m[90m<chr>[39m[23m [3m[90m<fct>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m
+[90m1[39m        [4m1[24m044 [31mNA[39m       3      Stor… male   60.5     0     0 3701      [31mNA[39m [31mNA[39m   
+[90m# … with 7 more variables: Embarked [3m[90m<fct>[90m[23m, Lastname [3m[90m<chr>[90m[23m, Famsize [3m[90m<dbl>[90m[23m,[39m
+[90m#   Fam [3m[90m<fct>[90m[23m, Title [3m[90m<fct>[90m[23m, TicketN [3m[90m<int>[90m[23m, Farepp [3m[90m<dbl>[90m[23m[39m
+> 
+> median(full_titanic[full_titanic$Pclass == 3 & full_titanic$Embarked == "S",]$Farepp, na.rm = TRUE) # 7.7958
+[1] 7.7958
+> full_titanic$Fare[which(is.na(full_titanic$Fare))] <- median(full_titanic[full_titanic$Pclass == 3 & full_titanic$Embarked == "S",]$Farepp, na.rm = TRUE)
+> full_titanic$Farepp[full_titanic$PassengerId == 1044] <- 7.7958
+> 
+> # impute missing data for embarked; they paid 40 pp
+> # one has English-sounding name; other has French name; they have the same ticket no.
+> # I am going with Southampton in the end because of the older woman's name
+> # although the fare is much higher than the median of S, it's also higher than that of C
+> 
+> full_titanic[which(is.na(full_titanic$Embarked)),]
+[90m# A tibble: 2 x 18[39m
+  PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin
+        [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m  [3m[90m<chr>[39m[23m [3m[90m<fct>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m
+[90m1[39m          62 1        1      Icar… fema…    38     0     0 113572    80 B28  
+[90m2[39m         830 1        1      Ston… fema…    62     0     0 113572    80 B28  
+[90m# … with 7 more variables: Embarked [3m[90m<fct>[90m[23m, Lastname [3m[90m<chr>[90m[23m, Famsize [3m[90m<dbl>[90m[23m,[39m
+[90m#   Fam [3m[90m<fct>[90m[23m, Title [3m[90m<fct>[90m[23m, TicketN [3m[90m<int>[90m[23m, Farepp [3m[90m<dbl>[90m[23m[39m
+> 
+> full_titanic %>%
++   group_by(Embarked) %>%
++   summarize(mean = mean(Fare, na.rm = TRUE), median = median(Fare, na.rm = TRUE))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 4 x 3[39m
+  Embarked  mean median
+  [3m[90m<fct>[39m[23m    [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m
+[90m1[39m C         62.3  28.5 
+[90m2[39m Q         12.4   7.75
+[90m3[39m S         27.4  13   
+[90m4[39m [31mNA[39m        80    80   
+> 
+> full_titanic %>%
++   group_by(Embarked) %>%
++   summarize(mean = mean(Farepp, na.rm = TRUE), median = median(Farepp, na.rm = TRUE))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 4 x 3[39m
+  Embarked  mean median
+  [3m[90m<fct>[39m[23m    [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m
+[90m1[39m C        24.0   26.3 
+[90m2[39m Q         8.36   7.75
+[90m3[39m S        12.8    8.11
+[90m4[39m [31mNA[39m       40     40   
+> 
+> ggplot(full_titanic, aes(x = Farepp)) +
++   geom_histogram() +
++   facet_grid(~ Embarked)
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> full_titanic$Embarked[which(is.na(full_titanic$Embarked))] <- "S"
+> table(full_titanic$Embarked)
+
+  C   Q   S 
+270 123 916 
+> 
+> # impute missing data for age using mice package excluding variables likely not predictive of age
+> 
+> mice_age <- mice(full_titanic[, !names(full_titanic) %in% c("PassengerId", "Survived", "Name", "Ticket", "Cabin", "Lastname", "Fam")], method = "rf")
+
+ iter imp variable
+  1   1  Age
+  1   2  Age
+  1   3  Age
+  1   4  Age
+  1   5  Age
+  2   1  Age
+  2   2  Age
+  2   3  Age
+  2   4  Age
+  2   5  Age
+  3   1  Age
+  3   2  Age
+  3   3  Age
+  3   4  Age
+  3   5  Age
+  4   1  Age
+  4   2  Age
+  4   3  Age
+  4   4  Age
+  4   5  Age
+  5   1  Age
+  5   2  Age
+  5   3  Age
+  5   4  Age
+  5   5  Age
+Warning message:
+Number of logged events: 25 
+> mice_age_output <- complete(mice_age)
+> 
+> ggplot(mice_age_output, aes(x = Age)) +
++   geom_histogram()
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> full_titanic[6:15, "Age"]
+[90m# A tibble: 10 x 1[39m
+     Age
+   [3m[90m<dbl>[39m[23m
+[90m 1[39m    [31mNA[39m
+[90m 2[39m    54
+[90m 3[39m     2
+[90m 4[39m    27
+[90m 5[39m    14
+[90m 6[39m     4
+[90m 7[39m    58
+[90m 8[39m    20
+[90m 9[39m    39
+[90m10[39m    14
+> mice_age_output[6:15, "Age"]
+ [1] 28.5 54.0  2.0 27.0 14.0  4.0 58.0 20.0 39.0 14.0
+> 
+> # thise only overwrites missing values as the others are the same
+> full_titanic$Age <- mice_age_output$Age
+> 
+> # create a variable for child; cut-off is debatable
+> # this is based on the analysis of split training data below
+> 
+> full_titanic$Child <- ifelse(full_titanic$Age <= 12, 1, 0)
+> full_titanic$Smallchild <- ifelse(full_titanic$Age <= 5, 1, 0)
+> 
+> # split into training and testing sets
+> # shuffle row indices, randomly order data, and split
+> 
+> set.seed(227537)
+> 
+> train_titanic <- filter(full_titanic, !is.na(Survived))
+> 
+> rows <- sample(nrow(train_titanic))
+> train_titanic <- train_titanic[rows, ]
+> 
+> # find row to split on (80% train, 20% validate)
+> split <- round(nrow(train_titanic) * .8)
+> 
+> train <- train_titanic[1:split, ]
+> valid <- train_titanic[(split + 1):nrow(train_titanic), ]
+> 
+> # see relationship between survival and age; were the youngest children
+> # more likely to survive?
+> 
+> ggplot(train, aes(x = Age, fill = as.factor(Survived))) +
++   geom_density(alpha = 0.5, position = "identity")
+> 
+> # fit logistic regression
+> # including an interaction between pch and sibsp as the effect of these variables
+> # likely depends on the other
+> 
+> log_model <- glm(Survived ~ Pclass + Sex*Age + SibSp*Parch + Fare + Farepp + TicketN + Embarked + 
++                    Title + Child + Smallchild, family = "binomial", data = train)
+Warning message:
+glm.fit: fitted probabilities numerically 0 or 1 occurred 
+> summary(log_model) # most variables not statistically sig but some cells are small and don't have power
+
+Call:
+glm(formula = Survived ~ Pclass + Sex * Age + SibSp * Parch + 
+    Fare + Farepp + TicketN + Embarked + Title + Child + Smallchild, 
+    family = "binomial", data = train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.4203  -0.5611  -0.3603   0.5145   2.6371  
+
+Coefficients:
+                Estimate Std. Error z value Pr(>|z|)    
+(Intercept)    3.262e+01  1.944e+03   0.017   0.9866    
+Pclass2       -8.900e-01  4.734e-01  -1.880   0.0601 .  
+Pclass3       -2.095e+00  5.041e-01  -4.155 3.25e-05 ***
+Sexmale       -3.160e+01  1.944e+03  -0.016   0.9870    
+Age           -2.644e-02  1.849e-02  -1.431   0.1526    
+SibSp         -5.699e-01  2.397e-01  -2.377   0.0174 *  
+Parch         -4.327e-01  2.018e-01  -2.144   0.0321 *  
+Fare           5.895e-04  5.817e-03   0.101   0.9193    
+Farepp         9.507e-03  2.491e-02   0.382   0.7028    
+TicketN        1.593e-01  1.328e-01   1.200   0.2302    
+EmbarkedQ      4.468e-02  4.597e-01   0.097   0.9226    
+EmbarkedS     -1.369e-01  2.861e-01  -0.478   0.6324    
+Titleforeign  -1.616e+01  1.406e+03  -0.011   0.9908    
+TitleMaster    2.630e+00  1.356e+00   1.940   0.0524 .  
+Titlemilitary  2.271e-01  1.386e+00   0.164   0.8698    
+TitleMiss     -2.962e+01  1.944e+03  -0.015   0.9878    
+TitleMr       -5.114e-01  1.021e+00  -0.501   0.6165    
+TitleMrs      -2.854e+01  1.944e+03  -0.015   0.9883    
+Titlenoble     1.641e+01  1.683e+03   0.010   0.9922    
+TitleRev      -1.642e+01  1.589e+03  -0.010   0.9918    
+Child         -3.685e-01  8.549e-01  -0.431   0.6664    
+Smallchild     1.174e+00  7.268e-01   1.615   0.1063    
+Sexmale:Age   -6.636e-03  2.134e-02  -0.311   0.7558    
+SibSp:Parch   -1.272e-01  1.566e-01  -0.813   0.4165    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 941.97  on 712  degrees of freedom
+Residual deviance: 570.23  on 689  degrees of freedom
+AIC: 618.23
+
+Number of Fisher Scoring iterations: 16
+
+> 
+> # use cross-validation to see how the model does on new data
+> valid_logit_p <- predict(log_model, valid, type = "response")
+> summary(valid_logit_p)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+0.01908 0.10249 0.35355 0.43691 0.78024 0.97208 
+> hist(valid_logit_p)
+> 
+> logit_class_1 <- ifelse(valid_logit_p >= .5, 1, 0)
+> confusionMatrix(logit_class_1, valid[["Survived"]]) # above 80% accuracy, sensitivity, and specificity 
+Error: `data` and `reference` should be factors with the same levels.
+Execution halted

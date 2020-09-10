@@ -1,0 +1,641 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> #Libraries#
+> library("dplyr");
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> # Import the titanic training dataset.
+> train<-read.csv("../input/train.csv");
+> test<-read.csv("../input/test.csv");
+> test$Survived<-rep("NA",nrow(test))
+> full<-rbind(train,test)
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> #Target Variable:Categorical#
+> train%>%group_by(Survived)%>%count->freq;
+> freq$frequency<-freq$n/nrow(train)*100;
+> colnames(freq)[2]<-"count";
+> freq
+[90m# A tibble: 2 x 3[39m
+[90m# Groups:   Survived [2][39m
+  Survived count frequency
+     [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m     [3m[90m<dbl>[39m[23m
+[90m1[39m        0   549      61.6
+[90m2[39m        1   342      38.4
+> barplot(freq$count,names.arg=freq$Survived)
+> 
+> #Pclass#
+> train%>%group_by(Pclass)%>%count()->freq;
+> freq$frequency<-freq$n/nrow(train)*100;
+> colnames(freq)[2]<-"count";
+> freq
+[90m# A tibble: 3 x 3[39m
+[90m# Groups:   Pclass [3][39m
+  Pclass count frequency
+   [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m     [3m[90m<dbl>[39m[23m
+[90m1[39m      1   216      24.2
+[90m2[39m      2   184      20.7
+[90m3[39m      3   491      55.1
+> 
+> #Sex#
+> train%>%group_by(Sex)%>%count()->freq;
+> freq$frequency<-freq$n/nrow(train);
+> colnames(freq)[2]<-"count";
+> freq
+[90m# A tibble: 2 x 3[39m
+[90m# Groups:   Sex [2][39m
+  Sex    count frequency
+  [3m[90m<fct>[39m[23m  [3m[90m<int>[39m[23m     [3m[90m<dbl>[39m[23m
+[90m1[39m female   314     0.352
+[90m2[39m male     577     0.648
+> 
+> #Ticket#
+> train%>%group_by(Ticket)%>%count()->freq;
+> freq$frequency<-freq$n/nrow(train);
+> colnames(freq)[2]<-"count";
+> head(freq)
+[90m# A tibble: 6 x 3[39m
+[90m# Groups:   Ticket [6][39m
+  Ticket count frequency
+  [3m[90m<fct>[39m[23m  [3m[90m<int>[39m[23m     [3m[90m<dbl>[39m[23m
+[90m1[39m 110152     3   0.003[4m3[24m[4m7[24m
+[90m2[39m 110413     3   0.003[4m3[24m[4m7[24m
+[90m3[39m 110465     2   0.002[4m2[24m[4m4[24m
+[90m4[39m 110564     1   0.001[4m1[24m[4m2[24m
+[90m5[39m 110813     1   0.001[4m1[24m[4m2[24m
+[90m6[39m 111240     1   0.001[4m1[24m[4m2[24m
+> barplot(freq$count,names.arg=freq$Ticket)
+> NTicket<-freq[,1:2];
+> 
+> 
+> #Cabin#
+> train%>%group_by(Cabin)%>%count()->freq;
+> freq$frequency<-freq$n/nrow(train)*100;
+> colnames(freq)[2]<-"count";
+> head(freq)
+[90m# A tibble: 6 x 3[39m
+[90m# Groups:   Cabin [6][39m
+  Cabin count frequency
+  [3m[90m<fct>[39m[23m [3m[90m<int>[39m[23m     [3m[90m<dbl>[39m[23m
+[90m1[39m [90m"[39m[90m"[39m      687    77.1  
+[90m2[39m [90m"[39mA10[90m"[39m     1     0.112
+[90m3[39m [90m"[39mA14[90m"[39m     1     0.112
+[90m4[39m [90m"[39mA16[90m"[39m     1     0.112
+[90m5[39m [90m"[39mA19[90m"[39m     1     0.112
+[90m6[39m [90m"[39mA20[90m"[39m     1     0.112
+> 
+> #Embarked#
+> train%>%group_by(Embarked)%>%count()->freq;
+> freq$frequency<-freq$n/nrow(train)*100;
+> colnames(freq)[2]<-"count";
+> freq
+[90m# A tibble: 4 x 3[39m
+[90m# Groups:   Embarked [4][39m
+  Embarked count frequency
+  [3m[90m<fct>[39m[23m    [3m[90m<int>[39m[23m     [3m[90m<dbl>[39m[23m
+[90m1[39m [90m"[39m[90m"[39m           2     0.224
+[90m2[39m [90m"[39mC[90m"[39m        168    18.9  
+[90m3[39m [90m"[39mQ[90m"[39m         77     8.64 
+[90m4[39m [90m"[39mS[90m"[39m        644    72.3  
+> 
+> #Fare#Numeric#
+> summary(train$Fare)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00    7.91   14.45   32.20   31.00  512.33 
+> hist(train$Fare)
+> 
+> #Age#Numeric#
+> summary(train$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.42   20.12   28.00   29.70   38.00   80.00     177 
+> hist(train$Age)
+> 
+> #Sibsp#
+> train%>%group_by(SibSp)%>%count()->freq;
+> freq$frequency<-freq$n/nrow(train)*100;
+> colnames(freq)[2]<-"count";
+> freq
+[90m# A tibble: 7 x 3[39m
+[90m# Groups:   SibSp [7][39m
+  SibSp count frequency
+  [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m     [3m[90m<dbl>[39m[23m
+[90m1[39m     0   608    68.2  
+[90m2[39m     1   209    23.5  
+[90m3[39m     2    28     3.14 
+[90m4[39m     3    16     1.80 
+[90m5[39m     4    18     2.02 
+[90m6[39m     5     5     0.561
+[90m7[39m     8     7     0.786
+> 
+> #Parch#
+> train%>%group_by(Parch)%>%count()->freq;
+> freq$frequency<-freq$n/nrow(train)*100;
+> colnames(freq)[2]<-"count";
+> freq;
+[90m# A tibble: 7 x 3[39m
+[90m# Groups:   Parch [7][39m
+  Parch count frequency
+  [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m     [3m[90m<dbl>[39m[23m
+[90m1[39m     0   678    76.1  
+[90m2[39m     1   118    13.2  
+[90m3[39m     2    80     8.98 
+[90m4[39m     3     5     0.561
+[90m5[39m     4     4     0.449
+[90m6[39m     5     5     0.561
+[90m7[39m     6     1     0.112
+> 
+> #Join NTicket and train#
+> colnames(NTicket)[2]<-"NAccompanied"
+> NTicket$NAccompanied<-NTicket$NAccompanied-1
+> train<-merge(train,NTicket,by="Ticket",all.x="TRUE")
+> head(train)
+  Ticket PassengerId Survived Pclass
+1 110152         258        1      1
+2 110152         760        1      1
+3 110152         505        1      1
+4 110413         559        1      1
+5 110413         263        0      1
+6 110413         586        1      1
+                                                      Name    Sex Age SibSp
+1                                     Cherry, Miss. Gladys female  30     0
+2 Rothes, the Countess. of (Lucy Noel Martha Dyer-Edwards) female  33     0
+3                                    Maioni, Miss. Roberta female  16     0
+4                   Taussig, Mrs. Emil (Tillie Mandelbaum) female  39     1
+5                                        Taussig, Mr. Emil   male  52     1
+6                                      Taussig, Miss. Ruth female  18     0
+  Parch  Fare Cabin Embarked NAccompanied
+1     0 86.50   B77        S            2
+2     0 86.50   B77        S            2
+3     0 86.50   B79        S            2
+4     1 79.65   E67        S            2
+5     1 79.65   E67        S            2
+6     2 79.65   E68        S            2
+> 
+> ind<-which(is.na(train$Age))
+> Age_train<-train[-ind,]
+> Impute_Age<-train[ind,]
+> 
+> age_lm_mod<-lm(Age~Pclass+Sex+Fare+Embarked+NAccompanied,data=Age_train)
+> Imputed_age<-predict(age_lm_mod,newdata=Impute_Age)
+> train$Age[ind]<-as.numeric(Imputed_age)
+> 
+> ind<-which(is.na(train$Cabin))
+> levels(train$Cabin)<-c(levels(train$Cabin),"Missing")
+> train$Cabin[ind]<-"Missing"
+> 
+> par(mfrow=c(2,2))
+> dt<-table(train$Survived,train$Pclass)
+> barplot(dt,xlab="Class",beside=TRUE,col=c("red","blue"),legend=rownames(dt))
+> text(1.5,100,dt[1,1])
+> text(2.5,150,dt[2,1])
+> text(4.5,150,dt[1,2])
+> text(5.5,150,dt[2,2])
+> text(7.5,350,dt[1,3])
+> text(8.5,150,dt[2,3])
+> dt<-table(train$Survived,train$Sex)
+> barplot(dt,xlab="SEX",beside=TRUE,col=c("red","blue"),legend=rownames(dt))
+> text(1.5,100,dt[1,1])
+> text(2.5,300,dt[2,1])
+> text(4.5,300,dt[1,2])
+> text(5.5,130,dt[2,2])
+> dt<-table(train$Survived,train$Embarked)
+> barplot(dt,xlab="Port",beside=TRUE,col=c("red","blue"),legend=rownames(dt))
+> 
+> age<-cut(train$Age,breaks=c(0,1,seq(from=5,to=100,by=5)))
+> barplot(table(train$Survived,age),col=c("red","blue"),legend=rownames(table(train$Survived,age)))
+> table(train$Survived,is.na(train$Age))
+   
+    FALSE
+  0   549
+  1   342
+> 
+> par(mfrow=c(2,2))
+> barplot(table(train$Survived,train$NAccompanied),xlab="NAccompanied",col=c("red","blue"),legend=rownames(table(train$Survived,train$NAccompanied)))
+> barplot(table(train$Survived,train$SibSp),xlab="SibSp",col=c("red","blue"),legend=rownames(table(train$Survived,train$SibSp)))
+> barplot(table(train$Survived,train$Parch),xlab="ParCh",col=c("red","blue"),legend=rownames(table(train$Survived,train$Parch)))
+> 
+> train%>%select(Fare,Survived)%>%group_by(Survived)%>%summarise(mean(Fare),sd(Fare),min(Fare),max(Fare))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 2 x 5[39m
+  Survived `mean(Fare)` `sd(Fare)` `min(Fare)` `max(Fare)`
+     [3m[90m<int>[39m[23m        [3m[90m<dbl>[39m[23m      [3m[90m<dbl>[39m[23m       [3m[90m<dbl>[39m[23m       [3m[90m<dbl>[39m[23m
+[90m1[39m        0         22.1       31.4           0        263 
+[90m2[39m        1         48.4       66.6           0        512.
+> 
+> ind<-which(train$Embarked=="")
+> train[ind,]
+   Ticket PassengerId Survived Pclass                                      Name
+40 113572         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+41 113572          62        1      1                       Icard, Miss. Amelie
+      Sex Age SibSp Parch Fare Cabin Embarked NAccompanied
+40 female  62     0     0   80   B28                     1
+41 female  38     0     0   80   B28                     1
+> 
+> train%>%filter(Sex=="female",Pclass=="1",NAccompanied==1,Fare>=75,Fare<=85)%>%group_by(Embarked)
+[90m# A tibble: 9 x 13[39m
+[90m# Groups:   Embarked [3][39m
+  Ticket PassengerId Survived Pclass Name  Sex     Age SibSp Parch  Fare Cabin
+  [3m[90m<fct>[39m[23m        [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m  [3m[90m<int>[39m[23m [3m[90m<fct>[39m[23m [3m[90m<fct>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m
+[90m1[39m 113572         830        1      1 [90m"[39mSto… fema…  62       0     0  80   [90m"[39mB28[90m"[39m
+[90m2[39m 113572          62        1      1 [90m"[39mIca… fema…  38       0     0  80   [90m"[39mB28[90m"[39m
+[90m3[39m 11767          311        1      1 [90m"[39mHay… fema…  24       0     0  83.2 [90m"[39mC54[90m"[39m
+[90m4[39m 11767          880        1      1 [90m"[39mPot… fema…  56       0     1  83.2 [90m"[39mC50[90m"[39m
+[90m5[39m 19877          291        1      1 [90m"[39mBar… fema…  26       0     0  78.8 [90m"[39m[90m"[39m   
+[90m6[39m 36947          497        1      1 [90m"[39mEus… fema…  54       1     0  78.3 [90m"[39mD20[90m"[39m
+[90m7[39m 36947          592        1      1 [90m"[39mSte… fema…  52       1     0  78.3 [90m"[39mD20[90m"[39m
+[90m8[39m 36973          231        1      1 [90m"[39mHar… fema…  35       1     0  83.5 [90m"[39mC83[90m"[39m
+[90m9[39m PC 17…         376        1      1 [90m"[39mMey… fema…  33.8     1     0  82.2 [90m"[39m[90m"[39m   
+[90m# … with 2 more variables: Embarked [3m[90m<fct>[90m[23m, NAccompanied [3m[90m<dbl>[90m[23m[39m
+> 
+> ind<-which(train$Embarked=="")
+> train$Embarked[ind]<-"C"
+> full$Embarked[ind]<-"C"
+> 
+> train$Survived<-as.logical(train$Survived)
+> train$Male<-as.logical(train$Sex=="male")
+> train$FirstClass<-as.logical(train$Pclass==1)
+> train$ThirdClass<-as.logical(train$Pclass==3)
+> train$Embarked_C<-as.logical(train$Embarked=="C")
+> train$Embarked_Q<-as.logical(train$Embarked=="Q")
+> train$Age<-cut(as.numeric(train$Age),breaks=c(0,1,seq(from=5,to=100,by=5)))
+> train_clean<-train[,c("Survived","Male","FirstClass","ThirdClass","Embarked_C","Embarked_Q","Age","Cabin","Fare","NAccompanied","Parch","SibSp")]
+> head(train_clean)
+  Survived  Male FirstClass ThirdClass Embarked_C Embarked_Q     Age Cabin
+1     TRUE FALSE       TRUE      FALSE      FALSE      FALSE (25,30]   B77
+2     TRUE FALSE       TRUE      FALSE      FALSE      FALSE (30,35]   B77
+3     TRUE FALSE       TRUE      FALSE      FALSE      FALSE (15,20]   B79
+4     TRUE FALSE       TRUE      FALSE      FALSE      FALSE (35,40]   E67
+5    FALSE  TRUE       TRUE      FALSE      FALSE      FALSE (50,55]   E67
+6     TRUE FALSE       TRUE      FALSE      FALSE      FALSE (15,20]   E68
+   Fare NAccompanied Parch SibSp
+1 86.50            2     0     0
+2 86.50            2     0     0
+3 86.50            2     0     0
+4 79.65            2     1     1
+5 79.65            2     1     1
+6 79.65            2     2     0
+> 
+> #Split Data#
+> set.seed(100)
+> ind<-sample(1:nrow(train_clean),0.85*nrow(train_clean))
+> train_clean<-train_clean[ind,]
+> valid_clean<-train_clean[-ind,]
+> train_clean<-train_clean[,]
+> 
+> #After running the first model, removing the unsignificant variables#
+> train_clean<-train_clean[,-8]
+> 
+> library(e1071)
+> library(rpart)
+> log_model<-glm(Survived~.,data=train_clean,family=binomial(link='logit'))
+> svm_model<-svm(factor(Survived)~.,data=train_clean,kernel='linear')
+> dtree_model<-rpart(Survived~.,data=train_clean,method="class")
+> 
+> summary(log_model)
+
+Call:
+glm(formula = Survived ~ ., family = binomial(link = "logit"), 
+    data = train_clean)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.8493  -0.6037  -0.3834   0.5220   2.4611  
+
+Coefficients:
+                 Estimate Std. Error z value Pr(>|z|)    
+(Intercept)     6.065e+00  1.256e+00   4.828 1.38e-06 ***
+MaleTRUE       -2.877e+00  2.357e-01 -12.208  < 2e-16 ***
+FirstClassTRUE  8.093e-01  3.440e-01   2.352 0.018652 *  
+ThirdClassTRUE -1.326e+00  2.725e-01  -4.865 1.15e-06 ***
+Embarked_CTRUE  4.944e-01  2.747e-01   1.800 0.071873 .  
+Embarked_QTRUE  3.476e-01  3.817e-01   0.911 0.362421    
+Age(1,5]       -2.169e+00  1.305e+00  -1.661 0.096624 .  
+Age(5,10]      -3.852e+00  1.369e+00  -2.814 0.004885 ** 
+Age(10,15]     -3.714e+00  1.392e+00  -2.668 0.007632 ** 
+Age(15,20]     -4.295e+00  1.247e+00  -3.445 0.000572 ***
+Age(20,25]     -4.454e+00  1.237e+00  -3.599 0.000319 ***
+Age(25,30]     -4.156e+00  1.232e+00  -3.374 0.000741 ***
+Age(30,35]     -3.891e+00  1.238e+00  -3.143 0.001670 ** 
+Age(35,40]     -4.459e+00  1.256e+00  -3.549 0.000386 ***
+Age(40,45]     -4.798e+00  1.265e+00  -3.793 0.000149 ***
+Age(45,50]     -4.828e+00  1.292e+00  -3.735 0.000188 ***
+Age(50,55]     -4.687e+00  1.355e+00  -3.458 0.000544 ***
+Age(55,60]     -5.394e+00  1.411e+00  -3.822 0.000132 ***
+Age(60,65]     -5.912e+00  1.501e+00  -3.939 8.19e-05 ***
+Age(65,70]     -1.891e+01  8.373e+02  -0.023 0.981983    
+Age(70,75]     -1.931e+01  9.213e+02  -0.021 0.983275    
+Age(75,80]      1.150e+01  1.455e+03   0.008 0.993695    
+Fare            2.287e-03  2.716e-03   0.842 0.399749    
+NAccompanied   -1.292e-01  1.391e-01  -0.929 0.353109    
+Parch          -1.730e-01  1.650e-01  -1.049 0.294344    
+SibSp          -2.771e-01  1.556e-01  -1.780 0.075044 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1014.1  on 756  degrees of freedom
+Residual deviance:  636.3  on 731  degrees of freedom
+AIC: 688.3
+
+Number of Fisher Scoring iterations: 14
+
+> 
+> #Train with only significant variable#
+> log_model_sig<-glm(Survived~.,data=train_clean[,-c(5,6,8,9,10)],family=binomial(link='logit'))
+> summary(log_model_sig)
+
+Call:
+glm(formula = Survived ~ ., family = binomial(link = "logit"), 
+    data = train_clean[, -c(5, 6, 8, 9, 10)])
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.9518  -0.5771  -0.4019   0.5352   2.4771  
+
+Coefficients:
+                Estimate Std. Error z value Pr(>|z|)    
+(Intercept)       5.9287     1.2252   4.839 1.31e-06 ***
+MaleTRUE         -2.8262     0.2215 -12.758  < 2e-16 ***
+FirstClassTRUE    1.1015     0.3034   3.630 0.000283 ***
+ThirdClassTRUE   -1.2957     0.2601  -4.982 6.29e-07 ***
+Age(1,5]         -2.2725     1.2873  -1.765 0.077520 .  
+Age(5,10]        -3.9892     1.3559  -2.942 0.003261 ** 
+Age(10,15]       -3.4370     1.3440  -2.557 0.010548 *  
+Age(15,20]       -4.1338     1.2206  -3.387 0.000708 ***
+Age(20,25]       -4.2822     1.2123  -3.532 0.000412 ***
+Age(25,30]       -3.9662     1.2059  -3.289 0.001005 ** 
+Age(30,35]       -3.7079     1.2125  -3.058 0.002228 ** 
+Age(35,40]       -4.4540     1.2341  -3.609 0.000307 ***
+Age(40,45]       -4.8270     1.2411  -3.889 0.000101 ***
+Age(45,50]       -4.7449     1.2713  -3.732 0.000190 ***
+Age(50,55]       -4.7025     1.3290  -3.538 0.000403 ***
+Age(55,60]       -5.2087     1.3855  -3.759 0.000170 ***
+Age(60,65]       -5.9835     1.4790  -4.046 5.22e-05 ***
+Age(65,70]      -18.9296   830.3749  -0.023 0.981813    
+Age(70,75]      -18.9194   910.6596  -0.021 0.983425    
+Age(75,80]       11.3621  1455.3980   0.008 0.993771    
+SibSp            -0.4142     0.1339  -3.093 0.001978 ** 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1014.05  on 756  degrees of freedom
+Residual deviance:  644.88  on 736  degrees of freedom
+AIC: 686.88
+
+Number of Fisher Scoring iterations: 14
+
+> 
+> library(ROCR)
+Warning message:
+package ‘ROCR’ was built under R version 3.6.2 
+> library(gplots)
+
+Attaching package: ‘gplots’
+
+The following object is masked from ‘package:stats’:
+
+    lowess
+
+> Predict_lm<-predict(log_model,newdata=valid_clean,type='response')
+> Predict_svm<-predict(svm_model,newdata=valid_clean)
+> Predict_dt<-predict(dtree_model,newdata=valid_clean)
+> Predict_lm<-ifelse(Predict_lm>0.5,TRUE,FALSE)
+> Predic_svm<-as.logical(Predict_svm)
+> Predict_dtree<-ifelse(Predict_dt[,2]>0.5,TRUE,FALSE)
+> Predict_lm_sig<-predict(log_model_sig,newdata=valid_clean,type='response')
+> Predict_lm_sig<-ifelse(Predict_lm_sig>0.5,TRUE,FALSE)
+> 
+> misClasificError<-mean(Predict_dtree != valid_clean$Survived)
+> print(paste('Accuracy Dtree',1-misClasificError))
+[1] "Accuracy Dtree 0.824561403508772"
+> misClasificError<-mean(Predict_svm != valid_clean$Survived)
+> print(paste('Accuracy SVM',1-misClasificError))
+[1] "Accuracy SVM 0.754385964912281"
+> misClasificError<-mean(Predict_lm != valid_clean$Survived)
+> print(paste('Accuracy Logit',1-misClasificError))
+[1] "Accuracy Logit 0.798245614035088"
+> misClasificError<-mean(Predict_lm_sig!= valid_clean$Survived)
+> print(paste('Accuracy Logit Sig',1-misClasificError))
+[1] "Accuracy Logit Sig 0.815789473684211"
+> 
+> par(mfrow=c(2,2))
+> Predict_lm<-predict(log_model,newdata=valid_clean,type='response')
+> Predict_svm<-as.numeric(predict(svm_model,newdata=valid_clean))
+> Predict_dtree<-predict(dtree_model,newdata=valid_clean)[,2]
+> Predict_lm_sig<-predict(log_model_sig,newdata=valid_clean,type='response')
+> pr_dt <- prediction(Predict_dtree, valid_clean$Survived)
+> prf_dt <- performance(pr_dt, measure = "tpr", x.measure = "fpr")
+> plot(prf_dt)
+> pr_svm <- prediction(Predict_svm, valid_clean$Survived)
+> prf_svm <- performance(pr_svm, measure = "tpr", x.measure = "fpr")
+> plot(prf_svm)
+> pr_lm <- prediction(Predict_lm, valid_clean$Survived)
+> prf_lm <- performance(pr_lm , measure = "tpr", x.measure = "fpr")
+> plot(prf_lm)
+> pr_lm_sig <- prediction(Predict_lm_sig, valid_clean$Survived)
+> prf_lm_sig <- performance(pr_lm_sig , measure = "tpr", x.measure = "fpr")
+> plot(prf_lm_sig)
+> 
+> 
+> auc_dt <- performance(pr_dt, measure = "auc")
+> auc_dt <- auc_dt@y.values[[1]]
+> paste("AUC DT: ",auc_dt)
+[1] "AUC DT:  0.841695776436964"
+> auc_svm <- performance(pr_svm, measure = "auc")
+> auc_svm <- auc_svm@y.values[[1]]
+> paste("AUC SVM: ",auc_svm)
+[1] "AUC SVM:  0.737059383931407"
+> auc_lm <- performance(pr_lm, measure = "auc")
+> auc_lm <- auc_lm@y.values[[1]]
+> paste("AUC LM: ",auc_lm)
+[1] "AUC LM:  0.858208955223881"
+> auc_lm <- performance(pr_lm_sig, measure = "auc")
+> auc_lm <- auc_lm@y.values[[1]]
+> paste("AUC LM: ",auc_lm)
+[1] "AUC LM:  0.845982851698952"
+> 
+> Predict_lm_sig<-predict(log_model_sig,newdata=valid_clean,type='response')
+> Predict_lm_sig<-ifelse(Predict_lm_sig>0.55,TRUE,FALSE)
+> misClasificError<-mean(Predict_lm_sig!= valid_clean$Survived)
+> print(paste('Accuracy Logit Sig',1-misClasificError))
+[1] "Accuracy Logit Sig 0.824561403508772"
+> 
+> #Load Test Set#
+> test<-read.csv("../input/test.csv");
+> summary(test)
+  PassengerId         Pclass     
+ Min.   : 892.0   Min.   :1.000  
+ 1st Qu.: 996.2   1st Qu.:1.000  
+ Median :1100.5   Median :3.000  
+ Mean   :1100.5   Mean   :2.266  
+ 3rd Qu.:1204.8   3rd Qu.:3.000  
+ Max.   :1309.0   Max.   :3.000  
+                                 
+                                        Name         Sex           Age       
+ Abbott, Master. Eugene Joseph            :  1   female:152   Min.   : 0.17  
+ Abelseth, Miss. Karen Marie              :  1   male  :266   1st Qu.:21.00  
+ Abelseth, Mr. Olaus Jorgensen            :  1                Median :27.00  
+ Abrahamsson, Mr. Abraham August Johannes :  1                Mean   :30.27  
+ Abrahim, Mrs. Joseph (Sophie Halaut Easu):  1                3rd Qu.:39.00  
+ Aks, Master. Philip Frank                :  1                Max.   :76.00  
+ (Other)                                  :412                NA's   :86     
+     SibSp            Parch             Ticket         Fare        
+ Min.   :0.0000   Min.   :0.0000   PC 17608:  5   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.0000   113503  :  4   1st Qu.:  7.896  
+ Median :0.0000   Median :0.0000   CA. 2343:  4   Median : 14.454  
+ Mean   :0.4474   Mean   :0.3923   16966   :  3   Mean   : 35.627  
+ 3rd Qu.:1.0000   3rd Qu.:0.0000   220845  :  3   3rd Qu.: 31.500  
+ Max.   :8.0000   Max.   :9.0000   347077  :  3   Max.   :512.329  
+                                   (Other) :396   NA's   :1        
+             Cabin     Embarked
+                :327   C:102   
+ B57 B59 B63 B66:  3   Q: 46   
+ A34            :  2   S:270   
+ B45            :  2           
+ C101           :  2           
+ C116           :  2           
+ (Other)        : 80           
+> 
+> #missing value#
+> ind<-which(is.na(full$Fare))
+> full[ind,]
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked
+1044   3701   NA              S
+> full[-ind,]%>%filter(Pclass==3,Sex=="male",Age>=30,Embarked=="S")%>%summarise(mean(Fare))
+  mean(Fare)
+1    11.4508
+> full$Fare[ind]<-11.4508
+> 
+> #variable transformation for full set#
+> full%>%group_by(Ticket)%>%count()->freq;
+> freq$frequency<-freq$n/nrow(full);
+> colnames(freq)[2]<-"count";
+> NTicket<-freq[,1:2];
+> colnames(NTicket)[2]<-"NAccompanied"
+> NTicket$NAccompanied<-NTicket$NAccompanied-1
+> full<-merge(full,NTicket,by="Ticket",all.x="TRUE")
+> 
+> ind<-which(is.na(full$Age))
+> Age_full<-full[-ind,]
+> Impute_Age<-full[ind,]
+> age_lm_mod<-lm(Age~Pclass+Sex+Fare+Embarked+NAccompanied,data=Age_full)
+> Imputed_age<-predict(age_lm_mod,newdata=Impute_Age)
+> full$Age[ind]<-as.numeric(Imputed_age)
+> 
+> full$Male<-as.logical(full$Sex=="male")
+> full$FirstClass<-as.logical(full$Pclass==1)
+> full$ThirdClass<-as.logical(full$Pclass==3)
+> full$Embarked_C<-as.logical(full$Embarked=="C")
+> full$Embarked_Q<-as.logical(full$Embarked=="Q")
+> full$Age<-cut(as.numeric(full$Age),breaks=c(0,1,seq(from=5,to=100,by=5)))
+> full_clean<-full[,c("Male","FirstClass","ThirdClass","Embarked_C","Embarked_Q","Age","Fare","NAccompanied","Parch","SibSp")]
+> head(full_clean)
+   Male FirstClass ThirdClass Embarked_C Embarked_Q     Age  Fare NAccompanied
+1 FALSE       TRUE      FALSE      FALSE      FALSE (25,30] 86.50            2
+2 FALSE       TRUE      FALSE      FALSE      FALSE (15,20] 86.50            2
+3 FALSE       TRUE      FALSE      FALSE      FALSE (30,35] 86.50            2
+4 FALSE       TRUE      FALSE      FALSE      FALSE (35,40] 79.65            2
+5 FALSE       TRUE      FALSE      FALSE      FALSE (15,20] 79.65            2
+6  TRUE       TRUE      FALSE      FALSE      FALSE (50,55] 79.65            2
+  Parch SibSp
+1     0     0
+2     0     0
+3     0     0
+4     1     1
+5     2     0
+6     1     1
+> 
+> test_clean<-full_clean[-(1:891),]
+> str(test_clean)
+'data.frame':	418 obs. of  10 variables:
+ $ Male        : logi  FALSE TRUE FALSE FALSE FALSE TRUE ...
+ $ FirstClass  : logi  FALSE FALSE FALSE FALSE FALSE FALSE ...
+ $ ThirdClass  : logi  TRUE TRUE TRUE TRUE TRUE TRUE ...
+ $ Embarked_C  : logi  FALSE FALSE FALSE FALSE FALSE FALSE ...
+ $ Embarked_Q  : logi  FALSE FALSE FALSE TRUE TRUE TRUE ...
+ $ Age         : Factor w/ 21 levels "(0,1]","(1,5]",..: 6 6 5 7 7 7 3 9 3 3 ...
+ $ Fare        : num  16.1 16.1 16.1 7.75 6.95 ...
+ $ NAccompanied: num  1 1 1 0 0 0 5 5 5 5 ...
+ $ Parch       : int  0 0 0 0 0 0 1 5 1 1 ...
+ $ SibSp       : int  1 1 1 0 0 0 4 0 4 4 ...
+> 
+> valid_clean<-valid_clean[,-8]
+> 
+> #for dataset train it on full dataset#
+> log_model<-glm(Survived~.,data=rbind(train_clean,valid_clean),family=binomial(link='logit'))
+> svm_model<-svm(factor(Survived)~.,data=rbind(train_clean,valid_clean),kernel='linear')
+> dtree_model<-rpart(Survived~.,data=rbind(train_clean,valid_clean),method="class")
+> Predict_lm<-predict(log_model,newdata=test_clean,type='response')
+> Predict_svm<-predict(svm_model,newdata=test_clean)
+> Predict_dt<-predict(dtree_model,newdata=test_clean)
+> 
+> 
+> output<-cbind(test$PassengerId,Predict_lm,Predic_svm,Predict_dt[,2])
+Warning message:
+In cbind(test$PassengerId, Predict_lm, Predic_svm, Predict_dt[,  :
+  number of rows of result is not a multiple of vector length (arg 3)
+> path <- "../data/";
+> kaggle <- F;
+> if(!dir.exists(path)) {
++         kaggle <- T;
++ 	path <- "../input/"; # changing path to Kaggle's environment
++ }
+> 
+> if(kaggle) {
++ 	write.csv(output, "submission.csv", row.names =F, quote=F);
++ } else {
++ 	write.csv(output, "../data/submission.csv", row.names =F, quote=F);
++ }
+> 
+> proc.time()
+   user  system elapsed 
+  1.126   0.102   1.249 

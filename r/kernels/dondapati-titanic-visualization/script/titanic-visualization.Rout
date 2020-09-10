@@ -1,0 +1,298 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> library(plyr)
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mpurrr  [39m 0.3.4     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32marrange()[39m   masks [34mplyr[39m::arrange()
+[31mx[39m [34mpurrr[39m::[32mcompact()[39m   masks [34mplyr[39m::compact()
+[31mx[39m [34mdplyr[39m::[32mcount()[39m     masks [34mplyr[39m::count()
+[31mx[39m [34mdplyr[39m::[32mfailwith()[39m  masks [34mplyr[39m::failwith()
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m    masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mid()[39m        masks [34mplyr[39m::id()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m       masks [34mstats[39m::lag()
+[31mx[39m [34mdplyr[39m::[32mmutate()[39m    masks [34mplyr[39m::mutate()
+[31mx[39m [34mdplyr[39m::[32mrename()[39m    masks [34mplyr[39m::rename()
+[31mx[39m [34mdplyr[39m::[32msummarise()[39m masks [34mplyr[39m::summarise()
+[31mx[39m [34mdplyr[39m::[32msummarize()[39m masks [34mplyr[39m::summarize()
+Warning messages:
+1: package ‘tibble’ was built under R version 3.6.2 
+2: package ‘tidyr’ was built under R version 3.6.2 
+3: package ‘purrr’ was built under R version 3.6.2 
+4: package ‘dplyr’ was built under R version 3.6.2 
+> library(data.table)
+
+Attaching package: ‘data.table’
+
+The following objects are masked from ‘package:dplyr’:
+
+    between, first, last
+
+The following object is masked from ‘package:purrr’:
+
+    transpose
+
+> library(magrittr)
+
+Attaching package: ‘magrittr’
+
+The following object is masked from ‘package:purrr’:
+
+    set_names
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> list.files("../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> 
+> # Any results you write to the current directory are saved as output.
+> titanic_train <- read_csv('../input/train.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> titanic_test <- read_csv('../input/test.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> str(titanic_train)
+tibble [891 × 12] (S3: spec_tbl_df/tbl_df/tbl/data.frame)
+ $ PassengerId: num [1:891] 1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : num [1:891] 0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : num [1:891] 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr [1:891] "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr [1:891] "male" "female" "female" "female" ...
+ $ Age        : num [1:891] 22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : num [1:891] 1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : num [1:891] 0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr [1:891] "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num [1:891] 7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr [1:891] NA "C85" NA "C123" ...
+ $ Embarked   : chr [1:891] "S" "C" "S" "S" ...
+ - attr(*, "spec")=
+  .. cols(
+  ..   PassengerId = [32mcol_double()[39m,
+  ..   Survived = [32mcol_double()[39m,
+  ..   Pclass = [32mcol_double()[39m,
+  ..   Name = [31mcol_character()[39m,
+  ..   Sex = [31mcol_character()[39m,
+  ..   Age = [32mcol_double()[39m,
+  ..   SibSp = [32mcol_double()[39m,
+  ..   Parch = [32mcol_double()[39m,
+  ..   Ticket = [31mcol_character()[39m,
+  ..   Fare = [32mcol_double()[39m,
+  ..   Cabin = [31mcol_character()[39m,
+  ..   Embarked = [31mcol_character()[39m
+  .. )
+> 
+> 
+> ggplot(titanic_train,mapping = aes(x = Age,y = Sex))+
++   geom_jitter(aes(colour = factor(Survived)))+
++   facet_wrap(~Pclass)+
++   theme(legend.title = element_blank())+
++   scale_fill_discrete(name = "Survived")+scale_x_continuous(name="Age",limits=c(0, 81))+
++   labs(x = "Age", y = "Sex", title = "Pclass vs Sex vs Age vs Survived")
+Warning message:
+Removed 177 rows containing missing values (geom_point). 
+> 
+> 
+> ggplot(data = titanic_train,mapping = aes(Fare,Pclass))+
++   geom_jitter(aes(colour  = factor(Survived)))+
++   scale_x_continuous(name = "Fare",limits = c(0,270),breaks = c(0,20,40,60,80,100,120,140,160,180,200,220,240,260,280))+
++   scale_fill_discrete(name = "Survived")+
++   facet_grid(~Sex)+
++   theme(legend.title = element_blank())+
++   labs(x = "Fare",y = "Pclass",title = "Fare Vs. Pclass for Genderwise")
+Warning message:
+Removed 16 rows containing missing values (geom_point). 
+> 
+> 
+> ggplot(data = titanic_train,mapping = aes(x = Age,y = Pclass))+
++   geom_jitter(aes(colour = factor(Survived)))+
++   theme(legend.title = element_blank())+
++   scale_fill_discrete(name = "Survived")+
++   facet_grid(~Sex)+
++   labs(x = "Age",y = "Pclass" ,title = "Age Vs. Pclass for Genderwise")
+Warning message:
+Removed 177 rows containing missing values (geom_point). 
+>   
+> ggplot(data = titanic_train,mapping = aes(x = factor(Embarked),y = Pclass))+
++   geom_jitter(aes(colour = factor(Survived)))+
++   facet_grid(~Sex)+
++   theme(legend.title = element_blank())+
++   labs(x = "Eambarked", y ="Pclass",title = "Eambarked Vs. Pclss Per Genderwise")
+> 
+> 
+> # Here missing values in Embarked column so Doing the some additional analysis.
+> # Finding the missing Values in Embarked column
+> 
+> titanic_train[which(!complete.cases(titanic_train$Embarked)),]
+[90m# A tibble: 2 x 12[39m
+  PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin
+        [3m[90m<dbl>[39m[23m    [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m
+[90m1[39m          62        1      1 Icar… fema…    38     0     0 113572    80 B28  
+[90m2[39m         830        1      1 Ston… fema…    62     0     0 113572    80 B28  
+[90m# … with 1 more variable: Embarked [3m[90m<chr>[90m[23m[39m
+> 
+>  # By observing the above the  missing is following the some pattern  gender is Female and Pclass is '1'
+> # and Survived is '1' so based on the previous graphs i observe that 
+> # Replacing the missing valus with. 
+> 
+> 
+> 
+>   
+> ggplot(data=subset(titanic_train,Sex == "female"& Pclass == 1 & Survived == 1),mapping = aes(x = factor(Embarked),y= factor(Pclass)))+
++   geom_jitter(aes(colour = factor(Survived)))+
++   theme(legend.title = element_blank())+
++   labs(x = "Emabarked" ,y = "Pclass")
+> 
+> # Based on the above graph replacing the NA values with "S"
+> titanic_train[c(62,830),'Embarked'] <- "S"
+> 
+> # After Replacing the values the updated Graph 
+> ggplot(data = titanic_train,mapping = aes(x = factor(Embarked),y = Pclass))+
++   geom_jitter(aes(colour = factor(Survived)))+
++   facet_grid(~Sex)+
++   theme(legend.title = element_blank())+
++   labs(x = "Eambarked", y ="Pclass",title = "Updated Eambarked Vs. Pclss Per Genderwise")
+> 
+> 
+> # View(titanic_train)
+> # Cleaning The Cabin Column and Making bargraph to understanding the missing values.
+> titanic_train$Cabin <- substr(titanic_train$Cabin,start = 1,stop = 1)
+> 
+> ggplot(data = titanic_train,mapping = aes(x = Cabin,y = ..count..,fill = Cabin))+
++   geom_bar(stat = "count",position = "dodge")+
++   facet_grid(Sex~Survived)+
++   geom_text(stat = "count",aes(label = ..count..),vjust = -0.5)+
++   labs(x = "Cabin",y = "Frequency",title = "Cabin Vs.Gender")
+>   
+> # Data cleaning and mauplation
+> 
+> Mis_Var <- sapply(titanic_train[,-1],function(x) round(prop.table(table(is.na(x)))*100,2))%>% 
++   ldply(.,data.frame) %>% 
++   set_colnames(c('Variable','Is.Missing','Freq'))%>%
++   mutate(Is.Missing  = ifelse(Is.Missing =='TRUE','Yes','No'))%>%
++   ggplot(.,mapping = aes(x = Is.Missing,y = Freq,colour = Variable,,fill = Variable))+
++   geom_histogram(stat = 'identity')+facet_grid(~Variable)+labs(title = 'Missing variable Percentage')+
++   geom_text(aes(label = Freq),position = position_dodge(width = 1),vjust = -.5)
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> Mis_Var
+> 
+> # From the graph observe that 'Age,Cabin,Embarked' columns are having the missing values.
+> table(complete.cases(titanic_train$Age))
+
+FALSE  TRUE 
+  177   714 
+> # Here total 177 missing values in Age column
+> 
+> age.na <- titanic_train[is.na(titanic_train$Age),]
+> age.non.na <- titanic_train[!is.na(titanic_train$Age),]
+> 
+> # first finding any  pattern is following in the age.na table if any thing was find out then identify the 
+> # perticular pattern in non missing table. Then replace the missing values in a pattern characterstics.
+> 
+> # So for that plot the variables and understanding missing pattern.
+> 
+> ggplot(data = age.na,mapping = aes(x = factor(Embarked),y = Pclass))+
++   geom_jitter(aes(colour = factor(Sex)))+
++   facet_grid(~Survived)+
++   theme(legend.title = element_blank())+
++   labs(x = "Eambarked", y ="Pclass",title = "age.na table Eambarked Vs. Pclss Per Genderwise")
+> 
+> # from the graph observe that the combination of
+> # Pclass is 2,3 and Survived is o and Embarked is (S,C) of data is more
+> # Missing so finding same combination in age.non.na table   
+> # and replace mean of the Age variable.
+> # here SEX column is having the  different age distribution so based on that replace the 
+> # Missing age column.
+> 
+> ggplot(data = age.non.na,mapping = aes(x = factor(Embarked),y = Pclass))+
++   geom_jitter(aes(colour = factor(Sex)))+
++   facet_grid(~Survived)+
++   theme(legend.title = element_blank())+
++   labs(x = "Eambarked", y ="Pclass",title = "age.non.na table Eambarked Vs. Pclss Per Genderwise")
+> 
+> 
+> # For understanding the age column
+> ww <- titanic_train%>%select(Age,Sex)%>%group_by(Sex)%>%summarise(Age.mean=mean(Age,na.rm = T))
+`summarise()` ungrouping output (override with `.groups` argument)
+> ggplot(data = titanic_train,mapping = aes(Age,colour = Sex))+geom_density(position = "stack")+
++   geom_vline(data = ww,aes(xintercept=Age.mean,color=Sex), linetype="dashed", size=1)
+Warning message:
+Removed 177 rows containing non-finite values (stat_density). 
+> 
+> 
+> 
+> 
+> # converting into data.table and Replacing missing Age column with mean value.
+> titanic_train_dt <- data.table(titanic_train)
+> titanic_train_dt[is.na(titanic_train_dt$Age)&Sex =='female','Age'] <- 
++   titanic_train_dt[Pclass %in% c(2,3) & Survived ==0 & Embarked %in%c('S','C')&Sex =='female',round(mean(Age,na.rm = T))]
+> titanic_train_dt[is.na(titanic_train_dt$Age)&Sex =='male','Age'] <- 
++   titanic_train_dt[Pclass %in% c(2,3) & Survived ==0 & Embarked %in%c('S','C')&Sex =='male',round(mean(Age,na.rm = T))]
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  4.453   0.154   4.579 

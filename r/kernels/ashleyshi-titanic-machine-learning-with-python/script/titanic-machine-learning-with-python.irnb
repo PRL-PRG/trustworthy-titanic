@@ -1,0 +1,105 @@
+{
+  "cells": [
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "_cell_guid": "dee0962b-016b-6cc9-c23a-b6c0379bb404"
+      },
+      "outputs": [],
+      "source": [
+        "import pandas as pd\n",
+        "\n",
+        "t = pd.read_csv('../input/train.csv')\n",
+        "t.describe()"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "_cell_guid": "11322fc5-7405-be3c-2da4-27b91b1d2576"
+      },
+      "outputs": [],
+      "source": [
+        "t.columns"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "_cell_guid": "4808f9bc-9b0c-80d6-7982-c6754be87b07"
+      },
+      "outputs": [],
+      "source": [
+        "#cleaning Age, fill nas with the median of the age\n",
+        "t['Age']=t['Age'].fillna(t['Age'].median())\n",
+        "t.describe()"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "_cell_guid": "473f1fec-ffbb-c95b-e6b3-cb30a6087369"
+      },
+      "outputs": [],
+      "source": [
+        "# Transfer Sex, Embarked to numerical variable\n",
+        "t.loc[t['Sex']=='male','Sex']=0\n",
+        "t.loc[t['Sex']=='female','Sex']=1\n",
+        "t.loc[t['Embarked']=='S','Embarked']=0\n",
+        "t.loc[t['Embarked']=='C','Embarked']=1\n",
+        "t.loc[t['Embarked']=='Q','Embarked']=2"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "_cell_guid": "9ba84cf2-de87-3c0f-88ab-77782d6df29d"
+      },
+      "outputs": [],
+      "source": [
+        "# play with Cabin\n",
+        "t['Cabin']=t['Cabin'].dropna()"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "_cell_guid": "1b75dc5c-daba-de6f-4e1a-aa39a91937d1"
+      },
+      "outputs": [],
+      "source": [
+        "#data exploration\n",
+        "import matplotlib.pyplot as plt\n",
+        "%matplotlib inline\n",
+        "\n",
+        "t['relatives']=t['SibSp']+t['Parch']\n",
+        "plt.scatter(t['relatives'],t['Survived'])\n"
+      ]
+    }
+  ],
+  "metadata": {
+    "_change_revision": 0,
+    "_is_fork": false,
+    "kernelspec": {
+      "display_name": "R",
+      "language": "R",
+      "name": "ir"
+    },
+    "language_info": {
+      "codemirror_mode": "r",
+      "file_extension": ".r",
+      "mimetype": "text/x-r-source",
+      "name": "R",
+      "pygments_lexer": "r",
+      "version": "3.3.1"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 0
+}

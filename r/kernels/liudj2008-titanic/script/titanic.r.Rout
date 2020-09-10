@@ -1,0 +1,149 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> 
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> system("ls ../input")
+gender_submission.csv
+test.csv
+train.csv
+> 
+> # Any results you write to the current directory are saved as output.
+> 
+> #Load train data
+> train=read.csv('../input/train.csv')
+> 
+> 
+> train=train[,-c(1,4,9,11)]
+> 
+> #Fill the empty values
+> set.seed(1)
+> train$Age[is.na(train$Age)]=sample(train$Age[!is.na(train$Age)],177)
+> 
+> set.seed(2)
+> train$Embarked[train$Embarked=='']=sample(train$Embarked[train$Embarked!=''],2)
+> train$Embarked=as.character(train$Embarked)
+> train$Embarked=as.factor(train$Embarked)
+> 
+> train$Survived=as.factor(train$Survived)
+> 
+> summary(train)
+ Survived     Pclass          Sex           Age            SibSp      
+ 0:549    Min.   :1.000   female:314   Min.   : 0.42   Min.   :0.000  
+ 1:342    1st Qu.:2.000   male  :577   1st Qu.:20.00   1st Qu.:0.000  
+          Median :3.000                Median :28.00   Median :0.000  
+          Mean   :2.309                Mean   :29.66   Mean   :0.523  
+          3rd Qu.:3.000                3rd Qu.:39.00   3rd Qu.:1.000  
+          Max.   :3.000                Max.   :80.00   Max.   :8.000  
+     Parch             Fare        Embarked
+ Min.   :0.0000   Min.   :  0.00   C:169   
+ 1st Qu.:0.0000   1st Qu.:  7.91   Q: 77   
+ Median :0.0000   Median : 14.45   S:645   
+ Mean   :0.3816   Mean   : 32.20           
+ 3rd Qu.:0.0000   3rd Qu.: 31.00           
+ Max.   :6.0000   Max.   :512.33           
+> 
+> # Modeling
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> set.seed(3)
+> rf.fit=randomForest(Survived~., data=train, mtry=2.3)
+> rf.pred=predict(rf.fit, newdata = train)
+> 
+> # Train error
+> table(true=train$Survived, pred=rf.pred)
+    pred
+true   0   1
+   0 535  14
+   1  65 277
+> mean(train$Survived==rf.pred)
+[1] 0.9113356
+> 
+> # Load test sample
+> test_original=read.csv('../input/test.csv')
+> 
+> test=test_original
+> 
+> test=test[,-c(1,3,8,10)]
+> #summary(test)
+> 
+> # Initiate the survived factor and fill in the NAs
+> test=data.frame(Survived=as.factor(rep(0,418)), test)
+> set.seed(1)
+> test$Age[is.na(test$Age)]=sample(test$Age[!is.na(test$Age)],86)
+> 
+> set.seed(2)
+> test$Fare[is.na(test$Fare)]=sample(test$Fare[!is.na(test$Fare)],1)
+> 
+> # Making levels between training and testing data set is the same
+> names(test)
+[1] "Survived" "Pclass"   "Sex"      "Age"      "SibSp"    "Parch"    "Fare"    
+[8] "Embarked"
+> levels(test$Survived)=levels(train$Survived)
+> levels(test$Embarked)=levels(train$Embarked)
+> 
+> # Make prediction
+> test$Survived=predict(rf.fit, test)
+> 
+> # Export files
+> prediction=data.frame(PassengerId=test_original$PassengerId, Survived=test$Survived)
+> 
+> summary(prediction)
+  PassengerId     Survived
+ Min.   : 892.0   0:279   
+ 1st Qu.: 996.2   1:139   
+ Median :1100.5           
+ Mean   :1100.5           
+ 3rd Qu.:1204.8           
+ Max.   :1309.0           
+> head(prediction)
+  PassengerId Survived
+1         892        0
+2         893        0
+3         894        0
+4         895        0
+5         896        0
+6         897        0
+> # Output excel
+> write.csv(prediction,'gender_submission.csv', row.names=FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  0.825   0.080   0.913 

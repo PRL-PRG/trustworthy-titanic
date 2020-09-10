@@ -1,0 +1,347 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ---- message=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(ggplot2) 
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(dplyr) 
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> 
+> train <- read.csv('../input/train.csv')
+> test <- read.csv('../input/test.csv')
+> # test doesn't have outcome - Survived
+> 
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> length(train$PassengerId)
+[1] 891
+> table(train$Survived)
+
+  0   1 
+549 342 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(train$Pclass, train$Survived)
+   
+      0   1
+  1  80 136
+  2  97  87
+  3 372 119
+> ggplot(train,aes(x=Pclass,fill=factor(Survived)))+
++   geom_histogram(stat="count")
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(train$Sex, train$Survived)
+        
+           0   1
+  female  81 233
+  male   468 109
+> ggplot(train,aes(x=Sex,fill=factor(Survived)))+
++   geom_histogram(stat="count")
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(train,aes(x=Age,fill=factor(Survived)))+
++   geom_histogram(binwidth=2)
+Warning message:
+Removed 177 rows containing non-finite values (stat_bin). 
+>   
+> train$kid <- ifelse (train$Age<=10, "Yes", "No")
+> table(train$kid, train$Survived)
+     
+        0   1
+  No  398 252
+  Yes  26  38
+> 
+> train$old <- ifelse (train$Age>62, "Yes", "No")
+> table(train$old, train$Survived)
+     
+        0   1
+  No  412 287
+  Yes  12   3
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(train,aes(x=Fare,fill=factor(Survived)))+
++   geom_histogram(binwidth=10)
+>   
+> library(dplyr)
+> train %>% 
++ group_by(Pclass) %>% 
++ summarize(n=length(Fare), mean=mean(Fare), min=min(Fare), max=max(Fare))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 3 x 5[39m
+  Pclass     n  mean   min   max
+   [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m
+[90m1[39m      1   216  84.2     0 512. 
+[90m2[39m      2   184  20.7     0  73.5
+[90m3[39m      3   491  13.7     0  69.6
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(train,aes(x=SibSp,fill=factor(Survived)))+
++   geom_histogram(binwidth=1)
+>   
+> train$moreSibSp <- ifelse (train$SibSp>2.5, "Yes", "No")
+> table(train$moreSibSp, train$Survived)
+     
+        0   1
+  No  510 335
+  Yes  39   7
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(train,aes(x=Parch,fill=factor(Survived)))+
++   geom_histogram(binwidth=1)
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(train,aes(x=Embarked,fill=factor(Survived)))+
++   geom_histogram(stat="count")
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train$single <- ifelse(train$SibSp==0 & train$Parch==0, "Yes", "No")
+> table(train$single, train$Survived)
+     
+        0   1
+  No  175 179
+  Yes 374 163
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(is.na(train$Age)) 
+
+FALSE  TRUE 
+  714   177 
+> table(is.na(train$Age), train$Survived)
+       
+          0   1
+  FALSE 424 290
+  TRUE  125  52
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(Hmisc)
+Loading required package: lattice
+Loading required package: survival
+Loading required package: Formula
+
+Attaching package: ‘Hmisc’
+
+The following objects are masked from ‘package:dplyr’:
+
+    src, summarize
+
+The following objects are masked from ‘package:base’:
+
+    format.pval, units
+
+Warning message:
+package ‘survival’ was built under R version 3.6.2 
+> train$imputed_age <- with(train, impute(train$Age, mean))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(caTools)
+> set.seed(123)
+> split <- sample.split(train$Survived, SplitRatio = 0.7)
+> train2 <- subset(train, split==TRUE)
+> test2  <- subset(train, split==FALSE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> logistic <- glm(train2$Survived ~ imputed_age + factor(Sex) + factor(Pclass) + kid + single + moreSibSp + factor(Pclass)*factor(Sex), 
++ family="binomial", data=train2)
+> summary(logistic)
+
+Call:
+glm(formula = train2$Survived ~ imputed_age + factor(Sex) + factor(Pclass) + 
+    kid + single + moreSibSp + factor(Pclass) * factor(Sex), 
+    family = "binomial", data = train2)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-3.3694  -0.6119  -0.4337   0.3684   2.4474  
+
+Coefficients:
+                                Estimate Std. Error z value Pr(>|z|)    
+(Intercept)                      4.38466    0.79510   5.515 3.50e-08 ***
+imputed_age                     -0.03594    0.01281  -2.806 0.005023 ** 
+factor(Sex)male                 -3.60500    0.65628  -5.493 3.95e-08 ***
+factor(Pclass)2                 -0.71461    0.80343  -0.889 0.373763    
+factor(Pclass)3                 -3.85190    0.68131  -5.654 1.57e-08 ***
+kidYes                           1.36006    0.61653   2.206 0.027385 *  
+singleYes                        0.19813    0.29063   0.682 0.495412    
+moreSibSpYes                    -2.29034    0.68029  -3.367 0.000761 ***
+factor(Sex)male:factor(Pclass)2 -1.34677    0.92844  -1.451 0.146898    
+factor(Sex)male:factor(Pclass)3  2.13863    0.73907   2.894 0.003808 ** 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 674.60  on 499  degrees of freedom
+Residual deviance: 404.94  on 490  degrees of freedom
+  (123 observations deleted due to missingness)
+AIC: 424.94
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> pred <- predict(logistic, type='response', newdata=test2)
+> 
+> y_pred <- ifelse(pred>0.5, 1, 0)
+> 
+> library(caret)
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:survival’:
+
+    cluster
+
+> confusionMatrix(as.factor(test2$Survived),as.factor(y_pred))
+Confusion Matrix and Statistics
+
+          Reference
+Prediction   0   1
+         0 117   9
+         1  32  56
+                                          
+               Accuracy : 0.8084          
+                 95% CI : (0.7492, 0.8589)
+    No Information Rate : 0.6963          
+    P-Value [Acc > NIR] : 0.0001401       
+                                          
+                  Kappa : 0.5881          
+                                          
+ Mcnemar's Test P-Value : 0.0005908       
+                                          
+            Sensitivity : 0.7852          
+            Specificity : 0.8615          
+         Pos Pred Value : 0.9286          
+         Neg Pred Value : 0.6364          
+             Prevalence : 0.6963          
+         Detection Rate : 0.5467          
+   Detection Prevalence : 0.5888          
+      Balanced Accuracy : 0.8234          
+                                          
+       'Positive' Class : 0               
+                                          
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data_fac <- train2 %>% mutate_if(is.character, as.factor) # convert all character variables to factor
+> data_fac <- na.omit(data_fac)
+> 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> RF <- randomForest(Survived ~ imputed_age + Sex + Pclass + kid + single + moreSibSp, data = data_fac, ntree=50)
+Warning message:
+In randomForest.default(m, y, ...) :
+  The response has five or fewer unique values.  Are you sure you want to do regression?
+> varImpPlot(RF)
+> plot(RF)
+> 
+> test2 <- test2 %>% mutate_if(is.character, as.factor) # convert all character variables to factor
+> test2 <- na.omit(test2)
+> pred <- predict(RF, newdata=test2)
+> 
+> y_pred <- ifelse(pred>0.5, 1, 0)
+> 
+> library(caret)
+> confusionMatrix(as.factor(test2$Survived),as.factor(y_pred))
+Confusion Matrix and Statistics
+
+          Reference
+Prediction   0   1
+         0 117   9
+         1  34  54
+                                         
+               Accuracy : 0.7991         
+                 95% CI : (0.739, 0.8506)
+    No Information Rate : 0.7056         
+    P-Value [Acc > NIR] : 0.0012631      
+                                         
+                  Kappa : 0.5665         
+                                         
+ Mcnemar's Test P-Value : 0.0002522      
+                                         
+            Sensitivity : 0.7748         
+            Specificity : 0.8571         
+         Pos Pred Value : 0.9286         
+         Neg Pred Value : 0.6136         
+             Prevalence : 0.7056         
+         Detection Rate : 0.5467         
+   Detection Prevalence : 0.5888         
+      Balanced Accuracy : 0.8160         
+                                         
+       'Positive' Class : 0              
+                                         
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  2.681   0.160   2.868 

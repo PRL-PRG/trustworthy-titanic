@@ -1,0 +1,267 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # Load the libraries
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(dplyr, warn.conflicts = FALSE)
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> 
+> # Load the data
+> train_tbl <- tbl_df(read.csv('../input/train.csv', stringsAsFactors = FALSE))
+Warning message:
+`tbl_df()` is deprecated as of dplyr 1.0.0.
+Please use `tibble::as_tibble()` instead.
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+> test_tbl <- tbl_df(read.csv('../input/test.csv', stringsAsFactors = FALSE))
+> 
+> # What's in the files?
+> head(train_tbl)
+[90m# A tibble: 6 x 12[39m
+  PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin
+        [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m  [3m[90m<int>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m
+[90m1[39m           1        0      3 Brau… male     22     1     0 A/5 2…  7.25 [90m"[39m[90m"[39m   
+[90m2[39m           2        1      1 Cumi… fema…    38     1     0 PC 17… 71.3  [90m"[39mC85[90m"[39m
+[90m3[39m           3        1      3 Heik… fema…    26     0     0 STON/…  7.92 [90m"[39m[90m"[39m   
+[90m4[39m           4        1      1 Futr… fema…    35     1     0 113803 53.1  [90m"[39mC12…
+[90m5[39m           5        0      3 Alle… male     35     0     0 373450  8.05 [90m"[39m[90m"[39m   
+[90m6[39m           6        0      3 Mora… male     [31mNA[39m     0     0 330877  8.46 [90m"[39m[90m"[39m   
+[90m# … with 1 more variable: Embarked [3m[90m<chr>[90m[23m[39m
+> head(test_tbl)
+[90m# A tibble: 6 x 11[39m
+  PassengerId Pclass Name    Sex     Age SibSp Parch Ticket  Fare Cabin Embarked
+        [3m[90m<int>[39m[23m  [3m[90m<int>[39m[23m [3m[90m<chr>[39m[23m   [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m   
+[90m1[39m         892      3 Kelly,… male   34.5     0     0 330911  7.83 [90m"[39m[90m"[39m    Q       
+[90m2[39m         893      3 Wilkes… fema…  47       1     0 363272  7    [90m"[39m[90m"[39m    S       
+[90m3[39m         894      2 Myles,… male   62       0     0 240276  9.69 [90m"[39m[90m"[39m    Q       
+[90m4[39m         895      3 Wirz, … male   27       0     0 315154  8.66 [90m"[39m[90m"[39m    S       
+[90m5[39m         896      3 Hirvon… fema…  22       1     1 31012… 12.3  [90m"[39m[90m"[39m    S       
+[90m6[39m         897      3 Svenss… male   14       0     0 7538    9.22 [90m"[39m[90m"[39m    S       
+> 
+> survived_all <- filter(train_tbl, Survived == 1)
+> head(survived_all)
+[90m# A tibble: 6 x 12[39m
+  PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin
+        [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m  [3m[90m<int>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m
+[90m1[39m           2        1      1 Cumi… fema…    38     1     0 PC 17… 71.3  [90m"[39mC85[90m"[39m
+[90m2[39m           3        1      3 Heik… fema…    26     0     0 STON/…  7.92 [90m"[39m[90m"[39m   
+[90m3[39m           4        1      1 Futr… fema…    35     1     0 113803 53.1  [90m"[39mC12…
+[90m4[39m           9        1      3 John… fema…    27     0     2 347742 11.1  [90m"[39m[90m"[39m   
+[90m5[39m          10        1      2 Nass… fema…    14     1     0 237736 30.1  [90m"[39m[90m"[39m   
+[90m6[39m          11        1      3 Sand… fema…     4     1     1 PP 95… 16.7  [90m"[39mG6[90m"[39m 
+[90m# … with 1 more variable: Embarked [3m[90m<chr>[90m[23m[39m
+> 
+> survived_dudes <- filter(survived_all, Sex == 'male')
+> head(survived_dudes)
+[90m# A tibble: 6 x 12[39m
+  PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin
+        [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m  [3m[90m<int>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m
+[90m1[39m          18        1      2 Will… male     [31mNA[39m     0     0 244373 13    [90m"[39m[90m"[39m   
+[90m2[39m          22        1      2 Bees… male     34     0     0 248698 13    [90m"[39mD56[90m"[39m
+[90m3[39m          24        1      1 Slop… male     28     0     0 113788 35.5  [90m"[39mA6[90m"[39m 
+[90m4[39m          37        1      3 Mame… male     [31mNA[39m     0     0 2677    7.23 [90m"[39m[90m"[39m   
+[90m5[39m          56        1      1 Wool… male     [31mNA[39m     0     0 19947  35.5  [90m"[39mC52[90m"[39m
+[90m6[39m          66        1      3 Moub… male     [31mNA[39m     1     1 2661   15.2  [90m"[39m[90m"[39m   
+[90m# … with 1 more variable: Embarked [3m[90m<chr>[90m[23m[39m
+> 
+> train_tbl %>% group_by(Sex) %>% summarise(n = n())
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 2 x 2[39m
+  Sex        n
+  [3m[90m<chr>[39m[23m  [3m[90m<int>[39m[23m
+[90m1[39m female   314
+[90m2[39m male     577
+> 
+> total <- train_tbl %>% group_by(Sex) %>% summarise(Total = n())
+`summarise()` ungrouping output (override with `.groups` argument)
+> survived <- train_tbl %>% filter(Survived == 1) %>% group_by(Sex) %>% summarise(Survived = n())
+`summarise()` ungrouping output (override with `.groups` argument)
+> perished <- train_tbl %>% filter(Survived == 0) %>% group_by(Sex) %>% summarise(Perished  = n())
+`summarise()` ungrouping output (override with `.groups` argument)
+> 
+> survival_tbl <- inner_join(total,survived) %>% inner_join(perished)
+Joining, by = "Sex"
+Joining, by = "Sex"
+> survival_tbl
+[90m# A tibble: 2 x 4[39m
+  Sex    Total Survived Perished
+  [3m[90m<chr>[39m[23m  [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m
+[90m1[39m female   314      233       81
+[90m2[39m male     577      109      468
+> 
+> options(digits = 3)
+> survival_tbl <- mutate(survival_tbl, Survival_Chance = (Survived/Total)*100)
+> survival_tbl
+[90m# A tibble: 2 x 5[39m
+  Sex    Total Survived Perished Survival_Chance
+  [3m[90m<chr>[39m[23m  [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m           [3m[90m<dbl>[39m[23m
+[90m1[39m female   314      233       81            74.2
+[90m2[39m male     577      109      468            18.9
+> 
+> train_tbl_with_age <- filter(train_tbl, !is.na(Age))
+> train_tbl_wo_age <- filter(train_tbl, is.na(Age))
+> total_with_age <- summarise(train_tbl_with_age, Total_With_Age = n())
+> train_tbl_wo_age <- summarise(train_tbl_wo_age, Total_Without_Age = n())
+> total_with_age
+[90m# A tibble: 1 x 1[39m
+  Total_With_Age
+           [3m[90m<int>[39m[23m
+[90m1[39m            714
+> train_tbl_wo_age
+[90m# A tibble: 1 x 1[39m
+  Total_Without_Age
+              [3m[90m<int>[39m[23m
+[90m1[39m               177
+> 
+> train_tbl_with_age <- mutate(train_tbl_with_age, Age_Bin = ifelse(Age < 3, 'Infant', ifelse(Age < 13, 'Child', ifelse(Age < 19, 'Teenager',ifelse(Age < 26,'Young_Adult', ifelse(Age < 41,'Adult',ifelse(Age < 60,'Middle_Age','Old_Age')))))))
+> train_tbl_with_age <- mutate(train_tbl_with_age, Age_Bin_Order = ifelse(Age < 3, 1, ifelse(Age < 13, 2, ifelse(Age < 19, 3, ifelse(Age < 26, 4, ifelse(Age < 41, 5, ifelse(Age < 60, 6, 7)))))))
+> head(train_tbl_with_age)
+[90m# A tibble: 6 x 14[39m
+  PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin
+        [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m  [3m[90m<int>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m
+[90m1[39m           1        0      3 Brau… male     22     1     0 A/5 2…  7.25 [90m"[39m[90m"[39m   
+[90m2[39m           2        1      1 Cumi… fema…    38     1     0 PC 17… 71.3  [90m"[39mC85[90m"[39m
+[90m3[39m           3        1      3 Heik… fema…    26     0     0 STON/…  7.92 [90m"[39m[90m"[39m   
+[90m4[39m           4        1      1 Futr… fema…    35     1     0 113803 53.1  [90m"[39mC12…
+[90m5[39m           5        0      3 Alle… male     35     0     0 373450  8.05 [90m"[39m[90m"[39m   
+[90m6[39m           7        0      1 McCa… male     54     0     0 17463  51.9  [90m"[39mE46[90m"[39m
+[90m# … with 3 more variables: Embarked [3m[90m<chr>[90m[23m, Age_Bin [3m[90m<chr>[90m[23m, Age_Bin_Order [3m[90m<dbl>[90m[23m[39m
+> 
+> total_age <- train_tbl_with_age %>% group_by(Age_Bin,Age_Bin_Order) %>% summarise(Total = n())
+`summarise()` regrouping output by 'Age_Bin' (override with `.groups` argument)
+> survived_age <- train_tbl_with_age %>% filter(Survived == 1) %>% group_by(Age_Bin,Age_Bin_Order) %>% summarise(Survived = n())
+`summarise()` regrouping output by 'Age_Bin' (override with `.groups` argument)
+> perished_age <- train_tbl_with_age %>% filter(Survived == 0) %>% group_by(Age_Bin,Age_Bin_Order) %>% summarise(Perished  = n())
+`summarise()` regrouping output by 'Age_Bin' (override with `.groups` argument)
+> 
+> survival_age_tbl <- inner_join(total_age,survived_age) %>% inner_join(perished_age)
+Joining, by = c("Age_Bin", "Age_Bin_Order")
+Joining, by = c("Age_Bin", "Age_Bin_Order")
+> survival_age_tbl <- mutate(survival_age_tbl, Survival_Chance = (Survived/Total)*100)
+> 
+> 
+> select(arrange(survival_age_tbl, Age_Bin_Order), -Age_Bin_Order)
+[90m# A tibble: 7 x 5[39m
+[90m# Groups:   Age_Bin [7][39m
+  Age_Bin     Total Survived Perished Survival_Chance
+  [3m[90m<chr>[39m[23m       [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m           [3m[90m<dbl>[39m[23m
+[90m1[39m Infant         24       15        9            62.5
+[90m2[39m Child          45       25       20            55.6
+[90m3[39m Teenager       70       30       40            42.9
+[90m4[39m Young_Adult   162       54      108            33.3
+[90m5[39m Adult         265      111      154            41.9
+[90m6[39m Middle_Age    122       48       74            39.3
+[90m7[39m Old_Age        26        7       19            26.9
+> 
+> train_tbl_with_age <- select(train_tbl_with_age,PassengerId, Survived, Age_Bin, Sex, Age,  Age_Bin_Order)
+> #train_tbl_with_age <- tbl_df(train_tbl_with_age)
+> train_tbl_with_age_by_Sex_Age_Total <- group_by(train_tbl_with_age, Sex, Age_Bin, Age_Bin_Order)
+> train_tbl_with_age_by_Sex_Age_Survived <- group_by(filter(train_tbl_with_age, Survived ==1), Sex, Age_Bin, Age_Bin_Order)
+> 
+> by_Sex_Age_Total <- summarise(train_tbl_with_age_by_Sex_Age_Total, Total = n())
+`summarise()` regrouping output by 'Sex', 'Age_Bin' (override with `.groups` argument)
+> by_Sex_Age_Survived <- summarise(train_tbl_with_age_by_Sex_Age_Survived, Total = n())
+`summarise()` regrouping output by 'Sex', 'Age_Bin' (override with `.groups` argument)
+> 
+> by_Sex_Age <- inner_join(by_Sex_Age_Total,by_Sex_Age_Survived, by = c("Sex", "Age_Bin"))
+> by_Sex_Age <- mutate(by_Sex_Age, Chance = (Total.y/Total.x)*100)
+> select(arrange(by_Sex_Age, Age_Bin_Order.y),Age_Bin,Sex, Chance, -Age_Bin_Order.y, -Age_Bin_Order.x, -Total.x, -Total.y)
+[90m# A tibble: 14 x 3[39m
+[90m# Groups:   Sex, Age_Bin [14][39m
+   Age_Bin     Sex    Chance
+   [3m[90m<chr>[39m[23m       [3m[90m<chr>[39m[23m   [3m[90m<dbl>[39m[23m
+[90m 1[39m Infant      female  60   
+[90m 2[39m Infant      male    64.3 
+[90m 3[39m Child       female  59.1 
+[90m 4[39m Child       male    52.2 
+[90m 5[39m Teenager    female  75   
+[90m 6[39m Teenager    male     8.82
+[90m 7[39m Young_Adult female  75.9 
+[90m 8[39m Young_Adult male    12.0 
+[90m 9[39m Adult       female  80.2 
+[90m10[39m Adult       male    21.8 
+[90m11[39m Middle_Age  female  75   
+[90m12[39m Middle_Age  male    19.2 
+[90m13[39m Old_Age     female 100   
+[90m14[39m Old_Age     male    13.6 
+> 
+> summarise(filter(test_tbl, is.na(Age)), bad_age = n())
+[90m# A tibble: 1 x 1[39m
+  bad_age
+    [3m[90m<int>[39m[23m
+[90m1[39m      86
+> 
+> summarise(filter(test_tbl, is.na(Age), Sex == "male" ), bad_age = n())
+[90m# A tibble: 1 x 1[39m
+  bad_age
+    [3m[90m<int>[39m[23m
+[90m1[39m      61
+> 
+> summarise(filter(test_tbl), Total = n())
+[90m# A tibble: 1 x 1[39m
+  Total
+  [3m[90m<int>[39m[23m
+[90m1[39m   418
+> 
+> summarise(filter(test_tbl, is.na(Age), Sex == "male", Parch == 0), bad_age = n())
+[90m# A tibble: 1 x 1[39m
+  bad_age
+    [3m[90m<int>[39m[23m
+[90m1[39m      57
+> 
+> submit <- tbl_df(select(test_tbl,PassengerId, Sex, Age))
+> 
+> submit <- mutate(submit, Survived = ifelse(Sex == "female", 1, ifelse(Age < 13, 1,0)))
+> submit$Survived[is.na(submit$Survived)] <- 0
+> submit <- select(submit,PassengerId,Survived )
+> head(submit)
+[90m# A tibble: 6 x 2[39m
+  PassengerId Survived
+        [3m[90m<int>[39m[23m    [3m[90m<dbl>[39m[23m
+[90m1[39m         892        0
+[90m2[39m         893        1
+[90m3[39m         894        0
+[90m4[39m         895        0
+[90m5[39m         896        1
+[90m6[39m         897        0
+> #write.csv(submit,file = "submit.csv", row.names = F)
+> 
+> summarise(filter(train_tbl, is.na(Age), Survived == 1, Sex == 'male'), male_age_NA_Survived = n())
+[90m# A tibble: 1 x 1[39m
+  male_age_NA_Survived
+                 [3m[90m<int>[39m[23m
+[90m1[39m                   16
+> summarise(filter(train_tbl, is.na(Age), Sex == 'male'), male_age_NA_Total = n())
+[90m# A tibble: 1 x 1[39m
+  male_age_NA_Total
+              [3m[90m<int>[39m[23m
+[90m1[39m               124
+> 
+> (16/124)*100
+[1] 12.9
+> 
+> proc.time()
+   user  system elapsed 
+  0.797   0.063   0.855 

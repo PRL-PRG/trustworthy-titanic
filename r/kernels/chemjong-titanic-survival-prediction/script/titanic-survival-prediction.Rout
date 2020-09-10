@@ -1,0 +1,1752 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following object is masked from ‘package:randomForest’:
+
+    combine
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(ggplot2)
+
+Attaching package: ‘ggplot2’
+
+The following object is masked from ‘package:randomForest’:
+
+    margin
+
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(VIM)
+Loading required package: colorspace
+Loading required package: grid
+VIM is ready to use.
+
+Suggestions and bug-reports can be submitted at: https://github.com/statistikat/VIM/issues
+
+Attaching package: ‘VIM’
+
+The following object is masked from ‘package:datasets’:
+
+    sleep
+
+> library(stringr)
+> library("ggthemes")
+> library("randomForest")
+> library("ROCR")
+Warning message:
+package ‘ROCR’ was built under R version 3.6.2 
+> library("mice")
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library('scales')
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv", stringsAsFactors=F)
+> test  <- read.csv("../input/test.csv", stringsAsFactors=F)
+> 
+> glimpse(train)
+Rows: 891
+Columns: 12
+$ PassengerId [3m[90m<int>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+$ Survived    [3m[90m<int>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+$ Pclass      [3m[90m<int>[39m[23m 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Braund, Mr. Owen Harris", "Cumings, Mrs. John Bradley (F…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "female", "female", "male", "male", "ma…
+$ Age         [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+$ SibSp       [3m[90m<int>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+$ Parch       [3m[90m<int>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "A/5 21171", "PC 17599", "STON/O2. 3101282", "113803", "3…
+$ Fare        [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+$ Cabin       [3m[90m<chr>[39m[23m "", "C85", "", "C123", "", "", "E46", "", "", "", "G6", "…
+$ Embarked    [3m[90m<chr>[39m[23m "S", "C", "S", "S", "S", "Q", "S", "S", "S", "C", "S", "S…
+> glimpse(test)
+Rows: 418
+Columns: 11
+$ PassengerId [3m[90m<int>[39m[23m 892, 893, 894, 895, 896, 897, 898, 899, 900, 901, 902, 90…
+$ Pclass      [3m[90m<int>[39m[23m 3, 3, 2, 3, 3, 3, 3, 2, 3, 3, 3, 1, 1, 2, 1, 2, 2, 3, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Kelly, Mr. James", "Wilkes, Mrs. James (Ellen Needs)", "…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "male", "male", "female", "male", "fema…
+$ Age         [3m[90m<dbl>[39m[23m 34.5, 47.0, 62.0, 27.0, 22.0, 14.0, 30.0, 26.0, 18.0, 21.…
+$ SibSp       [3m[90m<int>[39m[23m 0, 1, 0, 0, 1, 0, 0, 1, 0, 2, 0, 0, 1, 1, 1, 1, 0, 0, 1, …
+$ Parch       [3m[90m<int>[39m[23m 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "330911", "363272", "240276", "315154", "3101298", "7538"…
+$ Fare        [3m[90m<dbl>[39m[23m 7.8292, 7.0000, 9.6875, 8.6625, 12.2875, 9.2250, 7.6292, …
+$ Cabin       [3m[90m<chr>[39m[23m "", "", "", "", "", "", "", "", "", "", "", "", "B45", ""…
+$ Embarked    [3m[90m<chr>[39m[23m "Q", "S", "Q", "S", "S", "S", "Q", "S", "C", "S", "S", "S…
+> 
+> #############################
+> #When column-binding, rows are matched by position,
+> #not value so all data frames must have the same number of rows.
+> #To match by value, not position, see left_join etc. When row-binding,
+> #columns are matched by name, and any values that don't 
+> #match will be filled with NA
+> ##############################
+> 
+> data1<-bind_rows(train, test)
+> 
+> ##data1$Survived[is.na(data1$Survived)]<-0
+> 
+> visual_na<- aggr(data1, numbers=TRUE, labels=names(data1),cex.axis=.5, cex.numbers=.5, sortVars=T)
+
+ Variables sorted by number of missings: 
+    Variable        Count
+    Survived 0.3193277311
+         Age 0.2009167303
+        Fare 0.0007639419
+ PassengerId 0.0000000000
+      Pclass 0.0000000000
+        Name 0.0000000000
+         Sex 0.0000000000
+       SibSp 0.0000000000
+       Parch 0.0000000000
+      Ticket 0.0000000000
+       Cabin 0.0000000000
+    Embarked 0.0000000000
+> 
+> ##############
+> #ok there is lot of NA in Cabin & Deck
+> #whats going on
+> ##############
+> 
+> data1$Cabin[data1$Cabin=='']<-NA
+> sum(is.na(data1$Cabin))
+[1] 1014
+> 
+> str(data1)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  NA "C85" NA "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> #############
+> #So we given 0 for all test$Survived
+> #meaning they are all dead
+> ###############
+> 
+> #############
+> #ok lets tackkle names
+> #I find 2 things interest
+> #their surname &
+> #their title
+> ##############
+> 
+> #############
+> #ok first lets extract
+> #title from their names
+> #############
+> 
+> 
+> data1$Title <- gsub('(.*,)|(\\..*)', '', data1$Name)
+> data1$Title<-str_trim(data1$Title)
+> 
+> distinct(data1, Title)
+          Title
+1            Mr
+2           Mrs
+3          Miss
+4        Master
+5           Don
+6           Rev
+7            Dr
+8           Mme
+9            Ms
+10        Major
+11         Lady
+12          Sir
+13         Mlle
+14          Col
+15         Capt
+16 the Countess
+17     Jonkheer
+18         Dona
+> 
+> ################
+> #Ok we have 19 distinct Titles
+> ################
+> 
+> data1$Title <- gsub('Ms', 'Miss', data1$Title, ignore.case = T)
+> 
+> data1$Title <- gsub('Mlle', 'Miss', data1$Title, ignore.case = T)
+> 
+> no_title <- c('Master', 'Don', 'Rev', 'Dr', 'Mme', 'Major', 'Lady', 'Sir', 'Col', 'Capt', 'the Countess', 'Jonkheer', 'Dona')
+> 
+> data1$Title[data1$Title %in% no_title]<-'No Title'
+> 
+> distinct(data1, Title)
+     Title
+1       Mr
+2      Mrs
+3     Miss
+4 No Title
+> ####################
+> #ok we have now only 4
+> #titles
+> ###################
+> 
+> data1$Surname <- sapply(data1$Name, function(x) strsplit(x,'[,.]' )[[1]][1])
+> 
+> #################
+> #lets sort out guy without fare
+> #since only 1 person in all data with no fare
+> #################
+> 
+> 
+> filter(data1, is.na(Fare))
+  PassengerId Survived Pclass               Name  Sex  Age SibSp Parch Ticket
+1        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0   3701
+  Fare Cabin Embarked Title Surname
+1   NA  <NA>        S    Mr  Storey
+> 
+> 
+> 
+> str(data1)
+'data.frame':	1309 obs. of  14 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  NA "C85" NA "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+ $ Title      : chr  "Mr" "Mrs" "Miss" "Mrs" ...
+ $ Surname    : chr  "Braund" "Cumings" "Heikkinen" "Futrelle" ...
+> 
+> data1$Cabin_class <- sapply(data1$Cabin, function(x) substr(x, 1,1)[[1]][1])
+> 
+> #################
+> #this dude has fare value missing but we know he has Pclass 3 &
+> # Embarked from S
+> ################
+> 
+> distinct(data1, Embarked)
+  Embarked
+1        S
+2        C
+3        Q
+4         
+> 
+> #################################
+> #Hist doest work; 
+> ###ggplot(filter(data1, Pclass==3 & Embarked=='S'), aes(Fare))+geom_histogram(bins=20, na.rm = T)+
+>  ##       geom_vline(aes(xintercept=mean(Fare, na.rm=T)))+
+>  ###       scale_x_continuous(labels=dollar_format())
+> #####################################
+> 
+> ggplot(filter(data1, Pclass==3 & Embarked=='S'), aes(Fare))+
++         geom_density(fill='green', alpha=.5)+
++         scale_x_continuous(labels=dollar_format(),breaks = c(0,10,20,30,40,50,60,70))+
++         geom_vline(aes(xintercept=median(Fare, na.rm=TRUE)), color='red', linetype='dashed')
+Warning message:
+Removed 1 rows containing non-finite values (stat_density). 
+> 
+> data1[is.na(data1$Fare),]
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked Title Surname Cabin_class
+1044   3701   NA  <NA>        S    Mr  Storey        <NA>
+> #####################
+> # so now we can confirm row no. 1044 matches passenger ID
+> #so safe to use code below
+> ####################
+> 
+> data1[is.na(data1$Fare),]$Fare<- median(data1[data1$Pclass==3 & data1$Embarked=='S',]$Fare, na.rm=TRUE)
+> 
+> data1[1044,]
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked Title Surname Cabin_class
+1044   3701 8.05  <NA>        S    Mr  Storey        <NA>
+> 
+> sum(is.na(data1$Embarked))
+[1] 0
+> glimpse(data1)
+Rows: 1,309
+Columns: 15
+$ PassengerId [3m[90m<int>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+$ Survived    [3m[90m<int>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+$ Pclass      [3m[90m<int>[39m[23m 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Braund, Mr. Owen Harris", "Cumings, Mrs. John Bradley (F…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "female", "female", "male", "male", "ma…
+$ Age         [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+$ SibSp       [3m[90m<int>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+$ Parch       [3m[90m<int>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "A/5 21171", "PC 17599", "STON/O2. 3101282", "113803", "3…
+$ Fare        [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+$ Cabin       [3m[90m<chr>[39m[23m NA, "C85", NA, "C123", NA, NA, "E46", NA, NA, NA, "G6", "…
+$ Embarked    [3m[90m<chr>[39m[23m "S", "C", "S", "S", "S", "Q", "S", "S", "S", "C", "S", "S…
+$ Title       [3m[90m<chr>[39m[23m "Mr", "Mrs", "Miss", "Mrs", "Mr", "Mr", "Mr", "No Title",…
+$ Surname     [3m[90m<chr>[39m[23m "Braund", "Cumings", "Heikkinen", "Futrelle", "Allen", "M…
+$ Cabin_class [3m[90m<chr>[39m[23m NA, "C", NA, "C", NA, NA, "E", NA, NA, NA, "G", "C", NA, …
+> summary(as.factor(data1$Embarked))
+      C   Q   S 
+  2 270 123 914 
+> 
+> #####################
+> #I should have made empty cells all NA in the beginning
+> # anyways here we go
+> ######################
+> 
+> data1[data1==''] <-NA
+> 
+> #####################
+> #Now we can clearly see NAs in Embarked
+> ####################
+> 
+> filter(data1, is.na(Embarked))
+  PassengerId Survived Pclass                                      Name    Sex
+1          62        1      1                       Icard, Miss. Amelie female
+2         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn) female
+  Age SibSp Parch Ticket Fare Cabin Embarked Title Surname Cabin_class
+1  38     0     0 113572   80   B28     <NA>  Miss   Icard           B
+2  62     0     0 113572   80   B28     <NA>   Mrs   Stone           B
+> 
+> ######################
+> #2 girls with no Embarked value but they have Fare and Cabin_class common
+> #####################
+> 
+> ggplot(data1, aes(Embarked, Fare))+geom_boxplot()+geom_hline(aes(yintercept=80), col="red", linetype= 'dashed', lwd=.5)+
++         facet_grid(~Pclass)+theme_bw()
+> 
+> median(data1[data1$Embarked=='C' & data1$Pclass==1,]$Fare, na.rm = T)
+[1] 76.7292
+> 
+> ###################
+> # the median Fare for people with Pclass 1 with Embarked C is $77 which is close to what
+> # those two girls payed 
+> #based on those estimates I think they embarked from C
+> ###################
+> 
+> data1[data1$PassengerId==62 | data1$PassengerId==830,]$Embarked<- 'C'
+> data1[data1$PassengerId==62 | data1$PassengerId==830,]
+    PassengerId Survived Pclass                                      Name
+62           62        1      1                       Icard, Miss. Amelie
+830         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Cabin Embarked Title Surname Cabin_class
+62  female  38     0     0 113572   80   B28        C  Miss   Icard           B
+830 female  62     0     0 113572   80   B28        C   Mrs   Stone           B
+> 
+> 
+> 
+> ########################
+> #lets look at family size
+> #sibsp           Number of Siblings/Spouses Aboard
+> #parch           Number of Parents/Children Aboard
+> #so combing those 2 will give us family size
+> #########################
+> 
+> data1$Family_size <-data1$SibSp+data1$Parch+1
+> 
+> 
+> #######################
+> #now we got many Age with NA almost 20 % of all age
+> #& lots of Cabin_class with NAs
+> # we need strong statistical inference method to predict those values
+> ##########################
+> 
+> 
+> ##all age variable from test data only
+> 
+> str(data1)
+'data.frame':	1309 obs. of  16 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  NA "C85" NA "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+ $ Title      : chr  "Mr" "Mrs" "Miss" "Mrs" ...
+ $ Surname    : chr  "Braund" "Cumings" "Heikkinen" "Futrelle" ...
+ $ Cabin_class: chr  NA "C" NA "C" ...
+ $ Family_size: num  2 2 1 2 1 1 1 5 3 2 ...
+> 
+> data1$Sex <- as.factor(data1$Sex)
+> data1$Ticket <-as.factor(data1$Ticket)
+> data1$Title <-as.factor(data1$Title)
+> data1$Embarked <-as.factor(data1$Embarked)
+> data1$Survived <-as.factor(data1$Survived)
+> data1$Pclass <-as.factor(data1$Pclass)
+> data1$Family_size <-as.factor(data1$Family_size)
+> ################################
+> ####library(help="datasets") 
+> #see all inbuilt datasets for future reference
+> #################################
+> 
+> 
+> 
+> ############################################################################################
+> 
+> #train_data <- data1[1:891,]
+> #test_data <- data1[892:1309,]
+> #test_data$Survived<-NA
+> 
+> ###################
+> 
+> 
+> ##########################################################################################
+> 
+> sum(is.na(data1$Age))
+[1] 263
+> ##263 NAs 
+> 
+> ########################
+> #lets explore whats going on with age 
+> ########################
+> 
+> hist(data1$Age, na.rm=T , freq=F)
+Warning messages:
+1: In plot.window(xlim, ylim, "", ...) :
+  "na.rm" is not a graphical parameter
+2: In title(main = main, sub = sub, xlab = xlab, ylab = ylab, ...) :
+  "na.rm" is not a graphical parameter
+3: In axis(1, ...) : "na.rm" is not a graphical parameter
+4: In axis(2, ...) : "na.rm" is not a graphical parameter
+> summary(data1$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.17   21.00   28.00   29.88   39.00   80.00     263 
+> 
+> ####how can age be 0
+> 
+> data1 %>% filter(Age<0)
+ [1] PassengerId Survived    Pclass      Name        Sex         Age        
+ [7] SibSp       Parch       Ticket      Fare        Cabin       Embarked   
+[13] Title       Surname     Cabin_class Family_size
+<0 rows> (or 0-length row.names)
+> 
+> ##############
+> #ok its all good
+> #############
+> 
+> 
+> summary(data1)
+  PassengerId   Survived   Pclass      Name               Sex     
+ Min.   :   1   0   :549   1:323   Length:1309        female:466  
+ 1st Qu.: 328   1   :342   2:277   Class :character   male  :843  
+ Median : 655   NA's:418   3:709   Mode  :character               
+ Mean   : 655                                                     
+ 3rd Qu.: 982                                                     
+ Max.   :1309                                                     
+                                                                  
+      Age            SibSp            Parch            Ticket    
+ Min.   : 0.17   Min.   :0.0000   Min.   :0.000   CA. 2343:  11  
+ 1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000   1601    :   8  
+ Median :28.00   Median :0.0000   Median :0.000   CA 2144 :   8  
+ Mean   :29.88   Mean   :0.4989   Mean   :0.385   3101295 :   7  
+ 3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7  
+ Max.   :80.00   Max.   :8.0000   Max.   :9.000   347082  :   7  
+ NA's   :263                                      (Other) :1261  
+      Fare            Cabin           Embarked      Title    
+ Min.   :  0.000   Length:1309        C:272    Miss    :264  
+ 1st Qu.:  7.896   Class :character   Q:123    Mr      :757  
+ Median : 14.454   Mode  :character   S:914    Mrs     :197  
+ Mean   : 33.276                               No Title: 91  
+ 3rd Qu.: 31.275                                             
+ Max.   :512.329                                             
+                                                             
+   Surname          Cabin_class         Family_size 
+ Length:1309        Length:1309        1      :790  
+ Class :character   Class :character   2      :235  
+ Mode  :character   Mode  :character   3      :159  
+                                       4      : 43  
+                                       6      : 25  
+                                       5      : 22  
+                                       (Other): 35  
+> #################
+> #lets explore fare of $0
+> ################
+> 
+> data1 %>% filter(Fare<5)
+   PassengerId Survived Pclass                                  Name  Sex Age
+1          180        0      3                   Leonard, Mr. Lionel male  36
+2          264        0      1                 Harrison, Mr. William male  40
+3          272        1      3          Tornquist, Mr. William Henry male  25
+4          278        0      2           Parkes, Mr. Francis "Frank" male  NA
+5          303        0      3       Johnson, Mr. William Cahoone Jr male  19
+6          379        0      3                   Betros, Mr. Tannous male  20
+7          414        0      2        Cunningham, Mr. Alfred Fleming male  NA
+8          467        0      2                 Campbell, Mr. William male  NA
+9          482        0      2      Frost, Mr. Anthony Wood "Archie" male  NA
+10         598        0      3                   Johnson, Mr. Alfred male  49
+11         634        0      1         Parr, Mr. William Henry Marsh male  NA
+12         675        0      2            Watson, Mr. Ennis Hastings male  NA
+13         733        0      2                  Knight, Mr. Robert J male  NA
+14         807        0      1                Andrews, Mr. Thomas Jr male  39
+15         816        0      1                      Fry, Mr. Richard male  NA
+16         823        0      1       Reuchlin, Jonkheer. John George male  38
+17         913     <NA>      3             Olsen, Master. Artur Karl male   9
+18        1158     <NA>      1 Chisholm, Mr. Roderick Robert Crispin male  NA
+19        1264     <NA>      1               Ismay, Mr. Joseph Bruce male  49
+   SibSp Parch  Ticket   Fare       Cabin Embarked    Title    Surname
+1      0     0    LINE 0.0000        <NA>        S       Mr    Leonard
+2      0     0  112059 0.0000         B94        S       Mr   Harrison
+3      0     0    LINE 0.0000        <NA>        S       Mr  Tornquist
+4      0     0  239853 0.0000        <NA>        S       Mr     Parkes
+5      0     0    LINE 0.0000        <NA>        S       Mr    Johnson
+6      0     0    2648 4.0125        <NA>        C       Mr     Betros
+7      0     0  239853 0.0000        <NA>        S       Mr Cunningham
+8      0     0  239853 0.0000        <NA>        S       Mr   Campbell
+9      0     0  239854 0.0000        <NA>        S       Mr      Frost
+10     0     0    LINE 0.0000        <NA>        S       Mr    Johnson
+11     0     0  112052 0.0000        <NA>        S       Mr       Parr
+12     0     0  239856 0.0000        <NA>        S       Mr     Watson
+13     0     0  239855 0.0000        <NA>        S       Mr     Knight
+14     0     0  112050 0.0000         A36        S       Mr    Andrews
+15     0     0  112058 0.0000        B102        S       Mr        Fry
+16     0     0   19972 0.0000        <NA>        S No Title   Reuchlin
+17     0     1 C 17368 3.1708        <NA>        S No Title      Olsen
+18     0     0  112051 0.0000        <NA>        S       Mr   Chisholm
+19     0     0  112058 0.0000 B52 B54 B56        S       Mr      Ismay
+   Cabin_class Family_size
+1         <NA>           1
+2            B           1
+3         <NA>           1
+4         <NA>           1
+5         <NA>           1
+6         <NA>           1
+7         <NA>           1
+8         <NA>           1
+9         <NA>           1
+10        <NA>           1
+11        <NA>           1
+12        <NA>           1
+13        <NA>           1
+14           A           1
+15           B           1
+16        <NA>           1
+17        <NA>           2
+18        <NA>           1
+19           B           1
+> 
+> data1[data1$Fare<5,]
+     PassengerId Survived Pclass                                  Name  Sex Age
+180          180        0      3                   Leonard, Mr. Lionel male  36
+264          264        0      1                 Harrison, Mr. William male  40
+272          272        1      3          Tornquist, Mr. William Henry male  25
+278          278        0      2           Parkes, Mr. Francis "Frank" male  NA
+303          303        0      3       Johnson, Mr. William Cahoone Jr male  19
+379          379        0      3                   Betros, Mr. Tannous male  20
+414          414        0      2        Cunningham, Mr. Alfred Fleming male  NA
+467          467        0      2                 Campbell, Mr. William male  NA
+482          482        0      2      Frost, Mr. Anthony Wood "Archie" male  NA
+598          598        0      3                   Johnson, Mr. Alfred male  49
+634          634        0      1         Parr, Mr. William Henry Marsh male  NA
+675          675        0      2            Watson, Mr. Ennis Hastings male  NA
+733          733        0      2                  Knight, Mr. Robert J male  NA
+807          807        0      1                Andrews, Mr. Thomas Jr male  39
+816          816        0      1                      Fry, Mr. Richard male  NA
+823          823        0      1       Reuchlin, Jonkheer. John George male  38
+913          913     <NA>      3             Olsen, Master. Artur Karl male   9
+1158        1158     <NA>      1 Chisholm, Mr. Roderick Robert Crispin male  NA
+1264        1264     <NA>      1               Ismay, Mr. Joseph Bruce male  49
+     SibSp Parch  Ticket   Fare       Cabin Embarked    Title    Surname
+180      0     0    LINE 0.0000        <NA>        S       Mr    Leonard
+264      0     0  112059 0.0000         B94        S       Mr   Harrison
+272      0     0    LINE 0.0000        <NA>        S       Mr  Tornquist
+278      0     0  239853 0.0000        <NA>        S       Mr     Parkes
+303      0     0    LINE 0.0000        <NA>        S       Mr    Johnson
+379      0     0    2648 4.0125        <NA>        C       Mr     Betros
+414      0     0  239853 0.0000        <NA>        S       Mr Cunningham
+467      0     0  239853 0.0000        <NA>        S       Mr   Campbell
+482      0     0  239854 0.0000        <NA>        S       Mr      Frost
+598      0     0    LINE 0.0000        <NA>        S       Mr    Johnson
+634      0     0  112052 0.0000        <NA>        S       Mr       Parr
+675      0     0  239856 0.0000        <NA>        S       Mr     Watson
+733      0     0  239855 0.0000        <NA>        S       Mr     Knight
+807      0     0  112050 0.0000         A36        S       Mr    Andrews
+816      0     0  112058 0.0000        B102        S       Mr        Fry
+823      0     0   19972 0.0000        <NA>        S No Title   Reuchlin
+913      0     1 C 17368 3.1708        <NA>        S No Title      Olsen
+1158     0     0  112051 0.0000        <NA>        S       Mr   Chisholm
+1264     0     0  112058 0.0000 B52 B54 B56        S       Mr      Ismay
+     Cabin_class Family_size
+180         <NA>           1
+264            B           1
+272         <NA>           1
+278         <NA>           1
+303         <NA>           1
+379         <NA>           1
+414         <NA>           1
+467         <NA>           1
+482         <NA>           1
+598         <NA>           1
+634         <NA>           1
+675         <NA>           1
+733         <NA>           1
+807            A           1
+816            B           1
+823         <NA>           1
+913         <NA>           2
+1158        <NA>           1
+1264           B           1
+> 
+> distinct(data1, Ticket)
+                Ticket
+1            A/5 21171
+2             PC 17599
+3     STON/O2. 3101282
+4               113803
+5               373450
+6               330877
+7                17463
+8               349909
+9               347742
+10              237736
+11             PP 9549
+12              113783
+13           A/5. 2151
+14              347082
+15              350406
+16              248706
+17              382652
+18              244373
+19              345763
+20                2649
+21              239865
+22              248698
+23              330923
+24              113788
+25              347077
+26                2631
+27               19950
+28              330959
+29              349216
+30            PC 17601
+31            PC 17569
+32              335677
+33          C.A. 24579
+34            PC 17604
+35              113789
+36                2677
+37          A./5. 2152
+38              345764
+39                2651
+40                7546
+41               11668
+42              349253
+43       SC/Paris 2123
+44              330958
+45     S.C./A.4. 23567
+46              370371
+47               14311
+48                2662
+49              349237
+50             3101295
+51          A/4. 39886
+52            PC 17572
+53                2926
+54              113509
+55               19947
+56          C.A. 31026
+57                2697
+58          C.A. 34651
+59             CA 2144
+60                2669
+61              113572
+62               36973
+63              347088
+64            PC 17605
+65                2661
+66          C.A. 29395
+67           S.P. 3464
+68             3101281
+69              315151
+70          C.A. 33111
+71        S.O.C. 14879
+72                2680
+73                1601
+74              348123
+75              349208
+76              374746
+77              248738
+78              364516
+79              345767
+80              345779
+81              330932
+82              113059
+83          SO/C 14885
+84             3101278
+85          W./C. 6608
+86     SOTON/OQ 392086
+87              343275
+88              343276
+89              347466
+90         W.E.P. 5734
+91           C.A. 2315
+92              364500
+93              374910
+94            PC 17754
+95            PC 17759
+96              231919
+97              244367
+98              349245
+99              349215
+100              35281
+101               7540
+102            3101276
+103             349207
+104             343120
+105             312991
+106             349249
+107             371110
+108             110465
+109               2665
+110             324669
+111               4136
+112               2627
+113  STON/O 2. 3101294
+114             370369
+115           PC 17558
+116          A4. 54510
+117              27267
+118             370372
+119            C 17369
+120               2668
+121             347061
+122             349241
+123 SOTON/O.Q. 3101307
+124          A/5. 3337
+125             228414
+126         C.A. 29178
+127      SC/PARIS 2133
+128              11752
+129               7534
+130           PC 17593
+131               2678
+132             347081
+133   STON/O2. 3101279
+134             365222
+135             231945
+136         C.A. 33112
+137             350043
+138             230080
+139             244310
+140        S.O.P. 1166
+141             113776
+142         A.5. 11206
+143           A/5. 851
+144          Fa 265302
+145           PC 17597
+146              35851
+147    SOTON/OQ 392090
+148             315037
+149           CA. 2343
+150             371362
+151         C.A. 33595
+152             347068
+153             315093
+154             363291
+155             113505
+156           PC 17318
+157             111240
+158  STON/O 2. 3101280
+159              17764
+160             350404
+161               4133
+162           PC 17595
+163             250653
+164               LINE
+165      SC/PARIS 2131
+166             230136
+167             315153
+168             113767
+169             370365
+170             111428
+171             364849
+172             349247
+173             234604
+174              28424
+175             350046
+176           PC 17610
+177             368703
+178               4579
+179             370370
+180             248747
+181             345770
+182            3101264
+183               2628
+184           A/5 3540
+185             347054
+186               2699
+187             367231
+188             112277
+189 SOTON/O.Q. 3101311
+190       F.C.C. 13528
+191          A/5 21174
+192             250646
+193             367229
+194              35273
+195   STON/O2. 3101283
+196             243847
+197              11813
+198          W/C 14208
+199    SOTON/OQ 392089
+200             220367
+201              21440
+202             349234
+203              19943
+204            PP 4348
+205          SW/PP 751
+206          A/5 21173
+207             236171
+208             347067
+209             237442
+210         C.A. 29566
+211         W./C. 6609
+212              26707
+213         C.A. 31921
+214              28665
+215         SCO/W 1585
+216             367230
+217        W./C. 14263
+218  STON/O 2. 3101275
+219               2694
+220              19928
+221             347071
+222             250649
+223              11751
+224             244252
+225             362316
+226             113514
+227          A/5. 3336
+228             370129
+229               2650
+230           PC 17585
+231             110152
+232           PC 17755
+233             230433
+234             384461
+235             110413
+236             112059
+237             382649
+238         C.A. 17248
+239             347083
+240           PC 17582
+241           PC 17760
+242             113798
+243             250644
+244           PC 17596
+245             370375
+246              13502
+247             347073
+248             239853
+249          C.A. 2673
+250             336439
+251             347464
+252             345778
+253         A/5. 10482
+254             113056
+255             349239
+256             345774
+257             349206
+258             237798
+259             370373
+260              19877
+261              11967
+262      SC/Paris 2163
+263             349236
+264             349233
+265           PC 17612
+266               2693
+267             113781
+268              19988
+269               9234
+270             367226
+271             226593
+272           A/5 2466
+273              17421
+274           PC 17758
+275          P/PP 3381
+276           PC 17485
+277              11767
+278           PC 17608
+279             250651
+280             349243
+281       F.C.C. 13529
+282             347470
+283              29011
+284              36928
+285              16966
+286          A/5 21172
+287             349219
+288             234818
+289             345364
+290              28551
+291             111361
+292             113043
+293           PC 17611
+294             349225
+295               7598
+296             113784
+297             248740
+298             244361
+299             229236
+300             248733
+301              31418
+302             386525
+303         C.A. 37671
+304             315088
+305               7267
+306             113510
+307               2695
+308               2647
+309             345783
+310             237671
+311             330931
+312             330980
+313      SC/PARIS 2167
+314               2691
+315 SOTON/O.Q. 3101310
+316             C 7076
+317             110813
+318               2626
+319              14313
+320           PC 17477
+321              11765
+322            3101267
+323             323951
+324             C 7077
+325             113503
+326               2648
+327             347069
+328           PC 17757
+329               2653
+330  STON/O 2. 3101293
+331             349227
+332              27849
+333             367655
+334            SC 1748
+335             113760
+336             350034
+337            3101277
+338             350052
+339             350407
+340              28403
+341             244278
+342             240929
+343  STON/O 2. 3101289
+344             341826
+345               4137
+346             315096
+347              28664
+348             347064
+349              29106
+350             312992
+351             349222
+352             394140
+353  STON/O 2. 3101269
+354             343095
+355              28220
+356             250652
+357              28228
+358             345773
+359             349254
+360         A/5. 13032
+361             315082
+362             347080
+363         A/4. 34244
+364               2003
+365             250655
+366             364851
+367  SOTON/O.Q. 392078
+368             110564
+369             376564
+370         SC/AH 3085
+371  STON/O 2. 3101274
+372              13507
+373         C.A. 18723
+374             345769
+375             347076
+376             230434
+377              65306
+378              33638
+379             113794
+380               2666
+381             113786
+382              65303
+383             113051
+384              17453
+385           A/5 2817
+386             349240
+387              13509
+388              17464
+389       F.C.C. 13531
+390             371060
+391              19952
+392             364506
+393             111320
+394             234360
+395           A/S 2816
+396 SOTON/O.Q. 3101306
+397             113792
+398              36209
+399             323592
+400             315089
+401    SC/AH Basle 541
+402               7553
+403              31027
+404               3460
+405             350060
+406            3101298
+407             239854
+408           A/5 3594
+409               4134
+410              11771
+411         A.5. 18509
+412              65304
+413   SOTON/OQ 3101317
+414             113787
+415           PC 17609
+416          A/4 45380
+417              36947
+418          C.A. 6212
+419             350035
+420             315086
+421             364846
+422             330909
+423               4135
+424              26360
+425             111427
+426             C 4001
+427             382651
+428   SOTON/OQ 3101316
+429           PC 17473
+430           PC 17603
+431             349209
+432              36967
+433         C.A. 34260
+434             226875
+435             349242
+436              12749
+437             349252
+438               2624
+439               2700
+440             367232
+441        W./C. 14258
+442           PC 17483
+443            3101296
+444              29104
+445               2641
+446               2690
+447             315084
+448             113050
+449           PC 17761
+450             364498
+451              13568
+452          WE/P 5735
+453               2908
+454                693
+455      SC/PARIS 2146
+456             244358
+457             330979
+458               2620
+459             347085
+460             113807
+461              11755
+462             345572
+463             372622
+464             349251
+465             218629
+466    SOTON/OQ 392082
+467  SOTON/O.Q. 392087
+468          A/4 48871
+469             349205
+470               2686
+471             350417
+472        S.W./PP 752
+473              11769
+474           PC 17474
+475              14312
+476         A/4. 20589
+477             358585
+478             243880
+479               2689
+480  STON/O 2. 3101286
+481             237789
+482              13049
+483               3411
+484             237565
+485              13567
+486              14973
+487         A./5. 3235
+488  STON/O 2. 3101273
+489           A/5 3902
+490             364848
+491        SC/AH 29037
+492             248727
+493               2664
+494             349214
+495             113796
+496             364511
+497             111426
+498             349910
+499             349246
+500             113804
+501 SOTON/O.Q. 3101305
+502             370377
+503             364512
+504             220845
+505              31028
+506               2659
+507              11753
+508             350029
+509              54636
+510              36963
+511             219533
+512             349224
+513             334912
+514              27042
+515             347743
+516              13214
+517             112052
+518             237668
+519  STON/O 2. 3101292
+520             350050
+521             349231
+522              13213
+523      S.O./P.P. 751
+524           CA. 2314
+525             349221
+526               8475
+527             330919
+528             365226
+529             349223
+530              29751
+531               2623
+532               5727
+533             349210
+534  STON/O 2. 3101285
+535             234686
+536             312993
+537           A/5 3536
+538              19996
+539              29750
+540         F.C. 12750
+541         C.A. 24580
+542             244270
+543             239856
+544             349912
+545             342826
+546               4138
+547             330935
+548               6563
+549             349228
+550             350036
+551              24160
+552              17474
+553             349256
+554               2672
+555             113800
+556             248731
+557             363592
+558              35852
+559             348121
+560           PC 17475
+561              36864
+562             350025
+563             223596
+564           PC 17476
+565           PC 17482
+566             113028
+567               7545
+568             250647
+569             348124
+570              34218
+571              36568
+572             347062
+573             350048
+574              12233
+575             250643
+576             113806
+577             315094
+578              36866
+579             236853
+580   STON/O2. 3101271
+581             239855
+582              28425
+583             233639
+584             349201
+585             349218
+586              16988
+587             376566
+588  STON/O 2. 3101288
+589             250648
+590             113773
+591             335097
+592              29103
+593             392096
+594             345780
+595             349204
+596             350042
+597              29108
+598             363294
+599   SOTON/O2 3101272
+600               2663
+601             347074
+602             112379
+603             364850
+604               8471
+605             345781
+606             350047
+607        S.O./P.P. 3
+608               2674
+609              29105
+610             347078
+611             383121
+612              36865
+613               2687
+614             113501
+615         W./C. 6607
+616 SOTON/O.Q. 3101312
+617             374887
+618            3101265
+619              12460
+620           PC 17600
+621             349203
+622              28213
+623              17465
+624             349244
+625               2685
+626               2625
+627             347089
+628             347063
+629             112050
+630             347087
+631             248723
+632               3474
+633              28206
+634             364499
+635             112058
+636   STON/O2. 3101290
+637    S.C./PARIS 2079
+638             C 7075
+639             315098
+640              19972
+641             368323
+642             367228
+643               2671
+644             347468
+645               2223
+646           PC 17756
+647             315097
+648             392092
+649              11774
+650   SOTON/O2 3101287
+651               2683
+652             315090
+653          C.A. 5547
+654             349213
+655             347060
+656           PC 17592
+657             392091
+658             113055
+659               2629
+660             350026
+661              28134
+662              17466
+663             233866
+664             236852
+665      SC/PARIS 2149
+666           PC 17590
+667             345777
+668             349248
+669                695
+670             345765
+671               2667
+672             349212
+673             349217
+674             349257
+675               7552
+676   C.A./SOTON 34068
+677    SOTON/OQ 392076
+678             211536
+679             112053
+680             111369
+681             370376
+682             330911
+683             363272
+684             240276
+685             315154
+686               7538
+687             330972
+688               2657
+689             349220
+690                694
+691              21228
+692              24065
+693             233734
+694               2692
+695   STON/O2. 3101270
+696               2696
+697            C 17368
+698           PC 17598
+699               2698
+700             113054
+701         C.A. 31029
+702              13236
+703               2682
+704             342712
+705             315087
+706             345768
+707             113778
+708 SOTON/O.Q. 3101263
+709             237249
+710  STON/O 2. 3101291
+711           PC 17594
+712             370374
+713              13695
+714      SC/PARIS 2168
+715        SC/A.3 2861
+716             349230
+717             348122
+718             349232
+719             237216
+720             347090
+721             334914
+722       F.C.C. 13534
+723             330963
+724               2543
+725             382653
+726             349211
+727            3101297
+728           PC 17562
+729             359306
+730              11770
+731             248744
+732             368702
+733              19924
+734             349238
+735             240261
+736               2660
+737             330844
+738          A/4 31416
+739             364856
+740             347072
+741             345498
+742             376563
+743              13905
+744             350033
+745  STON/O 2. 3101268
+746             347471
+747         A./5. 3338
+748              11778
+749             365235
+750             347070
+751             330920
+752             383162
+753               3410
+754             248734
+755             237734
+756             330968
+757           PC 17531
+758             329944
+759               2681
+760              13050
+761             367227
+762             392095
+763             368783
+764             350045
+765             211535
+766             342441
+767    STON/OQ. 369943
+768             113780
+769               2621
+770             349226
+771             350409
+772               2656
+773             248659
+774    SOTON/OQ 392083
+775              17475
+776        SC/A4 23568
+777             113791
+778             349255
+779               3701
+780             350405
+781      S.O./P.P. 752
+782             347469
+783             110489
+784 SOTON/O.Q. 3101315
+785             335432
+786             220844
+787             343271
+788             237393
+789           PC 17591
+790              17770
+791               7548
+792      S.O./P.P. 251
+793               2670
+794               2673
+795             233478
+796               7935
+797             239059
+798        S.O./P.P. 2
+799          A/4 48873
+800              28221
+801             111163
+802             235509
+803             347465
+804             347066
+805         C.A. 31030
+806              65305
+807         C.A. 34050
+808         F.C. 12998
+809               9232
+810              28034
+811           PC 17613
+812             349250
+813 SOTON/O.Q. 3101308
+814             347091
+815             113038
+816             330924
+817              32302
+818      SC/PARIS 2148
+819             342684
+820        W./C. 14266
+821             350053
+822           PC 17606
+823             350054
+824             370368
+825             242963
+826             113795
+827            3101266
+828             330971
+829             350416
+830               2679
+831             250650
+832             112377
+833               3470
+834   SOTON/O2 3101284
+835              13508
+836               7266
+837             345775
+838         C.A. 42795
+839          AQ/4 3130
+840             363611
+841              28404
+842             345501
+843             350410
+844         C.A. 34644
+845             349235
+846             112051
+847         C.A. 49867
+848        A. 2. 39186
+849             315095
+850             368573
+851               2676
+852           SC 14888
+853           CA 31352
+854        W./C. 14260
+855             315085
+856             364859
+857          A/5 21175
+858 SOTON/O.Q. 3101314
+859               2655
+860           A/5 1478
+861           PC 17607
+862             382650
+863               2652
+864             345771
+865             349202
+866             113801
+867             347467
+868             347079
+869             237735
+870             315092
+871             383123
+872             112901
+873             315091
+874               2658
+875            LP 1588
+876             368364
+877        AQ/3. 30631
+878              28004
+879             350408
+880             347075
+881               2654
+882             244368
+883             113790
+884 SOTON/O.Q. 3101309
+885             236854
+886           PC 17580
+887               2684
+888             349229
+889             110469
+890             244360
+891               2675
+892               2622
+893         C.A. 15185
+894             350403
+895             348125
+896             237670
+897               2688
+898             248726
+899       F.C.C. 13540
+900             113044
+901               1222
+902             368402
+903             315083
+904             112378
+905      SC/PARIS 2147
+906              28133
+907             248746
+908             315152
+909              29107
+910                680
+911             366713
+912             330910
+913      SC/PARIS 2159
+914             349911
+915             244346
+916             364858
+917         C.A. 30769
+918             371109
+919             347065
+920              21332
+921              17765
+922      SC/PARIS 2166
+923              28666
+924             334915
+925             365237
+926             347086
+927          A.5. 3236
+928 SOTON/O.Q. 3101262
+929             359309
+> ggplot(data1[1:418,], aes(Embarked, Fare))+geom_boxplot()
+> 
+> 
+> train %>% group_by(Embarked, Pclass) %>% summarise(median(Fare))
+`summarise()` regrouping output by 'Embarked' (override with `.groups` argument)
+[90m# A tibble: 10 x 3[39m
+[90m# Groups:   Embarked [4][39m
+   Embarked Pclass `median(Fare)`
+   [3m[90m<chr>[39m[23m     [3m[90m<int>[39m[23m          [3m[90m<dbl>[39m[23m
+[90m 1[39m [90m"[39m[90m"[39m            1          80   
+[90m 2[39m [90m"[39mC[90m"[39m           1          78.3 
+[90m 3[39m [90m"[39mC[90m"[39m           2          24   
+[90m 4[39m [90m"[39mC[90m"[39m           3           7.90
+[90m 5[39m [90m"[39mQ[90m"[39m           1          90   
+[90m 6[39m [90m"[39mQ[90m"[39m           2          12.4 
+[90m 7[39m [90m"[39mQ[90m"[39m           3           7.75
+[90m 8[39m [90m"[39mS[90m"[39m           1          52   
+[90m 9[39m [90m"[39mS[90m"[39m           2          13.5 
+[90m10[39m [90m"[39mS[90m"[39m           3           8.05
+> 
+> #####################################::::::::::::::::
+> #ok lots of $0 Fare
+> #we'll save this work for later
+> ######################################:::::::::::::::
+> 
+> visual_na2<- aggr(data1[892:1309,], numbers=TRUE, labels=names(data1),cex.axis=.5, cex.numbers=.5, sortVars=T)
+
+ Variables sorted by number of missings: 
+    Variable     Count
+    Survived 1.0000000
+       Cabin 0.7822967
+ Cabin_class 0.7822967
+         Age 0.2057416
+ PassengerId 0.0000000
+      Pclass 0.0000000
+        Name 0.0000000
+         Sex 0.0000000
+       SibSp 0.0000000
+       Parch 0.0000000
+      Ticket 0.0000000
+        Fare 0.0000000
+    Embarked 0.0000000
+       Title 0.0000000
+     Surname 0.0000000
+ Family_size 0.0000000
+> 
+> 
+> 
+> 
+> age_pred <- lm(Age~Fare+Sex+Pclass, data=data1[!is.na(data1$Age),])
+> age_pred
+
+Call:
+lm(formula = Age ~ Fare + Sex + Pclass, data = data1[!is.na(data1$Age), 
+    ])
+
+Coefficients:
+(Intercept)         Fare      Sexmale      Pclass2      Pclass3  
+   39.58090     -0.02423      3.41137    -11.60976    -16.82908  
+
+> summary(age_pred)
+
+Call:
+lm(formula = Age ~ Fare + Sex + Pclass, data = data1[!is.na(data1$Age), 
+    ])
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-38.400  -7.649  -0.972   7.547  48.025 
+
+Coefficients:
+              Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  39.580903   1.273871  31.071  < 2e-16 ***
+Fare         -0.024231   0.009205  -2.632  0.00861 ** 
+Sexmale       3.411370   0.847605   4.025 6.12e-05 ***
+Pclass2     -11.609759   1.284680  -9.037  < 2e-16 ***
+Pclass3     -16.829080   1.205791 -13.957  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 12.98 on 1041 degrees of freedom
+Multiple R-squared:  0.1926,	Adjusted R-squared:  0.1895 
+F-statistic: 62.08 on 4 and 1041 DF,  p-value: < 2.2e-16
+
+> 
+> #train_data$Age[is.na(train_data$Age)] <- predict(age_pred, train_data)[is.na(train_data$Age)]
+> #train_data$Age <- round(train_data$Age)
+> 
+> data1$Age[is.na(data1$Age)]<-predict(age_pred, data1)[is.na(data1$Age)]
+> data1$Age <-round(data1$Age)
+> 
+> train_data <- data1[1:891,]
+> test_data <- data1[892:1309,]
+> 
+> set.seed(007)
+> str(train_data)
+'data.frame':	891 obs. of  16 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 26 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 721 817 915 66 650 374 110 542 478 175 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  NA "C85" NA "C123" ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+ $ Title      : Factor w/ 4 levels "Miss","Mr","Mrs",..: 2 3 1 3 2 2 2 4 3 3 ...
+ $ Surname    : chr  "Braund" "Cumings" "Heikkinen" "Futrelle" ...
+ $ Cabin_class: chr  NA "C" NA "C" ...
+ $ Family_size: Factor w/ 9 levels "1","2","3","4",..: 2 2 1 2 1 1 1 5 3 2 ...
+> model <- randomForest(factor(Survived)~ Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+Title+Family_size, data=train_data)
+> 
+> model$importance
+            MeanDecreaseGini
+Pclass             30.233269
+Sex                59.694802
+Age                56.586240
+SibSp              11.729828
+Parch               7.956808
+Fare               67.598236
+Embarked           10.984365
+Title              69.232121
+Family_size        25.885620
+> 
+> plot(model)
+> 
+> 
+> importance <- importance(model)
+> VarImportance <- data.frame(Variables=row.names(importance),
++                             Importance=round(importance[,'MeanDecreaseGini'],2))
+> 
+> 
+> rank_importance <- VarImportance %>% mutate(Rank=paste0('#', dense_rank(desc(Importance))))
+> rank_importance
+    Variables Importance Rank
+1      Pclass      30.23   #5
+2         Sex      59.69   #3
+3         Age      56.59   #4
+4       SibSp      11.73   #7
+5       Parch       7.96   #9
+6        Fare      67.60   #2
+7    Embarked      10.98   #8
+8       Title      69.23   #1
+9 Family_size      25.89   #6
+> 
+> ggplot(rank_importance, aes(x=reorder(Variables, Importance), y=Importance, fill=Importance ))+
++         geom_bar(stat = 'identity')+coord_flip()+geom_text(aes(x=Variables, label=Rank, y=5))+
++         labs(x='Variables')
+> 
+> 
+> 
+> 
+> 
+> # Predict using the test set
+> prediction <- predict(model, test_data)
+> summary(prediction)
+  0   1 
+272 146 
+> # Save the solution to a dataframe with two columns: PassengerId and Survived (prediction)
+> solution <- data.frame(PassengerID = test_data$PassengerId, Survived = prediction)
+> 
+> # Write the solution to file
+> write.csv(solution, file = 'test_solution2.csv', row.names = F)
+> 
+> 
+> 
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  3.090   0.189   3.294 

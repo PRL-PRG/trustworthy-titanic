@@ -1,0 +1,6 @@
+---
+title: "First Pass at Titanic Data Set" 
+author: "Brian Richards" 
+---
+
+The following is a first pass at the Titanic data set using a some naive approaches.

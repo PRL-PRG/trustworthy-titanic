@@ -1,0 +1,208 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> # load packages
+> 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) 
+> library('ggthemes') 
+> library('scales') # v
+
+Attaching package: ‘scales’
+
+The following object is masked from ‘package:readr’:
+
+    col_factor
+
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> library('dplyr') # data manipulation
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library('randomForest') # classification algorithm
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> # Input data files 
+> getwd()
+[1] "/Users/alex/MachineLearning/TrustworthyML/KaggleCrawler/Aviral/korpus-master/notebooks/r/kernels/lpfahler-my-first-kernel-the-titanic-dataset/script"
+> train <- read.csv('../input/train.csv', stringsAsFactors = F)
+> test  <- read.csv('../input/test.csv', stringsAsFactors = F)
+> full  <- bind_rows(train, test) # bind training & test data
+> 
+> 
+> # check data
+> # head(full)
+> # Use Old School base graphics
+> # hist(full$Age, xlab="Age (years)", main="Histogram of Age - Titanic Passengers")
+> # hist(full$Fare, xlab="Passenger fare", main="Histogram of Face - Titanic Data")
+> # trying out ggplot2
+> plot1 <- ggplot(full, aes(x = Age)) +
++   geom_histogram(col="black", fill="light green")
+> # trying various approaches to removing grid background and lines
+> # plot1 + theme_bw()
+> # plot1 + theme_bw() +
+> #   theme(
+> #     plot.background = element_blank()
+> #     ,panel.grid.major = element_blank()
+> #     ,panel.grid.minor = element_blank() 
+> #   )
+> plot1 + theme_bw() +
++   theme(
++     plot.background = element_blank()
++     ,panel.grid.major = element_blank()
++   )
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+Warning message:
+Removed 263 rows containing non-finite values (stat_bin). 
+> plot2 <- ggplot(full, aes(x = Fare)) +
++   geom_histogram(col="black", fill="light green")
+> plot2 + theme_bw()
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+Warning message:
+Removed 1 rows containing non-finite values (stat_bin). 
+> # plot2 + theme_classic()
+> 
+> plot3 <- ggplot(full, aes(x = Fare, color=Sex)) +
++   geom_histogram() + theme_few()
+> plot3
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+Warning message:
+Removed 1 rows containing non-finite values (stat_bin). 
+> 
+> plot4 <- ggplot(full, aes(x = Age)) +
++   geom_histogram(col="black", fill="light green") + facet_wrap(~Sex) + theme_few()
+> plot4
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+Warning message:
+Removed 263 rows containing non-finite values (stat_bin). 
+> 
+> plot6 <- ggplot(train, aes(x=as.factor(Survived), y=Age, 
++           fill=as.factor(Survived))) + geom_boxplot() + guides(fill=FALSE) + 
++           coord_flip() + theme_few() + labs(y="Age (years)", x="Survived (1=Yes, 0=No)")
+> plot6
+Warning message:
+Removed 177 rows containing non-finite values (stat_boxplot). 
+> 
+> plot7 <- ggplot(train, aes(x=as.factor(Survived), y=Fare, 
++           fill=as.factor(Survived))) + geom_boxplot() + guides(fill=FALSE) + 
++           coord_flip() + theme_few() + labs(y="Fare", x="Survived (1=Yes, 0=No)")
+> plot7
+> 
+> # missing data count
+> # need to address age!
+> sapply(full, function(x) sum(is.na(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1           0           0 
+> 
+> # Feature engineering borrowed from Megan Risdal
+> # Create a family size variable including the passenger themselves
+> full$Fsize <- full$SibSp + full$Parch + 1
+> # Create a family variable 
+> full$Family <- paste(full$Surname, full$Fsize, sep='_')
+> 
+> ggplot(full[1:891,], aes(x = Fsize, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge') +
++   scale_x_continuous(breaks=c(1:11)) +
++   labs(x = 'Family Size') +
++   theme_few()
+> 
+> # names
+> # Grab title from passenger names
+> full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+> # Show title counts by sex
+> table(full$Sex, full$Title)
+        
+         Capt Col Don Dona  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs
+  female    0   0   0    1   1        0    1     0      0  260    2   1   0 197
+  male      1   4   1    0   7        1    0     2     61    0    0   0 757   0
+        
+          Ms Rev Sir the Countess
+  female   2   0   0            1
+  male     0   8   1            0
+> # Titles with very low cell counts to be combined to "rare" level
+> rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
++                 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+> # Also reassign mlle, ms, and mme accordingly
+> full$Title[full$Title == 'Mlle']        <- 'Miss' 
+> full$Title[full$Title == 'Ms']          <- 'Miss'
+> full$Title[full$Title == 'Mme']         <- 'Mrs' 
+> full$Title[full$Title %in% rare_title]  <- 'Rare Title'
+> # Show title counts by sex again
+> table(full$Sex, full$Title)
+        
+         Master Miss  Mr Mrs Rare Title
+  female      0  264   0 198          4
+  male       61    0 757   0         25
+> # Finally, grab surname from passenger name
+> full$Surname <- sapply(full$Name,  
++      function(x) strsplit(x, split = '[,.]')[[1]][1])
+> 
+> # embarked - see https://www.kaggle.com/mrisdal/titanic/exploring-survival-on-the-titanic
+> # for explanation
+> full$Embarked[c(62, 830)] <- 'C'
+> # Replace missing fare value with median fare for class/embarkment
+> full$Fare[1044] <- median(full[full$Pclass == '3' & full$Embarked == 'S', ]$Fare, na.rm = TRUE)
+> 
+> # impute missing age values
+> library('mice') 
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> # Make variables factors into factors
+> factor_vars <- c('PassengerId','Pclass','Sex','Embarked',
++                  'Title','Surname','Family','FsizeD')
+> 
+> full[factor_vars] <- lapply(full[factor_vars], function(x) as.factor(x))
+Error in `[.data.frame`(full, factor_vars) : undefined columns selected
+Calls: lapply -> [ -> [.data.frame
+Execution halted

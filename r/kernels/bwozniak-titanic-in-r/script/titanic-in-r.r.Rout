@@ -1,0 +1,199 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> library(xgboost)
+Warning message:
+package ‘xgboost’ was built under R version 3.6.2 
+> 
+> train = read.csv("../input/train.csv")
+> test = read.csv("../input/test.csv")
+> 
+> 
+> head(train)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> head(test)
+  PassengerId Pclass                                         Name    Sex  Age
+1         892      3                             Kelly, Mr. James   male 34.5
+2         893      3             Wilkes, Mrs. James (Ellen Needs) female 47.0
+3         894      2                    Myles, Mr. Thomas Francis   male 62.0
+4         895      3                             Wirz, Mr. Albert   male 27.0
+5         896      3 Hirvonen, Mrs. Alexander (Helga E Lindqvist) female 22.0
+6         897      3                   Svensson, Mr. Johan Cervin   male 14.0
+  SibSp Parch  Ticket    Fare Cabin Embarked
+1     0     0  330911  7.8292              Q
+2     1     0  363272  7.0000              S
+3     0     0  240276  9.6875              Q
+4     0     0  315154  8.6625              S
+5     1     1 3101298 12.2875              S
+6     0     0    7538  9.2250              S
+> 
+> full  <- rbind(train[, -2], test)
+> full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+> 
+> rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
++                 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+> 
+> full$Title[full$Title == 'Mlle']        <- 'Miss' 
+> full$Title[full$Title == 'Ms']          <- 'Miss'
+> full$Title[full$Title == 'Mme']         <- 'Mrs' 
+> full$Title[full$Title %in% rare_title]  <- 'Rare Title'
+> 
+> train2 <- full[1:891,]
+> test <- full[892:1309,]
+> train2$Survived <- train$Survived
+> 
+> head(train2)
+  PassengerId Pclass                                                Name    Sex
+1           1      3                             Braund, Mr. Owen Harris   male
+2           2      1 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female
+3           3      3                              Heikkinen, Miss. Laina female
+4           4      1        Futrelle, Mrs. Jacques Heath (Lily May Peel) female
+5           5      3                            Allen, Mr. William Henry   male
+6           6      3                                    Moran, Mr. James   male
+  Age SibSp Parch           Ticket    Fare Cabin Embarked Title Survived
+1  22     1     0        A/5 21171  7.2500              S    Mr        0
+2  38     1     0         PC 17599 71.2833   C85        C   Mrs        1
+3  26     0     0 STON/O2. 3101282  7.9250              S  Miss        1
+4  35     1     0           113803 53.1000  C123        S   Mrs        1
+5  35     0     0           373450  8.0500              S    Mr        0
+6  NA     0     0           330877  8.4583              Q    Mr        0
+> head(test)
+    PassengerId Pclass                                         Name    Sex  Age
+892         892      3                             Kelly, Mr. James   male 34.5
+893         893      3             Wilkes, Mrs. James (Ellen Needs) female 47.0
+894         894      2                    Myles, Mr. Thomas Francis   male 62.0
+895         895      3                             Wirz, Mr. Albert   male 27.0
+896         896      3 Hirvonen, Mrs. Alexander (Helga E Lindqvist) female 22.0
+897         897      3                   Svensson, Mr. Johan Cervin   male 14.0
+    SibSp Parch  Ticket    Fare Cabin Embarked Title
+892     0     0  330911  7.8292              Q    Mr
+893     1     0  363272  7.0000              S   Mrs
+894     0     0  240276  9.6875              Q    Mr
+895     0     0  315154  8.6625              S    Mr
+896     1     1 3101298 12.2875              S   Mrs
+897     0     0    7538  9.2250              S    Mr
+> 
+> train_prep <- train2[, -c(1, 3, 8, 10)]
+> test_prep <- test[, -c(1,3,8,10)]
+> 
+> head(train_prep)
+  Pclass    Sex Age SibSp Parch    Fare Embarked Title Survived
+1      3   male  22     1     0  7.2500        S    Mr        0
+2      1 female  38     1     0 71.2833        C   Mrs        1
+3      3 female  26     0     0  7.9250        S  Miss        1
+4      1 female  35     1     0 53.1000        S   Mrs        1
+5      3   male  35     0     0  8.0500        S    Mr        0
+6      3   male  NA     0     0  8.4583        Q    Mr        0
+> head(test_prep)
+    Pclass    Sex  Age SibSp Parch    Fare Embarked Title
+892      3   male 34.5     0     0  7.8292        Q    Mr
+893      3 female 47.0     1     0  7.0000        S   Mrs
+894      2   male 62.0     0     0  9.6875        Q    Mr
+895      3   male 27.0     0     0  8.6625        S    Mr
+896      3 female 22.0     1     1 12.2875        S   Mrs
+897      3   male 14.0     0     0  9.2250        S    Mr
+> 
+> str(train_prep$Embarked)
+ Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> train_prep$Sex <- as.numeric(train_prep$Sex)
+> train_prep$Embarked <- as.numeric(train_prep$Embarked)
+> train_prep$Title <- as.numeric(as.factor(train_prep$Title))
+> 
+> trains <- as.matrix(train_prep[, -9])
+> head(trains)
+  Pclass Sex Age SibSp Parch    Fare Embarked Title
+1      3   2  22     1     0  7.2500        4     3
+2      1   1  38     1     0 71.2833        2     4
+3      3   1  26     0     0  7.9250        4     2
+4      1   1  35     1     0 53.1000        4     4
+5      3   2  35     0     0  8.0500        4     3
+6      3   2  NA     0     0  8.4583        3     3
+> 
+> Survived <- as.matrix(train_prep$Survived)
+> head(Survived)
+     [,1]
+[1,]    0
+[2,]    1
+[3,]    1
+[4,]    1
+[5,]    0
+[6,]    0
+> 
+> 
+> 
+> dtrain <- xgb.DMatrix(data = trains, label = Survived)
+> 
+> test_prep$Sex <- as.numeric(test_prep$Sex)
+> test_prep$Embarked <- as.numeric(test_prep$Embarked)
+> test_prep$Title <- as.numeric(as.factor(test_prep$Title))
+> 
+> tests <- as.matrix(test_prep)
+> 
+> fit_xg <- xgboost(data = dtrain, nround = 5)
+[1]	train-rmse:0.418250 
+[2]	train-rmse:0.364827 
+[3]	train-rmse:0.328669 
+[4]	train-rmse:0.307688 
+[5]	train-rmse:0.294771 
+> test_xg <- predict(fit_xg, tests)
+> 
+> head(test_xg)
+[1] 0.1451140 0.1190149 0.1583610 0.2099580 0.6304632 0.1607403
+> 
+> imp <- xgb.importance (model = fit_xg)
+> xgb.plot.importance (importance_matrix = imp[1:20])
+> 
+> test_xg <- ifelse(test_xg >.5, 1, 0)
+> 
+> submission_xg <- cbind(test$PassengerId, test_xg)
+> colnames(submission_xg) <- c('PassengerId', 'Survived')
+> write.csv(submission_xg, "xgboost1.csv", row.names = FALSE)
+> 
+> dim(submission_xg)
+[1] 418   2
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  1.924   0.085   1.011 

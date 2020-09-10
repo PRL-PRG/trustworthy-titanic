@@ -1,0 +1,360 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # import the required packages
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> 
+> library(rpart) # for regression trees
+> library(randomForest) # for random forests
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> 
+> ########## Read the training and test data
+> train <- read.csv("../input/train.csv", stringsAsFactors=FALSE)
+> #View(train)
+> summary(train)
+  PassengerId       Survived          Pclass          Name          
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000   Length:891        
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median :446.0   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309                     
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000                     
+                                                                    
+     Sex                 Age            SibSp           Parch       
+ Length:891         Min.   : 0.42   Min.   :0.000   Min.   :0.0000  
+ Class :character   1st Qu.:20.12   1st Qu.:0.000   1st Qu.:0.0000  
+ Mode  :character   Median :28.00   Median :0.000   Median :0.0000  
+                    Mean   :29.70   Mean   :0.523   Mean   :0.3816  
+                    3rd Qu.:38.00   3rd Qu.:1.000   3rd Qu.:0.0000  
+                    Max.   :80.00   Max.   :8.000   Max.   :6.0000  
+                    NA's   :177                                     
+    Ticket               Fare           Cabin             Embarked        
+ Length:891         Min.   :  0.00   Length:891         Length:891        
+ Class :character   1st Qu.:  7.91   Class :character   Class :character  
+ Mode  :character   Median : 14.45   Mode  :character   Mode  :character  
+                    Mean   : 32.20                                        
+                    3rd Qu.: 31.00                                        
+                    Max.   :512.33                                        
+                                                                          
+> nrow(train)
+[1] 891
+> 
+> test <- read.csv("../input/test.csv", stringsAsFactors=FALSE)
+> #View(test)
+> summary(test)
+  PassengerId         Pclass          Name               Sex           
+ Min.   : 892.0   Min.   :1.000   Length:418         Length:418        
+ 1st Qu.: 996.2   1st Qu.:1.000   Class :character   Class :character  
+ Median :1100.5   Median :3.000   Mode  :character   Mode  :character  
+ Mean   :1100.5   Mean   :2.266                                        
+ 3rd Qu.:1204.8   3rd Qu.:3.000                                        
+ Max.   :1309.0   Max.   :3.000                                        
+                                                                       
+      Age            SibSp            Parch           Ticket         
+ Min.   : 0.17   Min.   :0.0000   Min.   :0.0000   Length:418        
+ 1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.0000   Class :character  
+ Median :27.00   Median :0.0000   Median :0.0000   Mode  :character  
+ Mean   :30.27   Mean   :0.4474   Mean   :0.3923                     
+ 3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.0000                     
+ Max.   :76.00   Max.   :8.0000   Max.   :9.0000                     
+ NA's   :86                                                          
+      Fare            Cabin             Embarked        
+ Min.   :  0.000   Length:418         Length:418        
+ 1st Qu.:  7.896   Class :character   Class :character  
+ Median : 14.454   Mode  :character   Mode  :character  
+ Mean   : 35.627                                        
+ 3rd Qu.: 31.500                                        
+ Max.   :512.329                                        
+ NA's   :1                                              
+> nrow(test)
+[1] 418
+> 
+> #### Check for missing values
+> train %>%
++   summarise_all(funs(sum(is.na(.))))
+  PassengerId Survived Pclass Name Sex Age SibSp Parch Ticket Fare Cabin
+1           0        0      0    0   0 177     0     0      0    0     0
+  Embarked
+1        0
+Warning message:
+`funs()` is deprecated as of dplyr 0.8.0.
+Please use a list of either functions or lambdas: 
+
+  # Simple named list: 
+  list(mean = mean, median = median)
+
+  # Auto named with `tibble::lst()`: 
+  tibble::lst(mean, median)
+
+  # Using lambdas
+  list(~ mean(., trim = .2), ~ median(., na.rm = TRUE))
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+> 
+> test %>%
++   summarise_all(funs(sum(is.na(.))))
+  PassengerId Pclass Name Sex Age SibSp Parch Ticket Fare Cabin Embarked
+1           0      0    0   0  86     0     0      0    1     0        0
+> 
+> ### Check for blank values
+> sapply(train, function(x) length(which(x == "")))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0           0 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0         687           2 
+> ## There are 687 blank values in Cabin and 2 blank values in Embarked
+> 
+> sapply(test, function(x) length(which(x == "")))
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+          0           0           0           0           0           0 
+      Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0         327           0 
+> 
+> sum(is.na(train$Age))
+[1] 177
+> sum(is.na(test$Age))
+[1] 86
+> 
+> 
+> train$Age[which(is.na(train$Age))] <- median(train$Age, na.rm = T)
+> test$Age[which(is.na(test$Age))] <- median(test$Age, na.rm = T)
+> 
+> # There are no Duplicate entries
+> sum(duplicated(train$PassengerId))
+[1] 0
+> sum(duplicated(test$PassengerId))
+[1] 0
+> 
+> # Age is having missing values , there are 20% missing values for Age
+> # Clean the Age column, it contains decimal values
+> 
+> train$Age <- gsub('.00', '', train$Age)
+> train$Survived <- factor(train$Survived)
+> train$Sex <- factor(train$Sex)
+> train$SibSp <- factor(train$SibSp)
+> train$Pclass <- factor(train$Pclass)
+> train$Embarked <- factor(train$Embarked)
+> 
+> 
+> train$Age_Category <- sapply(train$Age, function(x){
++   if(x >= 0 & x <= 12){
++     return ("Child")
++   } else if(x > 12 & x <=24){
++     return ("Very Young")
++   } else if(x > 24 & x <= 36){
++     return("Young")
++   } else if(x > 36 & x <=48){
++     return ("Middle Aged")
++   } else if(x > 48){
++     return("Old")
++   } else {
++     return("NA")
++   }
++ })
+> 
+> 
+> ######
+> test$Age <- gsub('.00', '', test$Age)
+> test$Sex <- factor(test$Sex)
+> test$SibSp <- factor(test$SibSp)
+> test$Pclass <- factor(test$Pclass)
+> test$Embarked <- factor(test$Embarked)
+> 
+> test$Age_Category <- sapply(test$Age, function(x){
++   if(x >= 0 & x <= 12){
++     return ("Child")
++   } else if(x > 12 & x <=24){
++     return ("Very Young")
++   } else if(x > 24 & x <= 36){
++     return("Young")
++   } else if(x > 36 & x <=48){
++     return ("Middle Aged")
++   } else if(x > 48){
++     return("Old")
++   } else {
++     return("NA")
++   }
++ })
+> 
+> #######
+> 
+> 
+> ncol(train)
+[1] 13
+> 
+> # Univariate Analysis
+> 
+> summary(train$Fare)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00    7.91   14.45   32.20   31.00  512.33 
+> 
+> ggplot(train, aes(y=train$Fare, x = train$Pclass)) + geom_boxplot(fill = "steelblue") + 
++   labs(x = "Class", y = "Fare", title = "Class wise Fare distribution")
+Warning messages:
+1: Use of `train$Pclass` is discouraged. Use `Pclass` instead. 
+2: Use of `train$Fare` is discouraged. Use `Fare` instead. 
+> 
+> # Average Fare is higher for class 1 and then class 2 and class 3 has the least fare
+> 
+> #Checking what percentage of Survivals are defaulted 
+> prop.table(table(train$Survived)) # About 38% Survived
+
+        0         1 
+0.6161616 0.3838384 
+> 
+> ggplot(train, aes(x= train$Survived)) + geom_bar(fill = "orange") +
++   labs(x = "Survived", y = "Passenger Count") + scale_y_continuous("Survived", breaks = seq(0, 500, by = 50)) +
++   geom_text(aes(y = prop.table(..count..) * 100 + 0.5, 
++                 label = paste0(prop.table(..count..) * 100, '%')), 
++             stat = 'count', 
++             position = position_dodge(.9), 
++             size = 4, vjust = -0.9)
+Warning messages:
+1: Use of `train$Survived` is discouraged. Use `Survived` instead. 
+2: Use of `train$Survived` is discouraged. Use `Survived` instead. 
+> 
+> ggplot(train, aes(x = train$Sex, fill = train$Survived)) + geom_bar(position = "fill")
+Warning messages:
+1: Use of `train$Sex` is discouraged. Use `Sex` instead. 
+2: Use of `train$Survived` is discouraged. Use `Survived` instead. 
+> #Females survived more than men.
+> 
+> ggplot(train, aes(x= train$Pclass, fill = train$Survived)) + geom_bar(position = "fill")
+Warning messages:
+1: Use of `train$Pclass` is discouraged. Use `Pclass` instead. 
+2: Use of `train$Survived` is discouraged. Use `Survived` instead. 
+> #Class 1 passenger survived more
+> 
+> 
+> train$Age <- as.numeric(train$Age)
+> summary(train$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.42   22.00   28.00   29.36   35.00   80.00 
+> 
+> data <- subset(train, train$Survived == 1)
+> 
+> ggplot(data, aes(x = data$Sex, fill = data$Pclass)) + geom_bar(position = "dodge")
+Warning messages:
+1: Use of `data$Sex` is discouraged. Use `Sex` instead. 
+2: Use of `data$Pclass` is discouraged. Use `Pclass` instead. 
+> 
+> 
+> 
+> ggplot(train, aes(x = train$Age_Category, fill = train$Survived)) + geom_bar(position = "fill")
+Warning messages:
+1: Use of `train$Age_Category` is discouraged. Use `Age_Category` instead. 
+2: Use of `train$Survived` is discouraged. Use `Survived` instead. 
+> 
+> Adults <- subset(train, Age > 12)
+> ggplot(Adults, aes(x = Adults$Sex, fill = Adults$Survived)) + geom_bar(position = "fill")
+Warning messages:
+1: Use of `Adults$Sex` is discouraged. Use `Sex` instead. 
+2: Use of `Adults$Survived` is discouraged. Use `Survived` instead. 
+> # Women survived more than Men
+> 
+> str(train$SibSp)
+ Factor w/ 7 levels "0","1","2","3",..: 2 2 1 2 1 1 1 4 1 2 ...
+> ggplot(train, aes(x = train$SibSp, fill = train$Survived)) + geom_bar(position = "fill")
+Warning messages:
+1: Use of `train$SibSp` is discouraged. Use `SibSp` instead. 
+2: Use of `train$Survived` is discouraged. Use `Survived` instead. 
+> 
+> ggplot(train, aes(x = factor(train$Parch), fill = train$Survived)) + geom_bar(position = "fill")
+Warning messages:
+1: Use of `train$Parch` is discouraged. Use `Parch` instead. 
+2: Use of `train$Survived` is discouraged. Use `Survived` instead. 
+> 
+> 
+> #Features of Interest
+> # Age Category
+> # Sex
+> # PClass
+> #SibSp
+> 
+> ############## Machine learning Part #####################
+> 
+> fit <- rpart(Survived ~ Age_Category + Sex + Pclass + SibSp, data = train)
+> #fit <- randomForest(Survived ~ Age_Category + Sex + Pclass + SibSp, data = train)
+> 
+> #fit <- rpart(Survived ~ Age + Sex + Pclass + SibSp, data = train)
+> 
+> print(predict(fit, head(train)))
+           0         1
+1 0.81109185 0.1889081
+2 0.05294118 0.9470588
+3 0.40909091 0.5909091
+4 0.05294118 0.9470588
+5 0.81109185 0.1889081
+6 0.81109185 0.1889081
+> print(head(train$Survived))
+[1] 0 1 1 1 0 0
+Levels: 0 1
+> 
+> val <- as.data.frame(predict(fit, test))
+> 
+> colnames(val) <- c("NotSurvived", "Survived")
+> 
+> val$score <- ifelse(val$NotSurvived > val$Survived, 0, 1)
+> 
+> new <- data.frame(PassengerId = test$PassengerId, Survived = val$score) 
+> 
+> write.csv(new, "predict_survival.csv", row.names = F)
+> 
+> 
+> 
+> 
+> ########################################
+> #View(test)
+> 
+> nrow(new)
+[1] 418
+> 
+> proc.time()
+   user  system elapsed 
+  1.795   0.087   1.891 

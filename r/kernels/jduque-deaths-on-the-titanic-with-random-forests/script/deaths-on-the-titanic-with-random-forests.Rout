@@ -1,0 +1,414 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE)
+> 
+> 
+> ## ----message=FALSE, results='hide'-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> packages <- c("ggplot2", "rpart", "randomForest")
+> lapply(packages, library, character.only = TRUE)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+[[1]]
+[1] "ggplot2"   "stats"     "graphics"  "grDevices" "utils"     "datasets" 
+[7] "methods"   "base"     
+
+[[2]]
+[1] "rpart"     "ggplot2"   "stats"     "graphics"  "grDevices" "utils"    
+[7] "datasets"  "methods"   "base"     
+
+[[3]]
+ [1] "randomForest" "rpart"        "ggplot2"      "stats"        "graphics"    
+ [6] "grDevices"    "utils"        "datasets"     "methods"      "base"        
+
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> rm(packages)
+> training.set <- read.csv('../input/train.csv')
+> test.set <- read.csv('../input/test.csv')
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> plot(training.set)
+> summary(training.set)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked
+            :687    :  2   
+ B96 B98    :  4   C:168   
+ C23 C25 C27:  4   Q: 77   
+ G6         :  4   S:644   
+ C22 C26    :  3           
+ D          :  3           
+ (Other)    :186           
+> 
+> 
+> ## ----warning=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> mode.fun <- function(x) {
++   a <- unique(x)
++   return(a[which.max(tabulate(match(x, a)))])
++ }
+> 
+> for(i in 1:ncol(training.set)) {
++   cat(sum(is.na(training.set[,i])), sum(which(training.set[,i] == "")), '\n')
++ }
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+177 0 
+0 0 
+0 0 
+0 0 
+0 0 
+0 304484 
+0 892 
+> 
+> for(i in 1:ncol(test.set)) {
++   cat(sum(is.na(test.set[,i])), sum(which(test.set[,i] == "")), '\n')
++ }
+0 0 
+0 0 
+0 0 
+0 0 
+86 0 
+0 0 
+0 0 
+0 0 
+1 0 
+0 68372 
+0 0 
+> 
+> for(i in 1:ncol(training.set)) {
++   if(is.factor(training.set[,i])) {
++     training.set[,i][is.na(training.set[,i])] <- mode.fun(training.set[,i])
++     training.set[,i][which(training.set[,i] == "")] <- mode.fun(training.set[,i])
++   }
++   else {
++     training.set[,i][is.na(training.set[,i])] <- mean(training.set[,i], na.rm=TRUE)
++     training.set[,i][which(training.set[,i] == "")] <- mean(training.set[,i], na.rm=TRUE)
++   }
++ }
+> 
+> for(i in 1:ncol(test.set)) {
++   if(is.factor(test.set[,i])) {
++     test.set[,i][is.na(test.set[,i])] <- mode.fun(test.set[,i])
++     test.set[,i][which(test.set[,i] == "")] <- mode.fun(test.set[,i])
++   }
++   else {
++     test.set[,i][is.na(test.set[,i])] <- mean(test.set[,i],na.rm=TRUE)
++     test.set[,i][which(test.set[,i] == "")] <- mean(test.set[,i],na.rm=TRUE)
++   }
++ }
+> 
+> #Droping the empty factors that are no longer being used
+> training.set$Embarked <- droplevels(training.set$Embarked)
+> test.set$Embarked <- droplevels(test.set$Embarked)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Fix some of the other data classes because the number of factors for some of them is too large
+> training.set[,"Survived"] <- as.factor(training.set[,"Survived"])
+> training.set[,"Pclass"] <- as.factor(training.set[,"Pclass"])
+> test.set[,"Pclass"] <- as.factor(test.set[,"Pclass"])
+> training.set[,"Ticket"] <- as.numeric(training.set[, "Ticket"])
+> test.set[,"Ticket"] <- as.numeric(test.set[, "Ticket"])
+> training.set[,"Cabin"] <- as.numeric(training.set[, "Cabin"])
+> test.set[,"Cabin"] <- as.numeric(test.set[, "Cabin"])
+> 
+> 
+> #Checking to see if we have any NAs one last time
+> for(i in 1:ncol(training.set)) {
++   cat(sum(is.na(training.set[,i])), sum(which(training.set[,i] == "")), '\n')
++ }
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+> 
+> for(i in 1:ncol(test.set)) {
++   cat(sum(is.na(test.set[,i])), sum(which(test.set[,i] == "")), '\n')
++ }
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+0 0 
+> summary(training.set)
+  PassengerId    Survived Pclass                                     Name    
+ Min.   :  1.0   0:549    1:216   Abbing, Mr. Anthony                  :  1  
+ 1st Qu.:223.5   1:342    2:184   Abbott, Mr. Rossmore Edward          :  1  
+ Median :446.0            3:491   Abbott, Mrs. Stanton (Rosa Hunt)     :  1  
+ Mean   :446.0                    Abelson, Mr. Samuel                  :  1  
+ 3rd Qu.:668.5                    Abelson, Mrs. Samuel (Hannah Wizosky):  1  
+ Max.   :891.0                    Adahl, Mr. Mauritz Nils Martin       :  1  
+                                  (Other)                              :885  
+     Sex           Age            SibSp           Parch            Ticket     
+ female:314   Min.   : 0.42   Min.   :0.000   Min.   :0.0000   Min.   :  1.0  
+ male  :577   1st Qu.:22.00   1st Qu.:0.000   1st Qu.:0.0000   1st Qu.:159.5  
+              Median :29.70   Median :0.000   Median :0.0000   Median :338.0  
+              Mean   :29.70   Mean   :0.523   Mean   :0.3816   Mean   :339.5  
+              3rd Qu.:35.00   3rd Qu.:1.000   3rd Qu.:0.0000   3rd Qu.:520.5  
+              Max.   :80.00   Max.   :8.000   Max.   :6.0000   Max.   :681.0  
+                                                                              
+      Fare            Cabin        Embarked
+ Min.   :  0.00   Min.   :  1.00   C:168   
+ 1st Qu.:  7.91   1st Qu.:  1.00   Q: 77   
+ Median : 14.45   Median :  1.00   S:646   
+ Mean   : 32.20   Mean   : 18.63           
+ 3rd Qu.: 31.00   3rd Qu.:  1.00           
+ Max.   :512.33   Max.   :148.00           
+                                           
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> qplot(Survived, Age, data = training.set, fill =  Survived, geom = "boxplot")
+> qplot(Fare, data = training.set, fill = Survived, bins = 50)
+> qplot(Sex, data = training.set, fill = Survived, geom = "bar")
+> qplot(Pclass, data = training.set, fill = Survived, geom = "bar")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> New.Dat <- training.set[, -4]
+> r.tree.er <- 0
+> r.for1.er <- 0
+> r.for2.er <- 0
+> log.rg.er <- 0
+> mod.en.er <- 0 
+> 
+> for(i in seq(1, nrow(New.Dat), 99)) {
++   tst.dat <- New.Dat[i:(i + 98),]
++   trn.dat <- New.Dat[- (i:(i + 98)),]
++   
++   regtree <- rpart(Survived ~ ., data = trn.dat, method = "class") 
++   ranfor1 <- randomForest(Survived ~ ., data = trn.dat, ntree = 30)
++   ranfor2 <- randomForest(Survived ~ ., data = trn.dat, ntree = 50)
++   logirgr <- glm(Survived ~ ., data = trn.dat, family = binomial)
++   
++   #Preictions of original four models
++   predict.logirgr <- as.numeric(predict(logirgr, tst.dat, type = "response") >= 0.5) 
++   predict.regtree <- as.numeric(colnames(predict(regtree, tst.dat))[max.col(predict(regtree, tst.dat), ties.method="first")])
++   predict.ranfor1 <- as.numeric(predict(ranfor1, tst.dat)) - 1
++   predict.ranfor2 <- as.numeric(predict(ranfor2, tst.dat)) - 1
++   
++   #Predictions of mode of models
++   predict.mode.en <- numeric()
++   for(i in 1:nrow(tst.dat)) {
++     x <- c(predict.logirgr[i], predict.regtree[i], predict.ranfor1[i], predict.ranfor2[i])
++     predict.mode.en <- c(predict.mode.en, mode.fun(x))
++   }
++   
++   
++   #Counting how many times the predictions are correct
++   r.tree.er <- r.tree.er + sum(tst.dat[,"Survived"] == predict.regtree)
++   r.for1.er <- r.tree.er + sum(tst.dat[,"Survived"] == predict.ranfor1)
++   r.for2.er <- r.tree.er + sum(tst.dat[,"Survived"] == predict.ranfor2)
++   log.rg.er <- r.tree.er + sum(tst.dat[,"Survived"] == predict.logirgr)
++   mod.en.er <- mod.en.er + sum(tst.dat[,"Survived"] == predict.mode.en)
++ }
+> 
+> #Accuracy of the models
+> r.tree.er <- r.tree.er / nrow(New.Dat)
+> r.for1.er <- r.for1.er / nrow(New.Dat)
+> r.for2.er <- r.for2.er / nrow(New.Dat)
+> log.rg.er <- log.rg.er / nrow(New.Dat)
+> mod.en.er <- mod.en.er / nrow(New.Dat)
+> 
+> 
+> 
+> ## ----warning=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> st.log.er <- 0
+> st.for.er <- 0
+> 
+> for(i in seq(1, nrow(New.Dat), 99)) {
++   tst.dat <- New.Dat[i:(i + 98),]
++   trn.dat <- New.Dat[- (i:(i + 98)),]
++   
++   #Splitting training data to train layer one and layer two
++   trn.inds <- sample(1:792, 693, replace = FALSE)
++   trn1.dat <- trn.dat[trn.inds,]
++   trn2.dat <- trn.dat[-trn.inds,]
++   
++   
++   #First layer
++   regtree.1 <- rpart(Survived ~ ., data = trn1.dat, method = "class") 
++   ranfor1.1 <- randomForest(Survived ~ ., data = trn1.dat, ntree = 30)
++   ranfor2.1 <- randomForest(Survived ~ ., data = trn1.dat, ntree = 50)
++   logirgr.1 <- glm(Survived ~ ., data = trn1.dat, family = binomial)
++   
++   predict.logirgr.1 <- as.numeric(predict.glm(logirgr.1, trn2.dat, type = "response") >= 0.5) #issue with predict
++   predict.regtree.1 <- as.numeric(colnames(predict(regtree.1, trn2.dat))[max.col(predict(regtree.1, trn2.dat), ties.method="first")])
++   predict.ranfor1.1 <- as.numeric(predict(ranfor1.1, trn2.dat)) - 1
++   predict.ranfor2.1 <- as.numeric(predict(ranfor2.1, trn2.dat)) - 1
++   
++   
++   #predictions of logistic regression of four models (second layer)
++   staklog <- glm(Survived ~ predict.logirgr.1 + predict.regtree.1 + predict.ranfor1.1 + predict.ranfor2.1, data = trn2.dat, family = binomial)
++   predict.stk.log <- as.numeric(predict(staklog, tst.dat, type = "response") >= 0.5) 
++   
++   
++   #predictions of random forest of four models (second layer)
++   stakrtr <- randomForest(Survived ~ predict.logirgr.1 + predict.regtree.1 + predict.ranfor1.1 + predict.ranfor2.1, data = trn2.dat, ntree = 20)
++   predict.stk.for <-  as.numeric(predict(stakrtr, tst.dat)) - 1
++   
++ 
++   st.log.er <- st.log.er + sum(tst.dat[,"Survived"] == predict.stk.log)
++   st.for.er <- st.for.er + sum(tst.dat[,"Survived"] == predict.stk.for)
++ }
+> 
+> st.log.er <- st.log.er / nrow(New.Dat)
+> st.for.er <- st.for.er / nrow(New.Dat)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Before I start the search I clear up some memory because my environment thingy is looking gross.
+> rm(list = setdiff(ls(), c("training.set", "New.Dat", "test.set"))) 
+> 
+> #I probably should've made something like this earlier, but meh. This will serve like our as our cost function 
+> cost <- function(ntrees) {
++   acc <- 0
++   for(i in seq(1, nrow(New.Dat), 99)) {
++     tst.dat <- New.Dat[i:(i + 98),]
++     trn.dat <- New.Dat[- (i:(i + 98)),]
++     
++     model <- randomForest(Survived ~ ., data = trn.dat, ntree = ntrees)
++     predictions <- as.numeric(predict(model, tst.dat)) - 1
++     acc <- acc + sum(tst.dat[,"Survived"] == predictions)
++   }
++   error <- 1 - (acc / nrow(New.Dat))
++   return(error)
++ }
+> 
+> numtrees <- sample(1:750, 1)
+> temp <- 1
+> t.mn <- 0.001
+> alph <- 0.8
+> while(temp > t.mn) {
++   old.cost <- cost(numtrees)
++   new.numb <- sample(1:750, 1)
++   new.cost <- cost(new.numb)
++   if(new.cost < old.cost) {
++     numtrees <- new.numb
++   }
++   else { 
++     probabilty <- exp((old.cost - new.cost) / temp)
++     if(probabilty > runif(1)) {
++       numtrees <- new.numb
++     }
++   }
++   temp <- temp * alph
++   cat('temp: ', temp, 'number of trees: ', numtrees, 'cost:', cost(numtrees), '\n')
++ }
+temp:  0.8 number of trees:  719 cost: 0.1773288 
+temp:  0.64 number of trees:  712 cost: 0.1739618 
+temp:  0.512 number of trees:  226 cost: 0.1705948 
+temp:  0.4096 number of trees:  498 cost: 0.1717172 
+temp:  0.32768 number of trees:  173 cost: 0.1739618 
+temp:  0.262144 number of trees:  402 cost: 0.1762065 
+temp:  0.2097152 number of trees:  122 cost: 0.1773288 
+temp:  0.1677722 number of trees:  663 cost: 0.1750842 
+temp:  0.1342177 number of trees:  427 cost: 0.1750842 
+temp:  0.1073742 number of trees:  679 cost: 0.1762065 
+temp:  0.08589935 number of trees:  468 cost: 0.1717172 
+temp:  0.06871948 number of trees:  346 cost: 0.1683502 
+temp:  0.05497558 number of trees:  545 cost: 0.1795735 
+temp:  0.04398047 number of trees:  680 cost: 0.1739618 
+temp:  0.03518437 number of trees:  685 cost: 0.1717172 
+temp:  0.0281475 number of trees:  585 cost: 0.1750842 
+temp:  0.022518 number of trees:  697 cost: 0.1739618 
+temp:  0.0180144 number of trees:  665 cost: 0.1717172 
+temp:  0.01441152 number of trees:  724 cost: 0.1717172 
+temp:  0.01152922 number of trees:  596 cost: 0.1728395 
+temp:  0.009223372 number of trees:  188 cost: 0.1773288 
+temp:  0.007378698 number of trees:  682 cost: 0.1795735 
+temp:  0.005902958 number of trees:  17 cost: 0.1750842 
+temp:  0.004722366 number of trees:  492 cost: 0.1750842 
+temp:  0.003777893 number of trees:  492 cost: 0.1806958 
+temp:  0.003022315 number of trees:  562 cost: 0.1705948 
+temp:  0.002417852 number of trees:  562 cost: 0.1795735 
+temp:  0.001934281 number of trees:  271 cost: 0.1728395 
+temp:  0.001547425 number of trees:  442 cost: 0.1728395 
+temp:  0.00123794 number of trees:  442 cost: 0.1717172 
+temp:  0.000990352 number of trees:  695 cost: 0.1750842 
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> numtrees <- 77
+> cost(numtrees) #Let's just check again to make sure it's ok
+[1] 0.1762065
+> 
+> #Removing "Name" from the test set
+> test.set <- test.set[,-3]
+> model <- randomForest(Survived ~ ., data = New.Dat, ntree = numtrees)
+> predics <- predict(model, test.set) 
+> x <- cbind(test.set$PassengerId, as.numeric(predics) - 1)
+> write.csv(x, file = "Submission.csv", row.names = FALSE)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+238.121   6.710 246.301 

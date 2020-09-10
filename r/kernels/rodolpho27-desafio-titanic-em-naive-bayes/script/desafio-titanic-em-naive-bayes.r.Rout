@@ -1,0 +1,103 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> library(e1071)#Naive Bayes
+> 
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> 
+> # Any results you write to the current directory are saved as output.
+> 
+> #Leitura dos dados 
+> test<- read.csv("../input/test.csv")
+> train <- read.csv( "../input/train.csv")
+> 
+> 
+> 
+> #Transformando o tipo da variavel Survived de INT para Factor
+> train1<-as.factor(train$Survived)
+> train$Survived<-train1
+> 
+> 
+> #Pegando a media para colocar no lugar dos NAS
+> age.median<- mean(train$Age, na.rm=TRUE)  
+> train[is.na(train$Age), "Age"]<- age.median
+> 
+> age.media_test<- mean(test$Age, na.rm=TRUE)
+> test[is.na(test$Age), "Age"]<-age.media_test
+> 
+> fare.media<- mean(test$Fare, na.rm= TRUE)
+> test[is.na(test$Fare), "Fare"]<- fare.media
+> 
+> 
+> #Sexo por sobrevivente
+> ggplot(train, aes(Sex))+geom_bar(aes(fill=factor(Survived)))
+> 
+> 
+> #Classe por sobrevivente
+> ggplot(train, aes(Pclass))+geom_bar(aes(fill=factor(Survived)))
+> 
+> 
+> #Retirada de variaveis desnecessárias 
+> train$PassengerId<-NULL
+> train$Name<-NULL
+> train$Cabin<-NULL
+> train$Ticket<-NULL
+> 
+> #Construção do modelo através do Naive Bayes
+> modelo<- naiveBayes(Survived~., data = train)
+> 
+> 
+> #Criação da coluna Survived no dataset test com o valor das predicoes
+> test$Survived <- predict(modelo, newdata=test)
+> 
+> 
+> #Criação de um dataframe com a coluna PassengerId e Survived
+> resposta<-data.frame(PassengerId=test$PassengerId, Survived=test$Survived)
+> 
+> 
+> #As 10 primeiras linhas do dataframe com sobrevivente ou não 
+> head(resposta, 10)
+   PassengerId Survived
+1          892        0
+2          893        0
+3          894        0
+4          895        0
+5          896        0
+6          897        0
+7          898        0
+8          899        0
+9          900        1
+10         901        0
+> 
+> proc.time()
+   user  system elapsed 
+  0.951   0.081   1.037 

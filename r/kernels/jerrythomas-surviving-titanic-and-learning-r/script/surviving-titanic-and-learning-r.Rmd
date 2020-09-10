@@ -1,0 +1,518 @@
+---
+title: "Surviving Titanic and Learning R"
+author: "Jerry Thomas"
+date: "31/10/2016"
+output:
+  html_document:
+    number_sections: false
+    toc: false
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+I am new to R & Machine Learning and this is my first real attempt at a Kaggle script. There are many awesome scripts on Kaggle and this script draws from the work by many of them.
+
+Being a noob, I have added comments and notes mostly to remember what each function does and why I followed a specific path.
+
+I am hoping to learn a lot, so any feedback is very welcome!
+
+## Loading Libraries
+```{r, message = FALSE}
+# visualization
+library('ggplot2') 
+library('ggthemes')
+library('corrplot')
+library('scales') 
+library('polycor')      # Correlaton for non numeric (ex factors)
+library('knitr')        # Output formatting
+library('dplyr')        # data manipulation
+library('wru')          # ethnicity prediction
+library('mice')         # imputation
+library('randomForest') # classification algorithm
+```
+
+## Loading Data
+
+Let's take a peek at the data. We will combine the train and test data set and look at them together.
+
+```{r, message=FALSE, warning=FALSE}
+train <- read.csv('../input/train.csv', stringsAsFactors = F)
+test  <- read.csv('../input/test.csv', stringsAsFactors = F)
+
+# bind training & test data
+full  <- bind_rows(train, test) 
+
+```
+
+### Summary
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+kable(str(full))
+```
+
+We've got a sense of our variables, their class type, and the first few observations of each. We know we're working with 1309 observations of 12 variables. To make things a bit more explicit since a couple of the variable names aren't 100% illuminating, here's what we've got to deal with:
+
+Variable Name | Description | Missing
+--------------|-------------| --------------
+Survived      | Survived (1) or died (0) | `r sum(is.na(train$Survived)) `
+Pclass        | Passenger's class        | `r sum(is.na(full$Pclass)) `
+Name          | Passenger's name         | `r sum(is.na(full$Name)) `
+Sex           | Passenger's sex          | `r sum(is.na(full$Sex) || full$Sex == "") `
+Age           | Passenger's age          | `r sum(is.na(full$Age)) `
+SibSp         | Number of siblings/spouses aboard | `r sum(is.na(full$SibSp)) `
+Parch         | Number of parents/children aboard | `r sum(is.na(full$Parch)) `
+Ticket        | Ticket number            | `r sum(is.na(full$Ticket) | full$Ticket == "") `
+Fare          | Fare                     | `r sum(is.na(full$Fare)) `
+Cabin         | Cabin                    | `r sum(is.na(full$Cabin) | full$Cabin == "") `
+Embarked      | Port of embarkation      | `r sum(is.na(full$Embarked) | full$Embarked == "") `
+
+### Bias
+
+Most of us have heard of the Titanic disaster and many have watched the movie or read something. This will certainly have created a bias in our minds about what happened that could have influenced the survival. The list below is my **bias** driving the thought process behind the analysis. 
+
+* __Women & Children__ : Women & Children were more likely to survive as they were put onto liferafts first
+* __Higher Class Passengers__ : Higher class passengers would have been given precendence over lower class passengers
+* __Families__ : Families would have tried to stick together and ensure that everyone was accounted for
+* __Old__ : People beyond a certain age may have decided to give the younger ones a better chance for survival, or may not have survived considering their health and the climate.
+
+### Correlations
+
+A quick correlation plot on the training data set will help us understand the significance of the different features. Converting the Survived variable into a factor with two levels improved the correlations. To compare check without the factor conversion. 
+
+```{r, message=FALSE, warning=FALSE, fig.width=10}
+train$Survived <- factor(train$Survived)                       # improves correlations
+train$Pclass <- factor(train$Pclass,levels = c(3,2,1))
+train$Sex <- factor(train$Sex,levels=c("male","female"))       # change order for positive correlation
+train$Embarked <- factor(train$Embarked,levels=c("S","Q","C")) # change order for positive correlation
+corr <- hetcor(train[,c("Survived","Sex","Pclass","Fare","Embarked","Parch","Age","SibSp")])
+
+par(fin=c(6,5)) # width/height of corr plot. Errors when height > 5 
+corrplot.mixed(corr$correlations,lower="ellipse", upper="number",tl.cex=.8,tl.srt=45,tl.col="black")
+
+```
+
+The correlations confirm some of our preconcieved notions and also show that variables like **'Embarked'** which we may not have thought to have any influence on the survival, seem to have some relation. Age itself does not have a high correlation and this might be due to the missing values or because we have not created age buckets. Higher passenger classes have higher survival rates.
+
+### Survival based on Age
+
+```{r, fig.width=10}
+ggplot(train, aes(Age, fill = Survived, colour = Survived)) +
+   geom_density(alpha = 0.1)  + 
+   facet_grid(.~Sex)  
+```
+
+The plot shows the following clusters 
+Age Group | Female Survival | Male Survival
+----------|-----------------|---------------
+  < 18    | Low chance of survival | High chance of survival
+ 18 - 25  | Low survival rate      | Lower survival rate
+ 25 - 50  | High survival rate     | About 50%
+ 50+      | High survival rate     | Low survival rate
+
+This suggests that age clusters (18-25), (< 18), (50+), (25-50) may turn out to be a good feature.
+
+## Feature Engineering
+
+### Title
+Taken directly from [Exploring Survival on the Titanic - by Megan Risdal](https://www.kaggle.com/mrisdal/titanic/exploring-survival-on-the-titanic/run/198371)
+
+**Passenger Name** is interesting as we can extract the **Title** and **Surname**. The **Title** will essentially help us subdivde the **Sex** group into **(Mr, Master, Mrs, Ms)**. 
+
+**Sibling/Spouse count and Parent/Child count** together can help us find the number of members in a family. This family member count when combined with the **Surname** will help us identify families. 
+
+```{r, message=FALSE, warning=FALSE, fig.width=10}
+# Grab title from passenger names
+full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+
+# Show title counts by sex
+kable(table(full$Title, full$Sex))
+
+# Titles with very low cell counts to be combined to "rare" level
+rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
+                'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+
+# Also reassign mlle, ms, and mme accordingly
+full$Title[full$Title == 'Mlle']        <- 'Miss' 
+full$Title[full$Title == 'Ms']          <- 'Miss'
+full$Title[full$Title == 'Mme']         <- 'Mrs' 
+full$Title[full$Title %in% rare_title]  <- 'Rare Title'
+
+# Show title counts by sex again
+kable(table(full$Sex, full$Title))
+
+# Same information as a scatter plot
+titles_by_sex = data.frame(table(full$Sex, full$Title))
+names(titles_by_sex) <- c("Sex","Title","Freq")
+pp <- ggplot(titles_by_sex, aes(factor(Sex), factor(Title), size=Freq)) 
+pp + geom_point() + geom_point(aes(colour = factor(Title))) + scale_size_area(max_size = 10)
+```
+
+### Surname & Ethnicity
+
+```{r, message=FALSE, warning=FALSE}
+full$Surname <- sapply(full$Name,function(x) strsplit(x, split = '[,.]')[[1]][1])
+
+regn <- full[,c("PassengerId","Surname")]
+colnames(regn)[colnames(regn) == 'Surname'] <- 'surname'
+regn <- race.pred(regn,surname.only=TRUE)
+colnames(regn)[colnames(regn) == 'pred.whi'] <- 'white'
+colnames(regn)[colnames(regn) == 'pred.bla'] <- 'black'
+colnames(regn)[colnames(regn) == 'pred.his'] <- 'latino'
+colnames(regn)[colnames(regn) == 'pred.asi'] <- 'asian'
+colnames(regn)[colnames(regn) == 'pred.oth'] <- 'other'
+regn$ethnicity <- colnames(regn[c("white","black","latino","asian","other")])[max.col(regn[c("white","black","latino","asian","other")],ties.method="first")]
+
+full <- merge(full,regn[,c("PassengerId","ethnicity")],by=c("PassengerId"))
+full$ethnicity <- factor(full$ethnicity)
+rm(regn)
+```
+
+Survival by ethnicity
+```{r, message=FALSE, warning=FALSE, fig.width=10}
+# Use ggplot2 to visualize the relationship between family size & survival
+#full$Survived <- factor(full$Survived,levels = c(0,1))
+
+ggplot(full, aes(x = ethnicity, fill = factor(Survived))) +
+  geom_bar(stat='count', position='dodge') +
+  labs(x = 'Family Size') +
+  theme_few()
+```
+
+There are very few non white people who were passengers on the Titanic. I initially thought that it makes more sense to have just two factors white & other. But the results surprised me. Having different values for ethnicity actually ended up boosting the final score although the relative importance is low.
+
+
+### Do families sink or swim together?
+
+Now that we've taken care of splitting passenger name into some new variables, we can take it a step further and make some new family variables. First we're going to make a **family size** variable based on number of siblings/spouse(s) (maybe someone has more than one spouse?) and number of children/parents. 
+
+```{r}
+# Create a family size variable including the passenger themselves
+full$Fsize <- full$SibSp + full$Parch + 1
+
+# Create a family variable 
+full$Family <- paste(full$Surname, full$Fsize, sep='_')
+```
+
+Looking into a few families I noticed that in some cases the ticket was same for a family. This may indicate that the family feature is redundant and we already have something that indicates a group travelling together. 
+
+```{r, message=FALSE, warning=FALSE}
+sample <- full[full$Surname %in% c("Andersson","Asplund","Elias"),]
+kable(sample[order(sample$Family,sample$Ticket,sample$Age),c("Family","Surname","Ticket","Embarked","Cabin","Fare","SibSp","Parch","Age","Name")])
+
+```
+
+We can see that in some cases the Ticket is same and in other cases it is not which would indicate that the feature engineering of identifying the family does make sense. 
+
+Take the case of "Andersson, Miss. Ida Augusta Margareta". She is 38 years old but has been tagged ith 4 siblings and 2 parents, however the parents are ages 39, which is impossible. It is possible that she happens to be the younger sister of "Andersson, Mr. Anders Johan" and hence is part of the same family. This also indicates that there are some errors in the relations in the data set.
+
+Looking into a few families I noticed that in some cases the ticket was same for a family. This may indicate that the family feature is redundant and we already have something that indicates a group travelling together. Let's take a look at some sample families where we have more than one family and the family size is greater than 5
+
+We can see that in some cases the Ticket is same and in other cases it is not which would indicate that the feature engineering of identifying the family does make sense. Take the case of "Andersson, Miss. Ida Augusta Margareta". She is 38 years old but has been tagged ith 4 siblings and 2 parents, however the parents are ages 39, which is impossible. It is possible that she happens to be the younger sister of "Andersson, Mr. Anders Johan" and hence is part of the same family. This also indicates that there are some errors in the relations in the data set.
+
+What does our family size variable look like? To help us understand how it may relate to survival, let's plot it among the training data.
+
+```{r, message=FALSE, warning=FALSE, fig.width=10}
+# Use ggplot2 to visualize the relationship between family size & survival
+ggplot(full[!is.na(full$Survived),], aes(x = Fsize, fill = factor(Survived))) +
+  geom_bar(stat='count', position='dodge') +
+  scale_x_continuous(breaks=c(1:11)) +
+  labs(x = 'Family Size') +
+  theme_few()
+```
+
+
+We can see that there's a survival penalty to singletons and those with family sizes above 4. We can collapse this variable into three levels which will be helpful since there are comparatively fewer large families. Let's create a **discretized family size** variable.
+
+```{r}
+# Discretize family size
+full$FsizeD[full$Fsize == 1] <- 'singleton'
+full$FsizeD[full$Fsize < 5 & full$Fsize > 1] <- 'small'
+full$FsizeD[full$Fsize > 4] <- 'large'
+
+# Show family size by survival using a mosaic plot
+mosaicplot(table(full$FsizeD, full$Survived), main='Family Size by Survival', shade=TRUE)
+```
+
+The mosaic plot shows that we preserve our rule that there's a survival penalty among singletons and large families, but a benefit for passengers in small families. I want to do something further with our age variable, but `r sum(is.na(full$Age))` rows have missing age values, so we will have to wait until after we address missingness.
+
+
+### Treat a few more variables ...
+
+What's left? There's probably some potentially useful information in the **passenger cabin** variable including about their **deck**. Let's take a look.
+
+```{r}
+# This variable appears to have a lot of missing values
+full$Cabin[1:28]
+
+# The first character is the deck. For example:
+strsplit(full$Cabin[2], NULL)[[1]]
+
+# Create a Deck variable. Get passenger deck A - F:
+full$Deck<-factor(sapply(full$Cabin, function(x) strsplit(x, NULL)[[1]][1]))
+```
+
+There's more that likely could be done here including looking into cabins with multiple rooms listed (e.g., row 28: "C23 C25 C27"), but given the sparseness of the column we'll stop here.
+
+## Sensible value imputation
+
+### Missing Embarkment
+
+```{r}
+# Passengers 62 and 830 are missing Embarkment
+full[c(62, 830), 'Embarked']
+```
+
+```{r results='asis'}
+cat(paste('We will infer their values for **embarkment** based on present data that we can imagine may be relevant: **passenger class** and **fare**. We see that they paid<b> $', full[c(62, 830), 'Fare'][[1]][1], '</b>and<b> $', full[c(62, 830), 'Fare'][[1]][2], '</b>respectively and their classes are<b>', full[c(62, 830), 'Pclass'][[1]][1], '</b>and<b>', full[c(62, 830), 'Pclass'][[1]][2], '</b>. So from where did they embark?'))
+```
+
+```{r, message=FALSE, warning=FALSE, fig.width=10}
+# Get rid of our missing passenger IDs
+embark_fare <- full %>%
+  filter(PassengerId != 62 & PassengerId != 830)
+
+# Use ggplot2 to visualize embarkment, passenger class, & median fare
+ggplot(embark_fare, aes(x = Embarked, y = Fare, fill = factor(Pclass))) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept=80), 
+    colour='red', linetype='dashed', lwd=2) +
+  scale_y_continuous(labels=dollar_format()) +
+  theme_few()
+```
+
+Voilà! The median fare for a first class passenger departing from Charbourg ('C') coincides nicely with the $80 paid by our embarkment-deficient passengers. I think we can safely replace the NA values with 'C'.
+
+```{r}
+# Since their fare was $80 for 1st class, they most likely embarked from 'C'
+full$Embarked[c(62, 830)] <- 'C'
+```
+
+We're close to fixing the handful of NA values here and there. Passenger on row 1044 has an NA Fare value.
+
+```{r, message=FALSE, warning=FALSE}
+# Show row 1044
+full[1044, ]
+```
+
+This is a third class passenger who departed from Southampton ('S'). Let's visualize Fares among all others sharing their class and embarkment (n = `r nrow(full[full$Pclass == '3' & full$Embarked == 'S', ]) - 1`).
+
+```{r, message=FALSE, warning=FALSE, fig.width=10}
+ggplot(full[full$Pclass == '3' & full$Embarked == 'S', ], 
+  aes(x = Fare)) +
+  geom_density(fill = '#99d6ff', alpha=0.4) + 
+  geom_vline(aes(xintercept=median(Fare, na.rm=T)),
+    colour='red', linetype='dashed', lwd=1) +
+  scale_x_continuous(labels=dollar_format()) +
+  theme_few()
+```
+
+From this visualization, it seems quite reasonable to replace the NA Fare value with median for their class and embarkment which is $`r  median(full[full$Pclass == '3' & full$Embarked == 'S', ]$Fare, na.rm = TRUE)`.
+
+```{r}
+# Replace missing fare value with median fare for class/embarkment
+full$Fare[1044] <- median(full[full$Pclass == '3' & full$Embarked == 'S', ]$Fare, na.rm = TRUE)
+```
+
+## Predictive imputation
+
+Finally, as we noted earlier, there are quite a few missing **Age** values in our data. We are going to get a bit more fancy in imputing missing age values. Why? Because we can. We will create a model predicting ages based on other variables.
+
+We could definitely use `rpart` (recursive partitioning for regression) to predict missing ages, but I'm going to use the `mice` package for this task just for something different. You can read more about multiple imputation using chained equations in r [here](http://www.jstatsoft.org/article/view/v045i03/v45i03.pdf) (PDF). Since we haven't done it yet, I'll first factorize the factor variables and then perform mice imputation.
+
+```{r, message=FALSE, warning=FALSE}
+# Make variables factors into factors
+#full$Survived <- factor(full$Survived)                       
+full$Pclass <- factor(full$Pclass,levels = c(3,2,1))
+full$Sex <- factor(full$Sex,levels=c("male","female"))       
+full$Embarked <- factor(full$Embarked,levels=c("S","Q","C")) 
+
+factor_vars <- c('PassengerId','Title','Surname','Family','FsizeD')
+
+full[factor_vars] <- lapply(full[factor_vars], function(x) as.factor(x))
+
+# Set a random seed
+set.seed(129)
+
+# Perform mice imputation, excluding certain less-than-useful variables:
+mice_mod <- mice(full[, !names(full) %in% c('PassengerId','Name','Ticket','Cabin','Family','Surname','Survived')], method='rf') 
+
+# Save the complete output 
+mice_output <- complete(mice_mod)
+```
+
+Let's compare the results we get with the original distribution of passenger ages to ensure that nothing has gone completely awry.
+
+```{r, fig.width=10}
+# Plot age distributions
+par(mfrow=c(1,2))
+hist(full$Age, freq=F, main='Age: Original Data', 
+  col='darkgreen', ylim=c(0,0.04))
+hist(mice_output$Age, freq=F, main='Age: MICE Output', 
+  col='lightgreen', ylim=c(0,0.04))
+```
+
+Things look good, so let's replace our age vector in the original data with the output from the `mice` model.
+
+```{r}
+# Replace Age variable from the mice model.
+full$Age <- mice_output$Age
+```
+
+We've finished imputing values for all variables that we care about for now! Now that we have a complete Age variable, there are just a few finishing touches I'd like to make. We can use Age to do just a bit more feature engineering ...
+
+## Feature Engineering: Round 2
+
+Now that we know everyone's age, we can create a couple of new age-dependent variables: **Child** and **Mother**. A child will simply be someone under 18 years of age and a mother is a passenger who is 1) female, 2) is over 18, 3) has more than 0 children (no kidding!), and 4) does not have the title 'Miss'.
+
+```{r, message=FALSE, warning=FALSE, fig.width=10}
+# First we'll look at the relationship between age & survival
+ggplot(full[!is.na(full$Survived),], aes(Age, fill = factor(Survived))) + 
+  geom_histogram() + 
+  # I include Sex since we know (a priori) it's a significant predictor
+  facet_grid(.~Sex) + 
+  theme_few()
+
+# Create the column child, and indicate whether child or adult
+full$Child[full$Age < 18] <- 'Child'
+full$Child[full$Age >= 18] <- 'Adult'
+
+# Show counts
+table(full$Child, full$Survived)
+```
+
+Looks like being a child doesn't hurt, but it's not going to necessarily save you either! We will finish off our feature engineering by creating the **Mother** variable. Maybe we can hope that mothers are more likely to have survived on the Titanic.
+
+```{r}
+# Adding Mother variable
+full$Mother <- 'Not Mother'
+full$Mother[full$Sex == 'female' & full$Parch > 0 & full$Age > 18 & full$Title != 'Miss'] <- 'Mother'
+
+# Show counts
+table(full$Mother, full$Survived)
+
+# Finish by factorizing our two new factor variables
+full$Child  <- factor(full$Child)
+full$Mother <- factor(full$Mother)
+```
+
+### Age Groups
+
+Let's create the age groups that we had identified earlier and see how survival depends on it.
+
+```{r}
+# Classify the age into age groups
+full$AgeGroup[full$Age < 18] <- "Child"
+full$AgeGroup[full$Age >= 18 & full$Age < 25] <- "Young Adult"
+full$AgeGroup[full$Age >= 25 & full$Age < 50] <- "Adult"
+full$AgeGroup[full$Age >= 50 ] <- "Old"
+
+full$AgeGroup <- factor(full$AgeGroup)
+```
+
+### Survival distribution by age group
+
+```{r, fig.width=10}
+train <- full[!(is.na(full$Survived)),]
+train$Survived <- factor(train$Survived)
+ggplot(train, aes(Age, fill = Survived, colour = Survived)) +
+   geom_density(alpha=.3) +
+   facet_grid(Sex~AgeGroup)  
+```
+
+All of the variables we care about should be taken care of and there should be no missing data. I'm going to double check just to be sure:
+
+```{r}
+md.pattern(full)
+```
+
+Wow! We have finally finished treating all of the relevant missing values in the Titanic dataset which has included some fancy imputation with `mice`. We have also successfully created several new variables which we hope will help us build a model which reliably predicts survival. 
+
+
+# Prediction
+
+At last we're ready to predict who survives among passengers of the Titanic based on variables that we carefully curated and treated for missing values. For this, we will rely on the `randomForest` classification algorithm; we spent all that time on imputation, after all.
+
+## Split into training & test sets
+
+Our first step is to split the data back into the original test and training sets.
+
+```{r}
+# Split the data back into a train set and a test set
+train <- full[!(is.na(full$Survived)),]
+test <- full[is.na(full$Survived),]
+
+dim(train)
+dim(test)
+```
+
+## Building the model 
+
+We then build our model using `randomForest` on the training set.
+
+```{r, fig.width=10}
+# Set a random seed
+set.seed(754)
+
+# Build the model (note: not all possible variables are used)
+rf_model <- randomForest(factor(Survived) ~  Sex + Title + AgeGroup + ethnicity + Age + Pclass + Mother + Child + Fsize + FsizeD,
+                                            data = train)
+
+
+# Show model error
+plot(rf_model, ylim=c(0,0.36))
+legend('topright', colnames(rf_model$err.rate), col=1:3, fill=1:3)
+
+```
+
+The black line shows the overall error rate which falls below 20%. The red and green lines show the error rate for 'died' and 'survived' respectively. We can see that right now we're much more successful predicting death than we are survival. 
+
+## Variable importance
+
+Let's look at relative variable importance by plotting the mean decrease in Gini calculated across all trees.
+
+```{r, message=FALSE, warning=FALSE, fig.width=10}
+# Get importance
+importance    <- importance(rf_model)
+varImportance <- data.frame(Variables = row.names(importance), 
+                            Importance = round(importance[ ,'MeanDecreaseGini'],2))
+
+# Create a rank variable based on importance
+rankImportance <- varImportance %>%
+  mutate(Rank = paste0('#',dense_rank(desc(Importance))))
+
+# Use ggplot2 to visualize the relative importance of variables
+ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
+    y = Importance, fill = Importance)) +
+  geom_bar(stat='identity') + 
+  geom_text(aes(x = Variables, y = 0.5, label = Rank),
+    hjust=0, vjust=0.55, size = 4, colour = 'red') +
+  labs(x = 'Variables') +
+  coord_flip() + 
+  theme_few()
+```
+
+The title varable has the highest relative importance out of all of our predictor variables. I think I'm most surprised to see that passenger class fell to `r rankImportance[rankImportance$Variable == 'Pclass', ]$Rank`.
+## Prediction!
+
+We're ready for the final step --- making our prediction! When we finish here, we could iterate through the preceding steps making tweaks as we go or fit the data using different models or use different combinations of variables to achieve better predictions. 
+
+```{r}
+# Predict using the test set
+prediction <- predict(rf_model, test)
+
+# Save the solution to a dataframe with two columns: PassengerId and Survived (prediction)
+solution <- data.frame(PassengerID = test$PassengerId, Survived = prediction)
+
+# Write the solution to file
+write.csv(solution, file = 'rf_mod_Solution2.csv', row.names = F)
+```
+
+# Conclusion
+
+Although I added two new features which had higher relative importance than some of the original features the final predictions did not vary by much.
+Thank you for taking the time to read through my first exploration of a Kaggle dataset. Comments and suggestions welcome!

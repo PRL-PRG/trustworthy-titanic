@@ -1,0 +1,303 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> 
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> system("ls ../input")
+gender_submission.csv
+test.csv
+train.csv
+> 
+> # Any results you write to the current directory are saved as output.
+> 
+> # titanic script
+> # v0.1
+> # 10/05/2017
+> 
+> # load the data, test and training sets
+> train = read.csv('../input/train.csv', header=T, sep=',')
+> test = read.csv('../input/test.csv', header=T, sep=',')
+> # view the training data summary
+> summary(train)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked
+            :687    :  2   
+ B96 B98    :  4   C:168   
+ C23 C25 C27:  4   Q: 77   
+ G6         :  4   S:644   
+ C22 C26    :  3           
+ D          :  3           
+ (Other)    :186           
+> 
+> # baseline, nobody survived
+> table(train$Survived)
+
+  0   1 
+549 342 
+> # calculate accuracy
+> 549/(549+342)
+[1] 0.6161616
+> # 0.6161616 - 61.6%
+> 
+> # baseline submission save to a dataframe with two columns: PassengerId and Survived (prediction)
+> #submission <- data.frame(PassengerID = test$PassengerId, Survived = 0)
+> # write the solution to file
+> #write.csv(submission, file = 'submission.csv', row.names = F)
+> 
+> ##############################################################
+> ## build basic glm model
+> #mod = glm(Survived ~ Pclass + Sex + Age + SibSp + Fare + Embarked, data=train, family="binomial")
+> #summary(mod)
+> ## test out of sample error - score data, calc accuracy
+> #predictions = ifelse(predict(mod, newdata=test, type="response") > 0.5, 1, 0)
+> #predictions[is.na(predictions)] = 0
+> ## view accuracy ?
+> 
+> ## generate submission file
+> #submission <- data.frame(PassengerID = test$PassengerId, Survived = predictions)
+> 
+> ## write the solution to file
+> #write.csv(submission, file = 'submission.csv', row.names = FALSE)
+> 
+> ##############################################################
+> # build basic tree model
+> library(rpart)
+> mod = rpart(Survived ~ Pclass + Sex + Age + SibSp + Fare + Embarked, data=train, method="class")
+> summary(mod)
+Call:
+rpart(formula = Survived ~ Pclass + Sex + Age + SibSp + Fare + 
+    Embarked, data = train, method = "class")
+  n= 891 
+
+          CP nsplit rel error    xerror       xstd
+1 0.44444444      0 1.0000000 1.0000000 0.04244576
+2 0.03070175      1 0.5555556 0.5555556 0.03574957
+3 0.02339181      3 0.4941520 0.5000000 0.03437157
+4 0.02046784      4 0.4707602 0.5000000 0.03437157
+5 0.01023392      5 0.4502924 0.5087719 0.03459945
+6 0.01000000      8 0.4181287 0.5000000 0.03437157
+
+Variable importance
+     Sex     Fare   Pclass    SibSp      Age Embarked 
+      50       19       14        7        5        5 
+
+Node number 1: 891 observations,    complexity param=0.4444444
+  predicted class=0  expected loss=0.3838384  P(node) =1
+    class counts:   549   342
+   probabilities: 0.616 0.384 
+  left son=2 (577 obs) right son=3 (314 obs)
+  Primary splits:
+      Sex      splits as  RL,           improve=124.426300, (0 missing)
+      Pclass   < 2.5      to the right, improve= 43.781830, (0 missing)
+      Fare     < 10.48125 to the left,  improve= 37.941940, (0 missing)
+      Embarked splits as  RRLL,         improve= 12.865410, (0 missing)
+      Age      < 6.5      to the right, improve=  8.814172, (177 missing)
+  Surrogate splits:
+      Fare     < 77.6229  to the left,  agree=0.679, adj=0.089, (0 split)
+      Embarked splits as  RLLL,         agree=0.650, adj=0.006, (0 split)
+
+Node number 2: 577 observations,    complexity param=0.02339181
+  predicted class=0  expected loss=0.1889081  P(node) =0.647587
+    class counts:   468   109
+   probabilities: 0.811 0.189 
+  left son=4 (553 obs) right son=5 (24 obs)
+  Primary splits:
+      Age      < 6.5      to the right, improve=10.788930, (124 missing)
+      Fare     < 26.26875 to the left,  improve=10.216720, (0 missing)
+      Pclass   < 1.5      to the right, improve=10.019140, (0 missing)
+      Embarked splits as  -RLL,         improve= 3.079304, (0 missing)
+      SibSp    < 0.5      to the left,  improve= 1.501502, (0 missing)
+
+Node number 3: 314 observations,    complexity param=0.03070175
+  predicted class=1  expected loss=0.2579618  P(node) =0.352413
+    class counts:    81   233
+   probabilities: 0.258 0.742 
+  left son=6 (144 obs) right son=7 (170 obs)
+  Primary splits:
+      Pclass   < 2.5      to the right, improve=31.163130, (0 missing)
+      Fare     < 48.2     to the left,  improve=10.114210, (0 missing)
+      SibSp    < 2.5      to the right, improve= 9.372551, (0 missing)
+      Embarked splits as  RRLL,         improve= 3.750944, (0 missing)
+      Age      < 12       to the left,  improve= 1.891684, (53 missing)
+  Surrogate splits:
+      Fare     < 25.69795 to the left,  agree=0.799, adj=0.563, (0 split)
+      Embarked splits as  RRLR,         agree=0.637, adj=0.208, (0 split)
+      SibSp    < 1.5      to the right, agree=0.592, adj=0.111, (0 split)
+      Age      < 18.5     to the left,  agree=0.564, adj=0.049, (0 split)
+
+Node number 4: 553 observations
+  predicted class=0  expected loss=0.1681736  P(node) =0.620651
+    class counts:   460    93
+   probabilities: 0.832 0.168 
+
+Node number 5: 24 observations,    complexity param=0.02046784
+  predicted class=1  expected loss=0.3333333  P(node) =0.02693603
+    class counts:     8    16
+   probabilities: 0.333 0.667 
+  left son=10 (9 obs) right son=11 (15 obs)
+  Primary splits:
+      SibSp  < 2.5      to the right, improve=8.8888890, (0 missing)
+      Pclass < 2.5      to the right, improve=3.8095240, (0 missing)
+      Fare   < 20.825   to the right, improve=2.6666670, (0 missing)
+      Age    < 1.5      to the right, improve=0.6095238, (0 missing)
+  Surrogate splits:
+      Pclass   < 2.5      to the right, agree=0.792, adj=0.444, (0 split)
+      Fare     < 26.95    to the right, agree=0.750, adj=0.333, (0 split)
+      Embarked splits as  -RLR,         agree=0.708, adj=0.222, (0 split)
+
+Node number 6: 144 observations,    complexity param=0.03070175
+  predicted class=0  expected loss=0.5  P(node) =0.1616162
+    class counts:    72    72
+   probabilities: 0.500 0.500 
+  left son=12 (27 obs) right son=13 (117 obs)
+  Primary splits:
+      Fare     < 23.35    to the right, improve=10.051280, (0 missing)
+      Embarked splits as  -RRL,         improve= 7.071429, (0 missing)
+      SibSp    < 2.5      to the right, improve= 4.571429, (0 missing)
+      Age      < 38.5     to the right, improve= 3.875163, (42 missing)
+  Surrogate splits:
+      SibSp < 2.5      to the right, agree=0.882, adj=0.37, (0 split)
+
+Node number 7: 170 observations
+  predicted class=1  expected loss=0.05294118  P(node) =0.1907969
+    class counts:     9   161
+   probabilities: 0.053 0.947 
+
+Node number 10: 9 observations
+  predicted class=0  expected loss=0.1111111  P(node) =0.01010101
+    class counts:     8     1
+   probabilities: 0.889 0.111 
+
+Node number 11: 15 observations
+  predicted class=1  expected loss=0  P(node) =0.01683502
+    class counts:     0    15
+   probabilities: 0.000 1.000 
+
+Node number 12: 27 observations
+  predicted class=0  expected loss=0.1111111  P(node) =0.03030303
+    class counts:    24     3
+   probabilities: 0.889 0.111 
+
+Node number 13: 117 observations,    complexity param=0.01023392
+  predicted class=1  expected loss=0.4102564  P(node) =0.1313131
+    class counts:    48    69
+   probabilities: 0.410 0.590 
+  left son=26 (63 obs) right son=27 (54 obs)
+  Primary splits:
+      Embarked splits as  -RRL,         improve=2.6048030, (0 missing)
+      Age      < 16.5     to the right, improve=2.4685870, (34 missing)
+      Fare     < 7.8875   to the right, improve=2.0325270, (0 missing)
+      SibSp    < 0.5      to the right, improve=0.3076923, (0 missing)
+  Surrogate splits:
+      Fare < 7.7625   to the right, agree=0.667, adj=0.278, (0 split)
+
+Node number 26: 63 observations,    complexity param=0.01023392
+  predicted class=0  expected loss=0.4920635  P(node) =0.07070707
+    class counts:    32    31
+   probabilities: 0.508 0.492 
+  left son=52 (37 obs) right son=53 (26 obs)
+  Primary splits:
+      Fare  < 10.825   to the left,  improve=1.34653300, (0 missing)
+      Age   < 27.5     to the right, improve=0.97840760, (5 missing)
+      SibSp < 0.5      to the right, improve=0.08821734, (0 missing)
+  Surrogate splits:
+      SibSp < 0.5      to the left,  agree=0.746, adj=0.385, (0 split)
+      Age   < 11       to the right, agree=0.635, adj=0.115, (0 split)
+
+Node number 27: 54 observations
+  predicted class=1  expected loss=0.2962963  P(node) =0.06060606
+    class counts:    16    38
+   probabilities: 0.296 0.704 
+
+Node number 52: 37 observations
+  predicted class=0  expected loss=0.4054054  P(node) =0.04152637
+    class counts:    22    15
+   probabilities: 0.595 0.405 
+
+Node number 53: 26 observations,    complexity param=0.01023392
+  predicted class=1  expected loss=0.3846154  P(node) =0.0291807
+    class counts:    10    16
+   probabilities: 0.385 0.615 
+  left son=106 (10 obs) right son=107 (16 obs)
+  Primary splits:
+      Fare  < 17.6     to the right, improve=3.2326920, (0 missing)
+      SibSp < 0.5      to the right, improve=0.7259930, (0 missing)
+      Age   < 13       to the right, improve=0.3389356, (2 missing)
+  Surrogate splits:
+      SibSp < 1.5      to the right, agree=0.692, adj=0.2, (0 split)
+
+Node number 106: 10 observations
+  predicted class=0  expected loss=0.3  P(node) =0.01122334
+    class counts:     7     3
+   probabilities: 0.700 0.300 
+
+Node number 107: 16 observations
+  predicted class=1  expected loss=0.1875  P(node) =0.01795735
+    class counts:     3    13
+   probabilities: 0.188 0.812 
+
+> 
+> # make some predictions - score data
+> predictions = predict(mod, newdata=test, type="class")
+> 
+> # generate submission file
+> submission <- data.frame(PassengerID = test$PassengerId, Survived = predictions)
+> 
+> # write the solution to file
+> write.csv(submission, file = 'submission_tree_basic.csv', row.names = FALSE)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  0.614   0.073   0.689 

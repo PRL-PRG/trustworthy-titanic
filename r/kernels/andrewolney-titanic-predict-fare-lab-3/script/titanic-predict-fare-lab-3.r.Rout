@@ -1,0 +1,100 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> if(!require("pacman") ) install.packages("pacman")
+Loading required package: pacman
+> pacman::p_load(tidyverse,corrgram,faraway,metaSEM,mgcv)
+trying URL 'https://cran.rstudio.com/bin/macosx/el-capitan/contrib/3.6/metaSEM_1.2.4.tgz'
+Content type 'application/x-gzip' length 1932830 bytes (1.8 MB)
+==================================================
+downloaded 1.8 MB
+
+
+The downloaded binary packages are in
+	/var/folders/z8/75snmrgn3n3cyk89jxrwc4dc0000gn/T//Rtmpgjm0bz/downloaded_packages
+
+metaSEM installed
+Warning messages:
+1: package ‘metaSEM’ was built under R version 3.6.2 
+2: In pacman::p_load(tidyverse, corrgram, faraway, metaSEM, mgcv) :
+  Failed to install/load:
+metaSEM
+> 
+> train <- read_csv(
++     '../input/train.csv',
++     col_types=cols(
++         pclass = col_factor(NULL),
++         survived = col_factor(NULL),
++         sex = col_factor(NULL),
++         ticket = col_factor(NULL),
++         cabin = col_factor(NULL),
++         embarked = col_factor(NULL),
++         boat = col_factor(NULL),
++         body = col_factor(NULL),
++         home.dest = col_factor(NULL)
++     )
++ )
+Warning message:
+The following named parsers don't match the column names: pclass, survived, sex, ticket, cabin, embarked, boat, body, home.dest 
+> problems(train)
+[1] row      col      expected actual  
+<0 rows> (or 0-length row.names)
+> summary(train)
+  PassengerId       Survived          Pclass          Name          
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000   Length:891        
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median :446.0   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309                     
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000                     
+                                                                    
+     Sex                 Age            SibSp           Parch       
+ Length:891         Min.   : 0.42   Min.   :0.000   Min.   :0.0000  
+ Class :character   1st Qu.:20.12   1st Qu.:0.000   1st Qu.:0.0000  
+ Mode  :character   Median :28.00   Median :0.000   Median :0.0000  
+                    Mean   :29.70   Mean   :0.523   Mean   :0.3816  
+                    3rd Qu.:38.00   3rd Qu.:1.000   3rd Qu.:0.0000  
+                    Max.   :80.00   Max.   :8.000   Max.   :6.0000  
+                    NA's   :177                                     
+    Ticket               Fare           Cabin             Embarked        
+ Length:891         Min.   :  0.00   Length:891         Length:891        
+ Class :character   1st Qu.:  7.91   Class :character   Class :character  
+ Mode  :character   Median : 14.45   Mode  :character   Mode  :character  
+                    Mean   : 32.20                                        
+                    3rd Qu.: 31.00                                        
+                    Max.   :512.33                                        
+                                                                          
+> 
+> test <- read_csv(
++     '../input/test-fare.csv',
++     col_types=cols(
++         pclass = col_factor(NULL),
++         survived = col_factor(NULL),
++         sex = col_factor(NULL),
++         ticket = col_factor(NULL),
++         cabin = col_factor(NULL),
++         embarked = col_factor(NULL),
++         boat = col_factor(NULL),
++         body = col_factor(NULL),
++         home.dest = col_factor(NULL)
++     )
++ )
+Error: '../input/test-fare.csv' does not exist in current working directory ('/Users/alex/MachineLearning/TrustworthyML/KaggleCrawler/Aviral/korpus-master/notebooks/r/kernels/andrewolney-titanic-predict-fare-lab-3/script').
+Execution halted

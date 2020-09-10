@@ -1,0 +1,194 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ---- message = FALSE, echo = FALSE, message=FALSE, warning=FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> library(knitr)
+> library(reshape2)
+Warning message:
+package ‘reshape2’ was built under R version 3.6.2 
+> library(ggplot2)
+
+Attaching package: ‘ggplot2’
+
+The following object is masked from ‘package:randomForest’:
+
+    margin
+
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> set.seed(1)
+> 
+> # read in the data
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> 
+> #converty type of variable to factor when approriate
+> train$Survived <- as.factor(train$Survived)
+> train$Pclass <- as.factor(train$Pclass)
+> test$Pclass <- as.factor(test$Pclass)
+> 
+> levels(test$Embarked) <- levels(train$Embarked)
+> 
+> #just impute NAs with median
+> #test$Age[is.na(test$Age)] = median(test$Age, na.rm=TRUE)
+> #test$Fare[is.na(test$Fare)]=median(test$Fare, na.rm=TRUE)
+> #train$Age[is.na(test$Age)] = median(train$Age, na.rm=TRUE)
+> #train$Fare[is.na(test$Fare)]=median(train$Fare, na.rm=TRUE)
+> 
+> # Grab title from passenger names
+> rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
++                 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+>                 
+> train$Title <-  as.factor(gsub('(.*, )|(\\..*)', '', train$Name))
+> train$Title[train$Title == 'Mlle']        <- 'Miss' 
+> train$Title[train$Title == 'Ms']          <- 'Miss'
+> train$Title[train$Title == 'Mme']         <- 'Mrs' 
+> train$Title[train$Title %in% rare_title]  <- 'Rare Title'
+Warning message:
+In `[<-.factor`(`*tmp*`, train$Title %in% rare_title, value = c(12L,  :
+  invalid factor level, NA generated
+> 
+> test$Title <-  as.factor(gsub('(.*, )|(\\..*)', '', test$Name))
+> test$Title[test$Title == 'Mlle']        <- 'Miss' 
+> test$Title[test$Title == 'Ms']          <- 'Miss'
+> test$Title[test$Title == 'Mme']         <- 'Mrs' 
+> test$Title[test$Title %in% rare_title]  <- 'Rare Title'
+Warning message:
+In `[<-.factor`(`*tmp*`, test$Title %in% rare_title, value = c(6L,  :
+  invalid factor level, NA generated
+> levels(test$Title) <- levels(train$Title)
+> 
+> # Create a family size variable 
+> train$Fsize <- train$SibSp + train$Parch + 1
+> test$Fsize <- test$SibSp + test$Parch + 1
+> 
+> #create child variable
+> train$Child[train$Age < 18] <- 'Child'
+> train$Child[train$Age >= 18] <- 'Adult'
+> train$Child <-  as.factor(train$Child)
+> test$Child[test$Age < 18] <- 'Child'
+> test$Child[test$Age >= 18] <- 'Adult'
+> test$Child <-  as.factor(test$Child)
+> 
+> # create mother variable
+> train$Mother <- 'Not Mother'
+> train$Mother[train$Sex == 'female' & train$Parch > 0 & train$Age > 18 & train$Title != 'Miss'] <- 'Mother'
+> train$Mother <-  as.factor(train$Mother)
+> test$Mother <- 'Not Mother'
+> test$Mother[test$Sex == 'female' & test$Parch > 0 & test$Age > 18 & test$Title != 'Miss'] <- 'Mother'
+> test$Mother <-  as.factor(test$Mother)
+> 
+> 
+> 
+> ## ---- message = FALSE, echo = TRUE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> barplot(table(train$Survived), main="Sample size by Survived", xlab="Survival", ylab="Count")
+> 
+> 
+> ## ---- message = FALSE, echo = TRUE, warnings=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #plot numeric variables
+> suppressWarnings(print(
++ ggplot(melt(subset(train, select=c("PassengerId",  "Age", "Fare")),id.vars=c('PassengerId')), aes(x=value,fill=variable)) +
++         geom_histogram(colour="black") +
++         facet_grid(.~variable, scales='free_x') +
++         ggtitle("Distributions of continuous variables")
++ ))
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> #remove ticket number associated with outlier Fare
+> train=train[train$Ticket!=unique(train[train$Fare==max(train$Fare),]$Ticket),]
+> 
+> #plot factor variables
+> suppressWarnings(print(
++ ggplot(melt(subset(train, select=c("PassengerId",  "Pclass", "Sex", "SibSp", "Parch", "Embarked")),id.vars=c('PassengerId')),
++         aes(x=value,fill=variable)) +
++         geom_bar(colour="black") +
++         facet_grid(.~variable, scales='free_x') +
++         ggtitle("Distributions of factor variables")
++ ))
+> 
+> #converty type of variables to factor when approriate
+> train$Survived <- as.factor(train$Survived)
+> train$Pclass <- as.factor(train$Pclass)
+>   
+> 
+> 
+> ## ---- message = FALSE, echo = TRUE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> mySampSize <- c(min(table(train$Survived)),min(table(train$Survived)))
+> 
+> rf <- randomForest(Survived~Title+Fsize+Child+Mother+Age+Fare+Pclass+Sex+SibSp+Parch+Embarked, 
++                    data=train,
++                    ntree=500,
++                    mtry=7,
++                    na.action=na.exclude)
+> 
+> # plot error convergence
+> plot(rf, main="OOB error rate and\nerror rate for each class across trees")
+> 
+> 
+> ## ---- message = FALSE, echo = TRUE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # confusion matrix
+> rf$confusion
+    0   1 class.error
+0 359  51   0.1243902
+1  71 208   0.2544803
+> 
+> #variable importance
+> rf$importance #relative. high values indicate high importance
+         MeanDecreaseGini
+Title          77.8718380
+Fsize          17.8172730
+Child           2.2838151
+Mother          0.5678632
+Age            66.6386602
+Fare           68.3453386
+Pclass         35.1185766
+Sex            30.8623697
+SibSp           8.2891132
+Parch           3.7947362
+Embarked        5.8836378
+> 
+> 
+> ## ---- message = FALSE, echo = TRUE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # plot training results
+> par(mfrow=c(1,2))
+> plot(rf$y, main="Histogram of true survival values", col="forestgreen")
+> plot(rf$predicted, main="Histogram of fit survivial values", col="yellow")
+> 
+> # Validation metrics
+> Accuracy.fit <- 1-rf$err.rate[nrow(rf$err.rate),1]
+> print(paste("The accuracy of this model is", round(Accuracy.fit,4), sep=" "))
+[1] "The accuracy of this model is 0.8229"
+> 
+> 
+> ## ---- message = FALSE, echo =TRUE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #prediction
+> prediction <- data.frame(PassengerId=test$PassengerId, Survived=predict(rf, test))
+> write.csv(prediction, file = 'RF_prediction.csv', row.names = F)
+> 
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  1.492   0.095   1.592 

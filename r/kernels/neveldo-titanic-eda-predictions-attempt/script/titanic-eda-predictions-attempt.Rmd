@@ -1,0 +1,373 @@
+---
+title: "Titanic Kaggle challenge"
+author: "Vincent Brouté"
+date: "2018-03-08"
+output: html_document
+---
+
+```{r, include = FALSE}
+library(tidyverse)
+library(MASS) # lda / qda
+library(class) # knn
+library(grid)
+library(gridExtra)
+library(stringr)
+
+knitr::opts_chunk$set(
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 6,
+  fig.asp = 0.618,
+  out.width = "80%",
+  fig.align = "center"
+)
+```
+
+Here is my first kernel along with my very first attempt with the Titanic challenge (newbie still learning ...). The goal is to achieve a binary classification in order to predict whether a passenger survived the Titanic sinking (variable 'Survived').
+
+# Data import & wrangling
+
+```{r, echo = FALSE}
+trainFile <- '../input/train.csv'
+testFile <- '../input/test.csv'
+titanicTrainingDataset <- read_csv(trainFile)
+knitr::kable(titanicTrainingDataset[1:10, ], caption = 'Titanic training dataset overview')
+```
+
+**At first sight**
+
+- Some variables are qualitative : Pclass (1, 2 or 3), Sex (male or female) and Embarked (C, Q or S).
+- Some variables are quantitative : Age, SibSp, Parch and Fare.
+- Some variables contain missing values.
+- Within the 'Name' variable, the passengers title (Miss., Master. Captain.) could be a usefull information for the predictions.
+
+**Missing values rate within variables**
+```{r}
+map_dbl(titanicTrainingDataset, function(x) mean(is.na(x)))
+```
+The Age variable contains **19.86%** of missing values and the Cabin one contains **77.1%**. I will not use Cabin variable as there is too many missing values.
+
+**Import Titanic training dataset with proper col types for categorical variables**
+```{r}
+titanicTrainingDataset <- read_csv(
+  trainFile, 
+  col_types = cols(
+    Survived = col_factor(0:1), 
+    Pclass = col_factor(1:3), 
+    Sex = col_factor(c("male", "female")), 
+    Embarked = col_factor(c("C", "Q", "S"))
+  )
+) %>%
+  filter(!is.na(Embarked)) %>%
+  mutate(Age = ifelse(is.na(Age), median(Age, na.rm = T), Age)) 
+```
+I filled the blank values for the Age variable with the median age and I have excluded rows that have no value for 'Embarked'.
+
+**Extract the passengers title from their name into a new dedicated variable**
+```{r}
+titanicTrainingDataset <- titanicTrainingDataset %>%
+  mutate(Title = as.factor(str_extract(Name, regex("([a-z]+\\.)", ignore_case = T))))
+
+levels(titanicTrainingDataset$Title)
+```
+17 distinct titles have been extracted from the 'Name' variable.
+
+
+# Exploratory Data Analysis
+
+```{r}
+summary(titanicTrainingDataset)
+```
+
+```{r}
+titanicTrainingDataset %>%
+  ggplot(aes(x = Survived)) +
+  geom_bar()
+```
+
+The following function will help me to visualize the response 'Survived' against each qualitative or quantitative potential predictors.
+
+```{r}
+analysePredictorResponse <- function(data, predictor, response) {
+  if (is.factor(data[[predictor]])) {
+      ggplot(mapping = aes(data[[predictor]], fill = data[[response]])) +
+        geom_bar() +
+        labs(title = paste(predictor, "vs", response), x = predictor, fill = response) 
+  } else {
+    chart1 <- ggplot(mapping = aes(data[[response]], data[[predictor]])) +
+      geom_boxplot() +
+      labs(title = paste(predictor, "vs", response), x = response, y = predictor)
+    
+    chart2 <- ggplot(mapping = aes(x = data[[predictor]], , y = ..density.., colour = data[[response]])) +
+      geom_freqpoly(position = "dodge") +
+      labs(title = paste(predictor, "vs", response), colour = response, x = predictor)
+    
+    grid.arrange(chart1, chart2)
+  }
+}
+```
+
+**Age vs Survived**
+```{r, fig.asp = 1.2}
+analysePredictorResponse(titanicTrainingDataset, 'Age', 'Survived')
+```
+It seems that young passengers (age < ~12) seems to have significantly higher chance to survive. Between 18 and 25 years old, the passenger seem to have higher probability to die.
+
+**Sex vs Survived**
+```{r, fig.asp = 1.2}
+analysePredictorResponse(titanicTrainingDataset, 'Sex', 'Survived')
+```
+
+```{r}
+titanicTrainingDataset %>% 
+  group_by(Sex) %>%
+  summarize(SurvivedRatio = mean(Survived == 1))
+```
+It seems obvious that females have significantly more chance than males to survive.
+
+**Pclass vs Survived**
+```{r, fig.asp = 1.2}
+analysePredictorResponse(titanicTrainingDataset, 'Pclass', 'Survived')
+```
+
+```{r}
+titanicTrainingDataset %>% 
+  group_by(Pclass) %>%
+  summarize(SurvivedRatio = mean(Survived == 1))
+```
+The more the passenger belongs to a wealthy class, more its likelihood to survive is high.
+
+**SibSp vs Survived**
+```{r, fig.asp = 1.2}
+analysePredictorResponse(titanicTrainingDataset, 'SibSp', 'Survived')
+```
+
+The one who have no sibling seems to have higher chance to die than the one who have one sibling onboard.
+
+**Parch vs Survived**
+```{r, fig.asp = 1.2}
+analysePredictorResponse(titanicTrainingDataset, 'Parch', 'Survived')
+```
+
+Similarly to SibSp, the one who have no parent nor children onboard seems to have higher chance to die than the one who have one parent or children.
+
+**Fare vs Survived**
+```{r, fig.asp = 1.2}
+analysePredictorResponse(titanicTrainingDataset, 'Fare', 'Survived')
+```
+
+On average, higher is the fare, higher seems the likelihood to survive.
+
+**Embarked vs Survived**
+```{r, fig.asp = 1.2}
+analysePredictorResponse(titanicTrainingDataset, 'Embarked', 'Survived')
+```
+```{r}
+titanicTrainingDataset %>% 
+  group_by(Embarked) %>%
+  summarize(SurvivedRatio = mean(Survived == 1))
+```
+
+It seems there are some significant differences regarding the Survived rate depending on the port of Embarkation. Port C lead to 55.36% survive rate whereas port S lead to only 33.69%.
+
+**Pclass vs Fare**
+```{r}
+titanicTrainingDataset %>%
+  ggplot(mapping = aes(Pclass, Fare)) +
+  geom_boxplot()
+```
+It seems there is an obvious correlation between the two predictors Pclass (passenger class) and Fare (ticket price). Maybe Fare is a confounding variable ?
+
+** Embarked vs Pclass**
+```{r}
+titanicTrainingDataset %>%  
+  ggplot(mapping = aes(Embarked, fill = Pclass)) +
+  geom_bar()
+```
+I don't see any relevant pattern between the embarkment port and the passenger class.
+
+**What about the variable Title that I have extracted from the names ?**
+
+```{r, fig.asp = 1.2}
+titanicTrainingDataset %>%
+  group_by(Title) %>%
+  summarize(SurvivedRatio = mean(Survived == 1)) %>%
+  arrange(SurvivedRatio) %>%
+  mutate(Title = factor(Title, levels = Title)) %>%
+  ggplot(aes(x = Title, y = SurvivedRatio)) +
+  geom_col() +
+  coord_flip()
+```
+
+Passengers title seems to provide interresting information for predicting the surviving ones. It seems we can refine this variable in order to reduce the number of levels. I Added a new categorical variable 'RefinedTitle' that split the passengers titles into 3 relevant levels :
+```{r}
+titanicTrainingDataset <- titanicTrainingDataset %>% mutate(
+  RefinedTitle = factor(ifelse(Title %in% c('Capt.', 'Don', 'Jonkheer.', 'Rev.', 'Mr.'), 1, 
+    ifelse(Title %in% c('Col.', 'Dr.', 'Major.', 'Master.'), 2, 3
+    )
+  ))
+)
+```
+
+# Modelisation
+
+## Logistic regression
+
+Here is a first attempt of modelisation on the training dataset with most of the candidate predictors :
+```{r}
+model <- glm(Survived ~ RefinedTitle + Pclass + SibSp + Embarked + Age + Sex + Parch, data = titanicTrainingDataset %>% filter(!is.na(Age)), family = binomial)
+summary(model)
+```
+Parch and Embarked don't seem to be relevant according to P-value associated with the Z-statistic.
+Also, Sex seems to be confounding with RefinedTitle for predicting 'Survived'. Here is a refined model without Parch, Embarked and Sex variables :
+
+
+```{r}
+model <- glm(Survived ~ RefinedTitle + Pclass + SibSp + Age, data = titanicTrainingDataset, family = binomial)
+summary(model)
+```
+All the coefficient estimates for predictors are now statistically significant according to their P-Values.
+
+## Estimate the test error rate of the logistic regression with LOOCV
+
+Here is a perform of a "leave-one-out" cross validation over several decision boundary values (from 0.1 to 0.9) in order to find the value that minimize the simulated test error rate with the training dataset. For each value, it will display the estimated error rate along with the confusion matrix. 
+
+```{r}
+for (j in seq(.1, .9, .1)) {
+  predictions <- rep(0, nrow(titanicTrainingDataset))
+  for (i in 1:nrow(titanicTrainingDataset)) {
+    model <- glm(Survived ~ RefinedTitle + Pclass + SibSp + Age, data = titanicTrainingDataset, family = binomial, subset = -i)
+    predictions[i] <- predict(model, titanicTrainingDataset[i,], type = "response") > j
+  }
+  
+  print(paste("Decision boundary value :", j))
+  print(table(predictions, titanicTrainingDataset$Survived))
+  print(mean(predictions != titanicTrainingDataset$Survived))
+}
+```
+
+Estimated test error rate seems to be minimized with a decision boundary values of **0.6** resulting a test error rate of **17.77%**.
+
+## Use the logistic regression model to predict the Survived variable with the test dataset
+
+```{r}
+model <- glm(Survived ~ RefinedTitle + Pclass + SibSp + Age, data = titanicTrainingDataset, family = binomial)
+
+titanicTestDataset <- read_csv(
+  testFile,
+  col_types = cols(
+    Pclass = col_factor(1:3), 
+    Sex = col_factor(c("male", "female")), 
+    Embarked = col_factor(c("C", "Q", "S"))
+  )
+) %>%
+  mutate(Title = as.factor(str_extract(Name, regex("([a-z]+\\.)", ignore_case = T)))) %>% 
+  mutate(
+    RefinedTitle = factor(ifelse(Title %in% c('Capt.', 'Don', 'Jonkheer.', 'Rev.', 'Mr.'), 1, 
+      ifelse(Title %in% c('Col.', 'Dr.', 'Major.', 'Master.'), 2, 3
+      )
+    ))
+  ) %>%
+  mutate(Age = ifelse(is.na(Age), median(Age, na.rm = T), Age))
+
+predictions <- predict(model, titanicTestDataset, type = "response") > .6
+
+tibble(PassengerId = titanicTestDataset$PassengerId, Survived = as.integer(predictions)) %>%
+  write_csv('predictions-logistic-regression.csv')
+```
+
+Kaggle score is **77.5%** with this model.
+
+## Quadratic Discriminant Analysis
+
+```{r}
+model <- qda(Survived ~ RefinedTitle + Pclass + SibSp + Age, data = titanicTrainingDataset, family = binomial)
+model
+```
+
+## LOOCV on the QDA model
+
+```{r}
+predictions <- factor(rep(0, nrow(titanicTrainingDataset)), levels = 0:1)
+for (i in 1:nrow(titanicTrainingDataset)) {
+  model <- qda(Survived ~ RefinedTitle + Pclass + SibSp + Age, data = titanicTrainingDataset, subset = -i)
+  predictions[i] <- predict(model, titanicTrainingDataset[i,])$class
+}
+
+table(predictions, titanicTrainingDataset$Survived)
+mean(predictions != titanicTrainingDataset$Survived)
+```
+
+Estimated test error rate is **19.79%** with the Quadratic Discriminant Analysis model.
+
+## Use the QDA model to predict the Survived variable with the test dataset from kaggle
+
+```{r}
+model <- qda(Survived ~ RefinedTitle + Pclass + SibSp + Age, data = titanicTrainingDataset)
+predictions <- predict(model, titanicTestDataset)$class
+
+tibble(PassengerId = titanicTestDataset$PassengerId, Survived = predictions) %>%
+  write_csv('predictions-qda.csv')
+```
+Kaggle score is **77.5%**, almost like the logistic regression.
+
+## K-nearest neighbors
+
+Lets keep the same set of predictors that seems to be relevant to predict the response, and use the KNN algorithm with them. First, I evalute the best K value with a Validation Set approach, by splitting the training dataset into a training and a test datasets :
+
+```{r}
+set.seed(1)
+titanicTrainingDatasetKnn <- titanicTrainingDataset
+titanicTrainingDatasetKnn$RefinedTitle = as.integer(titanicTrainingDatasetKnn$RefinedTitle)
+titanicTrainingDatasetKnn$Pclass = as.integer(titanicTrainingDatasetKnn$Pclass)
+
+testSampleSize <- 150
+isTest <- sample(nrow(titanicTrainingDataset), testSampleSize)
+
+knnTrainDataset <- titanicTrainingDatasetKnn[-isTest,] %>%
+  subset(select = c(RefinedTitle, Pclass, SibSp, Age)) %>%
+  scale()
+
+knnTestDataset <- titanicTrainingDatasetKnn[isTest,] %>%
+  subset(select = c(RefinedTitle, Pclass, SibSp, Age)) %>%
+  scale()
+
+cl <- titanicTrainingDatasetKnn[-isTest,]$Survived
+
+errorsRate <- rep(0, testSampleSize)
+for (k in 1:testSampleSize) {
+  predictions <- knn(knnTrainDataset, knnTestDataset, cl, k)
+  errorsRate[k] = mean(predictions != titanicTrainingDatasetKnn[isTest,]$Survived)
+}
+
+tibble(k = 1:testSampleSize, errorsRate = errorsRate) %>%
+  ggplot(aes(x = k, y = errorsRate)) +
+  geom_path()
+```
+
+I Choose **k = 35** for minimizing the test error rate.
+
+## Use KNN (K = 35) to predict the response with the test dataset
+
+```{r}
+titanicTestDatasetKnn <- titanicTestDataset %>%
+  mutate(RefinedTitle = as.integer(RefinedTitle)) %>%
+  mutate(Pclass = as.integer(Pclass))
+
+knnTrainDataset <- titanicTrainingDatasetKnn %>%
+  subset(select = c(RefinedTitle, Pclass, SibSp, Age)) %>%
+  scale()
+
+knnTestDataset <- titanicTestDatasetKnn %>%
+  subset(select = c(RefinedTitle, Pclass, SibSp, Age)) %>%
+  scale()
+
+cl <- titanicTrainingDatasetKnn$Survived
+
+predictions <- knn(knnTrainDataset, knnTestDataset, cl, 35)
+
+tibble(PassengerId = titanicTestDataset$PassengerId, Survived = predictions) %>%
+  write_csv('predictions-knn.csv')
+```
+
+Kaggle score is **78.94%**.

@@ -1,0 +1,426 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ----setup, echo = TRUE, message=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_knit$set(width = 100)
+> knitr::opts_chunk$set(comment =  '', echo=TRUE)
+> knitr::opts_chunk$set(fig.align = 'center', fig.width = 6, fig.asp = 0.618, out.width = '80%')
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Load packages
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(stringr)
+> library(forcats)
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library(missForest)
+Loading required package: foreach
+
+Attaching package: ‘foreach’
+
+The following objects are masked from ‘package:purrr’:
+
+    accumulate, when
+
+Loading required package: itertools
+Loading required package: iterators
+Warning message:
+package ‘foreach’ was built under R version 3.6.2 
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- read_csv('../input/train.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test  <- read_csv('../input/test.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> full  <- bind_rows(list(train=train, test=test), .id = 'id') 
+> 
+> 
+> glimpse(full)
+Rows: 1,309
+Columns: 13
+$ id          [3m[90m<chr>[39m[23m "train", "train", "train", "train", "train", "train", "tr…
+$ PassengerId [3m[90m<dbl>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+$ Survived    [3m[90m<dbl>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+$ Pclass      [3m[90m<dbl>[39m[23m 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Braund, Mr. Owen Harris", "Cumings, Mrs. John Bradley (F…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "female", "female", "male", "male", "ma…
+$ Age         [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+$ SibSp       [3m[90m<dbl>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+$ Parch       [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "A/5 21171", "PC 17599", "STON/O2. 3101282", "113803", "3…
+$ Fare        [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+$ Cabin       [3m[90m<chr>[39m[23m NA, "C85", NA, "C123", NA, NA, "E46", NA, NA, NA, "G6", "…
+$ Embarked    [3m[90m<chr>[39m[23m "S", "C", "S", "S", "S", "Q", "S", "S", "S", "C", "S", "S…
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Grab title from passenger names
+> Title <- str_extract(full$Name, '(, .+\\.)')
+> Title <- str_sub(Title, 3, -2)
+> Title[514] <- str_sub(Title[514], 1, 3)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Show title counts by sex
+> xtabs(~ Sex + Title, full)
+        Title
+Sex      Capt Col Don Dona  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs
+  female    0   0   0    1   1        0    1     0      0  260    2   1   0 197
+  male      1   4   1    0   7        1    0     2     61    0    0   0 757   0
+        Title
+Sex       Ms Rev Sir the Countess
+  female   2   0   0            1
+  male     0   8   1            0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Titles with very low cell counts to be combined to "Other" level
+> 
+> # Also reassign mlle, ms, and mme accordingly
+> Title[Title == 'Mlle']        <- 'Miss' 
+> Title[Title == 'Ms']          <- 'Miss'
+> Title[Title == 'Mme']         <- 'Mrs' 
+> 
+> Title <- fct_lump(Title, n = 4)
+> 
+> # Show title counts by sex again
+> xtabs(~Sex + Title, full)
+        Title
+Sex      Master Miss  Mr Mrs Other
+  female      0  264   0 198     4
+  male       61    0 757   0    25
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Create a family size variable including the passenger themselves
+> full <- full %>% mutate(Fsize = SibSp + Parch + 1)
+> 
+> full <- data.frame(full, Title)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Use ggplot2 to visualize the relationship between family size & survival
+> full %>% filter(id == 'train') %>%
++   ggplot(aes(x = Fsize, fill = factor(Survived))) +
++     geom_bar(stat = 'count', position = 'dodge') +
++     scale_x_continuous(breaks = c(1:11)) +
++     scale_fill_discrete('Survived') +
++     labs(x = 'Family Size') +
++     theme_bw()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> full$FsizeD <- case_when(full$Fsize == 1 ~ 'singleton',
++                     full$Fsize < 5 ~ 'small',
++                     full$Fsize > 4 ~ 'large')
+> 
+> 
+> # Show family size by survival using a mosaic plot
+> mosaicplot(xtabs(~ FsizeD + Survived, full), shade = TRUE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> sum(is.na(full$Cabin))
+[1] 1014
+> 
+> full$Deck <- factor(str_sub(full$Cabin, 1, 1))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> mice::md.pattern(full)
+    id PassengerId Pclass Name Sex SibSp Parch Ticket Fsize Title FsizeD Fare
+183  1           1      1    1   1     1     1      1     1     1      1    1
+529  1           1      1    1   1     1     1      1     1     1      1    1
+87   1           1      1    1   1     1     1      1     1     1      1    1
+244  1           1      1    1   1     1     1      1     1     1      1    1
+19   1           1      1    1   1     1     1      1     1     1      1    1
+158  1           1      1    1   1     1     1      1     1     1      1    1
+4    1           1      1    1   1     1     1      1     1     1      1    1
+82   1           1      1    1   1     1     1      1     1     1      1    1
+2    1           1      1    1   1     1     1      1     1     1      1    1
+1    1           1      1    1   1     1     1      1     1     1      1    0
+     0           0      0    0   0     0     0      0     0     0      0    1
+    Embarked Age Survived Cabin Deck     
+183        1   1        1     1    1    0
+529        1   1        1     0    0    2
+87         1   1        0     1    1    1
+244        1   1        0     0    0    3
+19         1   0        1     1    1    1
+158        1   0        1     0    0    3
+4          1   0        0     1    1    2
+82         1   0        0     0    0    4
+2          0   1        1     1    1    1
+1          1   1        0     0    0    4
+           2 263      418  1014 1014 2712
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ix_embark <- which(is.na(full$Embarked))
+> # Passengers 62 and 830 are missing Embarkment
+> full[ix_embark, ]
+       id PassengerId Survived Pclass                                      Name
+62  train          62        1      1                       Icard, Miss. Amelie
+830 train         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Cabin Embarked Fsize Title    FsizeD
+62  female  38     0     0 113572   80   B28     <NA>     1  Miss singleton
+830 female  62     0     0 113572   80   B28     <NA>     1   Mrs singleton
+    Deck
+62     B
+830    B
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full %>% filter(Pclass == 1) %>% 
++   group_by(Embarked) %>%
++   summarise(median(Fare))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 4 x 2[39m
+  Embarked `median(Fare)`
+  [3m[90m<chr>[39m[23m             [3m[90m<dbl>[39m[23m
+[90m1[39m C                  76.7
+[90m2[39m Q                  90  
+[90m3[39m S                  52  
+[90m4[39m [31mNA[39m                 80  
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$Embarked[c(62, 830)] <- 'C'
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full[1044, ]
+       id PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044 test        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked Fsize Title    FsizeD Deck
+1044   3701   NA  <NA>        S     1    Mr singleton <NA>
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> imp_val <- full %>% filter(Embarked == 'S' & Pclass == 3) %>%
++   summarise(median(Fare, na.rm = TRUE))
+> 
+> full[1044, 'Fare'] <- as.double(imp_val)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Show number of missing Age values
+> sum(is.na(full$Age))
+[1] 263
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Make variables factors into factors
+> factor_vars <- c('PassengerId','Pclass','Sex','Embarked',
++                  'Title','FsizeD')
+> 
+> full[factor_vars] <- lapply(full[factor_vars], function(x) as.factor(x))
+> 
+> ix <- is.na(full$Age)
+> 
+> mfAge <- full %>%
++   select(Age, Pclass, SibSp, Parch, Fare, Title, Fsize) %>%
++   missForest(.)
+  missForest iteration 1 in progress...done!
+  missForest iteration 2 in progress...done!
+  missForest iteration 3 in progress...done!
+  missForest iteration 4 in progress...done!
+> 
+> Age_imputed <- ifelse(ix, mfAge$ximp$Age, full$Age)
+> 
+> 
+> 
+> ## ---- out.width='45%'------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Plot age distributions
+> plot_dta <- data.frame(Age_original = full$Age, Age_imputed = Age_imputed)
+> plot_dta <- plot_dta %>% tidyr::gather(source, Age) %>%
++   mutate(source = str_sub(source, 5))
+> 
+> ggplot(full, aes(x = Age, y = ..density..)) + geom_histogram(binwidth = 1) 
+Warning message:
+Removed 263 rows containing non-finite values (stat_bin). 
+> ggplot(full[!ix, ], aes(x = Age, y = ..density..)) + geom_histogram(binwidth = 1)
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$Age <- Age_imputed
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> mice::md.pattern(full)
+    id PassengerId Pclass Name Sex Age SibSp Parch Ticket Fare Embarked Fsize
+204  1           1      1    1   1   1     1     1      1    1        1     1
+687  1           1      1    1   1   1     1     1      1    1        1     1
+91   1           1      1    1   1   1     1     1      1    1        1     1
+327  1           1      1    1   1   1     1     1      1    1        1     1
+     0           0      0    0   0   0     0     0      0    0        0     0
+    Title FsizeD Survived Cabin Deck     
+204     1      1        1     1    1    0
+687     1      1        1     0    0    2
+91      1      1        0     1    1    1
+327     1      1        0     0    0    3
+        0      0      418  1014 1014 2446
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full <- full %>%
++   mutate(SexNum = if_else(Sex == 'male', 0, 1),
++          PclassSex = as.integer(Pclass) * SexNum,
++          AgeSex = Age * SexNum,
++          SibSpSex = SibSp * SexNum,
++          FareSex = Fare * SexNum,
++     #     FsizeDSex = as.integer(as.character(FsizeD)) * SexNum,
++     #     ParchEmb = as.integer(as.character(Embarked)) * Parch,
++       #   AgeEmb = as.integer(as.character(Embarked)) * Age,
++          AgeFare = Age * Fare,
++          PclassFare = as.integer(Pclass) * Fare)
+>      #    PclassFsizeD = as.integer(Pclass) * as.integer(as.character(FsizeD)))
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Split the data back into a train set and a test set
+> train <- filter(full, id == 'train')
+> test <- filter(full, id == 'test')
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Set a random seed
+> set.seed(999)
+> 
+> rf_model <- randomForest(factor(Survived) ~ Pclass + Sex + PclassSex + Age + AgeSex + SibSp +
++                            Parch + Fare + Embarked + Title + FsizeD,
++                            data = train, ntree = 2000)
+> 
+> 
+> as_data_frame(rf_model$err.rate) %>% 
++   mutate(Tree = row_number()) %>%
++   tidyr::gather(Type, Error, -Tree) %>%
++   ggplot(aes(x = Tree, y = Error, colour = Type)) + geom_line() + 
++   theme_bw()
+Warning message:
+`as_data_frame()` is deprecated as of tibble 2.0.0.
+Please use `as_tibble()` instead.
+The signature and semantics have changed, see `?as_tibble`.
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+> 
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Get importance
+> importance    <- importance(rf_model)
+> varImportance <- data.frame(Variables = row.names(importance), 
++                             Importance = round(importance[ ,'MeanDecreaseGini'], 2))
+> 
+> # Create a rank variable based on importance
+> varImportance %>%
++   mutate(Rank = paste0('#', dense_rank(desc(Importance)))) %>%
++   ggplot(aes(x = reorder(Variables, Importance), 
++       y = Importance, fill = Importance)) +
++     geom_bar(stat='identity') + 
++     geom_text(aes(x = Variables, y = 0.5, label = Rank),
++       hjust=0, vjust=0.55, size = 4, colour = 'red') +
++     labs(x = 'Variables') +
++     coord_flip() + guides(fill = FALSE) +
++     theme_bw()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(caret)
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+> ctrl <- trainControl(method = "repeatedcv",
++                       repeats = 3,
++                       classProbs = TRUE,
++                       summaryFunction = twoClassSummary)
+> 
+> car1 <- train(factor(Survived, labels = c('died', 'survived')) ~ Pclass + Sex + PclassSex + Age + AgeSex + SibSp +
++   Parch + Fare + Embarked + Title + FsizeD + SibSpSex +
++   FareSex + AgeFare + PclassFare, data = train,
++   method = 'pls', preProc = c('center', 'scale'),
++   tuneLength = 20,
++   trControl = ctrl,
++   metric = 'ROC')
+1 package is needed for this model and is not installed. (pls). Would you like to try to install it now?Error: Required package is missing
+Execution halted

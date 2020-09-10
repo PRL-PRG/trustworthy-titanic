@@ -1,0 +1,129 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> train <- read.csv(file = "../input/train.csv", stringsAsFactors = FALSE, header = TRUE)
+> test <- read.csv(file = "../input/test.csv", stringsAsFactors = FALSE, header = TRUE)
+> 
+> # EXPLORING THE DATA
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> head(train, n=10)
+   PassengerId Survived Pclass
+1            1        0      3
+2            2        1      1
+3            3        1      3
+4            4        1      1
+5            5        0      3
+6            6        0      3
+7            7        0      1
+8            8        0      3
+9            9        1      3
+10          10        1      2
+                                                  Name    Sex Age SibSp Parch
+1                              Braund, Mr. Owen Harris   male  22     1     0
+2  Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                               Heikkinen, Miss. Laina female  26     0     0
+4         Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                             Allen, Mr. William Henry   male  35     0     0
+6                                     Moran, Mr. James   male  NA     0     0
+7                              McCarthy, Mr. Timothy J   male  54     0     0
+8                       Palsson, Master. Gosta Leonard   male   2     3     1
+9    Johnson, Mrs. Oscar W (Elisabeth Vilhelmina Berg) female  27     0     2
+10                 Nasser, Mrs. Nicholas (Adele Achem) female  14     1     0
+             Ticket    Fare Cabin Embarked
+1         A/5 21171  7.2500              S
+2          PC 17599 71.2833   C85        C
+3  STON/O2. 3101282  7.9250              S
+4            113803 53.1000  C123        S
+5            373450  8.0500              S
+6            330877  8.4583              Q
+7             17463 51.8625   E46        S
+8            349909 21.0750              S
+9            347742 11.1333              S
+10           237736 30.0708              C
+> 
+> # SURVIVAL RATE
+> # What is the percentage of those that had survived the titanic disaster?
+> prop.table(table(train$Survived)) * 100
+
+       0        1 
+61.61616 38.38384 
+> 
+> # SURVIVAL RATE BY SEX
+> prop.table(table(train$Survived, train$Sex), 1) * 100
+   
+      female     male
+  0 14.75410 85.24590
+  1 68.12865 31.87135
+> 
+> # SURVIVAL RATE BY PCLASS
+> prop.table(table(train$Survived, train$Pclass), 1) * 100
+   
+           1        2        3
+  0 14.57195 17.66849 67.75956
+  1 39.76608 25.43860 34.79532
+> 
+> # SURVIVAL RATE BY SEX AND PCLASS
+> prop.table(table(train$Pclass, train$Sex, train$Survived), 1) * 100
+, ,  = 0
+
+   
+       female      male
+  1  1.388889 35.648148
+  2  3.260870 49.456522
+  3 14.663951 61.099796
+
+, ,  = 1
+
+   
+       female      male
+  1 42.129630 20.833333
+  2 38.043478  9.239130
+  3 14.663951  9.572301
+
+> 
+> # RESET COLUMN
+> test$Survived <- rep(0, 418)
+> 
+> # MAKE PREDICTION
+> test$Survived <- 0
+> test$Survived[test$Sex == 'female'] <- 1
+> 
+> # WRITE TO FILE
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+> write.csv(submit, file = "TitanicPrediction.csv", row.names = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  0.156   0.034   0.187 

@@ -1,0 +1,266 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> 
+> library(rpart)
+> asc <- function(x) { strtoi(charToRaw(x),16L) }
+> 
+> rpart.training<-read.csv("../input/train.csv")
+> rpart.testing<-read.csv("../input/test.csv")
+> 
+> #Take care of empty values in Age, Fare and Cabin in the training set
+> rpart.training$Age[is.na(rpart.training$Age)]<-median(rpart.training$Age,na.rm=TRUE)
+> rpart.training$Fare[is.na(rpart.training$Fare)]<-median(rpart.training$Fare,na.rm=TRUE)
+> rpart.training$Cabin<-as.factor(ifelse(rpart.training$Cabin=='',"Z0",as.character(rpart.training$Cabin)))
+> 
+> #Normalize training data's Cabin and Fare into CabinLevel and FareLevel
+> for(i in 1:nrow(rpart.training)) {
++     rpart.training$Cabinlevel[i]<-asc(substr(rpart.training$Cabin[i],1,1))
++     
++     if ((rpart.training$Fare[i] >= 0) & (rpart.training$Fare[i] < 100)) {
++         	rpart.training$Farelevel[i] = 1
++         } else if ((rpart.training$Fare[i] >= 100) & (rpart.training$Fare[i] < 200)) {
++         	rpart.training$Farelevel[i] = 2
++     } else if ((rpart.training$Fare[i] >= 200) & (rpart.training$Fare[i] < 300)) {
++     	rpart.training$Farelevel[i] = 3
++     } else if ((rpart.training$Fare[i] >= 300) & (rpart.training$Fare[i] < 400)) {
++     	rpart.training$Farelevel[i] = 4
++     } else if (rpart.training$Fare[i] >= 400) {
++      	rpart.training$Farelevel[i] = 5
++     } else {
++     	rpart.training$Farelevel[i] = 6
++     }
++ }
+> 
+> #Take care of empty values in Age, Fare and Cabin in the testing set
+> rpart.testing$Age[is.na(rpart.testing$Age)]<-median(rpart.testing$Age,na.rm=TRUE)
+> rpart.testing$Fare[is.na(rpart.testing$Fare)]<-median(rpart.testing$Fare,na.rm=TRUE)
+> rpart.testing$Cabin<-as.factor(ifelse(rpart.testing$Cabin=='',"Z0",as.character(rpart.testing$Cabin)))
+> 
+> #Normalize test data's Cabin and Fare into CabinLevel and FareLevel
+> for(i in 1:nrow(rpart.testing)) {
++ 	rpart.testing$Cabinlevel[i]<-asc(substr(rpart.testing$Cabin[i],1,1))
++ 
++ 	if ((rpart.testing$Fare[i] >= 0) & (rpart.testing$Fare[i] < 100)) {
++ 		rpart.testing$Farelevel[i] = 1
++ 	} else if ((rpart.testing$Fare[i] >= 100) & (rpart.testing$Fare[i] < 200)) {
++ 		rpart.testing$Farelevel[i] = 2
++ 	} else if ((rpart.testing$Fare[i] >= 200) & (rpart.testing$Fare[i] < 300)) {
++ 		rpart.testing$Farelevel[i] = 3
++ 	} else if ((rpart.testing$Fare[i] >= 300) & (rpart.testing$Fare[i] < 400)) {
++ 		rpart.testing$Farelevel[i] = 4
++ 	} else if (rpart.testing$Fare[i] >= 400) {
++ 		rpart.testing$Farelevel[i] = 5
++ 	} else {
++ 		rpart.testing$Farelevel[i] = 6
++ 	}
++ }
+> 
+> #Construct the model
+> rpart.model<-rpart(Survived~Pclass+Sex+Age+SibSp+Parch+Embarked+Cabinlevel+Farelevel,rpart.training)
+> 
+> print("Here is the constructed model: ")
+[1] "Here is the constructed model: "
+> summary(rpart.model)
+Call:
+rpart(formula = Survived ~ Pclass + Sex + Age + SibSp + Parch + 
+    Embarked + Cabinlevel + Farelevel, data = rpart.training)
+  n= 891 
+
+          CP nsplit rel error    xerror       xstd
+1 0.29523072      0 1.0000000 1.0033047 0.01607618
+2 0.07394186      1 0.7047693 0.7089747 0.03323883
+3 0.03421093      2 0.6308274 0.6352855 0.03168199
+4 0.01759895      3 0.5966165 0.6032695 0.03102794
+5 0.01677863      4 0.5790175 0.5758906 0.03146807
+6 0.01359869      5 0.5622389 0.5722059 0.03197484
+7 0.01000000      6 0.5486402 0.5574009 0.03203468
+
+Variable importance
+       Sex     Pclass Cabinlevel        Age   Embarked      Parch  Farelevel 
+        49         16         11          9          6          5          3 
+     SibSp 
+         1 
+
+Node number 1: 891 observations,    complexity param=0.2952307
+  mean=0.3838384, MSE=0.2365065 
+  left son=2 (577 obs) right son=3 (314 obs)
+  Primary splits:
+      Sex        splits as  RL,        improve=0.29523070, (0 missing)
+      Pclass     < 2.5   to the right, improve=0.10388270, (0 missing)
+      Cabinlevel < 77.5  to the right, improve=0.10212630, (0 missing)
+      Farelevel  < 1.5   to the left,  improve=0.03313603, (0 missing)
+      Embarked   splits as  RRLL,      improve=0.03052622, (0 missing)
+  Surrogate splits:
+      Parch     < 0.5   to the left,  agree=0.678, adj=0.086, (0 split)
+      Farelevel < 1.5   to the left,  agree=0.664, adj=0.048, (0 split)
+      Age       < 15.5  to the right, agree=0.651, adj=0.010, (0 split)
+      Embarked  splits as  RLLL,      agree=0.650, adj=0.006, (0 split)
+
+Node number 2: 577 observations,    complexity param=0.03421093
+  mean=0.1889081, MSE=0.1532219 
+  left son=4 (471 obs) right son=5 (106 obs)
+  Primary splits:
+      Cabinlevel < 77    to the right, improve=0.08154346, (0 missing)
+      Age        < 6.5   to the right, improve=0.06465205, (0 missing)
+      Pclass     < 1.5   to the right, improve=0.05666357, (0 missing)
+      Parch      < 0.5   to the left,  improve=0.01894788, (0 missing)
+      Embarked   splits as  -RLL,      improve=0.01741510, (0 missing)
+  Surrogate splits:
+      Pclass    < 1.5   to the right, agree=0.931, adj=0.623, (0 split)
+      Farelevel < 1.5   to the left,  agree=0.839, adj=0.123, (0 split)
+
+Node number 3: 314 observations,    complexity param=0.07394186
+  mean=0.7420382, MSE=0.1914175 
+  left son=6 (144 obs) right son=7 (170 obs)
+  Primary splits:
+      Pclass     < 2.5   to the right, improve=0.25923870, (0 missing)
+      Cabinlevel < 70.5  to the right, improve=0.10157530, (0 missing)
+      SibSp      < 2.5   to the right, improve=0.07796802, (0 missing)
+      Parch      < 3.5   to the right, improve=0.04276556, (0 missing)
+      Embarked   splits as  RRLL,      improve=0.03120321, (0 missing)
+  Surrogate splits:
+      Cabinlevel < 70.5  to the right, agree=0.742, adj=0.437, (0 split)
+      Age        < 28.5  to the left,  agree=0.659, adj=0.257, (0 split)
+      Embarked   splits as  RRLR,      agree=0.637, adj=0.208, (0 split)
+      SibSp      < 1.5   to the right, agree=0.592, adj=0.111, (0 split)
+      Parch      < 1.5   to the right, agree=0.567, adj=0.056, (0 split)
+
+Node number 4: 471 observations,    complexity param=0.01759895
+  mean=0.1358811, MSE=0.1174174 
+  left son=8 (457 obs) right son=9 (14 obs)
+  Primary splits:
+      Age      < 3.5   to the right, improve=0.067058550, (0 missing)
+      Parch    < 0.5   to the left,  improve=0.015754600, (0 missing)
+      Embarked splits as  -RLL,      improve=0.006530298, (0 missing)
+      SibSp    < 2.5   to the right, improve=0.004058879, (0 missing)
+      Pclass   < 1.5   to the right, improve=0.003309062, (0 missing)
+
+Node number 5: 106 observations,    complexity param=0.01359869
+  mean=0.4245283, MSE=0.244304 
+  left son=10 (98 obs) right son=11 (8 obs)
+  Primary splits:
+      Age        < 17.5  to the right, improve=0.110657600, (0 missing)
+      SibSp      < 0.5   to the left,  improve=0.021263260, (0 missing)
+      Cabinlevel < 67.5  to the left,  improve=0.014130370, (0 missing)
+      Embarked   splits as  -RLL,      improve=0.010082210, (0 missing)
+      Farelevel  < 2.5   to the right, improve=0.005576977, (0 missing)
+
+Node number 6: 144 observations,    complexity param=0.01677863
+  mean=0.5, MSE=0.25 
+  left son=12 (88 obs) right son=13 (56 obs)
+  Primary splits:
+      Embarked splits as  -RRL,      improve=0.09821429, (0 missing)
+      SibSp    < 2.5   to the right, improve=0.06349206, (0 missing)
+      Age      < 38.5  to the right, improve=0.06313131, (0 missing)
+      Parch    < 1.5   to the right, improve=0.05240642, (0 missing)
+  Surrogate splits:
+      Age < 0.875 to the right, agree=0.625, adj=0.036, (0 split)
+
+Node number 7: 170 observations
+  mean=0.9470588, MSE=0.05013841 
+
+Node number 8: 457 observations
+  mean=0.1203501, MSE=0.105866 
+
+Node number 9: 14 observations
+  mean=0.6428571, MSE=0.2295918 
+
+Node number 10: 98 observations
+  mean=0.377551, MSE=0.2350062 
+
+Node number 11: 8 observations
+  mean=1, MSE=0 
+
+Node number 12: 88 observations
+  mean=0.375, MSE=0.234375 
+
+Node number 13: 56 observations
+  mean=0.6964286, MSE=0.2114158 
+
+> 
+> #If the prediction value is above 0.49, the person is considered survived, otherwise they are not
+> rpart.predict<-ifelse(predict(rpart.model,rpart.testing)>0.49,1,0)
+> 
+> print("Here are the predictions for the test set: ")
+[1] "Here are the predictions for the test set: "
+> rpart.predict
+  1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20 
+  0   0   0   0   0   0   1   0   1   0   0   0   1   0   1   1   0   0   0   1 
+ 21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40 
+  0   0   1   0   1   0   1   0   0   0   0   0   0   0   0   0   0   0   0   0 
+ 41  42  43  44  45  46  47  48  49  50  51  52  53  54  55  56  57  58  59  60 
+  0   0   0   1   1   0   0   0   1   0   0   0   1   1   0   0   0   0   0   1 
+ 61  62  63  64  65  66  67  68  69  70  71  72  73  74  75  76  77  78  79  80 
+  0   0   0   1   1   1   1   0   0   1   1   0   0   0   1   0   0   1   0   1 
+ 81  82  83  84  85  86  87  88  89  90  91  92  93  94  95  96  97  98  99 100 
+  0   0   0   0   0   0   1   0   1   1   0   0   1   0   0   0   1   0   0   0 
+101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 
+  1   0   0   0   1   0   0   0   0   0   0   1   1   1   1   0   0   0   0   1 
+121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 
+  1   0   1   0   0   0   0   1   0   0   0   0   0   0   0   0   0   0   0   0 
+141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 
+  0   1   0   0   0   0   0   0   0   0   1   0   0   0   0   0   1   0   0   0 
+161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 
+  1   0   1   0   0   0   0   0   1   0   0   0   0   0   0   1   1   0   1   1 
+181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200 
+  0   0   1   0   1   0   1   0   0   0   0   0   0   0   0   0   1   0   0   0 
+201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 
+  1   1   0   1   0   0   1   0   1   0   0   0   0   1   0   0   1   0   1   0 
+221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 
+  1   0   1   0   1   1   0   1   0   0   0   1   0   0   0   0   0   0   1   1 
+241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260 
+  1   1   0   0   0   0   1   0   1   1   1   0   0   0   0   0   0   0   1   0 
+261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 
+  0   0   1   0   0   0   0   0   0   0   0   0   1   1   0   1   0   0   0   0 
+281 282 283 284 285 286 287 288 289 290 291 292 293 294 295 296 297 298 299 300 
+  0   1   1   1   0   0   0   0   0   0   0   1   0   0   0   0   1   0   0   0 
+301 302 303 304 305 306 307 308 309 310 311 312 313 314 315 316 317 318 319 320 
+  0   0   0   0   1   1   0   1   0   0   0   0   0   1   1   1   0   0   0   0 
+321 322 323 324 325 326 327 328 329 330 331 332 333 334 335 336 337 338 339 340 
+  0   0   0   0   1   0   1   0   0   0   1   0   0   1   0   0   0   0   0   0 
+341 342 343 344 345 346 347 348 349 350 351 352 353 354 355 356 357 358 359 360 
+  0   0   0   1   0   0   0   1   0   1   1   0   0   0   0   0   1   0   0   0 
+361 362 363 364 365 366 367 368 369 370 371 372 373 374 375 376 377 378 379 380 
+  0   1   1   0   1   0   0   0   1   0   0   1   0   0   1   1   0   0   0   0 
+381 382 383 384 385 386 387 388 389 390 391 392 393 394 395 396 397 398 399 400 
+  0   0   0   0   0   1   0   0   0   0   0   1   0   0   0   1   0   1   0   0 
+401 402 403 404 405 406 407 408 409 410 411 412 413 414 415 416 417 418 
+  1   0   1   0   0   0   0   0   1   0   1   1   0   0   1   0   0   0 
+> 
+> print("No. of people Survived: ")
+[1] "No. of people Survived: "
+> print(sum(rpart.predict))
+[1] 117
+> print("No. of people who didn't survive: ")
+[1] "No. of people who didn't survive: "
+> print(sum(rpart.predict==0))
+[1] 301
+> 
+> proc.time()
+   user  system elapsed 
+  0.268   0.049   0.320 

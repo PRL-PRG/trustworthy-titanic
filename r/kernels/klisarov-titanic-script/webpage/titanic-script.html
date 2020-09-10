@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Titanic script | Kaggle</title>
+    <meta charset="utf-8" />
+    <meta name="robots" content="index, follow" />
+    <meta name="turbolinks-cache-control" content="no-cache" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0">    <meta name="theme-color" content="#008ABC" />
+    <script type="text/javascript">
+        window["initialPageLoadStartTime"] = new Date().getTime();
+    </script>
+    <link rel="dns-prefetch" href="https://www.google-analytics.com" /><link rel="dns-prefetch" href="https://stats.g.doubleclick.net" /><link rel="dns-prefetch" href="https://js.intercomcdn.com" /><link rel="dns-prefetch" href="https://storage.googleapis.com/" />
+    <link href="/static/images/favicon.ico" rel="shortcut icon" type="image/x-icon" />
+    <link rel="manifest" href="/static/json/manifest.json">
+    <link href="//fonts.googleapis.com/css?family=Open+Sans:400,300,300italic,400italic,600,600italic,700,700italic" rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" type='text/css'/>
+        <link rel="canonical" href="/klisarov/titanic-script" />                    <link rel="stylesheet" type="text/css" href="/static/assets/vendor.css?v=632d145d8598" />
+        <link rel="stylesheet" type="text/css" href="/static/assets/app.css?v=9a450b84054a" />
+    
+    
+ 
+        <script>
+        try{(function(a,s,y,n,c,h,i,d,e){d=s.createElement("style");
+        d.appendChild(s.createTextNode(""));s.head.appendChild(d);d=d.sheet;
+        y=y.map(x => d.insertRule(x + "{ opacity: 0 !important }"));
+        h.start=1*new Date;h.end=i=function(){y.forEach(x => d.deleteRule(x))};
+        (a[n]=a[n]||[]).hide=h;setTimeout(function(){i();h.end=null},c);h.timeout=c;
+        })(window,document,['.site-header-react__nav'],'dataLayer',2000,{'GTM-52LNT9S':true});}catch{}
+    </script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'UA-12629138-1', {
+            'optimize_id': 'GTM-52LNT9S',
+            'displayFeaturesTask': null,
+            'send_page_view': false
+        });
+    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-12629138-1"></script>
+
+    
+<script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window,document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+    fbq("set", "autoConfig", "false", "136809193586742");
+    fbq('init', '136809193586742'); 
+    fbq('track', 'PageView');
+</script>
+<noscript>
+    <img height="1" width="1" src="https://www.facebook.com/tr?id=136809193586742&ev=PageView&noscript=1"/>
+</noscript>
+
+<script>window.intercomSettings = {"app_id":"koj6gxx6"};</script>        <script>(function () { var w = window; var ic = w.Intercom; if (typeof ic === "function") { ic('reattach_activator'); ic('update', intercomSettings); } else { var d = document; var i = function () { i.c(arguments) }; i.q = []; i.c = function (args) { i.q.push(args) }; w.Intercom = i; function l() { var s = d.createElement('script'); s.type = 'text/javascript'; s.async = true; s.src = 'https://widget.intercom.io/widget/koj6gxx6'; var x = d.getElementsByTagName('script')[0]; x.parentNode.insertBefore(s, x); } if (w.attachEvent) { w.attachEvent('onload', l); } else { w.addEventListener('load', l, false); } } })()</script>
+    
+    
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@kaggledatasets" />
+    <meta name="og:url" content="https://kaggle.com/klisarov/titanic-script" />
+    <meta name="og:title" content="Titanic script" />
+    <meta name="og:description" content="Using data from Introducing Kaggle Scripts" />
+    <meta name="og:image" content="https://storage.googleapis.com/kaggle-avatars/thumbnails/876259-gp.jpg" />
+
+
+    
+    
+
+    
+    
+    
+<script type="text/javascript">
+    var Kaggle = Kaggle || {};
+
+    Kaggle.Current = {
+        antiForgeryToken: 'CfDJ8LdUzqlsSWBPr4Ce3rb9VL8aGKKLJs_UHUdZR894mq4Xfwfqbk9eZGr_G3YB4b2-lfV0cwk7x7g3SVhrTlaucPz3ZH1CcQDrFy7lXsVEyvefVY2leG_wlHtb3L5OTJsoLHEYyegtyKg5dTP71UEUX48',
+        isAnonymous: true,
+        analyticsToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1NjAzNzQxOTIsIlVzZXJJZCI6MH0.stY1n6l_urO2BRMBjXuRvmw0VID-ia2S4NHVsxlYNZw',
+        analyticsTokenExpiry: 15,
+        internetKernelsEnabled: false,
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+    }
+        Kaggle.Current.log = function(){};
+        Kaggle.Current.warn = function(){};
+
+    var decodeUserDisplayName = function () {
+        var escapedUserDisplayName = Kaggle.Current.userDisplayNameEscaped || "";
+        try {
+            var textVersion = new DOMParser().parseFromString(escapedUserDisplayName, "text/html").documentElement.textContent;
+            if (textVersion) {
+                return textVersion;
+            }
+        } catch(ex) {}
+        return escapedUserDisplayName;
+    }
+    Kaggle.Current.userDisplayName = decodeUserDisplayName();
+</script>
+
+    
+
+<script type="text/javascript">
+    var Kaggle = Kaggle || {};
+    Kaggle.PageMessages = [];
+</script>
+
+    
+<script type="text/javascript">
+/* <![CDATA[ */
+goog_snippet_vars = function() {
+    var w = window;
+    w.google_conversion_id = 955616553;
+    w.google_conversion_label = "QSjvCKDksHMQqZrWxwM";
+    w.google_conversion_value = 0.00;
+    w.google_conversion_currency = "USD";
+    w.google_remarketing_only = false;
+    w.google_conversion_language = "en";
+    w.google_conversion_format = "3";
+    w.google_conversion_color = "ffffff";
+}
+// DO NOT CHANGE THE CODE BELOW.
+goog_report_conversion = function(url) {
+    goog_snippet_vars();
+    window.google_conversion_format = "3";
+    var opt = new Object();
+    opt.onload_callback = function() {
+        if (typeof(url) != 'undefined') {
+            window.location = url;
+        }
+    }
+    var conv_handler = window['google_trackConversion'];
+    if (typeof(conv_handler) == 'function') {
+        conv_handler(opt);
+    }
+}
+/* ]]> */
+</script>
+<script type="text/javascript"
+src="//www.googleadservices.com/pagead/conversion_async.js">
+</script>
+
+
+
+        <script>window['useKaggleAnalytics'] = true;</script>
+
+    <script src="/static/assets/vendor.js?v=4721d2c14786" data-turbolinks-track="reload"></script>
+    <script src="/static/assets/app.js?v=6bcf0584652b" data-turbolinks-track="reload"></script>
+        <script>
+            (function() {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register("/static/assets/service-worker.js").then(function(reg) {
+                        reg.onupdatefound = function() {
+                            var installingWorker = reg.installing;
+                            installingWorker.onstatechange = function() {
+                                switch (installingWorker.state) {
+                                case 'installed':
+                                    if (navigator.serviceWorker.controller) {
+                                        console.log('New or updated content is available.');
+                                    } else {
+                                        console.log('Content is now available offline!');
+                                    }
+                                    break;
+                                case 'redundant':
+                                    console.error('The installing service worker became redundant.');
+                                    break;
+                                }
+                            };
+                        };
+                    }).catch(function(e) {
+                      console.error('Error during service worker registration:', e);
+                    });
+                }
+            })();
+        </script>
+    <script>
+        function handleClientLoad() {
+            try {
+                gapi.load('client:auth2');
+            } catch (e) {
+                // In Opera, readystatechange is an unreliable detection of script load, causing
+                // this function to be called before gapi exists on the window. The onload callback
+                // is still called at the correct time, so the feature works as expected - it's
+                // just generating noisy errors.
+            }
+        }
+    </script>
+    <script async defer src="https://apis.google.com/js/api.js"
+            onload="this.googleApiOnLoad=function(){};handleClientLoad()"
+            onreadystatechange="if (this.readyState === 'complete') this.googleApiOnLoad()">
+    </script>
+</head>
+<body data-turbolinks="true">
+    <main>
+        
+
+
+
+
+
+
+<div class="site-layout">
+        <div class="site-layout__header">
+            <div data-component-name="SiteHeaderContainer" style="display: flex; flex-direction: column; flex: 1 0 auto;"></div><script>var Kaggle=window.Kaggle||{};Kaggle.State=Kaggle.State||[];Kaggle.State.push({});performance && performance.mark && performance.mark("SiteHeaderContainer.componentCouldBootstrap");</script>
+        </div>
+
+    <div class="site-layout__main-content">
+        
+
+<div data-component-name="KernelViewer" style="display: flex; flex-direction: column; flex: 1 0 auto;"></div><script>var Kaggle=window.Kaggle||{};Kaggle.State=Kaggle.State||[];Kaggle.State.push({"kernel":{"id":232121,"title":"Titanic script","forkParent":null,"currentRunId":1074554,"mostRecentRunId":1074554,"url":"/klisarov/titanic-script","tags":[],"commentCount":0,"upvoteCount":1,"viewCount":352,"forkCount":0,"bestPublicScore":null,"author":{"id":876259,"displayName":"Stefan Klisarov","email":null,"editedEmail":null,"editedEmailCode":null,"userName":"klisarov","thumbnailUrl":"https://storage.googleapis.com/kaggle-avatars/thumbnails/876259-gp.jpg","profileUrl":"/klisarov","registerDate":"0001-01-01T00:00:00Z","lastVisitDate":"0001-01-01T00:00:00Z","statusId":0,"performanceTier":1,"userRoles":null,"userLogins":null,"groupIds":null,"duplicateUsers":null,"hasPhoneVerifications":false,"failedNerdchas":0,"hasPendingNerdcha":false,"deleteRequests":null,"userAttributes":null,"isAdmin":false,"isTvc":false,"isKaggleBot":false,"isAdminOrTvc":false,"isAnonymous":false,"canAct":false,"canBeSeen":false,"thumbnailName":null,"activationCode":"00000000-0000-0000-0000-000000000000","isPhoneVerified":false},"isPrivate":false,"updatedTime":"2017-04-11T10:14:53.9433333Z","selfLink":"/kernels/232121","pinnedDockerImageVersionId":null,"isLanguageTemplate":false,"medal":null,"topicId":null,"readGroupId":null,"writeGroupId":null,"slug":"titanic-script"},"kernelBlob":{"id":5068102,"settings":{"dockerImageVersionId":null,"dataSources":[{"sourceType":"Competition","sourceId":4459,"databundleVersionId":null}],"sourceType":"script","language":"r","isGpuEnabled":false,"isInternetEnabled":false},"source":"library(dplyr);library(caret);library(ggplot2);library(purrr);\r\n\r\ntrain \u003c- read.csv(\u0022train.csv\u0022,stringsAsFactors=FALSE)\r\ntest \u003c- read.csv(\u0022test.csv\u0022,stringsAsFactors=FALSE)\r\n\r\n#combine them \r\ntest$Survived \u003c- NA\r\nFull \u003c- rbind(train,test)\r\n\r\nhead(Full)\r\nstr(Full)\r\n\r\n\r\n################## Data Cleaning ######################################\r\n\r\nage \u003c- Full$Age\r\nn \u003c- length(age)\r\n     #replace the missing values with a random sample from the data\r\nset.seed(123)\r\n  for(i in 1:n){\r\n    if(is.na(age[i])){\r\n      age[i] = sample(na.omit(Full$Age),1)\r\n    }\r\n  }\r\n\r\n# plot effect of age cleaning\r\n\r\npar(mfrow=c(1,2))\r\nhist(Full$Age, freq=F, main=\u0027Before Replacement\u0027, \r\n     col=\u0027lightblue\u0027, ylim=c(0,0.04),xlab = \u0022age\u0022)\r\nhist(age, freq=F, main=\u0027After Replacement\u0027, \r\n     col=\u0027darkblue\u0027, ylim=c(0,0.04))\r\n\r\n# see the number of cabins each passenger has \r\n\r\ncabin \u003c- Full$Cabin\r\nn = length(cabin)\r\nfor(i in 1:n){\r\n  if(nchar(cabin[i]) == 0){\r\n    cabin[i] = 0\r\n  } else{\r\n    s = strsplit(cabin[i],\u0022 \u0022)\r\n    cabin[i] = length(s[[1]])\r\n  }\r\n} \r\ntable(cabin)\r\n\r\n# check the missing row value in Fare\r\n\r\nwhich(is.na(Full$Fare))\r\n\r\n# for Fare column, we repace the missing value with median fare of according Pclass and Embarked\r\nFull$Fare[1044] \u003c- median(Full[Full$Pclass == \u00273\u0027 \u0026 Full$Embarked == \u0027S\u0027, ]$Fare, na.rm = TRUE)\r\n\r\n# process embarked column\r\n\r\nembarked \u003c- Full$Embarked\r\nn = length(embarked)\r\nfor(i in 1:n){\r\n  if(embarked[i] != \u0022S\u0022 \u0026\u0026 embarked[i] != \u0022C\u0022 \u0026\u0026 embarked[i] != \u0022Q\u0022){\r\n    embarked[i] = \u0022S\u0022\r\n  }\r\n}\r\ntable(embarked)\r\n\r\n############################## Data processing and Ex.Analysis ###############\r\n\r\n# Age ~ Survival \r\n\r\n# number of survivals and nonsurvivals across different age\r\nd \u003c- data.frame(Age = age[1:891], Survived = train$Survived)\r\nggplot(d, aes(Age,fill = factor(Survived))) +\r\n  geom_histogram()\r\n\r\n# create bar chart to show relationship between survival rate and age intervals\r\ncuts \u003c- cut(d$Age,hist(d$Age,10,plot = F)$breaks)\r\nrate \u003c- tapply(d$Survived,cuts,mean)\r\nd2 \u003c- data.frame(age = names(rate),rate)\r\nbarplot(d2$rate, xlab = \u0022age\u0022,ylab = \u0022survival rate\u0022)\r\n\r\n# create histgram to show effect of Sex on survival\r\nggplot(train, aes(Sex,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# calculate survival rate\r\ntapply(train$Survived,train$Sex,mean)\r\n\r\n\r\n# extract title from Name \r\n# (here I process Full data set but only plot title vs survival in train \r\n#    data set because there is no survival value for test data set)\r\nn = length(Full$Survived)\r\ntitle = rep(NA,n)\r\nfor (i in 1:n){\r\n  lastname = strsplit(Full$Name[i],\u0022, \u0022)[[1]][2]\r\n  title[i] = strsplit(lastname,\u0022. \u0022)[[1]][1]\r\n}\r\n\r\n# make a histogram of title v.s survival\r\nd \u003c- data.frame(title = title[1:891],Survived = train$Survived)\r\nggplot(d, aes(title,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# count of title\r\ntable(title)\r\n\r\n# survival rate\r\ntapply(d$Survived,d$title,mean)\r\n\r\n# replace rare titles to \u0027Rare\u0027\r\ntitle[title != \u0027Mr\u0027 \u0026 title != \u0027Miss\u0027 \u0026 title != \u0027Mrs\u0027 \u0026 title != \u0027Master\u0027] \u003c- \u0027Rare\u0027\r\ntable(title)\r\n\r\n# make a histogram Pclass v.s. Survival\r\nggplot(train, aes(Pclass,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# calculate survival rate\r\ntapply(train$Survived,train$Pclass,mean)\r\n\r\n\r\n# histogram of Parch / Family Size v.s. Survival\r\nggplot(train, aes(Parch,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# histogram of SibSp /  Family Size v.s. Survival\r\nggplot(train, aes(SibSp,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# combine SibSp and Parch \r\nfamily \u003c- Full$SibSp + Full$Parch\r\nd \u003c- data.frame(family = family[1:891],Survived = train$Survived)\r\nggplot(d, aes(family,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# calculate survival rate\r\ntapply(d$Survived,d$family,mean)\r\n\r\n# Cabin vs Survival \r\n\r\n# create histogram\r\nd \u003c- data.frame(Cabin = cabin[1:891],Survived = train$Survived)\r\nggplot(d, aes(Cabin,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# calculate survival rate\r\ntapply(d$Survived,d$Cabin,mean)\r\n\r\n#Fare v.s. Survival\r\n\r\n# make a histogram\r\nggplot(train, aes(Fare,fill = factor(Survived))) +\r\n  geom_histogram()\r\n\r\n# calculate\r\ncuts \u003c- cut(train$Fare,hist(train$Fare,10,plot = F)$breaks)\r\nrate \u003c- tapply(train$Survived,cuts,mean)\r\nd \u003c- data.frame(fare = names(rate),rate)\r\nbarplot(d$rate, xlab = \u0022fare\u0022,ylab = \u0022survival rate\u0022)\r\n\r\n# Embarked v.s. Survival\r\n\r\n# make histogram\r\nd \u003c- data.frame(Embarked = embarked[1:891], Survived = train$Survived)\r\nggplot(d, aes(Embarked,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# calculate survival rate\r\ntapply(train$Survived,train$Embarked,mean)\r\n\r\n###################################################### MODELING ###################################\r\n\r\n## Feature engeneering \r\n\r\n# response variable\r\nf.survived = train$Survived\r\n\r\n# feature\r\n\r\n # 1. age\r\nf.age = age[1:891]    # for fiting\r\nt.age = age[892:1309]  # for testing\r\n\r\n# 2. fare\r\n f.fare = Full$Fare[1:891]\r\nt.fare = Full$Fare[892:1309]\r\n\r\n# 3. cabin\r\nf.cabin = cabin[1:891]\r\nt.cabin = cabin[892:1309]\r\n\r\n# 4. title\r\nf.title = title[1:891]\r\nt.title = title[892:1309]\r\n\r\n# 5. family\r\nfamily \u003c- Full$SibSp + Full$Parch\r\nf.family = family[1:891]\r\nt.family = family[892:1309]\r\n\r\n# 6. plcass\r\nf.pclass = train$Pclass\r\nt.pclass = test$Pclass\r\n\r\n# 7. sex\r\nf.sex = train$Sex\r\nt.sex = test$Sex\r\n\r\n# 8. embarked\r\nf.embarked = embarked[1:891]\r\nt.embarked = embarked[892:1309]\r\n\r\n##### Training #########\r\n\r\n# construct training data frame\r\nnew_train = data.frame(survived = f.survived, age = f.age, fare = f.fare , sex = f.sex, \r\n                       embarked = f.embarked ,family = f.family ,title = f.title ,cabin =  f.cabin, pclass= f.pclass)\r\n\r\n# logistic regression\r\nfit_logit \u003c- glm(factor(survived) ~ age + fare + sex + embarked + family \r\n                 + title + cabin + pclass,data = new_train,family = binomial)\r\n# predicted result of regression\r\nans_logit = rep(NA,891)\r\nfor(i in 1:891){\r\n  ans_logit[i] = round(fit_logit$fitted.values[[i]],0)\r\n}\r\n# check result\r\nmean(ans_logit == train$Survived)\r\ntable(ans_logit)\r\n\r\ntrControl \u003c- trainControl(method = \u0022cv\u0022, number = 5,\r\n                         repeats = 5, verboseIter = TRUE,\r\n                         classProbs = TRUE)\r\n\r\nfit_glmnet \u003c- train(factor(survived) ~ .,\r\n                    data = new_train, \r\n                    method = \u0022glmnet\u0022,\r\n                    trControl = trainControl(method = \u0022cv\u0022, number = 5,\r\n                                  repeats = 5, verboseIter = TRUE ),\r\n                    preProcess = c(\u0022center\u0022,\u0022scale\u0022))\r\nfit_glmnet                   \r\n              \r\n\r\n# Random Forest \r\n\r\nfit_forest \u003c- train(factor(survived) ~ .,\r\n                    new_train,\r\n                    method = \u0022ranger\u0022,\r\n                    tuneLength = 5,\r\n                    trControl = trainControl(method = \u0022cv\u0022, number = 5,\r\n                                             repeats = 5, verboseIter = TRUE ))\r\n\r\nfit_forest\r\n\r\n\r\n# Support Vector Machine / SVM\r\n\r\nfit_SVM \u003c- train(factor(survived) ~ .,\r\n                 new_train,\r\n                 method = \u0022svmLinear\u0022,\r\n                 trControl = trainControl(method = \u0022cv\u0022, number = 5,\r\n                                          repeats = 5, verboseIter = TRUE )\r\n                 )\r\n\r\nfit_SVM\r\n\r\n\r\n\r\nfit_support \u003c- svm(factor(survived) ~ .,data = new_train)\r\n\r\n# predicted result of regression\r\nsvm.fitted = predict(fit_support)\r\nans_svm = rep(NA,891)\r\nfor(i in 1:891){\r\n  ans_svm[i] = as.integer(svm.fitted[[i]]) - 1\r\n}\r\n# check result\r\nmean(ans_svm == train$Survived)\r\ntable(ans_svm)\r\n\r\n\r\n\r\n\r\n\r\nlist_caret \u003c- make.names(caretList(as.factor(survived) ~ .,\r\n          new_train,\r\n          methodList = c(\u0022glmnet\u0022,\u0022svmLinear\u0022),\r\n          trControl = trainControl(method = \u0022cv\u0022, number = 5,\r\n                                   repeats = 5, verboseIter = TRUE, classProbs = TRUE )),unique = TRUE)\r\n\r\n########### predictions #################\r\n\r\n\r\n# construct testing data frame\r\ntest_data_set \u003c- data.frame(age = t.age, fare = t.fare, sex = t.sex, embarked = t.embarked, \r\n                            family = t.family, title = t.title,cabin =  t.cabin, pclass = t.pclass)\r\n# make prediction\r\nsvm_predict = predict(fit_SVM,newdata = test_data_set )\r\nans_svm_predict = rep(NA,418)\r\nfor(i in 1:418){\r\n  ans_svm_predict[i] = as.integer(svm_predict[[i]]) - 1\r\n}\r\ntable(ans_svm_predict)\r\n\r\n\r\nglmnet_predict = predict(fit_glmnet,newdata = test_data_set )\r\nans_glmnet_predict = rep(NA,418)\r\nfor(i in 1:418){\r\n  ans_glmnet_predict[i] = as.integer(glmnet_predict[[i]]) - 1\r\n}\r\ntable(ans_glmnet_predict)\r\n\r\n\r\nforest_predict = predict(fit_forest,newdata = test_data_set )\r\nans_forest_predict = rep(NA,418)\r\nfor(i in 1:418){\r\n  ans_forest_predict[i] = as.integer(forest_predict[[i]]) - 1\r\n}\r\ntable(ans_forest_predict)\r\n\r\n# make prediction\r\nsupport_predict = predict(fit_support,newdata = test_data_set )\r\nans_support_predict = rep(NA,418)\r\nfor(i in 1:418){\r\n  ans_support_predict[i] = as.integer(support_predict[[i]]) - 1\r\n}\r\ntable(ans_support_predict)\r\n\r\n# Ensamble \r\n\r\nmodel_list \u003c- list(glmnet = fit_glmnet, SVM = fit_SVM)\r\n\r\n# Pass model_list to resamples(): resamples\r\nresamples \u003c- resamples(list_caret)\r\n\r\n# Summarize the results\r\nsummary(resamples)\r\n\r\nbwplot(resamples)\r\n\r\nsummary.resamples()\r\n\r\n#######STACK#############\r\n\r\nlibrary(caretEnsemble);\r\nstack \u003c- caretStack(list_caret, \r\n                    method = \u0022glmnet\u0022)\r\n\r\nsummary(stack)\r\n\r\n# create a csv file for submittion\r\nd\u003c-data.frame(PassengerId = test$PassengerId, Survived = ans_support_predict)\r\nwrite.csv(d,file = \u0022TitanicResult1.csv\u0022,row.names = F)\r\n\r\n\r\n","dateCreated":"2017-04-11T10:14:53.017Z"},"kernelRun":{"id":1074554,"kernelId":232121,"status":"error","type":"batch","sourceType":"script","language":"r","title":"Titanic script","dateCreated":"2017-04-11T10:14:53.017Z","dateEvaluated":"2017-04-11T10:14:53.943Z","workerContainerPort":null,"workerUptimeSeconds":500436,"workerIPAddress":"10.3.0.102     ","scriptLanguageId":1,"scriptLanguageName":"R","renderedOutputUrl":null,"commit":{"id":5068102,"settings":{"dockerImageVersionId":null,"dataSources":[{"sourceType":"Competition","sourceId":4459,"databundleVersionId":null}],"sourceType":"script","language":"r","isGpuEnabled":false,"isInternetEnabled":false},"source":"library(dplyr);library(caret);library(ggplot2);library(purrr);\r\n\r\ntrain \u003c- read.csv(\u0022train.csv\u0022,stringsAsFactors=FALSE)\r\ntest \u003c- read.csv(\u0022test.csv\u0022,stringsAsFactors=FALSE)\r\n\r\n#combine them \r\ntest$Survived \u003c- NA\r\nFull \u003c- rbind(train,test)\r\n\r\nhead(Full)\r\nstr(Full)\r\n\r\n\r\n################## Data Cleaning ######################################\r\n\r\nage \u003c- Full$Age\r\nn \u003c- length(age)\r\n     #replace the missing values with a random sample from the data\r\nset.seed(123)\r\n  for(i in 1:n){\r\n    if(is.na(age[i])){\r\n      age[i] = sample(na.omit(Full$Age),1)\r\n    }\r\n  }\r\n\r\n# plot effect of age cleaning\r\n\r\npar(mfrow=c(1,2))\r\nhist(Full$Age, freq=F, main=\u0027Before Replacement\u0027, \r\n     col=\u0027lightblue\u0027, ylim=c(0,0.04),xlab = \u0022age\u0022)\r\nhist(age, freq=F, main=\u0027After Replacement\u0027, \r\n     col=\u0027darkblue\u0027, ylim=c(0,0.04))\r\n\r\n# see the number of cabins each passenger has \r\n\r\ncabin \u003c- Full$Cabin\r\nn = length(cabin)\r\nfor(i in 1:n){\r\n  if(nchar(cabin[i]) == 0){\r\n    cabin[i] = 0\r\n  } else{\r\n    s = strsplit(cabin[i],\u0022 \u0022)\r\n    cabin[i] = length(s[[1]])\r\n  }\r\n} \r\ntable(cabin)\r\n\r\n# check the missing row value in Fare\r\n\r\nwhich(is.na(Full$Fare))\r\n\r\n# for Fare column, we repace the missing value with median fare of according Pclass and Embarked\r\nFull$Fare[1044] \u003c- median(Full[Full$Pclass == \u00273\u0027 \u0026 Full$Embarked == \u0027S\u0027, ]$Fare, na.rm = TRUE)\r\n\r\n# process embarked column\r\n\r\nembarked \u003c- Full$Embarked\r\nn = length(embarked)\r\nfor(i in 1:n){\r\n  if(embarked[i] != \u0022S\u0022 \u0026\u0026 embarked[i] != \u0022C\u0022 \u0026\u0026 embarked[i] != \u0022Q\u0022){\r\n    embarked[i] = \u0022S\u0022\r\n  }\r\n}\r\ntable(embarked)\r\n\r\n############################## Data processing and Ex.Analysis ###############\r\n\r\n# Age ~ Survival \r\n\r\n# number of survivals and nonsurvivals across different age\r\nd \u003c- data.frame(Age = age[1:891], Survived = train$Survived)\r\nggplot(d, aes(Age,fill = factor(Survived))) +\r\n  geom_histogram()\r\n\r\n# create bar chart to show relationship between survival rate and age intervals\r\ncuts \u003c- cut(d$Age,hist(d$Age,10,plot = F)$breaks)\r\nrate \u003c- tapply(d$Survived,cuts,mean)\r\nd2 \u003c- data.frame(age = names(rate),rate)\r\nbarplot(d2$rate, xlab = \u0022age\u0022,ylab = \u0022survival rate\u0022)\r\n\r\n# create histgram to show effect of Sex on survival\r\nggplot(train, aes(Sex,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# calculate survival rate\r\ntapply(train$Survived,train$Sex,mean)\r\n\r\n\r\n# extract title from Name \r\n# (here I process Full data set but only plot title vs survival in train \r\n#    data set because there is no survival value for test data set)\r\nn = length(Full$Survived)\r\ntitle = rep(NA,n)\r\nfor (i in 1:n){\r\n  lastname = strsplit(Full$Name[i],\u0022, \u0022)[[1]][2]\r\n  title[i] = strsplit(lastname,\u0022. \u0022)[[1]][1]\r\n}\r\n\r\n# make a histogram of title v.s survival\r\nd \u003c- data.frame(title = title[1:891],Survived = train$Survived)\r\nggplot(d, aes(title,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# count of title\r\ntable(title)\r\n\r\n# survival rate\r\ntapply(d$Survived,d$title,mean)\r\n\r\n# replace rare titles to \u0027Rare\u0027\r\ntitle[title != \u0027Mr\u0027 \u0026 title != \u0027Miss\u0027 \u0026 title != \u0027Mrs\u0027 \u0026 title != \u0027Master\u0027] \u003c- \u0027Rare\u0027\r\ntable(title)\r\n\r\n# make a histogram Pclass v.s. Survival\r\nggplot(train, aes(Pclass,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# calculate survival rate\r\ntapply(train$Survived,train$Pclass,mean)\r\n\r\n\r\n# histogram of Parch / Family Size v.s. Survival\r\nggplot(train, aes(Parch,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# histogram of SibSp /  Family Size v.s. Survival\r\nggplot(train, aes(SibSp,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# combine SibSp and Parch \r\nfamily \u003c- Full$SibSp + Full$Parch\r\nd \u003c- data.frame(family = family[1:891],Survived = train$Survived)\r\nggplot(d, aes(family,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# calculate survival rate\r\ntapply(d$Survived,d$family,mean)\r\n\r\n# Cabin vs Survival \r\n\r\n# create histogram\r\nd \u003c- data.frame(Cabin = cabin[1:891],Survived = train$Survived)\r\nggplot(d, aes(Cabin,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# calculate survival rate\r\ntapply(d$Survived,d$Cabin,mean)\r\n\r\n#Fare v.s. Survival\r\n\r\n# make a histogram\r\nggplot(train, aes(Fare,fill = factor(Survived))) +\r\n  geom_histogram()\r\n\r\n# calculate\r\ncuts \u003c- cut(train$Fare,hist(train$Fare,10,plot = F)$breaks)\r\nrate \u003c- tapply(train$Survived,cuts,mean)\r\nd \u003c- data.frame(fare = names(rate),rate)\r\nbarplot(d$rate, xlab = \u0022fare\u0022,ylab = \u0022survival rate\u0022)\r\n\r\n# Embarked v.s. Survival\r\n\r\n# make histogram\r\nd \u003c- data.frame(Embarked = embarked[1:891], Survived = train$Survived)\r\nggplot(d, aes(Embarked,fill = factor(Survived))) +\r\n  geom_histogram(stat = \u0022count\u0022)\r\n\r\n# calculate survival rate\r\ntapply(train$Survived,train$Embarked,mean)\r\n\r\n###################################################### MODELING ###################################\r\n\r\n## Feature engeneering \r\n\r\n# response variable\r\nf.survived = train$Survived\r\n\r\n# feature\r\n\r\n # 1. age\r\nf.age = age[1:891]    # for fiting\r\nt.age = age[892:1309]  # for testing\r\n\r\n# 2. fare\r\n f.fare = Full$Fare[1:891]\r\nt.fare = Full$Fare[892:1309]\r\n\r\n# 3. cabin\r\nf.cabin = cabin[1:891]\r\nt.cabin = cabin[892:1309]\r\n\r\n# 4. title\r\nf.title = title[1:891]\r\nt.title = title[892:1309]\r\n\r\n# 5. family\r\nfamily \u003c- Full$SibSp + Full$Parch\r\nf.family = family[1:891]\r\nt.family = family[892:1309]\r\n\r\n# 6. plcass\r\nf.pclass = train$Pclass\r\nt.pclass = test$Pclass\r\n\r\n# 7. sex\r\nf.sex = train$Sex\r\nt.sex = test$Sex\r\n\r\n# 8. embarked\r\nf.embarked = embarked[1:891]\r\nt.embarked = embarked[892:1309]\r\n\r\n##### Training #########\r\n\r\n# construct training data frame\r\nnew_train = data.frame(survived = f.survived, age = f.age, fare = f.fare , sex = f.sex, \r\n                       embarked = f.embarked ,family = f.family ,title = f.title ,cabin =  f.cabin, pclass= f.pclass)\r\n\r\n# logistic regression\r\nfit_logit \u003c- glm(factor(survived) ~ age + fare + sex + embarked + family \r\n                 + title + cabin + pclass,data = new_train,family = binomial)\r\n# predicted result of regression\r\nans_logit = rep(NA,891)\r\nfor(i in 1:891){\r\n  ans_logit[i] = round(fit_logit$fitted.values[[i]],0)\r\n}\r\n# check result\r\nmean(ans_logit == train$Survived)\r\ntable(ans_logit)\r\n\r\ntrControl \u003c- trainControl(method = \u0022cv\u0022, number = 5,\r\n                         repeats = 5, verboseIter = TRUE,\r\n                         classProbs = TRUE)\r\n\r\nfit_glmnet \u003c- train(factor(survived) ~ .,\r\n                    data = new_train, \r\n                    method = \u0022glmnet\u0022,\r\n                    trControl = trainControl(method = \u0022cv\u0022, number = 5,\r\n                                  repeats = 5, verboseIter = TRUE ),\r\n                    preProcess = c(\u0022center\u0022,\u0022scale\u0022))\r\nfit_glmnet                   \r\n              \r\n\r\n# Random Forest \r\n\r\nfit_forest \u003c- train(factor(survived) ~ .,\r\n                    new_train,\r\n                    method = \u0022ranger\u0022,\r\n                    tuneLength = 5,\r\n                    trControl = trainControl(method = \u0022cv\u0022, number = 5,\r\n                                             repeats = 5, verboseIter = TRUE ))\r\n\r\nfit_forest\r\n\r\n\r\n# Support Vector Machine / SVM\r\n\r\nfit_SVM \u003c- train(factor(survived) ~ .,\r\n                 new_train,\r\n                 method = \u0022svmLinear\u0022,\r\n                 trControl = trainControl(method = \u0022cv\u0022, number = 5,\r\n                                          repeats = 5, verboseIter = TRUE )\r\n                 )\r\n\r\nfit_SVM\r\n\r\n\r\n\r\nfit_support \u003c- svm(factor(survived) ~ .,data = new_train)\r\n\r\n# predicted result of regression\r\nsvm.fitted = predict(fit_support)\r\nans_svm = rep(NA,891)\r\nfor(i in 1:891){\r\n  ans_svm[i] = as.integer(svm.fitted[[i]]) - 1\r\n}\r\n# check result\r\nmean(ans_svm == train$Survived)\r\ntable(ans_svm)\r\n\r\n\r\n\r\n\r\n\r\nlist_caret \u003c- make.names(caretList(as.factor(survived) ~ .,\r\n          new_train,\r\n          methodList = c(\u0022glmnet\u0022,\u0022svmLinear\u0022),\r\n          trControl = trainControl(method = \u0022cv\u0022, number = 5,\r\n                                   repeats = 5, verboseIter = TRUE, classProbs = TRUE )),unique = TRUE)\r\n\r\n########### predictions #################\r\n\r\n\r\n# construct testing data frame\r\ntest_data_set \u003c- data.frame(age = t.age, fare = t.fare, sex = t.sex, embarked = t.embarked, \r\n                            family = t.family, title = t.title,cabin =  t.cabin, pclass = t.pclass)\r\n# make prediction\r\nsvm_predict = predict(fit_SVM,newdata = test_data_set )\r\nans_svm_predict = rep(NA,418)\r\nfor(i in 1:418){\r\n  ans_svm_predict[i] = as.integer(svm_predict[[i]]) - 1\r\n}\r\ntable(ans_svm_predict)\r\n\r\n\r\nglmnet_predict = predict(fit_glmnet,newdata = test_data_set )\r\nans_glmnet_predict = rep(NA,418)\r\nfor(i in 1:418){\r\n  ans_glmnet_predict[i] = as.integer(glmnet_predict[[i]]) - 1\r\n}\r\ntable(ans_glmnet_predict)\r\n\r\n\r\nforest_predict = predict(fit_forest,newdata = test_data_set )\r\nans_forest_predict = rep(NA,418)\r\nfor(i in 1:418){\r\n  ans_forest_predict[i] = as.integer(forest_predict[[i]]) - 1\r\n}\r\ntable(ans_forest_predict)\r\n\r\n# make prediction\r\nsupport_predict = predict(fit_support,newdata = test_data_set )\r\nans_support_predict = rep(NA,418)\r\nfor(i in 1:418){\r\n  ans_support_predict[i] = as.integer(support_predict[[i]]) - 1\r\n}\r\ntable(ans_support_predict)\r\n\r\n# Ensamble \r\n\r\nmodel_list \u003c- list(glmnet = fit_glmnet, SVM = fit_SVM)\r\n\r\n# Pass model_list to resamples(): resamples\r\nresamples \u003c- resamples(list_caret)\r\n\r\n# Summarize the results\r\nsummary(resamples)\r\n\r\nbwplot(resamples)\r\n\r\nsummary.resamples()\r\n\r\n#######STACK#############\r\n\r\nlibrary(caretEnsemble);\r\nstack \u003c- caretStack(list_caret, \r\n                    method = \u0022glmnet\u0022)\r\n\r\nsummary(stack)\r\n\r\n# create a csv file for submittion\r\nd\u003c-data.frame(PassengerId = test$PassengerId, Survived = ans_support_predict)\r\nwrite.csv(d,file = \u0022TitanicResult1.csv\u0022,row.names = F)\r\n\r\n\r\n","dateCreated":"2017-04-11T10:14:53.017Z"},"resources":null,"isolatorResults":"\u003cresults\u003e\u003cdisk_kb_free\u003e472984\u003c/disk_kb_free\u003e\u003cdocker_image_id\u003esha256:1cc117c52236f4684b865595d1b0855a72d88ca2812d47c697fdc5359bd8c09d\u003c/docker_image_id\u003e\u003cdocker_image_name\u003ekaggle/rstats\u003c/docker_image_name\u003e\u003cexit_code\u003e1\u003c/exit_code\u003e\u003cfailure_message\u003eThe kernel returned an unsuccessful exit code (1).\u003c/failure_message\u003e\u003cout_of_memory\u003eFalse\u003c/out_of_memory\u003e\u003crun_time_seconds\u003e15.1589178740396\u003c/run_time_seconds\u003e\u003csucceeded\u003eFalse\u003c/succeeded\u003e\u003ctimeout_exceeded\u003eFalse\u003c/timeout_exceeded\u003e\u003cused_all_space\u003eFalse\u003c/used_all_space\u003e\u003cwas_killed\u003eFalse\u003c/was_killed\u003e\u003c/results\u003e","runInfo":{"dockerfileUrl":"https://github.com/Kaggle/docker-rstats/blob/master/Dockerfile","dockerHubUrl":"https://registry.hub.docker.com/u/kaggle/rstats/","dockerImageDigest":null,"dockerImageId":"sha256:1cc117c52236f4684b865595d1b0855a72d88ca2812d47c697fdc5359bd8c09d","dockerImageName":"kaggle/rstats","diskKbFree":472984,"failureMessage":"The kernel returned an unsuccessful exit code (1).","exitCode":1,"queuedSeconds":0,"outputSizeBytes":0,"runTimeSeconds":15.1589178740396,"usedAllSpace":false,"timeoutExceeded":false,"isValidStatus":false,"wasGpuEnabled":false,"wasInternetEnabled":false,"outOfMemory":false,"invalidPathErrors":false,"succeeded":false,"wasKilled":false},"outputFilesTotalSizeBytes":0,"dockerImageVersionId":null,"usedCustomDockerImage":false},"author":{"id":876259,"displayName":"Stefan Klisarov","email":null,"editedEmail":null,"editedEmailCode":null,"userName":"klisarov","thumbnailUrl":"https://storage.googleapis.com/kaggle-avatars/thumbnails/876259-gp.jpg","profileUrl":"/klisarov","registerDate":"0001-01-01T00:00:00Z","lastVisitDate":"0001-01-01T00:00:00Z","statusId":0,"performanceTier":1,"userRoles":null,"userLogins":null,"groupIds":null,"duplicateUsers":null,"hasPhoneVerifications":false,"failedNerdchas":0,"hasPendingNerdcha":false,"deleteRequests":null,"userAttributes":null,"isAdmin":false,"isTvc":false,"isKaggleBot":false,"isAdminOrTvc":false,"isAnonymous":false,"canAct":false,"canBeSeen":false,"thumbnailName":null,"activationCode":"00000000-0000-0000-0000-000000000000","isPhoneVerified":false},"baseUrl":"/klisarov/titanic-script","collaborators":{"owner":{"userId":876259,"groupId":null,"groupMemberCount":null,"profileUrl":"/klisarov","thumbnailUrl":"https://storage.googleapis.com/kaggle-avatars/thumbnails/876259-gp.jpg","name":"Stefan Klisarov","slug":"klisarov","userTier":1,"joinDate":null,"type":"owner","isUser":true,"isGroup":false},"collaborators":[]},"initialTab":null,"log":"[{\n  \u0022data\u0022: \u0022\\nAttaching package: \\u2018dplyr\\u2019\\n\\n\u0022,\n  \u0022stream_name\u0022: \u0022stderr\u0022,\n  \u0022time\u0022: 8.36779403797118\n},{\n  \u0022data\u0022: \u0022The following objects are masked from \\u2018package:stats\\u2019:\\n\\n    filter, lag\\n\\n\u0022,\n  \u0022stream_name\u0022: \u0022stderr\u0022,\n  \u0022time\u0022: 8.456930211978033\n},{\n  \u0022data\u0022: \u0022The following objects are masked from \\u2018package:base\\u2019:\\n\\n    intersect, setdiff, setequal, union\\n\\n\u0022,\n  \u0022stream_name\u0022: \u0022stderr\u0022,\n  \u0022time\u0022: 8.46112141397316\n},{\n  \u0022data\u0022: \u0022Loading required package: lattice\\n\u0022,\n  \u0022stream_name\u0022: \u0022stderr\u0022,\n  \u0022time\u0022: 8.779101644991897\n},{\n  \u0022data\u0022: \u0022Loading required package: ggplot2\\n\u0022,\n  \u0022stream_name\u0022: \u0022stderr\u0022,\n  \u0022time\u0022: 9.061318795953412\n},{\n  \u0022data\u0022: \u0022\\nAttaching package: \\u2018purrr\\u2019\\n\\n\u0022,\n  \u0022stream_name\u0022: \u0022stderr\u0022,\n  \u0022time\u0022: 14.911104022990912\n},{\n  \u0022data\u0022: \u0022The following object is masked from \\u2018package:caret\\u2019:\\n\\n    lift\\n\\n\u0022,\n  \u0022stream_name\u0022: \u0022stderr\u0022,\n  \u0022time\u0022: 14.91683841595659\n},{\n  \u0022data\u0022: \u0022The following objects are masked from \\u2018package:dplyr\\u2019:\\n\\n    contains, order_by\\n\\n\u0022,\n  \u0022stream_name\u0022: \u0022stderr\u0022,\n  \u0022time\u0022: 14.92518687597476\n},{\n  \u0022data\u0022: \u0022Error in file(file, \\\u0022rt\\\u0022) : cannot open the connection\\nCalls: read.csv -\u003e read.table -\u003e file\\nIn addition: Warning message:\\nIn file(file, \\\u0022rt\\\u0022) :\\n  cannot open file \u0027train.csv\u0027: No such file or directory\\nExecution halted\\n\u0022,\n  \u0022stream_name\u0022: \u0022stderr\u0022,\n  \u0022time\u0022: 14.935324672958814\n}]","outputFiles":[],"outputFilesCropped":false,"ouputFilesOwnerInfo":{"databundleVersionId":0,"dataset":null,"competition":null,"kernel":{"kernelId":232121,"kernelVersionId":1074554,"dataviewToken":"eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0.._vMAqqClyucfob-x2dS9xQ.DsTc8tVtNVAbYQthM_p4DomkdAhEpyeUh4-_1DrymOzQ6POWfwY9NGvpiNOXQIX69ROMT2A0onShV2SN7zzEGvcqigoKF-S9fgUhA9JVJhcdO-rwW-I7V0rNmcphx3LJfsNrc95gTrYcEH4Gu6oyaUXicQktTPdfwcevyv5M4rbhBpuAWmjt_IqGBjINZljWj-FtVfiT2hPIR6K19lr1qH81PtEmE6ezLI_lWCPeYg8FoDC2hMOUCzjEhlBJWtMF3CY6IRXM1yqkXoklq9j-EUt4Ad-diP8-3DZHI04mhmgccleM9SUrjFtNJV5Y_JrB3_iHznh1_LZ7IXuZ91WWw5eeyiu034fY-uocupXUIhgByJaiy5hWgZXTRErugazgKm_4PwbNk5_Ye1utkgukvyR-yib9yshsqsaW9SGh-FCrCppRWL0oYMVLuyQp3QcOidEViqAIYjJVy7Y2ri5zWQ.5yre7TbfyQx9iDrsU-Z3fA","scope":"klisarov/titanic-script"},"previewsDisabled":false},"pageMessages":[],"dataSources":[{"imageUrl":null,"sourceUrl":"/c/introducing-kaggle-scripts","slug":"introducing-kaggle-scripts","lastUpdated":"2015-07-07T20:56:25.547Z","overview":"Your code deserves better","sourceType":"competition","sourceVersionType":null,"sourceId":4459,"sourceVersionNumber":null,"maxVersionNumber":null,"descriptionMimeType":"","deleted":false,"private":false,"privateButVisible":false,"ownerInfo":{"databundleVersionId":34323,"dataset":null,"competition":{"competitionId":4459,"dataviewToken":null,"scope":"c/introducing-kaggle-scripts"},"kernel":null,"previewsDisabled":true},"type":"dataSource","collapsed":false,"info":{"metrics":null,"archiveInfo":null,"archiveInfoV2":null,"blobFileInfo":null,"convertCsvInfo":null,"kernelReference":null},"settings":{"csvSettings":null,"bigQuerySettings":null,"bigQueryMirrorSettings":null,"storageSettings":null,"remoteUrlSettings":null,"remoteGithubSettings":null},"render":null,"children":[{"id":83286,"blobFileId":15656,"databundleVersionId":34323,"databundleVersionObjectType":"file","url":null,"relativePath":"../input/datascience.png","creationDate":"2015-06-11T15:39:59Z","isDummy":false,"size":108017,"fullPath":"../input/datascience.png","previewUrl":"kernels/competition-preview/4459?relativePath=datascience.png","downloadUrl":"/c/introducing-kaggle-scripts/download/datascience.png","fileType":".png","contentLength":108017,"contentType":"image/png","contentMD5":"RIyOrWFOeXWBlq2nwJdw2g==","validationErrors":null,"type":"databundleVersionObject","collapsed":false,"info":{"metrics":null,"archiveInfo":null,"archiveInfoV2":null,"blobFileInfo":null,"convertCsvInfo":null,"kernelReference":null},"settings":{"csvSettings":null,"bigQuerySettings":null,"bigQueryMirrorSettings":null,"storageSettings":null,"remoteUrlSettings":null,"remoteGithubSettings":null},"render":null,"children":[],"name":"datascience.png","description":""}],"name":"Introducing Kaggle Scripts","description":"\u003cp\u003eLooking to try scripts with real data? Load the \u003ca href=\u0022https://www.kaggle.com/wcukierski/introducing-kaggle-scripts/r-datasets\u0022\u003eR datasets package\u003c/a\u003e or view the \u003ca href=\u0022https://www.kaggle.com/benhamner/introducing-kaggle-scripts/rdatasets-on-julia\u0022\u003esame menu with Julia\u003c/a\u003e. \u003c/p\u003e"}],"versions":[{"id":1074554,"kernelVersionId":null,"isForkParent":false,"isNotebook":false,"languageName":"R","lastRunTime":"2017-04-11T10:14:53.017Z","linesChangedFromPrevious":0,"linesDeletedFromPrevious":0,"linesInsertedFromPrevious":356,"outputFilesTotalSizeBytes":0,"runInfo":{"dockerfileUrl":"https://github.com/Kaggle/docker-rstats/blob/master/Dockerfile","dockerHubUrl":"https://registry.hub.docker.com/u/kaggle/rstats/","dockerImageId":"sha256:1cc117c52236f4684b865595d1b0855a72d88ca2812d47c697fdc5359bd8c09d","dockerImageName":"kaggle/rstats","exitCode":1,"failureMessage":"The kernel returned an unsuccessful exit code (1).","isValidStatus":true,"runTimeSeconds":15.1589178740396,"succeeded":false,"timeoutExceeded":false,"usedAllSpace":false},"status":"error","title":"Titanic script","url":"/klisarov/titanic-script?scriptVersionId=1074554","versionNumber":1,"hasVersionNumber":true,"isRedacted":false,"versionAuthor":null}],"categories":{"categories":[],"type":"script"},"submitToCompetitionInfo":null,"downloadAllFilesUrl":"/kernels/svzip/1074554","submission":null,"menuLinks":[{"href":"/klisarov/titanic-script/code","text":"Code","title":"Code","tab":"code","count":null,"showZeroCountExplicitly":false,"reportEventCategory":null,"reportEventType":null},{"href":"/klisarov/titanic-script/data","text":"Data","title":"Data","tab":"data","count":1,"showZeroCountExplicitly":false,"reportEventCategory":null,"reportEventType":null},{"href":"/klisarov/titanic-script/comments","text":"Comments","title":"Comments","tab":"comments","count":0,"showZeroCountExplicitly":true,"reportEventCategory":null,"reportEventType":null},{"href":"/klisarov/titanic-script/log","text":"Log","title":"Log","tab":"log","count":null,"showZeroCountExplicitly":false,"reportEventCategory":null,"reportEventType":null},{"href":"/klisarov/titanic-script/versions","text":"Versions","title":"Versions","tab":"versions","count":1,"showZeroCountExplicitly":false,"reportEventCategory":null,"reportEventType":null},{"href":"/klisarov/titanic-script/forks","text":"Forks","title":"Forks","tab":"forks","count":0,"showZeroCountExplicitly":false,"reportEventCategory":null,"reportEventType":null}],"rightMenuLinks":[],"callToAction":{"href":"/kernels/fork-version/1074554","text":"Fork Script","title":"Fork Script","tab":null,"count":null,"showZeroCountExplicitly":false,"reportEventCategory":"kernels","reportEventType":"anonymousKernelForkCreation"},"voteButton":{"totalVotes":1,"hasAlreadyVotedUp":false,"hasAlreadyVotedDown":false,"canUpvote":true,"canDownvote":false,"voteUpUrl":"/kernels/vote?id=232121","voteDownUrl":null,"voters":[{"avatarThumbnailUrl":"https://storage.googleapis.com/kaggle-avatars/thumbnails/876259-gp.jpg","displayName":"Stefan Klisarov","profileUrl":"/klisarov","tier":"Contributor","tierInt":1,"userId":876259,"userName":"klisarov"}],"currentUserInfo":null,"showVoters":true,"alwaysShowVoters":true},"parentDataSource":null,"parentName":"Introducing Kaggle Scripts","parentUrl":"/c/introducing-kaggle-scripts","thumbnailImageUrl":null,"canWrite":false,"canAdminister":false,"datasetHidden":false,"forkParentIsRedacted":false,"forkDiffLinesChanged":0,"forkDiffLinesDeleted":0,"forkDiffLinesInserted":0,"forkDiffUrl":null,"forkParentAuthorDisplayName":null,"forkParentAuthorUrl":null,"forkParentTitle":null,"forkParentUrl":null,"canSeeDataExplorerV2":true,"canSeeRevampedViewer":true,"canSeeInnerTableOfContents":true,"canSeeCopyAndEditText":true,"simplifiedViewer":false,"kernelOutputDataset":null});performance && performance.mark && performance.mark("KernelViewer.componentCouldBootstrap");</script>
+
+<form action="/klisarov/titanic-script" id="__AjaxAntiForgeryForm" method="post"><input name="X-XSRF-TOKEN" type="hidden" value="CfDJ8LdUzqlsSWBPr4Ce3rb9VL8aGKKLJs_UHUdZR894mq4Xfwfqbk9eZGr_G3YB4b2-lfV0cwk7x7g3SVhrTlaucPz3ZH1CcQDrFy7lXsVEyvefVY2leG_wlHtb3L5OTJsoLHEYyegtyKg5dTP71UEUX48" /></form>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        "HTML-CSS": {
+            preferredFont: "TeX",
+            availableFonts: ["STIX", "TeX"],
+            linebreaks: {
+                automatic: true
+            },
+            EqnChunk: (MathJax.Hub.Browser.isMobile ? 10 : 50)
+        },
+        tex2jax: {
+            inlineMath: [["\\(", "\\)"], ["\\\\(", "\\\\)"]],
+            displayMath: [["$$", "$$"], ["\\[", "\\]"]],
+            processEscapes: true,
+            ignoreClass: "tex2jax_ignore|dno"
+        },
+        TeX: {
+            noUndefined: {
+                attributes: {
+                    mathcolor: "red",
+                    mathbackground: "#FFEEEE",
+                    mathsize: "90%"
+                }
+            }
+        },
+        Macros: {
+            href: "{}"
+        },
+        skipStartupTypeset: true,
+        messageStyle: "none"
+    });
+</script>
+<script type="text/javascript" async crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+
+
+    </div>
+
+        <div class="site-layout__footer">
+            <footer class="site-footer">
+    <div class="site-footer__content">
+        <div class="site-footer__copyright">
+            <span>&copy; 2019 Kaggle Inc</span>
+        </div>
+        <nav class="site-footer__nav">
+            <a href="/team">Our Team</a>
+            <a href="/terms">Terms</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/contact">Contact/Support</a>
+        </nav>
+        <nav class="site-footer__social">
+            <div data-component-name="SocialIcons" style="display: flex; flex-direction: column; flex: 1 0 auto;"></div><script>var Kaggle=window.Kaggle||{};Kaggle.State=Kaggle.State||[];Kaggle.State.push();performance && performance.mark && performance.mark("SocialIcons.componentCouldBootstrap");</script>
+        </nav>
+    </div>
+</footer>
+
+        </div>
+</div>
+
+
+
+
+    </main>
+</body>
+</html>

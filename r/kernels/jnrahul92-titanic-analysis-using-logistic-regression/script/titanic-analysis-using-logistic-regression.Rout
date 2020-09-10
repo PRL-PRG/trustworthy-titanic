@@ -1,0 +1,706 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> training_set <- read.csv('../input/train.csv',na.strings = "")
+> test_set <- read.csv('../input/test.csv',na.strings = "")
+> 
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library(car)
+Loading required package: carData
+
+Attaching package: ‘car’
+
+The following object is masked from ‘package:dplyr’:
+
+    recode
+
+Warning messages:
+1: package ‘car’ was built under R version 3.6.2 
+2: package ‘carData’ was built under R version 3.6.2 
+> 
+> #-----------Data Exploration------
+> summary(training_set)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked  
+ B96 B98    :  4   C   :168  
+ C23 C25 C27:  4   Q   : 77  
+ G6         :  4   S   :644  
+ C22 C26    :  3   NA's:  2  
+ D          :  3             
+ (Other)    :186             
+ NA's       :687             
+> names(training_set)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"   
+> str(training_set)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 147 levels "A10","A14","A16",..: NA 82 NA 56 NA NA 130 NA NA NA ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+> 
+> class(training_set$Survived) # Dependent Variable is integer.
+[1] "integer"
+> training_set$Survived <- factor(training_set$Survived,
++                                 labels = c(0,1))
+> 
+> View(training_set)
+> 
+> colSums(is.na(training_set))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0         177 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0         687           2 
+> #AGE has a lot of missing values
+> #Cabin aslo has a lot of missing values - Will transform into dummy variable
+> #Embarked has two missing values
+> 
+> #---------Data Preparation
+> 
+> #Getting title oot of name column
+> training_set$Title <- gsub('(.*,)|(\\..*)','',training_set$Name)
+> test_set$Title <- gsub('(.*,)|(\\..*)','',test_set$Name)
+> training_set$Title <- trimws(training_set$Title)
+> test_set$Title <- trimws(test_set$Title)
+> 
+> table(training_set$Sex,training_set$Title)
+        
+         Capt Col Don  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs  Ms
+  female    0   0   0   1        0    1     0      0  182    2   1   0 125   1
+  male      1   2   1   6        1    0     2     40    0    0   0 517   0   0
+        
+         Rev Sir the Countess
+  female   0   0            1
+  male     6   1            0
+> table(test_set$Sex,test_set$Title)
+        
+         Col Dona  Dr Master Miss  Mr Mrs  Ms Rev
+  female   0    1   0      0   78   0  72   1   0
+  male     2    0   1     21    0 240   0   0   2
+> 
+> rare_title <- c('Capt','Col','Don','Jonkheer','Lady','Major','Rev'
++                 ,'Sir','the Countess','Dona','Dr')
+> 
+> training_set$Title[training_set$Title == 'Mlle'] <- 'Miss'
+> training_set$Title[training_set$Title == 'Ms'] <- 'Miss'
+> training_set$Title[training_set$Title == 'Mme'] <- 'Mrs'
+> training_set$Title[training_set$Title %in% rare_title] <- 'Rare Title'
+> test_set$Title[test_set$Title == 'Mlle'] <- 'Miss'
+> test_set$Title[test_set$Title == 'Ms'] <- 'Miss'
+> test_set$Title[test_set$Title == 'Mme'] <- 'Mrs'
+> test_set$Title[test_set$Title %in% rare_title] <- 'Rare Title'
+> 
+> table(training_set$Sex,training_set$Title)
+        
+         Master Miss  Mr Mrs Rare Title
+  female      0  185   0 126          3
+  male       40    0 517   0         20
+> table(test_set$Sex,test_set$Title)
+        
+         Master Miss  Mr Mrs Rare Title
+  female      0   79   0  72          1
+  male       21    0 240   0          5
+> 
+> 
+> training_set$familysize <- training_set$Parch + training_set$SibSp + 1
+> test_set$familysize <- test_set$Parch + test_set$SibSp + 1
+> 
+> ggplot(data = training_set,aes(x=familysize,fill = Survived))+
++   geom_histogram(bins = 10,position = 'dodge')
+> 
+> training_set$FSizeD <- ifelse(training_set$familysize==1,'Singleton',
++                               ifelse(training_set$familysize<5,'small','large'))
+> test_set$FSizeD <- ifelse(test_set$familysize==1,'Singleton',
++                               ifelse(test_set$familysize<5,'small','large'))
+> 
+> 
+> #--------------Missing values-------
+> 
+> #Cabin Missing values are treated
+> sum(is.na(training_set$Cabin))
+[1] 687
+> sum(is.na(test_set$Cabin))
+[1] 327
+> 
+> training_set$Cabin_1 <- ifelse(is.na(training_set$Cabin),'Missing',
++                                as.character(training_set$Cabin))
+> test_set$Cabin_1 <- ifelse(is.na(test_set$Cabin),'Missing',
++                                as.character(test_set$Cabin))
+> 
+> sum(is.na(training_set$Cabin_1))
+[1] 0
+> sum(is.na(test_set$Cabin_1))
+[1] 0
+> 
+> #Removing the cabin column
+> training_set <- training_set[,-11] 
+> test_set <- test_set[,-10]
+> 
+> colSums(is.na(training_set))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0         177 
+      SibSp       Parch      Ticket        Fare    Embarked       Title 
+          0           0           0           0           2           0 
+ familysize      FSizeD     Cabin_1 
+          0           0           0 
+> colSums(is.na(test_set))
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+          0           0           0           0          86           0 
+      Parch      Ticket        Fare    Embarked       Title  familysize 
+          0           0           1           0           0           0 
+     FSizeD     Cabin_1 
+          0           0 
+> 
+> index1 <- which(is.na(training_set$Embarked))
+> training_set[index1,]
+    PassengerId Survived Pclass                                      Name
+62           62        1      1                       Icard, Miss. Amelie
+830         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Embarked Title familysize    FSizeD
+62  female  38     0     0 113572   80     <NA>  Miss          1 Singleton
+830 female  62     0     0 113572   80     <NA>   Mrs          1 Singleton
+    Cabin_1
+62      B28
+830     B28
+> 
+> unique(training_set$Pclass)
+[1] 3 1 2
+> unique(training_set$Embarked)
+[1] S    C    Q    <NA>
+Levels: C Q S
+> 
+> ggplot(data = training_set,aes(x=Embarked,y=Fare,fill=factor(Pclass)))+
++   geom_boxplot()
+> 
+> #From above plot best value that can be imputed is 'C'
+> 
+> training_set[index1,"Embarked"] <- 'C'
+> 
+> 
+> colSums(is.na(training_set))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0         177 
+      SibSp       Parch      Ticket        Fare    Embarked       Title 
+          0           0           0           0           0           0 
+ familysize      FSizeD     Cabin_1 
+          0           0           0 
+> colSums(is.na(test_set))
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+          0           0           0           0          86           0 
+      Parch      Ticket        Fare    Embarked       Title  familysize 
+          0           0           1           0           0           0 
+     FSizeD     Cabin_1 
+          0           0 
+> 
+> #Impute for fare
+> 
+> index2 <- which(is.na(test_set$Fare))
+> test_set[index2,]
+    PassengerId Pclass               Name  Sex  Age SibSp Parch Ticket Fare
+153        1044      3 Storey, Mr. Thomas male 60.5     0     0   3701   NA
+    Embarked Title familysize    FSizeD Cabin_1
+153        S    Mr          1 Singleton Missing
+> 
+> test_set %>% filter(Pclass==3 & Embarked=='S') %>% summarise(median(x = Fare,na.rm = T))
+  median(x = Fare, na.rm = T)
+1                        8.05
+> 
+> test_set[index2,"Fare"] <- 8.05
+> 
+> colSums(is.na(training_set))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0         177 
+      SibSp       Parch      Ticket        Fare    Embarked       Title 
+          0           0           0           0           0           0 
+ familysize      FSizeD     Cabin_1 
+          0           0           0 
+> colSums(is.na(test_set))
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+          0           0           0           0          86           0 
+      Parch      Ticket        Fare    Embarked       Title  familysize 
+          0           0           0           0           0           0 
+     FSizeD     Cabin_1 
+          0           0 
+> 
+> #Now we have to impute for column AGE
+> training_set$PassengerId <- as.factor(training_set$PassengerId)
+> training_set$Sex <- as.factor(training_set$Sex)
+> training_set$Pclass <- as.factor(training_set$Pclass)
+> training_set$Embarked <- as.factor(training_set$Embarked)
+> training_set$Title <- as.factor(training_set$Title)
+> training_set$FSizeD <- as.factor(training_set$FSizeD)
+> training_set$Cabin_1 <- as.factor(training_set$Cabin_1)
+> test_set$PassengerId <- as.factor(test_set$PassengerId)
+> test_set$Sex <- as.factor(test_set$Sex)
+> test_set$Pclass <- as.factor(test_set$Pclass)
+> test_set$Embarked <- as.factor(test_set$Embarked)
+> test_set$Title <- as.factor(test_set$Title)
+> test_set$FSizeD <- as.factor(test_set$FSizeD)
+> test_set$Cabin_1 <- as.factor(test_set$Cabin_1)
+> 
+> 
+> str(training_set)
+'data.frame':	891 obs. of  15 variables:
+ $ PassengerId: Factor w/ 891 levels "1","2","3","4",..: 1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+ $ Title      : Factor w/ 5 levels "Master","Miss",..: 3 4 2 4 3 3 3 1 4 4 ...
+ $ familysize : num  2 2 1 2 1 1 1 5 3 2 ...
+ $ FSizeD     : Factor w/ 3 levels "large","Singleton",..: 3 3 2 3 2 2 2 1 3 3 ...
+ $ Cabin_1    : Factor w/ 148 levels "A10","A14","A16",..: 147 82 147 56 147 147 130 147 147 147 ...
+> 
+> mice_mod <- mice(training_set[,!names(training_set) %in% c('PassengerId',
++                                                            'Name','Ticket',
++                                                            'Cabin_1','Survived')],method = 'rf')
+
+ iter imp variable
+  1   1  Age
+  1   2  Age
+  1   3  Age
+  1   4  Age
+  1   5  Age
+  2   1  Age
+  2   2  Age
+  2   3  Age
+  2   4  Age
+  2   5  Age
+  3   1  Age
+  3   2  Age
+  3   3  Age
+  3   4  Age
+  3   5  Age
+  4   1  Age
+  4   2  Age
+  4   3  Age
+  4   4  Age
+  4   5  Age
+  5   1  Age
+  5   2  Age
+  5   3  Age
+  5   4  Age
+  5   5  Age
+Warning message:
+Number of logged events: 25 
+> mice_ouput <- complete(mice_mod)
+> 
+> par(mfrow=c(1,2))
+> hist(training_set$Age)
+> hist(mice_ouput$Age)
+> 
+> training_set$Age <- mice_ouput$Age
+> 
+> mice_mod2 <- mice(test_set[,!names(test_set) %in% c('PassengerId',
++                                                            'Name','Ticket',
++                                                            'Cabin_1')],method = 'rf')
+
+ iter imp variable
+  1   1  Age
+  1   2  Age
+  1   3  Age
+  1   4  Age
+  1   5  Age
+  2   1  Age
+  2   2  Age
+  2   3  Age
+  2   4  Age
+  2   5  Age
+  3   1  Age
+  3   2  Age
+  3   3  Age
+  3   4  Age
+  3   5  Age
+  4   1  Age
+  4   2  Age
+  4   3  Age
+  4   4  Age
+  4   5  Age
+  5   1  Age
+  5   2  Age
+  5   3  Age
+  5   4  Age
+  5   5  Age
+Warning message:
+Number of logged events: 25 
+> mice_ouput2 <- complete(mice_mod2)
+> 
+> par(mfrow=c(1,2))
+> hist(test_set$Age)
+> hist(mice_ouput2$Age)
+> 
+> test_set$Age <- mice_ouput2$Age
+> 
+> colSums(is.na(training_set))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0           0 
+      SibSp       Parch      Ticket        Fare    Embarked       Title 
+          0           0           0           0           0           0 
+ familysize      FSizeD     Cabin_1 
+          0           0           0 
+> colSums(is.na(test_set))
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+          0           0           0           0           0           0 
+      Parch      Ticket        Fare    Embarked       Title  familysize 
+          0           0           0           0           0           0 
+     FSizeD     Cabin_1 
+          0           0 
+> 
+> training_set$Child <- ifelse(training_set$Age<18,1,0)
+> test_set$Child <- ifelse(test_set$Age<18,1,0)
+> 
+> training_set$Child <- as.factor(training_set$Child)
+> test_set$Child <- as.factor(test_set$Child)
+> 
+> 
+> #-----------Logistic Regression------
+> 
+> mod <- glm(Survived~.,training_set[-c(1,4,9)],family = 'binomial')
+> 
+> summary(mod)
+
+Call:
+glm(formula = Survived ~ ., family = "binomial", data = training_set[-c(1, 
+    4, 9)])
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.0558  -0.4541  -0.3174   0.2343   2.5560  
+
+Coefficients: (1 not defined because of singularities)
+                         Estimate Std. Error z value Pr(>|z|)    
+(Intercept)            -1.426e+01  9.345e+03  -0.002 0.998783    
+Pclass2                -5.112e-01  5.718e-01  -0.894 0.371284    
+Pclass3                -1.400e+00  5.779e-01  -2.422 0.015428 *  
+Sexmale                -4.562e+00  6.692e+03  -0.001 0.999456    
+Age                    -2.246e-02  1.274e-02  -1.763 0.077894 .  
+SibSp                  -2.756e-02  2.337e-01  -0.118 0.906126    
+Parch                   3.193e-01  2.556e-01   1.249 0.211651    
+Fare                    9.829e-03  6.032e-03   1.629 0.103216    
+EmbarkedQ               1.939e-01  4.576e-01   0.424 0.671709    
+EmbarkedS              -1.543e-01  3.426e-01  -0.450 0.652564    
+TitleMiss              -5.639e+00  6.692e+03  -0.001 0.999328    
+TitleMr                -3.882e+00  7.229e-01  -5.370 7.88e-08 ***
+TitleMrs               -4.597e+00  6.692e+03  -0.001 0.999452    
+TitleRare Title        -5.073e+00  1.327e+00  -3.823 0.000132 ***
+familysize                     NA         NA      NA       NA    
+FSizeDSingleton         4.551e+00  1.332e+00   3.417 0.000633 ***
+FSizeDsmall             3.731e+00  1.033e+00   3.612 0.000304 ***
+Cabin_1A14              3.754e-02  9.224e+03   0.000 0.999997    
+Cabin_1A16              3.488e+01  1.140e+04   0.003 0.997558    
+Cabin_1A19              3.380e-01  9.224e+03   0.000 0.999971    
+Cabin_1A20              3.930e+01  9.224e+03   0.004 0.996601    
+Cabin_1A23              3.837e+01  9.224e+03   0.004 0.996681    
+Cabin_1A24             -5.998e-02  9.224e+03   0.000 0.999995    
+Cabin_1A26              3.882e+01  9.224e+03   0.004 0.996642    
+Cabin_1A31              3.731e+01  9.224e+03   0.004 0.996773    
+Cabin_1A32              2.593e-01  9.224e+03   0.000 0.999978    
+Cabin_1A34              3.213e+01  9.224e+03   0.003 0.997220    
+Cabin_1A36              6.160e-01  9.224e+03   0.000 0.999947    
+Cabin_1A5               8.399e-01  9.224e+03   0.000 0.999927    
+Cabin_1A6               3.715e+01  9.224e+03   0.004 0.996786    
+Cabin_1A7               5.419e-01  9.224e+03   0.000 0.999953    
+Cabin_1B101             3.247e+01  9.224e+03   0.004 0.997192    
+Cabin_1B102             6.834e-01  9.224e+03   0.000 0.999941    
+Cabin_1B18              3.383e+01  7.983e+03   0.004 0.996619    
+Cabin_1B19              7.809e-01  9.224e+03   0.000 0.999932    
+Cabin_1B20              3.657e+01  7.364e+03   0.005 0.996037    
+Cabin_1B22              1.835e+01  6.523e+03   0.003 0.997756    
+Cabin_1B28              3.375e+01  7.975e+03   0.004 0.996623    
+Cabin_1B3               3.241e+01  9.224e+03   0.004 0.997196    
+Cabin_1B30              9.368e-01  9.224e+03   0.000 0.999919    
+Cabin_1B35              3.334e+01  7.933e+03   0.004 0.996647    
+Cabin_1B37              5.966e-01  9.224e+03   0.000 0.999948    
+Cabin_1B38              1.681e+00  9.224e+03   0.000 0.999855    
+Cabin_1B39              3.410e+01  9.224e+03   0.004 0.997050    
+Cabin_1B4               3.359e+01  9.224e+03   0.004 0.997095    
+Cabin_1B41              3.781e+01  9.224e+03   0.004 0.996729    
+Cabin_1B42              3.420e+01  9.224e+03   0.004 0.997042    
+Cabin_1B49              3.604e+01  7.430e+03   0.005 0.996130    
+Cabin_1B5               3.256e+01  7.970e+03   0.004 0.996740    
+Cabin_1B50              3.833e+01  9.224e+03   0.004 0.996685    
+Cabin_1B51 B53 B55      1.671e+01  6.523e+03   0.003 0.997956    
+Cabin_1B57 B59 B63 B66  3.574e+01  7.988e+03   0.004 0.996430    
+Cabin_1B58 B60          1.513e+01  6.523e+03   0.002 0.998150    
+Cabin_1B69              3.380e+01  9.224e+03   0.004 0.997076    
+Cabin_1B71              7.723e-01  9.224e+03   0.000 0.999933    
+Cabin_1B73              3.382e+01  9.224e+03   0.004 0.997075    
+Cabin_1B77              3.366e+01  8.366e+03   0.004 0.996790    
+Cabin_1B78              3.234e+01  9.224e+03   0.004 0.997203    
+Cabin_1B79              3.325e+01  9.224e+03   0.004 0.997124    
+Cabin_1B80              3.378e+01  9.224e+03   0.004 0.997079    
+Cabin_1B82 B84         -1.594e-01  9.224e+03   0.000 0.999986    
+Cabin_1B86             -6.536e-01  9.224e+03   0.000 0.999943    
+Cabin_1B94              6.385e-01  9.224e+03   0.000 0.999945    
+Cabin_1B96 B98          3.494e+01  7.029e+03   0.005 0.996034    
+Cabin_1C101             3.458e+01  9.224e+03   0.004 0.997009    
+Cabin_1C103             3.511e+01  9.224e+03   0.004 0.996963    
+Cabin_1C104             3.893e+01  9.224e+03   0.004 0.996633    
+Cabin_1C106             3.734e+01  9.224e+03   0.004 0.996771    
+Cabin_1C110             2.846e-01  9.224e+03   0.000 0.999975    
+Cabin_1C111            -1.314e-02  9.224e+03   0.000 0.999999    
+Cabin_1C118             6.251e-01  9.224e+03   0.000 0.999946    
+Cabin_1C123             1.752e+01  6.523e+03   0.003 0.997857    
+Cabin_1C124             4.859e-01  7.989e+03   0.000 0.999951    
+Cabin_1C125             3.339e+01  7.984e+03   0.004 0.996663    
+Cabin_1C126             3.708e+01  7.421e+03   0.005 0.996013    
+Cabin_1C128             4.740e-02  9.224e+03   0.000 0.999996    
+Cabin_1C148             3.701e+01  9.224e+03   0.004 0.996799    
+Cabin_1C2               1.715e+01  6.523e+03   0.003 0.997902    
+Cabin_1C22 C26          1.278e+01  6.523e+03   0.002 0.998437    
+Cabin_1C23 C25 C27      1.887e+01  6.523e+03   0.003 0.997692    
+Cabin_1C30              6.756e-01  9.224e+03   0.000 0.999942    
+Cabin_1C32              3.339e+01  9.224e+03   0.004 0.997112    
+Cabin_1C45              3.253e+01  9.224e+03   0.004 0.997186    
+Cabin_1C46              6.207e-01  9.224e+03   0.000 0.999946    
+Cabin_1C47              3.710e+01  9.224e+03   0.004 0.996791    
+Cabin_1C49             -2.378e+00  9.224e+03   0.000 0.999794    
+Cabin_1C50              3.381e+01  9.224e+03   0.004 0.997075    
+Cabin_1C52              3.720e+01  7.988e+03   0.005 0.996285    
+Cabin_1C54              3.363e+01  9.224e+03   0.004 0.997091    
+Cabin_1C62 C64          3.189e+01  9.224e+03   0.003 0.997242    
+Cabin_1C65              1.624e+01  6.523e+03   0.002 0.998014    
+Cabin_1C68              1.665e+01  6.523e+03   0.003 0.997963    
+Cabin_1C7               3.332e+01  9.224e+03   0.004 0.997118    
+Cabin_1C70              3.587e+01  9.224e+03   0.004 0.996897    
+Cabin_1C78              1.799e+01  6.523e+03   0.003 0.997799    
+Cabin_1C82             -1.706e+00  9.224e+03   0.000 0.999852    
+Cabin_1C83              1.731e+01  6.523e+03   0.003 0.997883    
+Cabin_1C85              3.387e+01  9.224e+03   0.004 0.997070    
+Cabin_1C86              5.099e-01  9.224e+03   0.000 0.999956    
+Cabin_1C87              8.717e-01  9.224e+03   0.000 0.999925    
+Cabin_1C90              3.397e+01  9.224e+03   0.004 0.997062    
+Cabin_1C91             -4.146e-01  9.224e+03   0.000 0.999964    
+Cabin_1C92              3.655e+01  7.399e+03   0.005 0.996058    
+Cabin_1C93              3.650e+01  7.436e+03   0.005 0.996083    
+Cabin_1C95             -1.227e+00  9.224e+03   0.000 0.999894    
+Cabin_1C99              3.352e+01  9.224e+03   0.004 0.997101    
+Cabin_1D                1.779e+01  6.523e+03   0.003 0.997824    
+Cabin_1D10 D12          3.711e+01  9.224e+03   0.004 0.996790    
+Cabin_1D11              3.425e+01  9.224e+03   0.004 0.997037    
+Cabin_1D15              3.388e+01  9.224e+03   0.004 0.997069    
+Cabin_1D17              3.412e+01  8.997e+03   0.004 0.996974    
+Cabin_1D19              3.815e+01  9.224e+03   0.004 0.996700    
+Cabin_1D20              3.475e+01  7.928e+03   0.004 0.996502    
+Cabin_1D21              3.415e+01  9.224e+03   0.004 0.997046    
+Cabin_1D26              2.777e-01  7.960e+03   0.000 0.999972    
+Cabin_1D28              3.422e+01  9.224e+03   0.004 0.997040    
+Cabin_1D30              4.919e-01  9.224e+03   0.000 0.999957    
+Cabin_1D33              3.672e+01  7.445e+03   0.005 0.996065    
+Cabin_1D35              3.657e+01  7.466e+03   0.005 0.996092    
+Cabin_1D36              3.426e+01  7.987e+03   0.004 0.996578    
+Cabin_1D37              3.433e+01  9.224e+03   0.004 0.997031    
+Cabin_1D45              3.741e+01  9.224e+03   0.004 0.996764    
+Cabin_1D46              4.613e-01  9.224e+03   0.000 0.999960    
+Cabin_1D47              3.442e+01  9.224e+03   0.004 0.997023    
+Cabin_1D48             -4.392e-02  9.224e+03   0.000 0.999996    
+Cabin_1D49              3.657e+01  9.224e+03   0.004 0.996837    
+Cabin_1D50              7.925e-01  9.224e+03   0.000 0.999931    
+Cabin_1D56              3.802e+01  9.224e+03   0.004 0.996711    
+Cabin_1D6               9.655e-02  9.224e+03   0.000 0.999992    
+Cabin_1D7               3.556e+01  9.224e+03   0.004 0.996924    
+Cabin_1D9               3.377e+01  9.224e+03   0.004 0.997079    
+Cabin_1E10              3.891e+01  9.224e+03   0.004 0.996634    
+Cabin_1E101             3.513e+01  7.531e+03   0.005 0.996278    
+Cabin_1E12              3.769e+01  9.224e+03   0.004 0.996740    
+Cabin_1E121             3.505e+01  7.955e+03   0.004 0.996484    
+Cabin_1E17              3.776e+01  9.224e+03   0.004 0.996734    
+Cabin_1E24              3.748e+01  7.987e+03   0.005 0.996256    
+Cabin_1E25              3.742e+01  7.989e+03   0.005 0.996262    
+Cabin_1E31              1.019e+00  9.224e+03   0.000 0.999912    
+Cabin_1E33              3.427e+01  7.972e+03   0.004 0.996570    
+Cabin_1E34              3.297e+01  9.224e+03   0.004 0.997148    
+Cabin_1E36              3.403e+01  9.224e+03   0.004 0.997057    
+Cabin_1E38              9.390e-01  9.224e+03   0.000 0.999919    
+Cabin_1E40              3.351e+01  9.224e+03   0.004 0.997101    
+Cabin_1E44              1.768e+01  6.523e+03   0.003 0.997837    
+Cabin_1E46              4.432e-01  9.224e+03   0.000 0.999962    
+Cabin_1E49              3.450e+01  9.224e+03   0.004 0.997016    
+Cabin_1E50              3.758e+01  9.224e+03   0.004 0.996749    
+Cabin_1E58              5.442e-01  9.224e+03   0.000 0.999953    
+Cabin_1E63              4.173e-01  9.224e+03   0.000 0.999964    
+Cabin_1E67              1.715e+01  6.523e+03   0.003 0.997902    
+Cabin_1E68              3.387e+01  9.224e+03   0.004 0.997070    
+Cabin_1E77             -2.419e+00  9.224e+03   0.000 0.999791    
+Cabin_1E8               3.665e+01  7.456e+03   0.005 0.996079    
+Cabin_1F E69            3.534e+01  9.224e+03   0.004 0.996943    
+Cabin_1F G63            2.008e+00  9.224e+03   0.000 0.999826    
+Cabin_1F G73            1.557e+00  7.988e+03   0.000 0.999844    
+Cabin_1F2               1.763e+01  6.523e+03   0.003 0.997843    
+Cabin_1F33              3.448e+01  7.505e+03   0.005 0.996334    
+Cabin_1F38              1.232e+00  9.224e+03   0.000 0.999893    
+Cabin_1F4               3.405e+01  7.923e+03   0.004 0.996571    
+Cabin_1G6               1.685e+01  6.523e+03   0.003 0.997939    
+Cabin_1Missing          1.781e+01  6.523e+03   0.003 0.997821    
+Cabin_1T                4.019e-01  9.224e+03   0.000 0.999965    
+Child1                  3.219e-01  4.150e-01   0.776 0.437961    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  547.75  on 727  degrees of freedom
+AIC: 875.75
+
+Number of Fisher Scoring iterations: 17
+
+> 
+> #---------Making dummy variables for Title column
+> unique(training_set$Title)
+[1] Mr         Mrs        Miss       Master     Rare Title
+Levels: Master Miss Mr Mrs Rare Title
+> training_set$Mr <- ifelse(training_set$Title=='Mr',1,0)
+> training_set$Mrs <- ifelse(training_set$Title=='Mrs',1,0)
+> training_set$Miss <- ifelse(training_set$Title=='Miss',1,0)
+> training_set$Master <- ifelse(training_set$Title=='Master',1,0)
+> training_set$RareTitle <- ifelse(training_set$Title=='Rare Title',1,0)
+> training_set <- training_set[-12]
+> 
+> test_set$Mr <- ifelse(test_set$Title=='Mr',1,0)
+> test_set$Mrs <- ifelse(test_set$Title=='Mrs',1,0)
+> test_set$Miss <- ifelse(test_set$Title=='Miss',1,0)
+> test_set$Master <- ifelse(test_set$Title=='Master',1,0)
+> test_set$RareTitle <- ifelse(test_set$Title=='Rare Title',1,0)
+> test_set <- test_set[-11]
+> 
+> mod3 <- glm(Survived~Master+Sex+Age+Pclass
++             +FSizeD,data = training_set,family = 'binomial')
+> summary(mod3)
+
+Call:
+glm(formula = Survived ~ Master + Sex + Age + Pclass + FSizeD, 
+    family = "binomial", data = training_set)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6566  -0.5705  -0.3851   0.5634   2.4211  
+
+Coefficients:
+                 Estimate Std. Error z value Pr(>|z|)    
+(Intercept)      0.770701   0.527509   1.461   0.1440    
+Master           3.553624   0.563918   6.302 2.94e-10 ***
+Sexmale         -3.205298   0.226099 -14.177  < 2e-16 ***
+Age             -0.020781   0.008265  -2.514   0.0119 *  
+Pclass2         -1.361623   0.282339  -4.823 1.42e-06 ***
+Pclass3         -2.353687   0.268114  -8.779  < 2e-16 ***
+FSizeDSingleton  2.889049   0.464072   6.225 4.80e-10 ***
+FSizeDsmall      2.769738   0.448305   6.178 6.48e-10 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  720.52  on 883  degrees of freedom
+AIC: 736.52
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> vif(mod3)
+           GVIF Df GVIF^(1/(2*Df))
+Master 1.587515  1        1.259966
+Sex    1.367692  1        1.169483
+Age    1.587806  1        1.260082
+Pclass 1.503587  2        1.107343
+FSizeD 1.539497  2        1.113896
+> 
+> pred <- predict(object = mod3,newdata = test_set,
++                 type = 'response')
+> 
+> table(training_set$Survived)/nrow(training_set)
+
+        0         1 
+0.6161616 0.3838384 
+> test_set$Survived <- ifelse(pred > 0.5,1,0)
+> 
+> solution <- data.frame(PassengerID = test_set$PassengerId,
++                        Survived = test_set$Survived)
+> write.csv(solution,'Log_Solution.csv',row.names = F)
+> 
+> proc.time()
+   user  system elapsed 
+  3.181   0.294   3.840 

@@ -1,0 +1,293 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This is my first kernel using R.
+> # Titanic Disaster is something so serious in sea transportation. 
+> # First of all, I begin the analysis this data set using EDA (Exploratory data Analysis) 
+> # I consist of Visualization and Descriptive analysis, and also data preprocessing like missing values handle.
+> # I am going to use Logistic Biner Regression, with respons : Survival ==> 0 = No, 1 = Yes
+> # And many predictors like : 
+> 
+> # 1) PClass
+> # 2) embarked
+> # 3) sibsp
+> # 4) parch
+> 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> train <- read_csv("../input/train.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> head(train,10)
+[90m# A tibble: 10 x 12[39m
+   PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin
+         [3m[90m<dbl>[39m[23m    [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m
+[90m 1[39m           1        0      3 Brau… male     22     1     0 A/5 2…  7.25 [31mNA[39m   
+[90m 2[39m           2        1      1 Cumi… fema…    38     1     0 PC 17… 71.3  C85  
+[90m 3[39m           3        1      3 Heik… fema…    26     0     0 STON/…  7.92 [31mNA[39m   
+[90m 4[39m           4        1      1 Futr… fema…    35     1     0 113803 53.1  C123 
+[90m 5[39m           5        0      3 Alle… male     35     0     0 373450  8.05 [31mNA[39m   
+[90m 6[39m           6        0      3 Mora… male     [31mNA[39m     0     0 330877  8.46 [31mNA[39m   
+[90m 7[39m           7        0      1 McCa… male     54     0     0 17463  51.9  E46  
+[90m 8[39m           8        0      3 Pals… male      2     3     1 349909 21.1  [31mNA[39m   
+[90m 9[39m           9        1      3 John… fema…    27     0     2 347742 11.1  [31mNA[39m   
+[90m10[39m          10        1      2 Nass… fema…    14     1     0 237736 30.1  [31mNA[39m   
+[90m# … with 1 more variable: Embarked [3m[90m<chr>[90m[23m[39m
+> 
+> #I try to see the missing value in each column. Here, i am using sapply funcntion :
+> attach(train)
+> # we see how many missing value in each attributes, here:
+> sapply(train, function(x) sum(is.na(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0         177 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0         687           2 
+> 
+> 
+> #And I try to plot the missing values VS observation with missmap from Amelia's package. 
+> library(Amelia)
+Loading required package: Rcpp
+## 
+## Amelia II: Multiple Imputation
+## (Version 1.7.6, built: 2019-11-24)
+## Copyright (C) 2005-2020 James Honaker, Gary King and Matthew Blackwell
+## Refer to http://gking.harvard.edu/amelia/ for more information
+## 
+> missmap(train)
+Warning messages:
+1: Unknown or uninitialised column: `arguments`. 
+2: Unknown or uninitialised column: `arguments`. 
+3: Unknown or uninitialised column: `imputations`. 
+> #from the summary we can see that cabin, age, and embarked variables have the missing data 
+> #but the cabin variable has much more missing value, so i drop it from the dataset. 
+> #and for the age variable, i use mean imputation. And for Embarket variable, i use mode statistics.
+> 
+> d_train = train[,-1]
+> 
+> #This is below the process of imputation Age's attribute using mean
+> d_train$Age[is.na(d_train$Age)] = mean(d_train$Age, na.rm = T) 
+> # This is below the process of imputation Embarked's attribute using mode, using getmode function
+> # We use mode beacuse the data is discrete
+> getmode <- function(v) {
++    uniqv <- unique(v)
++    uniqv[which.max(tabulate(match(v, uniqv)))]
++ }
+> d_train$Embarked[is.na(d_train$Embarked)] = getmode(d_train$Embarked)
+> 
+> ## Modelling Data
+> #After the EDA step, i try to modelling the data to model the survived variable depends on other variable. 
+> #here i am using logistic biner regression to classified survived = 1, or not survive = 0.
+> model1 <- glm(Survived ~ Pclass + Age + Sex +SibSp + Parch + Fare + Embarked, family = binomial(link='logit'), data=d_train)
+> summary(model1)
+
+Call:
+glm(formula = Survived ~ Pclass + Age + Sex + SibSp + Parch + 
+    Fare + Embarked, family = binomial(link = "logit"), data = d_train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6468  -0.5896  -0.4223   0.6213   2.4422  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  5.286535   0.564942   9.358  < 2e-16 ***
+Pclass      -1.102202   0.143601  -7.675 1.65e-14 ***
+Age         -0.039661   0.007836  -5.061 4.17e-07 ***
+Sexmale     -2.727214   0.200573 -13.597  < 2e-16 ***
+SibSp       -0.326912   0.109518  -2.985  0.00284 ** 
+Parch       -0.094582   0.118718  -0.797  0.42563    
+Fare         0.001961   0.002382   0.823  0.41028    
+EmbarkedQ   -0.032673   0.382322  -0.085  0.93190    
+EmbarkedS   -0.413875   0.236830  -1.748  0.08054 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  784.78  on 882  degrees of freedom
+AIC: 802.78
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> 
+> #After modelling, we see that Pclass, Age, Sex, SibSp have siginificant in model. 
+> #And for the goodness of the model we see AIC 802,78.
+> #next i try to use the 2 other model like below : 
+> model2 <- glm(Survived ~ Pclass + Age + Sex +SibSp, family = binomial(link='logit'), data=d_train)
+> summary(model2)
+
+Call:
+glm(formula = Survived ~ Pclass + Age + Sex + SibSp, family = binomial(link = "logit"), 
+    data = d_train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6869  -0.6055  -0.4169   0.6111   2.4547  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  5.191976   0.478346  10.854  < 2e-16 ***
+Pclass      -1.172391   0.119725  -9.792  < 2e-16 ***
+Age         -0.039793   0.007755  -5.131 2.88e-07 ***
+Sexmale     -2.739806   0.194142 -14.112  < 2e-16 ***
+SibSp       -0.357788   0.104033  -3.439 0.000583 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  790.84  on 886  degrees of freedom
+AIC: 800.84
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> #and the model3 like below : 
+> model3 <- glm(Survived ~ Pclass + Age + Sex, family = binomial(link='logit'), data=d_train)
+> summary(model3)
+
+Call:
+glm(formula = Survived ~ Pclass + Age + Sex, family = binomial(link = "logit"), 
+    data = d_train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6557  -0.6579  -0.4211   0.6371   2.4264  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  4.731956   0.449819  10.520  < 2e-16 ***
+Pclass      -1.168463   0.118941  -9.824  < 2e-16 ***
+Age         -0.033427   0.007348  -4.549 5.38e-06 ***
+Sexmale     -2.611964   0.186609 -13.997  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  805.33  on 887  degrees of freedom
+AIC: 813.33
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> # In this cases, i will use logistic regression with step function to find best subset wit AIC lower
+> # Model 1 as full model, and use find AIC backward as below
+> model.aic.backward <- step(model1, direction = "backward", trace = 1)
+Start:  AIC=802.78
+Survived ~ Pclass + Age + Sex + SibSp + Parch + Fare + Embarked
+
+           Df Deviance     AIC
+- Parch     1   785.42  801.42
+- Fare      1   785.50  801.50
+- Embarked  2   788.73  802.73
+<none>          784.78  802.78
+- SibSp     1   795.23  811.23
+- Age       1   812.40  828.40
+- Pclass    1   844.30  860.30
+- Sex       1  1017.71 1033.71
+
+Step:  AIC=801.42
+Survived ~ Pclass + Age + Sex + SibSp + Fare + Embarked
+
+           Df Deviance     AIC
+- Fare      1   785.91  799.91
+<none>          785.42  801.42
+- Embarked  2   789.65  801.65
+- SibSp     1   798.45  812.45
+- Age       1   812.82  826.82
+- Pclass    1   848.36  862.36
+- Sex       1  1023.54 1037.54
+
+Step:  AIC=799.91
+Survived ~ Pclass + Age + Sex + SibSp + Embarked
+
+           Df Deviance     AIC
+<none>          785.91  799.91
+- Embarked  2   790.84  800.84
+- SibSp     1   798.47  810.47
+- Age       1   813.76  825.76
+- Pclass    1   883.63  895.63
+- Sex       1  1027.65 1039.65
+> 
+> #we see that the AIC is lower at 799.91 using logistic biner regression, with variable X -> Pclass, Age, Sex SibSp, and Embarked
+> 
+> model_final <- glm(Survived ~ Pclass + Age + Sex +SibSp + Embarked, family = binomial(link='logit'), data=d_train)
+> summary(model_final)
+
+Call:
+glm(formula = Survived ~ Pclass + Age + Sex + SibSp + Embarked, 
+    family = binomial(link = "logit"), data = d_train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6314  -0.6000  -0.4216   0.6296   2.4566  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  5.456531   0.499249  10.929  < 2e-16 ***
+Pclass      -1.162520   0.125545  -9.260  < 2e-16 ***
+Age         -0.039656   0.007803  -5.082 3.73e-07 ***
+Sexmale     -2.701970   0.195136 -13.847  < 2e-16 ***
+SibSp       -0.334622   0.103874  -3.221  0.00128 ** 
+EmbarkedQ   -0.026898   0.378994  -0.071  0.94342    
+EmbarkedS   -0.449915   0.231671  -1.942  0.05213 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  785.91  on 884  degrees of freedom
+AIC: 799.91
+
+Number of Fisher Scoring iterations: 5
+
+> ##Conclusion
+> #that's all about modelling the data. 
+> #Thanks.
+> 
+> # Thats's 
+> 
+> proc.time()
+   user  system elapsed 
+  0.887   0.114   1.000 

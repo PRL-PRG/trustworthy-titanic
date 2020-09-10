@@ -1,0 +1,348 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> library(caret)
+Loading required package: lattice
+Loading required package: ggplot2
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(rpart.plot)
+Loading required package: rpart
+> impute_median <- function(x){
++   ind_na <- is.na(x)
++   x[ind_na] <- median(x[!ind_na])
++   as.numeric(x)
++ }
+> train <- read.csv('../input/train.csv', stringsAsFactors = FALSE, na.strings = '' )
+> test <- read.csv('../input/test.csv', stringsAsFactors = FALSE, na.strings = '' )
+> train2 <- subset(train, select = c(2,3,5,6,7,8))
+> test2 <- subset(test, select = c(2,4,5,6,7,8))
+> 
+> firstClass <- c()
+> secondClass <- c()
+> thirdClass <- c()
+> 
+> for(k in 1:length(train2$Pclass)){
++   
++   if(train2$Pclass[k] == 1){
++     firstClass <- c(firstClass, 1)
++   }
++   else{
++     firstClass <-c(firstClass, 0)
++   }
++   if(train2$Pclass[k] == 2){
++     secondClass <- c(secondClass, 1)
++   }
++   else{
++     secondClass <-c(secondClass, 0)
++   }
++   if(train2$Pclass[k] == 3){
++     thirdClass <- c(thirdClass, 1)
++   }
++   else{
++     thirdClass <-c(thirdClass, 0)
++   }
++   
++ }
+> 
+> train3 <- subset(train, select = c(2,5,6,7,8) )
+> train4 <- cbind(train3, firstC = firstClass, secondC = secondClass, thirdC = thirdClass)
+> 
+> for(k in 1:length(train4$Sex)){
++   if(train4$Sex[k] == 'female'){
++     train4$Sex[k] <- 0
++   }
++   if(train4$Sex[k] == 'male'){
++     train4$Sex[k] <- 1
++   }
++ }
+> 
+> firstClass2 <- c()
+> secondClass2 <- c()
+> thirdClass2 <- c()
+> 
+> for(k in 1:length(test2$Pclass)){
++   
++   if(test2$Pclass[k] == 1){
++     firstClass2 <- c(firstClass2, 1)
++   }
++   else{
++     firstClass2 <-c(firstClass2, 0)
++   }
++   if(test2$Pclass[k] == 2){
++     secondClass2 <- c(secondClass2, 1)
++   }
++   else{
++     secondClass2 <-c(secondClass2, 0)
++   }
++   if(test2$Pclass[k] == 3){
++     thirdClass2 <- c(thirdClass2, 1)
++   }
++   else{
++     thirdClass2 <-c(thirdClass2, 0)
++   }
++   
++ }
+> 
+> test3 <- subset(test, select = c(4,5,6,7))
+> test4 <- cbind(test3, firstC = firstClass2, secondC = secondClass2, thirdC = thirdClass2)
+> 
+> for(k in 1:length(test4$Sex)){
++   if(test4$Sex[k] == 'female'){
++     test4$Sex[k] <- 0
++   }
++   if(test4$Sex[k] == 'male'){
++     test4$Sex[k] <- 1
++   }
++ }
+> 
+> # Build Caret Models: binary logistic regression, glmnet and random forest
+> set.seed(42)
+> y <- train$Survived
+> 
+> for (x in 1:length(y)){
++   if(y[x] == 1){
++     y[x] <- 'yes'
++   }
++   if(y[x] == 0){
++     y[x] <- 'no'
++   }
++ }
+> 
+> # Create custom indices: myFolds
+> myFolds <- createFolds(y, k = 3)
+> 
+> # Create reusable trainControl object: myControl
+> myControl <- trainControl(
++   summaryFunction = twoClassSummary,
++   classProbs = TRUE, # IMPORTANT!
++   verboseIter = TRUE,
++   savePredictions = TRUE,
++   index = myFolds
++ )
+> 
+> train4 <- subset(train4, select = c(2,3,4,5,6,7,8))
+> 
+> # Fit glm model: glm with median imputation
+> model_glm <- train(
++   x = train4, y = as.factor(y),
++   method = 'glm',
++   trControl = myControl,
++   preProcess = c('medianImpute', 'center','scale')
++ )
++ Fold1: parameter=none 
+- Fold1: parameter=none 
++ Fold2: parameter=none 
+- Fold2: parameter=none 
++ Fold3: parameter=none 
+- Fold3: parameter=none 
+Aggregating results
+Fitting final model on full training set
+Warning messages:
+1: In train.default(x = train4, y = as.factor(y), method = "glm", trControl = myControl,  :
+  The metric "Accuracy" was not in the result set. ROC will be used instead.
+2: In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+3: In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+4: In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+5: In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+6: In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+7: In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+> 
+> # Fit glm model: glm with knn imputation
+> model_glm2 <- train(
++   x = train4, y = as.factor(y),
++   method = 'glm',
++   trControl = myControl,
++   preProcess = 'knnImpute'
++ )
++ Fold1: parameter=none 
+- Fold1: parameter=none 
++ Fold2: parameter=none 
+- Fold2: parameter=none 
++ Fold3: parameter=none 
+- Fold3: parameter=none 
+Aggregating results
+Fitting final model on full training set
+Warning messages:
+1: In train.default(x = train4, y = as.factor(y), method = "glm", trControl = myControl,  :
+  The metric "Accuracy" was not in the result set. ROC will be used instead.
+2: In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+3: In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+4: In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+5: In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+6: In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+7: In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+> 
+> # Fit glm model: glm with knn imputation and pca for handling low variance columns
+> model_glm3 <- train(
++   x = train4, y = as.factor(y),
++   method = 'glm',
++   trControl = myControl,
++   preProcess = c('knnImpute', 'center','scale', 'pca')
++ )
++ Fold1: parameter=none 
+- Fold1: parameter=none 
++ Fold2: parameter=none 
+- Fold2: parameter=none 
++ Fold3: parameter=none 
+- Fold3: parameter=none 
+Aggregating results
+Fitting final model on full training set
+Warning message:
+In train.default(x = train4, y = as.factor(y), method = "glm", trControl = myControl,  :
+  The metric "Accuracy" was not in the result set. ROC will be used instead.
+> 
+> age <- impute_median(train4$Age)
+> 
+> ageSex <- c()
+> for (k in 1:length(age)){
++   ageSex[k] <- age[k] * as.numeric(train4$Sex[k])
++ }
+> 
+> trainT <- data.frame(Age = age, sex = train4$Sex, fClass = train4$firstC, sClass = train4$secondC, tClass = train4$thirdC,
++                      Sibp = train4$SibSp, Parch = train4$Parch, ageSex = ageSex )
+> 
+> model_ranger <- train(
++   x = trainT, y = y,
++   method = 'rf',
++   metric = 'ROC',
++   trControl = myControl
++ )
++ Fold1: mtry=2 
+- Fold1: mtry=2 
++ Fold1: mtry=5 
+- Fold1: mtry=5 
++ Fold1: mtry=8 
+- Fold1: mtry=8 
++ Fold2: mtry=2 
+- Fold2: mtry=2 
++ Fold2: mtry=5 
+- Fold2: mtry=5 
++ Fold2: mtry=8 
+- Fold2: mtry=8 
++ Fold3: mtry=2 
+- Fold3: mtry=2 
++ Fold3: mtry=5 
+- Fold3: mtry=5 
++ Fold3: mtry=8 
+- Fold3: mtry=8 
+Aggregating results
+Selecting tuning parameters
+Fitting mtry = 2 on full training set
+> 
+> trainT <- cbind(y, trainT)
+> 
+> model_decisionTree <- train(
++   y ~ ., trainT,
++   method = 'rpart',
++   metric = 'ROC',
++   trControl = myControl
++ )
++ Fold1: cp=0.004386 
+- Fold1: cp=0.004386 
++ Fold2: cp=0.004386 
+- Fold2: cp=0.004386 
++ Fold3: cp=0.004386 
+- Fold3: cp=0.004386 
+Aggregating results
+Selecting tuning parameters
+Fitting cp = 0.00439 on full training set
+> 
+> # Create model_list
+> model_list <- list(item1 = model_glm2, item2 = model_ranger)
+> 
+> # Pass model_list to resamples(): resamples
+> resamples <- resamples(model_list)
+> 
+> # Summarize the results
+> summary(resamples)
+
+Call:
+summary.resamples(object = resamples)
+
+Models: item1, item2 
+Number of resamples: 3 
+
+ROC 
+           Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+item1 0.8443162 0.8475488 0.8507813 0.8488680 0.8511438 0.8515063    0
+item2 0.8428063 0.8526238 0.8624413 0.8559642 0.8625431 0.8626450    0
+
+Sens 
+           Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+item1 0.8251366 0.8387978 0.8524590 0.8561020 0.8715847 0.8907104    0
+item2 0.8797814 0.8797814 0.8797814 0.9043716 0.9166667 0.9535519    0
+
+Spec 
+           Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+item1 0.6622807 0.6864035 0.7105263 0.7119883 0.7368421 0.7631579    0
+item2 0.6052632 0.6425439 0.6798246 0.6622807 0.6907895 0.7017544    0
+
+> 
+> # Create bwplot
+> bwplot(resamples, metric = 'ROC')
+> plot(model_ranger$finalModel)
+> rpart.plot(model_decisionTree$finalModel)
+> 
+> ######predict on test with glm2
+> age2 <- impute_median(test4$Age)
+> ageSex2 <- c()
+> for (k in 1:length(age2)){
++   ageSex2[k] <- age2[k] * as.numeric(test4$Sex[k])
++ }
+> test5 <- data.frame(sex = test4$Sex, Age = age2, fClass = firstClass2, sClass = secondClass2, tClass = thirdClass2,
++                     Sibp = test4$SibSp, Parch = test4$Parch, ageSex = ageSex2)
+> 
+> #fClass = train4$firstC, sClass = train4$secondC
+> p <- predict(model_ranger, test5, type = 'raw')
+> p <- as.character(p)
+> 
+> for(k in 1:length(p)){
++   if(p[k] == 'yes'){
++     p[k] <- 1
++   }
++   if(p[k] == 'no'){
++     p[k] <- 0
++   }
++ }
+> 
+> p <- as.numeric(p)
+> 
+> write.csv(data.frame(PassengerId = test$PassengerId, Survived = p), file = 'Submission8.csv')
+> 
+> proc.time()
+   user  system elapsed 
+  6.033   0.273   6.326 

@@ -1,0 +1,278 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Loading library packages needed
+> library('randomForest') # classification algorithm
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> 
+> 
+> ## ---- message = FALSE, warning=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Import
+> titanic.train <- read.csv(file = "../input/train.csv", header = T, stringsAsFactors = F)
+> titanic.test <- read.csv(file = "../input/test.csv", header = T, stringsAsFactors = F)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # View data in different ways
+> str(titanic.train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> head(titanic.train)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> tail(titanic.train)
+    PassengerId Survived Pclass                                     Name    Sex
+886         886        0      3     Rice, Mrs. William (Margaret Norton) female
+887         887        0      2                    Montvila, Rev. Juozas   male
+888         888        1      1             Graham, Miss. Margaret Edith female
+889         889        0      3 Johnston, Miss. Catherine Helen "Carrie" female
+890         890        1      1                    Behr, Mr. Karl Howell   male
+891         891        0      3                      Dooley, Mr. Patrick   male
+    Age SibSp Parch     Ticket   Fare Cabin Embarked
+886  39     0     5     382652 29.125              Q
+887  27     0     0     211536 13.000              S
+888  19     0     0     112053 30.000   B42        S
+889  NA     1     2 W./C. 6607 23.450              S
+890  26     0     0     111369 30.000  C148        C
+891  32     0     0     370376  7.750              Q
+> 
+> str(titanic.test)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : chr  "Kelly, Mr. James" "Wilkes, Mrs. James (Ellen Needs)" "Myles, Mr. Thomas Francis" "Wirz, Mr. Albert" ...
+ $ Sex        : chr  "male" "female" "male" "male" ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : chr  "330911" "363272" "240276" "315154" ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : chr  "" "" "" "" ...
+ $ Embarked   : chr  "Q" "S" "Q" "S" ...
+> head(titanic.test)
+  PassengerId Pclass                                         Name    Sex  Age
+1         892      3                             Kelly, Mr. James   male 34.5
+2         893      3             Wilkes, Mrs. James (Ellen Needs) female 47.0
+3         894      2                    Myles, Mr. Thomas Francis   male 62.0
+4         895      3                             Wirz, Mr. Albert   male 27.0
+5         896      3 Hirvonen, Mrs. Alexander (Helga E Lindqvist) female 22.0
+6         897      3                   Svensson, Mr. Johan Cervin   male 14.0
+  SibSp Parch  Ticket    Fare Cabin Embarked
+1     0     0  330911  7.8292              Q
+2     1     0  363272  7.0000              S
+3     0     0  240276  9.6875              Q
+4     0     0  315154  8.6625              S
+5     1     1 3101298 12.2875              S
+6     0     0    7538  9.2250              S
+> tail(titanic.test)
+    PassengerId Pclass                           Name    Sex  Age SibSp Parch
+413        1304      3 Henriksson, Miss. Jenny Lovisa female 28.0     0     0
+414        1305      3             Spector, Mr. Woolf   male   NA     0     0
+415        1306      1   Oliva y Ocana, Dona. Fermina female 39.0     0     0
+416        1307      3   Saether, Mr. Simon Sivertsen   male 38.5     0     0
+417        1308      3            Ware, Mr. Frederick   male   NA     0     0
+418        1309      3       Peter, Master. Michael J   male   NA     1     1
+                Ticket     Fare Cabin Embarked
+413             347086   7.7750              S
+414          A.5. 3236   8.0500              S
+415           PC 17758 108.9000  C105        C
+416 SOTON/O.Q. 3101262   7.2500              S
+417             359309   8.0500              S
+418               2668  22.3583              C
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # creating variable 
+> titanic.test$Survived <- NA
+> 
+> # binding data row wise
+> titanic.combined <- rbind(titanic.train, titanic.test)
+> 
+> # check whether data ia bined correctly or not
+> head(titanic.combined)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> tail(titanic.combined)
+     PassengerId Survived Pclass                           Name    Sex  Age
+1304        1304       NA      3 Henriksson, Miss. Jenny Lovisa female 28.0
+1305        1305       NA      3             Spector, Mr. Woolf   male   NA
+1306        1306       NA      1   Oliva y Ocana, Dona. Fermina female 39.0
+1307        1307       NA      3   Saether, Mr. Simon Sivertsen   male 38.5
+1308        1308       NA      3            Ware, Mr. Frederick   male   NA
+1309        1309       NA      3       Peter, Master. Michael J   male   NA
+     SibSp Parch             Ticket     Fare Cabin Embarked
+1304     0     0             347086   7.7750              S
+1305     0     0          A.5. 3236   8.0500              S
+1306     0     0           PC 17758 108.9000  C105        C
+1307     0     0 SOTON/O.Q. 3101262   7.2500              S
+1308     0     0             359309   8.0500              S
+1309     1     1               2668  22.3583              C
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Create a new variable which contains siblings, spouse and individuals
+> titanic.combined$Family.size <- titanic.combined$SibSp + titanic.combined$Parch + 1
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Check missing values
+> sapply(titanic.combined, function(x) {sum(is.na(x))})
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1           0           0 
+Family.size 
+          0 
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # fill blan rows with 'S'
+> 
+> titanic.combined[titanic.combined$Embarked == '', "Embarked"] <- 'S' 
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # modeling for age
+> age.formula <- "Age ~ Pclass + Sex"
+> age.model <- lm(
++   formula = age.formula,
++   data = titanic.combined
++ )
+> age.row <- titanic.combined[is.na(titanic.combined$Age), c("Pclass", "Sex")]
+> 
+> # predict age for NA filled rows
+> age.predict <-predict(age.model, newdata = age.row)
+> 
+> # assign value of age into combined dataset
+> titanic.combined[is.na(titanic.combined$Age), "Age"] <- age.predict
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # find median of fare
+> fare.median <- median(titanic.combined$Fare, na.rm = T)
+> 
+> # assign value to blank rows
+> titanic.combined[is.na(titanic.combined$Fare), "Fare"] <- fare.median
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic.combined$Pclass <- as.factor(titanic.combined$Pclass)
+> titanic.combined$Sex <- as.factor(titanic.combined$Sex)
+> titanic.combined$Embarked <- as.factor(titanic.combined$Embarked)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # split dataset
+> titanic.train <- titanic.combined[1:891,]
+> titanic.test <- titanic.combined[892:1309,]
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # To get Survived data in levels
+> titanic.train$Survived <- as.factor(titanic.train$Survived)
+> 
+> # Set a random seed
+> set.seed(675)
+> 
+> # Modeling data 
+> survived.formula <- as.formula("Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Family.size")
+> survive.model <- randomForest(formula = survived.formula, data = titanic.train, ntree = 500, mtry = 3, nodesize = 0.01 * nrow(titanic.test),  keep.forest = TRUE)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Prediction 
+> Survived <- predict(survive.model, newdata = titanic.test)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # new data set with two variables
+> PassengerId <- titanic.test$PassengerId
+> output.df <- as.data.frame(PassengerId)
+> output.df$Survived <- Survived
+> table(output.df$Survived)
+
+  0   1 
+279 139 
+> # write csv file
+> 
+> write.csv(output.df, file = "titanic_submission.csv", row.names = FALSE)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # error visuals
+> plot(survive.model, ylim=c(0,0.40))
+> legend('topright', colnames(survive.model$err.rate), col=1:3, fill=1:3)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  0.534   0.056   0.584 

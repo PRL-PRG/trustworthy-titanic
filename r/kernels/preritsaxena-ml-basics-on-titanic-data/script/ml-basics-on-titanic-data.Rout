@@ -1,0 +1,347 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # rm(list=ls(all=TRUE))
+> 
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(dplyr)
+> 
+> # Read data
+> 
+> train <- read.table("../input/train.csv", header = TRUE, sep=",")
+> test<- read.table("../input/test.csv", header = TRUE, sep=",")
+> 
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> summary(train)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked
+            :687    :  2   
+ B96 B98    :  4   C:168   
+ C23 C25 C27:  4   Q: 77   
+ G6         :  4   S:644   
+ C22 C26    :  3           
+ D          :  3           
+ (Other)    :186           
+> 
+> # writing to file
+> 
+> i<-1
+> write_to_file <- function(pred_vec, type)
++ {
++ submit1 <- data.frame(test2$PassengerId, pred_vec)
++ colnames(submit1)[1]<-"PassengerId"
++ submit1$Survived <- submit1$pred_vec
++ str(submit1)
++ 
++ table(submit1$Survived)
++ 
++ submit1$pred_vec <- NULL
++ 
++ str(submit1)
++ filename <- paste("submission_",type,i,".csv",sep="")
++ 
++ write.csv(submit1, filename, row.names = FALSE)
++ i<-i+1
++ }
+> 
+> # Pre-processing
+> 
+> sum(is.na(train))
+[1] 177
+> 
+> missing <- colSums(is.na(train))
+> sort(missing, decreasing=TRUE)
+        Age PassengerId    Survived      Pclass        Name         Sex 
+        177           0           0           0           0           0 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0           0           0 
+> 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> 
+> md.pattern(train)
+    PassengerId Survived Pclass Name Sex SibSp Parch Ticket Fare Cabin Embarked
+714           1        1      1    1   1     1     1      1    1     1        1
+177           1        1      1    1   1     1     1      1    1     1        1
+              0        0      0    0   0     0     0      0    0     0        0
+    Age    
+714   1   0
+177   0   1
+    177 177
+> 
+> library(VIM)
+Loading required package: colorspace
+Loading required package: grid
+VIM is ready to use.
+
+Suggestions and bug-reports can be submitted at: https://github.com/statistikat/VIM/issues
+
+Attaching package: ‘VIM’
+
+The following object is masked from ‘package:datasets’:
+
+    sleep
+
+> 
+> mice_plot <- aggr(train, col=c('navyblue','yellow'),
++                     numbers=TRUE, sortVars=TRUE,
++                     labels=names(train), cex.axis=.7,
++                     gap=3, ylab=c("Missing data","Pattern"))
+
+ Variables sorted by number of missings: 
+    Variable     Count
+         Age 0.1986532
+ PassengerId 0.0000000
+    Survived 0.0000000
+      Pclass 0.0000000
+        Name 0.0000000
+         Sex 0.0000000
+       SibSp 0.0000000
+       Parch 0.0000000
+      Ticket 0.0000000
+        Fare 0.0000000
+       Cabin 0.0000000
+    Embarked 0.0000000
+> 
+> 
+> # Less than 2% missing values
+> 
+> library(DMwR)
+Loading required package: lattice
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: ‘DMwR’
+
+The following object is masked from ‘package:VIM’:
+
+    kNN
+
+> train2<- centralImputation(train) #Central Imputation
+> 
+> # train2 <- knnImputation(train,scale=T,k=10) #KNN Imputation
+> # sum(is.na(train2))
+> 
+> sum(is.na(train2))
+[1] 0
+> 
+> # train2 <- na.omit(train)
+> # str(train2)
+> # sum(is.na(train2))
+> 
+> 
+> 
+> #Looking at data
+> 
+> str(train2)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 28 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> train3 <- train2
+> 
+> # train3$Pclass <- as.factor(train3$Pclass)
+> 
+> # str(train3)
+> 
+> train3$Survived <- as.factor(train3$Survived)
+> str(train3)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 28 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> hist(train3$Age)
+> hist(train3$SibSp)
+> hist(train3$Parch)
+> hist(train3$Fare)
+> 
+> # cor(train3$Pclass, train3$Fare)
+> 
+> train4 <- train3[,c("Pclass","Sex","Age","SibSp", "Survived", "Parch", "Fare", "Embarked")]
+> 
+> set.seed(123)
+> library(caTools)
+> spl <- sample.split(train4, 0.7)
+> train5 <- train4[spl==TRUE,]
+> valid <- train4[spl==FALSE,]
+> 
+> # Logistic Regression
+> 
+> logit <- glm(Survived~., data=train5, family=binomial)
+> summary(logit)
+
+Call:
+glm(formula = Survived ~ ., family = binomial, data = train5)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.5355  -0.6149  -0.4172   0.6059   2.4234  
+
+Coefficients:
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  17.111803 615.217961   0.028  0.97781    
+Pclass       -1.063797   0.187434  -5.676 1.38e-08 ***
+Sexmale      -2.746702   0.256441 -10.711  < 2e-16 ***
+Age          -0.031308   0.009956  -3.145  0.00166 ** 
+SibSp        -0.297738   0.138564  -2.149  0.03166 *  
+Parch        -0.044444   0.133338  -0.333  0.73890    
+Fare          0.001544   0.003006   0.514  0.60758    
+EmbarkedC   -12.390023 615.217668  -0.020  0.98393    
+EmbarkedQ   -12.414966 615.217740  -0.020  0.98390    
+EmbarkedS   -12.659195 615.217647  -0.021  0.98358    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 732.73  on 557  degrees of freedom
+Residual deviance: 485.23  on 548  degrees of freedom
+AIC: 505.23
+
+Number of Fisher Scoring iterations: 13
+
+> 
+> # model2 <- step(logit)
+> # summary(model2)
+> 
+> # Validation
+> 
+> # Removing null values
+> 
+> predictions <- predict(logit,valid,type="response") 
+> summary(predictions)
+    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+0.008788 0.106128 0.269634 0.374895 0.654925 0.958825 
+> head(predictions)
+         4          5          8         12         13         16 
+0.88867160 0.07117025 0.07920267 0.83395364 0.10917203 0.65198011 
+> 
+> library(ROCR)
+Warning message:
+package ‘ROCR’ was built under R version 3.6.2 
+> # to make an ROC curve one needs actual values and predicted values, both are given below.
+> # These functions will do the groupings on their own (p > 0.2, etc.) like we were doing above
+> ROCRpred = prediction(predictions,valid$Survived)
+> # Performance function
+> ROCRperf = performance(ROCRpred, "tpr", "fpr")
+> 
+> # Plot ROC curve
+> plot(ROCRperf)
+> 
+> # Add colors
+> plot(ROCRperf, colorize=TRUE)
+> 
+> # Add threshold labels 
+> plot(ROCRperf, colorize=TRUE, print.cutoffs.at=seq(0,1,by=0.1), text.adj=c(-0.2,1.7))
+> attributes(performance(ROCRpred, 'auc'))$y.values[[1]]
+[1] 0.8585098
+> 
+> # model evalaution
+> library(caret)
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+> predClass <- ifelse(predictions>=0.8,1,0)
+> confusionMatrix(valid$Survived, predClass)
+Error: `data` and `reference` should be factors with the same levels.
+Execution halted

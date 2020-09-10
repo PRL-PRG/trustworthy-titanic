@@ -1,0 +1,116 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following object is masked from ‘package:randomForest’:
+
+    combine
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(corrplot)
+corrplot 0.84 loaded
+> library(data.table)
+
+Attaching package: ‘data.table’
+
+The following objects are masked from ‘package:dplyr’:
+
+    between, first, last
+
+> library(rpart)
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> setDT(train)
+> train$IsTrain <- TRUE
+> 
+> test  <- read.csv("../input/test.csv")
+> setDT(test)
+> test$IsTrain <- FALSE
+> test$Survived <- NA
+> 
+> # Clean and then categorically cast
+> full <- rbind(train, test)
+> head(full$Fare)
+[1]  7.2500 71.2833  7.9250 53.1000  8.0500  8.4583
+> full$Fare[which(is.na(full$Fare))] <- 
++ full$Pclass <- as.factor(full$Pclass)
+Warning message:
+In full$Fare[which(is.na(full$Fare))] <- full$Pclass <- as.factor(full$Pclass) :
+  number of items to replace is not a multiple of replacement length
+> full$Embarked <- as.factor(full$Embarked)
+> full$Sex <- as.factor(full$Sex)
+> 
+> train <- full[full$IsTrain == TRUE,]
+> test <- full[full$IsTrain == FALSE,]
+> 
+> train$Survived <- as.factor(train$Survived)
+> 
+> # Since age has some missing data, predict passenger age based on other factors
+> predicted_age_train <- rpart(Age ~ Survived + Sex + SibSp + Pclass + Parch + Ticket + Fare + Embarked,
++                        data = train[!is.na(train$Age),], method = "anova")
+> train$Age[is.na(train$Age)] <- predict(predicted_age_train, train[is.na(train$Age),])
+> predicted_age_test <- rpart(Age ~ Sex + SibSp + Pclass + Parch + Ticket + Fare + Embarked,
++                        data = test[!is.na(test$Age),], method = "anova")
+> test$Age[is.na(test$Age)] <- predict(predicted_age_test, test[is.na(test$Age),])
+> 
+> # Engineer Nannied feature?
+> model <- randomForest(Survived ~ Age + Sex + SibSp + Pclass + Parch + Fare + Embarked, 
++                         data = train, importance = TRUE, ntree = 300, set.seed(111))
+> 
+> predictions <- predict(model, test)
+> 
+> colSums(sapply(test, is.na))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0           0 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0           0           0 
+    IsTrain 
+          0 
+> 
+> # Record results
+> my_solution <- data.frame(PassengerId = test$PassengerId, Survived = predictions)
+> 
+> # Write your solution away to a csv file with the name my_solution.csv
+> write.csv(my_solution, file = "my_solution.csv", row.names = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  1.871   0.069   0.766 

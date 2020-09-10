@@ -1,0 +1,152 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(xgboost)
+
+Attaching package: ‘xgboost’
+
+The following object is masked from ‘package:dplyr’:
+
+    slice
+
+Warning message:
+package ‘xgboost’ was built under R version 3.6.2 
+> list.files(path = "../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> 
+> train_data = read.csv('../input/train.csv', na.strings = c("", " ", "NA"))
+> test_data  = read.csv('../input/test.csv',  na.strings = c("", " ", "NA"))
+> train_data$Train  <- TRUE
+> test_data$Train  <- FALSE
+> test_tmp  <- test_data
+> test_tmp$Survived = FALSE
+> 
+> # combine all of the data 
+> all_data = rbind(train_data, test_tmp)
+> 
+> all_data$Title <- gsub('(.*, )|([.].*)', '', all_data$Name) # Get ride of anything that ends in a comma or anything that starts with a period
+> 
+> # Just to check how many people we have with each title
+> all_data %>%
++     group_by(Title, Sex) %>%
++     summarize(n = n()) %>%
++     arrange(Title)
+`summarise()` regrouping output by 'Title' (override with `.groups` argument)
+[90m# A tibble: 19 x 3[39m
+[90m# Groups:   Title [18][39m
+   Title        Sex        n
+   [3m[90m<chr>[39m[23m        [3m[90m<fct>[39m[23m  [3m[90m<int>[39m[23m
+[90m 1[39m Capt         male       1
+[90m 2[39m Col          male       4
+[90m 3[39m Don          male       1
+[90m 4[39m Dona         female     1
+[90m 5[39m Dr           female     1
+[90m 6[39m Dr           male       7
+[90m 7[39m Jonkheer     male       1
+[90m 8[39m Lady         female     1
+[90m 9[39m Major        male       2
+[90m10[39m Master       male      61
+[90m11[39m Miss         female   260
+[90m12[39m Mlle         female     2
+[90m13[39m Mme          female     1
+[90m14[39m Mr           male     757
+[90m15[39m Mrs          female   197
+[90m16[39m Ms           female     2
+[90m17[39m Rev          male       8
+[90m18[39m Sir          male       1
+[90m19[39m the Countess female     1
+> 
+> all_data$Title[all_data$Title == 'Mlle']  <- 'Miss'
+> all_data$Title[all_data$Title == 'Ms']    <- 'Miss'
+> all_data$Title[all_data$Title == 'Mme']   <- 'Mrs'
+> 
+> special_people  <- c('Capt', 'Col', 'Dona', 'Dr', 'Jonkheer', 'Lady', 'Major', 'Rev', 'Sir', 'the Countess', 'Don')
+> all_data$Title[all_data$Title %in% special_people]  <- 'Special'
+> # all_data$Title[all_data$Title == 'Dr' & all_data$Sex == 'male']    <- 'Mr'
+> # all_data$Title[all_data$Title == 'Dr' & all_data$Sex == 'female']  <- 'Mrs'
+> 
+> all_data %>%
++     group_by(Title, Sex) %>%
++     summarize(n = n()) %>%
++     arrange(Title)
+`summarise()` regrouping output by 'Title' (override with `.groups` argument)
+[90m# A tibble: 6 x 3[39m
+[90m# Groups:   Title [5][39m
+  Title   Sex        n
+  [3m[90m<chr>[39m[23m   [3m[90m<fct>[39m[23m  [3m[90m<int>[39m[23m
+[90m1[39m Master  male      61
+[90m2[39m Miss    female   264
+[90m3[39m Mr      male     757
+[90m4[39m Mrs     female   198
+[90m5[39m Special female     4
+[90m6[39m Special male      25
+> 
+> all_data$Name %>%
++     gsub(',.*$','', .) -> all_data$Surname
+> 
+> cat('Unique number of surnames: ',nlevels(factor(all_data$Surname)))
+Unique number of surnames:  875> 
+> all_data %>%
++     mutate(Fam_Size = SibSp + Parch + 1) -> all_data
+> 
+> names(all_data) # veiw results
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"    "Train"       "Title"       "Surname"    
+[16] "Fam_Size"   
+> 
+> all_data %>%
++     select(-c(PassengerId, Name, Ticket, Cabin, Surname)) -> all_data
+> 
+> head(all_data) # veiw results
+  Survived Pclass    Sex Age SibSp Parch    Fare Embarked Train Title Fam_Size
+1        0      3   male  22     1     0  7.2500        S  TRUE    Mr        2
+2        1      1 female  38     1     0 71.2833        C  TRUE   Mrs        2
+3        1      3 female  26     0     0  7.9250        S  TRUE  Miss        1
+4        1      1 female  35     1     0 53.1000        S  TRUE   Mrs        2
+5        0      3   male  35     0     0  8.0500        S  TRUE    Mr        1
+6        0      3   male  NA     0     0  8.4583        Q  TRUE    Mr        1
+> 
+> factor_vars <- c('Pclass','Sex','Embarked',
++                  'Title')
+> 
+> all_data[factor_vars] <- lapply(all_data[factor_vars], function(x) as.factor(x))
+> 
+> all_data %>%
++     fastDummies::dummy_cols(remove_most_frequent_dummy = TRUE) %>%
++     select(-c(Pclass, Sex, Embarked, Title)) -> all_data
+Error in loadNamespace(name) : there is no package called ‘fastDummies’
+Calls: %>% ... loadNamespace -> withRestarts -> withOneRestart -> doWithOneRestart
+Execution halted

@@ -1,0 +1,193 @@
+---
+title: 'Analyzing and Predicting Survival on Titanic'
+author: 'Prasad Sawant'
+date: '26 August 2016'
+output:
+  html_document:
+    number_sections: true
+    toc: true
+    fig_width: 7
+    fig_height: 4.5
+    theme: readable
+    highlight: tango
+---
+# Introduction
+This is my first attempt using R for Data Analysis and Prediction
+
+## Load packages
+
+```{r, message = FALSE}
+# Load packages
+library('ggplot2') # visualization
+library('dplyr') # data manipulation
+library('rpart') # prediction model
+
+
+```
+## Load data
+
+```{r, message=FALSE, warning=FALSE}
+train <- read.csv('../input/train.csv', stringsAsFactors = F)
+test  <- read.csv('../input/test.csv', stringsAsFactors = F)
+full  <- bind_rows(train, test) # bind training & test data
+
+```
+
+# Feature Engineering
+
+Let's explore a few variables to see their correlation with Survival
+
+## Age
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(full[1:891,], aes(x=Age, fill=factor(Survived))) +
+geom_bar(stat='count', position='dodge')
+
+```
+
+We can see a pattern that for some age groups survival rate is higher. But not conclusive as too many age values are present. 
+So lets create age groups where there are only few groups to explore.
+
+```{r, message=FALSE, warning=FALSE}
+
+full$AgeGroup[full$Age > 0 & full$Age <=10] <- '0-10'
+full$AgeGroup[full$Age > 10 & full$Age <=20] <- '10-20'
+full$AgeGroup[full$Age > 20 & full$Age <=30] <- '20-30'
+full$AgeGroup[full$Age > 30 & full$Age <=40] <- '30-40'
+full$AgeGroup[full$Age > 40 & full$Age <=50] <- '40-50'
+full$AgeGroup[full$Age > 50 & full$Age <=60] <- '50-60'
+full$AgeGroup[full$Age > 60 & full$Age <=70] <- '60-70'
+full$AgeGroup[full$Age > 70 & full$Age <=80] <- '70-80'
+full$AgeGroup[full$Age > 80 & full$Age <=90] <- '80-90'
+full$AgeGroup[full$Age > 90 & full$Age <=100] <- '90-100'
+full$AgeGroup[full$Age == ''] <- 'Unknown'
+
+ggplot(full[1:891,], aes(x=AgeGroup, fill=factor(Survived))) +
+geom_bar(stat='count', position='dodge')
+
+```
+
+Couple of things to note,
+
+1) The chances of survival are more if you are a child (0-10 years)
+2) There are quite a lot missing values of Age
+
+Let us broadly classify the Age in 2 categories as Children and Adults. Also lets derive the AgeType from the Title present in the Name.
+
+```{r, message=FALSE, warning=FALSE}
+full$AgeType[full$Age > 0 & full$Age <=10] <- 'Child'
+full$AgeType[full$Age > 10 & full$Age <=120] <- 'Adult'
+
+full$AgeType[(is.na(full$Age)) & grepl('Master.', full$Name)] <- 'Child'
+full$AgeType[(is.na(full$Age)) & grepl('Miss.', full$Name)&(full$Parch>0)] <- 'Child'
+full$AgeType[(is.na(full$Age)) & grepl('Miss.', full$Name)&(full$Parch==0)] <- 'Adult'
+full$AgeType[(is.na(full$Age)) & grepl('Ms.', full$Name)&(full$Parch>0)] <- 'Child'
+full$AgeType[(is.na(full$Age)) & grepl('Ms.', full$Name)&(full$Parch==0)] <- 'Adult'
+full$AgeType[(is.na(full$Age)) & grepl('Mlle.', full$Name)&(full$Parch>0)] <- 'Child'
+full$AgeType[(is.na(full$Age)) & grepl('Mlle.', full$Name)&(full$Parch==0)] <- 'Adult'
+full$AgeType[(is.na(full$Age)) & grepl('Mrs.', full$Name)] <- 'Adult'
+full$AgeType[(is.na(full$Age)) & grepl('Mr.', full$Name)] <- 'Adult'
+full$AgeType[(is.na(full$Age)) & grepl('Dr.', full$Name)] <- 'Adult'
+full$AgeType[(is.na(full$Age)) & grepl('Rev.', full$Name)] <- 'Adult'
+full$AgeType[(is.na(full$Age)) & grepl('Mme.', full$Name)] <- 'Adult'
+full$AgeType[(is.na(full$Age)) & grepl('Major.', full$Name)] <- 'Adult'
+full$AgeType[(is.na(full$Age)) & grepl('Col.', full$Name)] <- 'Adult'
+full$AgeType[(is.na(full$Age)) & grepl('Capt.', full$Name)] <- 'Adult'
+full$AgeType[(is.na(full$Age)) & grepl('Dona.', full$Name)] <- 'Adult'
+full$AgeType[(is.na(full$Age)) & grepl('Jonkheer.', full$Name)] <- 'Adult'
+full$AgeType[(is.na(full$Age)) & grepl('Countess.', full$Name)] <- 'Adult'
+
+
+ggplot(full[1:891,], aes(x=AgeType, fill=factor(Survived))) +
+geom_bar(stat='count', position='dodge')
+```
+
+Now lets see how does being aboard with Family affect Survival
+
+## Family member
+
+Although this attribute does not exist but it can be derived from 'SibSp' and 'Parch'
+
+```{r, message=FALSE, warning=FALSE}
+full$familySize <- full$SibSp + full$Parch
+
+```
+Now lets see the correlation of FamilySize to Survival
+
+```{r, message=FALSE, warning=FALSE}
+ggplot(full[1:891,], aes(x=familySize, fill=factor(Survived))) +
+geom_bar(stat='count', position='dodge') +
+scale_x_continuous(breaks=c(1:11)) 
+
+missFamilySize <- sum(is.na(full$familySize))
+missFamilySize
+
+```
+
+Looks like people who are travelling alone have less chances of survival
+However people travelling with family size between 1-4 have good chances of survival
+Survival rate again goes down once family size exceeds 4
+
+
+## Pclass
+```{r, message=FALSE, warning=FALSE}
+
+ggplot(full[1:891,], aes(x=Pclass, fill=factor(Survived))) +
+geom_bar(stat='count', position='dodge') +
+scale_x_continuous(breaks=c(1:11)) 
+
+```
+
+Seems like people travelling on Passenger class 1 have more chances of survival. While people travelling on Passenger class 3 have lower chances of Survival
+
+## Embarkment
+```{r, message=FALSE, warning=FALSE}
+
+missEmb <- sum(is.na(full$Embarked))
+missEmb
+
+full$Name[is.na(full$Embarked)]
+
+ggplot(full[1:891,], aes(x=Embarked, fill=factor(Survived))) +
+geom_bar(stat='count', position='dodge')
+```
+
+Passengers with Embarkment of type 'S' show lower chances of survival
+
+## Gender
+
+```{r, message=FALSE, warning=FALSE}
+
+
+missGen <- sum(is.na(full$Sex))
+missGen
+
+ggplot(full[1:891,], aes(x=Sex, fill=factor(Survived))) +
+geom_bar(stat='count', position='dodge')
+
+```
+
+Also female passengers have higher chances of survival corresponding to male passengers
+
+
+# Create Prediction Model
+Let us use the decision tree model for predicting the surival
+
+
+```{r, message=FALSE, warning=FALSE}
+train <- full[1:891,]
+test <- full[892:1309,]
+
+survival_model <- rpart(factor(Survived) ~ AgeType + familySize + Pclass + Embarked + Sex, data = train)
+plot(survival_model, margin=0.1)
+text(survival_model, use.n=TRUE, pretty=TRUE, cex=0.8)
+
+predict_survival <- predict(survival_model, test, type = "class")
+
+solution <- data.frame(PassengerID = test$PassengerId, Survived = predict_survival)
+write.csv(solution, file = 'survival_model_solution.csv', row.names = F)
+
+
+```
+
+

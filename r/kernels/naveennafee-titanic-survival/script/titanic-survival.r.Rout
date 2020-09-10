@@ -1,0 +1,460 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This is the my first kernal using R, So any feedback are most welcome.
+> # Treating the missing value in the dataset,Extracting the new feature and Visualizing the data
+> # are done in this post.
+> # I'm going to use Random Forest and Decision Tree model to predict the Titanic Dataset.
+> # Overview of some of the features available in the dataset
+> 
+> #  1) Survival - 0 = No, 1 = Yes
+> #  2) PClass   - Passenger Class
+> #  3) embarked - Port of Embarkation
+> #  4) sibsp    - Sibling, Spouse
+> #  5) parch    - Parent, Child
+> 
+> # Loading the required library for our model
+> library('tidyverse')
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library('ggthemes')
+> library('caret')
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+> library('e1071')
+> library('rpart')
+> library('rpart.plot')
+> library('randomForest')
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> # Reading and Saving the Training and Testing CSV file
+> training<-read.csv('../input/train.csv',stringsAsFactors = FALSE)
+> testing<-read.csv('../input/test.csv',stringsAsFactors = FALSE)
+> # Inserting the Survived feature in the testing dataset with NA
+> testing$Survived<-NA
+> # Combining both the dataset into single dataset
+> full<-rbind(training,testing)
+> # Visualize the available features and data type of it.
+> str(full)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> # Analysing the Missing Values in the dataset
+> colSums(is.na(full))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1           0           0 
+> colSums(full=='')
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0          NA           0           0           0          NA 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0          NA        1014           2 
+> 
+> # As Cabin is having most of the missing values, We are going to remove it.
+> full$Cabin<-NULL
+> str(full)
+'data.frame':	1309 obs. of  11 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> # Missing value treatment for Embarked
+> table(full$Embarked)
+
+      C   Q   S 
+  2 270 123 914 
+> # As 'S' is the mostly used in the dataset, We are going to provide the same for the missing values
+> full[full$Embarked=="",]$Embarked<-"S"
+> table(full$Embarked)
+
+  C   Q   S 
+270 123 916 
+> # Data based on the Embarked and Survived
+> table(full$Embarked,full$Survived)
+   
+      0   1
+  C  75  93
+  Q  47  30
+  S 427 219
+> 
+> # There is one missing value for Fare in row 1044, As the passenger is from PClass 3, 
+> # we are going to provide the mean fare of PClass 3
+> full$Fare[1044]<-mean(full[full$Pclass=='3',]$Fare,na.rm=T)
+> # We are going to remove the Title from the Name field.
+> head(full$Name)
+[1] "Braund, Mr. Owen Harris"                            
+[2] "Cumings, Mrs. John Bradley (Florence Briggs Thayer)"
+[3] "Heikkinen, Miss. Laina"                             
+[4] "Futrelle, Mrs. Jacques Heath (Lily May Peel)"       
+[5] "Allen, Mr. William Henry"                           
+[6] "Moran, Mr. James"                                   
+> # We are using gsub to replace the following pattern into empty, So that we will get the title
+> full$title<-gsub('(.*,)|(\\..*)','',full$Name)
+> # List of availble title
+> unique(full$title)
+ [1] " Mr"           " Mrs"          " Miss"         " Master"      
+ [5] " Don"          " Rev"          " Dr"           " Mme"         
+ [9] " Ms"           " Major"        " Lady"         " Sir"         
+[13] " Mlle"         " Col"          " Capt"         " the Countess"
+[17] " Jonkheer"     " Dona"        
+> 
+> # Now We are going the trim the whitespace available in the title.
+> full$title<-trimws(full$title)
+> # As there are many unknown title is available, we are going to combine all the unknown into Rare title
+> rare_title<-c('Dona','Lady','the Countess','Capt','Col','Don','Dr','Major','Rev','Sir','Jonkheer')
+> full[full$title=='Mlle',]$title<-"Miss"
+> full[full$title=='Ms',]$title<-"Miss"
+> full[full$title=='Mme',]$title<-"Mr"
+> full[full$title %in% rare_title,]$title<-"Rare"
+> # List of available title after the data treatment
+> table(full$title)
+
+Master   Miss     Mr    Mrs   Rare 
+    61    264    758    197     29 
+> 
+> # Analysing the feature with the number of unique data
+> factor_check<-sapply(full,function(x) (length(unique(x))))
+> factor_check
+PassengerId    Survived      Pclass        Name         Sex         Age 
+       1309           3           3        1307           2          99 
+      SibSp       Parch      Ticket        Fare    Embarked       title 
+          7           8         929         282           3           5 
+> 
+> # As Survived,Sex,Embarked,Pclass are the suitable feature to be converted into factor
+> factor_var<-c('Survived','Sex','Embarked','Pclass')
+> for (i in factor_var) {full[,i]<-as.factor(full[,i])}
+> # Available features with data type
+> str(full)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+ $ title      : chr  "Mr" "Mrs" "Miss" "Mrs" ...
+> 
+> # Visualizing the chart for Embarked and Survived
+> ggplot(full[1:891,],aes(x=Embarked,fill=Survived))+geom_bar(position="dodge")+ggtitle("Port of Embarkation vs Survived")+ylab("Survived")
+> 
+> # Visualizing the chart for Title and Survived
+> ggplot(full[1:891,],aes(x=title,fill=Survived))+geom_bar()+ggtitle("Title of the Person vs Survived")+ylab("Survived")
+> 
+> # Visualizing the chart for Sex and Survived, From this we could see Women are most likely survived
+> ggplot(full[1:891,],aes(x=Sex,fill=Survived))+geom_bar(position="dodge")+ggtitle("Sex vs Survived")+ylab("Survived")
+> 
+> # Creating the new feature Family count with the help of SibSp and Parch
+> full$Family_count<-full$SibSp+full$Parch+1
+> # List of Family count in our titanic dataset
+> table(full$Family_count)
+
+  1   2   3   4   5   6   7   8  11 
+790 235 159  43  22  25  16   8  11 
+> 
+> # Visualizing the data based on Family Count and Survival
+> ggplot(full[1:891,],aes(x=Family_count,fill=Survived))+geom_bar(position='dodge')+ggtitle("Family Count vs Survived")+ylab("Survived")+
++   coord_flip()+scale_x_reverse(breaks=c(1:11))+theme_light()
+> 
+> # Creating the new field based on Family_Count Size
+> full$Family_size_ratio[full$Family_count<=2]<-"Small"
+> full$Family_size_ratio[full$Family_count>=3 & full$Family_count<=5]<-"Medium"
+> full$Family_size_ratio[full$Family_count>=6]<-"Big"
+> ggplot(full[1:891,],aes(x=Family_size_ratio,fill=Survived))+geom_bar(position='dodge')+ggtitle("Family Size Ratio vs Survived")+ylab("Survived")
+> 
+> # First 6 rows of data in our dataset
+> head(full)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Embarked title Family_count Family_size_ratio
+1        A/5 21171  7.2500        S    Mr            2             Small
+2         PC 17599 71.2833        C   Mrs            2             Small
+3 STON/O2. 3101282  7.9250        S  Miss            1             Small
+4           113803 53.1000        S   Mrs            2             Small
+5           373450  8.0500        S    Mr            1             Small
+6           330877  8.4583        Q    Mr            1             Small
+> 
+> # Imputing the mean value for the missing values in the Age feature with the help of MISC library Impute function
+> full$Age<-Hmisc::impute(full$Age,mean)
+> # Age vs Survived Box Plot
+> ggplot(full[1:891,],aes(x=Survived,y=Age))+geom_boxplot(color=c("blue","red"))+theme_few()+ggtitle("Age vs Survived")
+Don't know how to automatically pick scale for object of type impute. Defaulting to continuous.
+> 
+> # Bar Plot for PClass vs Survived
+> ggplot(full[1:891,],aes(x=Pclass,fill=Survived))+geom_bar(position="dodge")+ggtitle("PClass vs Survived")
+> 
+> # Structure of Full dataset
+> str(full)
+'data.frame':	1309 obs. of  14 variables:
+ $ PassengerId      : int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived         : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass           : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name             : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex              : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age              : 'impute' num  22 38 26 35 35 ...
+  ..- attr(*, "imputed")= int  6 18 20 27 29 30 32 33 37 43 ...
+ $ SibSp            : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch            : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket           : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare             : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked         : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+ $ title            : chr  "Mr" "Mrs" "Miss" "Mrs" ...
+ $ Family_count     : num  2 2 1 2 1 1 1 5 3 2 ...
+ $ Family_size_ratio: chr  "Small" "Small" "Small" "Small" ...
+> 
+> # Converting the new features into factor as well
+> full$Family_size_ratio<-as.factor(full$Family_size_ratio)
+> full$title<-as.factor(full$title)
+> # Splitting the model with the features we require to train the dataset
+> train_model<-full[1:891,c("Survived","Age","Sex","Family_count","Family_size_ratio","Fare","title")]
+> test_model<-full[892:1309,c("Survived","Age","Sex","Family_count","Family_size_ratio","Fare","title")]  
+> 
+> # RANDOM FOREST Model Implementation
+> rf_model<-randomForest(Survived~.,data=train_model,importance=T)
+> rf_model
+
+Call:
+ randomForest(formula = Survived ~ ., data = train_model, importance = T) 
+               Type of random forest: classification
+                     Number of trees: 500
+No. of variables tried at each split: 2
+
+        OOB estimate of  error rate: 16.27%
+Confusion matrix:
+    0   1 class.error
+0 493  56   0.1020036
+1  89 253   0.2602339
+> 
+> # Predicting the model
+> predicted<-predict(rf_model,train_model)
+> # Confusion Matrix to compare the 'Predicted value vs Actual Value' accuracy
+> confusionMatrix(predicted,train_model$Survived)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction   0   1
+         0 517  70
+         1  32 272
+                                          
+               Accuracy : 0.8855          
+                 95% CI : (0.8628, 0.9057)
+    No Information Rate : 0.6162          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.7528          
+                                          
+ Mcnemar's Test P-Value : 0.0002487       
+                                          
+            Sensitivity : 0.9417          
+            Specificity : 0.7953          
+         Pos Pred Value : 0.8807          
+         Neg Pred Value : 0.8947          
+             Prevalence : 0.6162          
+         Detection Rate : 0.5802          
+   Detection Prevalence : 0.6588          
+      Balanced Accuracy : 0.8685          
+                                          
+       'Positive' Class : 0               
+                                          
+> 
+> # Plotting the RF_MODEL
+> plot(rf_model)
+> legend('topright',colnames(rf_model$err.rate),col=1:3,fill=1:3)
+> 
+> # Finding which variable is important for model building
+> varImpPlot(rf_model, main = "RANDOM FOREST MODEL")
+> 
+> # Implementing based on Decision Tree, Method is 'class' for classification problem
+> rp_model<-rpart(Survived~.,train_model,method='class')
+> summary(rp_model)
+Call:
+rpart(formula = Survived ~ ., data = train_model, method = "class")
+  n= 891 
+
+          CP nsplit rel error    xerror       xstd
+1 0.45029240      0 1.0000000 1.0000000 0.04244576
+2 0.09064327      1 0.5497076 0.5497076 0.03561161
+3 0.01000000      2 0.4590643 0.4590643 0.03325316
+
+Variable importance
+            title               Sex      Family_count Family_size_ratio 
+               32                28                17                13 
+              Age              Fare 
+                7                 3 
+
+Node number 1: 891 observations,    complexity param=0.4502924
+  predicted class=0  expected loss=0.3838384  P(node) =1
+    class counts:   549   342
+   probabilities: 0.616 0.384 
+  left son=2 (541 obs) right son=3 (350 obs)
+  Primary splits:
+      title             splits as  RRLRL,        improve=130.27910, (0 missing)
+      Sex               splits as  RL,           improve=124.42630, (0 missing)
+      Fare              < 10.48125 to the left,  improve= 37.94194, (0 missing)
+      Family_count      < 1.5      to the left,  improve= 17.43059, (0 missing)
+      Family_size_ratio splits as  LRL,          improve= 11.90763, (0 missing)
+  Surrogate splits:
+      Sex               splits as  RL,           agree=0.951, adj=0.874, (0 split)
+      Family_count      < 1.5      to the left,  agree=0.719, adj=0.286, (0 split)
+      Family_size_ratio splits as  RRL,          agree=0.700, adj=0.237, (0 split)
+      Age               < 15.5     to the right, agree=0.691, adj=0.214, (0 split)
+      Fare              < 15.1729  to the left,  agree=0.643, adj=0.091, (0 split)
+
+Node number 2: 541 observations
+  predicted class=0  expected loss=0.1663586  P(node) =0.6071829
+    class counts:   451    90
+   probabilities: 0.834 0.166 
+
+Node number 3: 350 observations,    complexity param=0.09064327
+  predicted class=1  expected loss=0.28  P(node) =0.3928171
+    class counts:    98   252
+   probabilities: 0.280 0.720 
+  left son=6 (51 obs) right son=7 (299 obs)
+  Primary splits:
+      Family_count      < 4.5      to the right, improve=32.77401, (0 missing)
+      Family_size_ratio splits as  LRR,          improve=23.31497, (0 missing)
+      Fare              < 48.2     to the left,  improve=11.27028, (0 missing)
+      Age               < 11.5     to the left,  improve= 3.15196, (0 missing)
+      title             splits as  LL-R-,        improve= 2.01600, (0 missing)
+  Surrogate splits:
+      Family_size_ratio splits as  LRR,          agree=0.960, adj=0.725, (0 split)
+      Fare              < 254.9479 to the right, agree=0.863, adj=0.059, (0 split)
+
+Node number 6: 51 observations
+  predicted class=0  expected loss=0.1960784  P(node) =0.05723906
+    class counts:    41    10
+   probabilities: 0.804 0.196 
+
+Node number 7: 299 observations
+  predicted class=1  expected loss=0.1906355  P(node) =0.335578
+    class counts:    57   242
+   probabilities: 0.191 0.809 
+
+> 
+> # Decision tree of our model 
+> rpart.plot(rp_model,tweak=0.8)
+> 
+> rp_predicted<-predict(rp_model,train_model,type = 'class')
+> confusionMatrix(rp_predicted,train_model$Survived)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction   0   1
+         0 492 100
+         1  57 242
+                                          
+               Accuracy : 0.8238          
+                 95% CI : (0.7972, 0.8483)
+    No Information Rate : 0.6162          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.6184          
+                                          
+ Mcnemar's Test P-Value : 0.0008024       
+                                          
+            Sensitivity : 0.8962          
+            Specificity : 0.7076          
+         Pos Pred Value : 0.8311          
+         Neg Pred Value : 0.8094          
+             Prevalence : 0.6162          
+         Detection Rate : 0.5522          
+   Detection Prevalence : 0.6644          
+      Balanced Accuracy : 0.8019          
+                                          
+       'Positive' Class : 0               
+                                          
+> # As Random Forest is providing higher accuracy than Decision Tree, We are going to use that for Test Data
+> 
+> submission <- data.frame(PassengerId = testing$PassengerId)
+> submission$Survived <- predict(rf_model,test_model)
+> # Submitting the predicted value of the titanic data set
+> write.csv(submission, file = "random_forest_r_submission.csv", row.names=FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  3.763   0.213   4.013 

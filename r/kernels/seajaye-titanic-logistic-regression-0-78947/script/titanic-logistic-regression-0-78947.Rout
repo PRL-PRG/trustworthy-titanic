@@ -1,0 +1,198 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # i love pacman, but i dont think im even using it here
+> pacman::p_load(randomForest, ggplot2)
+> 
+> # read in the data
+> train <- read.csv("../input/train.csv", na.strings = c("", "NA", NA))
+> test <- read.csv("../input/test.csv")
+> 
+> # change all to lower because that's how i roll
+> colnames(train) <- tolower(colnames(train))
+> 
+> # check out structure
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ passengerid: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ sibsp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ cabin      : Factor w/ 147 levels "A10","A14","A16",..: NA 82 NA 56 NA NA 130 NA NA NA ...
+ $ embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+> 
+> # change passenger class to factor
+> train$pclass <- factor(train$pclass)
+> 
+> # # do some housekeeping - change variables to factor
+> # train$survived[train$survived == '1'] <- 'yes'
+> # train$survived[train$survived == '0'] <- 'no'
+> 
+> # survival
+> table(train$survived)
+
+  0   1 
+549 342 
+> 
+> # embarked
+> table(train$embarked)
+
+  C   Q   S 
+168  77 644 
+> levels(train$embarked) <- gsub('C', 'Cherbourg', levels(train$embarked))
+> levels(train$embarked) <- gsub('Q', 'Queenstown', levels(train$embarked))
+> levels(train$embarked) <- gsub('S', 'Southampton', levels(train$embarked))
+> 
+> # really curious about fare
+> 
+> summary(train$fare)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00    7.91   14.45   32.20   31.00  512.33 
+> 
+> ggplot(train, aes(x = train$fare)) +
++   geom_histogram()
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+Warning message:
+Use of `train$fare` is discouraged. Use `fare` instead. 
+> 
+> # # run a correlation between passenger class and fare
+> # cor.test(train$pclass, train$fare)
+> 
+> ggplot(train, aes(pclass, fare)) +
++   geom_boxplot()
+> 
+> # i want to find the summary of fare prices as a function of passenger class - ddply the descriptives?
+> ## would be a fun exercise
+> 
+> 
+> # run logistic regression
+> logistic <- glm(survived ~ sex*age*fare, family = binomial(link='logit'), data = train)
+> 
+> 
+> # something is happening such that it's only taking 714 passengers
+> predictions <- as.data.frame(predict(logistic, type = 'response'))
+> 
+> summary(logistic)
+
+Call:
+glm(formula = survived ~ sex * age * fare, family = binomial(link = "logit"), 
+    data = train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.8283  -0.6795  -0.5567   0.8279   2.3043  
+
+Coefficients:
+                   Estimate Std. Error z value Pr(>|z|)    
+(Intercept)       1.1231467  0.4671529   2.404 0.016206 *  
+sexmale          -2.0077288  0.5835864  -3.440 0.000581 ***
+age              -0.0321516  0.0180072  -1.785 0.074183 .  
+fare             -0.0152546  0.0129267  -1.180 0.237968    
+sexmale:age       0.0067298  0.0212314   0.317 0.751263    
+sexmale:fare      0.0234538  0.0145952   1.607 0.108065    
+age:fare          0.0015767  0.0005771   2.732 0.006295 ** 
+sexmale:age:fare -0.0015390  0.0006070  -2.536 0.011224 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 964.52  on 713  degrees of freedom
+Residual deviance: 695.32  on 706  degrees of freedom
+  (177 observations deleted due to missingness)
+AIC: 711.32
+
+Number of Fisher Scoring iterations: 7
+
+> 
+> # let's just cut out people with no age just cause i wanna see what happens - OK 714
+> train.age <- train[!is.na(train$age), ]
+> 
+> # combine predictions with train.age
+> train.age$prediction <- predict(logistic, type = 'response')
+> 
+> cor.test(train.age$survived, train.age$prediction)
+
+	Pearson's product-moment correlation
+
+data:  train.age$survived and train.age$prediction
+t = 19.22, df = 712, p-value < 2.2e-16
+alternative hypothesis: true correlation is not equal to 0
+95 percent confidence interval:
+ 0.5339844 0.6307804
+sample estimates:
+      cor 
+0.5844579 
+
+> 
+> # change predictions from 0 - 50
+> train.age$pred.binary <- train.age$prediction
+> 
+> train.age$pred.binary[train.age$pred.binary < .5] <- 0
+> train.age$pred.binary[train.age$pred.binary > .5] <- 1
+> 
+> # run correlation and see how good it is
+> cor.test(train.age$survived, train.age$pred.binary)
+
+	Pearson's product-moment correlation
+
+data:  train.age$survived and train.age$pred.binary
+t = 16.965, df = 712, p-value < 2.2e-16
+alternative hypothesis: true correlation is not equal to 0
+95 percent confidence interval:
+ 0.4821333 0.5867982
+sample estimates:
+      cor 
+0.5365259 
+
+> 
+> # OK let's do the same on the test set
+> colnames(test) <- tolower(colnames(test))
+> 
+> test$prediction <- predict(logistic, newdata = test, type = 'response')
+> 
+> test$prediction[test$prediction < .5] <- 0
+> test$prediction[test$prediction > .5] <- 1
+> 
+> ## but eventually we will have to say that the people without age are dead or something
+> test$prediction[is.na(test$prediction)] <- 0
+> 
+> # cut columns
+> colnames(test)
+ [1] "passengerid" "pclass"      "name"        "sex"         "age"        
+ [6] "sibsp"       "parch"       "ticket"      "fare"        "cabin"      
+[11] "embarked"    "prediction" 
+> submit.1 <- test[, c(1, 12)]
+> 
+> colnames(submit.1) <- c("PassengerId", "Survived")
+>   
+> # write out to submit; need to delete first column manually
+> write.csv(submit.1, file = "submit.1.csv")
+> 
+> proc.time()
+   user  system elapsed 
+  0.895   0.085   0.978 

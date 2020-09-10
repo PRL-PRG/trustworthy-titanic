@@ -1,0 +1,203 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> #Loading the data
+> train <- read.csv('../input/train.csv', header=TRUE,stringsAsFactors = FALSE)
+> test <- read.csv('../input/test.csv', header=TRUE,stringsAsFactors = FALSE)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> comb<-bind_rows(train,test)
+> 
+> #Title procesing
+> #Extracting the Title from name
+> comb$Title<-gsub('(.*,)|(\\..*)','',comb$Name)
+> table(comb$Sex,comb$Title)
+        
+          Capt  Col  Don  Dona  Dr  Jonkheer  Lady  Major  Master  Miss  Mlle
+  female     0    0    0     1   1         0     1      0       0   260     2
+  male       1    4    1     0   7         1     0      2      61     0     0
+        
+          Mme  Mr  Mrs  Ms  Rev  Sir  the Countess
+  female    1   0  197   2    0    0             1
+  male      0 757    0   0    8    1             0
+> #All the titles apart from Miss,Mrs,Master and Mr are recorded
+> f<-c('Dona','Lady','Mlle','Mme','Ms','the Countess')
+> m<-c('Capt','Col','Don','Jonkheer','Major','Rev','Sir')
+> library(stringr)
+> #The values in the f variable are changed to 'Miss'
+> comb$Title<-ifelse(str_trim(comb$Title) %in% f,'Miss',str_trim(comb$Title))
+> #The values in the m variable are changed to 'Mr'
+> comb$Title<-ifelse(str_trim(comb$Title) %in% m,'Mr',str_trim(comb$Title))
+> #Ttitle Dr is changed to Miss or Mr depending on the sex
+> comb[comb$Title=='Dr' & comb$Sex=='female',]$Title<-'Miss'
+> comb[comb$Title=='Dr' & comb$Sex=='male',]$Title<-'Mr'
+> comb$Title<-factor(comb$Title)
+> 
+> 
+> #Cabin procesing
+> #Cabin is extract as the first letter of the variable value
+> comb$Cabin<-substr(comb$Cabin,1,1)
+> table(comb$Cabin,comb$Pclass)
+   
+      1   2   3
+     67 254 693
+  A  22   0   0
+  B  65   0   0
+  C  94   0   0
+  D  40   6   0
+  E  34   4   3
+  F   0  13   8
+  G   0   0   5
+  T   1   0   0
+> #There is only 1 value for cabin T and it belongs Pclass=1. Since cabin C has the largest value, the value of T is replaced with 'C'
+> comb[comb$Cabin=='T',]$Cabin<-"C"
+> #All the other null enteries are placed with O i.e Other
+> comb$Cabin<-factor(ifelse(comb$Cabin=="","O",comb$Cabin)) #All other in 'O'
+> 
+> #Embarked processing
+> table(comb$Embarked)
+
+      C   Q   S 
+  2 270 123 914 
+> comb$Embarked<-as.character(comb$Embarked)
+> # The null entries for embarked are replaced with 'S', one with the highest count
+> comb$Embarked<-factor(ifelse(comb$Embarked=="","S",comb$Embarked)) 
+> 
+> #Fare processing
+> comb[is.na(comb$Fare),]
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked Title
+1044   3701   NA     O        S    Mr
+> #The missing value for fare is replaced with mean for Cabin 'O' and Pclass = 3
+> comb[is.na(comb$Fare),]$Fare<-mean(comb[comb$Pclass==3 & comb$Cabin=='O',]$Fare,na.rm=TRUE)
+> 
+> #Extract information from ticket
+> #The dataset is sorted on the ticket number to see if there are same ticket numbers for 2 diferent passenger
+> comb<-comb[order(comb$Ticket),]
+> #Since, the passengers travlling together are assinged similiar ticket number, a Gr
+> comb$GroupNum<-factor(match(comb$Ticket,unique(comb$Ticket)))
+> #Grouping by GroupNUm to create a new column GroupSize
+> x<-group_by(comb,GroupNum)
+> y<-summarise(x,GroupSize=n())
+`summarise()` ungrouping output (override with `.groups` argument)
+> y<-as.data.frame(y)
+> comb<-merge(x=comb,y=y,by="GroupNum",all=TRUE)
+> comb$GroupNum<-NULL
+> comb$GroupSize<-factor(comb$GroupSize)
+> 
+> comb$FamilySize<-factor(comb$SibSp+comb$Parch+1)
+> 
+> comb$Pclass<-factor(comb$Pclass)
+> comb$Sex<-factor(comb$Sex)
+> 
+> 
+> comb$Survived<-factor(comb$Survived)
+> comb$PassengerId<-factor(comb$PassengerId)
+> 
+> 
+> 
+> myformula_age<-Age~Pclass+Sex+Fare+Cabin+Embarked+Title #no error
+> model_age<-step(lm(myformula_age,data=comb),direction="backward")
+Start:  AIC=5034.52
+Age ~ Pclass + Sex + Fare + Cabin + Embarked + Title
+
+
+Step:  AIC=5034.52
+Age ~ Pclass + Fare + Cabin + Embarked + Title
+
+           Df Sum of Sq    RSS    AIC
+- Fare      1         5 124903 5032.6
+<none>                  124898 5034.5
+- Cabin     7      1916 126814 5036.4
+- Embarked  2      2471 127369 5051.0
+- Pclass    2      9672 134570 5108.5
+- Title     3     49982 174880 5380.6
+
+Step:  AIC=5032.56
+Age ~ Pclass + Cabin + Embarked + Title
+
+           Df Sum of Sq    RSS    AIC
+<none>                  124903 5032.6
+- Cabin     7      1961 126865 5034.9
+- Embarked  2      2474 127377 5049.1
+- Pclass    2     10801 135704 5115.3
+- Title     3     50811 175714 5383.6
+> comb$Age[is.na(comb$Age)] <- predict(model_age, comb[is.na(comb$Age),])
+> summary(comb$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.17   22.00   28.68   29.80   37.00   80.00 
+> 
+> comb1<-comb[order(comb$PassengerId),]
+> set.seed(1234)
+> ind<-sample(2,nrow(comb1),replace=TRUE,prob=c(0.7,0.3))
+> train.data<-comb1[1:891,]
+> test.data<-comb1[892:1309,]
+> library(party)
+Loading required package: grid
+Loading required package: mvtnorm
+Loading required package: modeltools
+Loading required package: stats4
+Loading required package: strucchange
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: sandwich
+
+Attaching package: ‘strucchange’
+
+The following object is masked from ‘package:stringr’:
+
+    boundary
+
+Warning messages:
+1: package ‘party’ was built under R version 3.6.2 
+2: package ‘zoo’ was built under R version 3.6.2 
+> myformula<-Survived~Pclass+Sex+Age+Fare+Cabin+Embarked+Title+GroupSize+FamilySize
+> fulltree<-ctree(myformula,data=train.data)
+> plot(fulltree,gp=gpar(fontsize=10))
+> Survived<-predict(fulltree,test.data)
+> PassengerId<-test.data$PassengerId
+> result<-data.frame(PassengerId,Survived)
+> write.csv(result, file = "my_solution.csv",row.names=FALSE)
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  1.662   0.144   1.820 

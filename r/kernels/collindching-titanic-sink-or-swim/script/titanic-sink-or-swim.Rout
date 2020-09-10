@@ -1,0 +1,427 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----load,message=FALSE,warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(grid)
+> library(gridExtra)
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> library(kableExtra)
+
+Attaching package: ‘kableExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    group_rows
+
+> library(knitr)
+> library(rpart)
+> library(VIM)
+Loading required package: colorspace
+VIM is ready to use.
+
+Suggestions and bug-reports can be submitted at: https://github.com/statistikat/VIM/issues
+
+Attaching package: ‘VIM’
+
+The following object is masked from ‘package:datasets’:
+
+    sleep
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- read.csv('../input/train.csv', stringsAsFactors = F)
+> test  <- read.csv('../input/test.csv', stringsAsFactors = F)
+> 
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> str(test)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : chr  "Kelly, Mr. James" "Wilkes, Mrs. James (Ellen Needs)" "Myles, Mr. Thomas Francis" "Wirz, Mr. Albert" ...
+ $ Sex        : chr  "male" "female" "male" "male" ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : chr  "330911" "363272" "240276" "315154" ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : chr  "" "" "" "" ...
+ $ Embarked   : chr  "Q" "S" "Q" "S" ...
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> test$Survived <- NA
+> merged <- rbind(train,test)
+> str(merged)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(merged)
+  PassengerId      Survived          Pclass          Name          
+ Min.   :   1   Min.   :0.0000   Min.   :1.000   Length:1309       
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median : 655   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295                     
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :1309   Max.   :1.0000   Max.   :3.000                     
+                NA's   :418                                        
+     Sex                 Age            SibSp            Parch      
+ Length:1309        Min.   : 0.17   Min.   :0.0000   Min.   :0.000  
+ Class :character   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000  
+ Mode  :character   Median :28.00   Median :0.0000   Median :0.000  
+                    Mean   :29.88   Mean   :0.4989   Mean   :0.385  
+                    3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000  
+                    Max.   :80.00   Max.   :8.0000   Max.   :9.000  
+                    NA's   :263                                     
+    Ticket               Fare            Cabin             Embarked        
+ Length:1309        Min.   :  0.000   Length:1309        Length:1309       
+ Class :character   1st Qu.:  7.896   Class :character   Class :character  
+ Mode  :character   Median : 14.454   Mode  :character   Mode  :character  
+                    Mean   : 33.295                                        
+                    3rd Qu.: 31.275                                        
+                    Max.   :512.329                                        
+                    NA's   :1                                              
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> merged$Fare[merged$Fare==""] <- NA
+> merged$Cabin[merged$Cabin==""] <- NA
+> merged$Embarked[merged$Embarked==""] <- NA
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> aggr(merged,prop=F,numbers=T,col=c("lightblue","indianred3"),sortVars=T,sortCombs=T)
+
+ Variables sorted by number of missings: 
+    Variable Count
+       Cabin  1014
+    Survived   418
+         Age   263
+    Embarked     2
+        Fare     1
+ PassengerId     0
+      Pclass     0
+        Name     0
+         Sex     0
+       SibSp     0
+       Parch     0
+      Ticket     0
+> 
+> 
+> ## ----warning=FALSE,message=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> stdtheme <- theme(plot.title=element_text(hjust=.5,size=12,face="bold"),legend.title=element_blank())
+> 
+> p.sex <- ggplot(data=train,mapping=aes(x=Sex,fill=factor(Survived,labels=c("Died","Survived")))) + 
++   geom_bar(position="fill") + 
++   labs(title="A. Sex and Survival") +
++   stdtheme 
+> 
+> meanfare_0 <- mean(train$Fare[train$Survived==0])
+> meanfare_1 <- mean(train$Fare[train$Survived==1])
+> p.fare <- ggplot(data=train,mapping=aes(x=Fare,color=factor(Survived))) +
++   geom_freqpoly() +
++   labs(title="C. Fare and Survival") +
++   geom_vline(xintercept=meanfare_0,color="red") +
++   geom_vline(xintercept=meanfare_1,color="blue") +
++   xlim(0,200) +
++   stdtheme +
++   guides(color=FALSE)
+> 
+> meanage_0 <- mean(train$Age[train$Survived==0],na.rm=TRUE)
+> meanage_1 <- mean(train$Age[train$Survived==1],na.rm=TRUE)
+> p.age <- ggplot(data=train,aes(x=Age,fill=factor(Survived))) +
++   geom_histogram(binwidth=10) +
++   labs(title="B. Age and Survival, Binwidth 10") +
++   geom_vline(xintercept=meanage_0,color="red") +
++   geom_vline(xintercept=meanage_1,color="blue") +
++   scale_x_continuous(breaks=seq(0,100,10)) +
++   stdtheme +
++   guides(fill=FALSE)
+> 
+> layout = matrix(c(1,2,3,3),2,2,byrow=TRUE)
+> grid.arrange(p.sex,p.age,p.fare,layout_matrix=layout)
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+Warning messages:
+1: Removed 177 rows containing non-finite values (stat_bin). 
+2: Removed 20 rows containing non-finite values (stat_bin). 
+3: Removed 4 row(s) containing missing values (geom_path). 
+> 
+> 
+> ## ----warning=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> p2.age <- ggplot(train,mapping=aes(x=Age,fill=factor(Survived))) +
++   geom_histogram(binwidth=5,position="fill") +
++   guides(fill=FALSE) +
++   labs(title="Survival rate by age, binwidth=5",y="Proportion") +
++   scale_x_continuous(breaks=seq(0,100,10)) +
++   stdtheme
+> 
+> p2.fare <- ggplot(train,mapping=aes(x=Fare,fill=factor(Survived))) +
++   geom_histogram(binwidth=10,position="fill") +
++   labs(title="Survival rate by fare, binwidth=10",y="Proportion") +
++   scale_x_continuous(breaks=seq(0,550,50)) +
++   stdtheme +
++   guides(fill=FALSE)
+> 
+> # separate cabins
+> merged$CabinGr <- merged$Cabin %>% as.character() %>% substr(1,1)
+> train <- merged[1:891,]
+> 
+> p2.cabgr1 <- ggplot(data=subset(train,!is.na(CabinGr)),aes(x=CabinGr)) +
++   geom_bar() +
++   labs(title="Num passengers per cabin group",y="Count") +
++   stdtheme
+> 
+> p2.cabgr2 <- ggplot(data=subset(train,!is.na(CabinGr)),aes(x=CabinGr,fill=factor(Survived))) +
++   geom_bar(position="fill") +
++   labs(title="Survival rate by cabin group",x="CabinGr",y="Proportion") +
++   guides(fill=FALSE) +
++   stdtheme
+> 
+> p.embarked <- ggplot(subset(train,!is.na(Embarked)),mapping=aes(x=Embarked,fill=factor(Survived,labels=c("Died","Survived")))) +
++   geom_bar(position="fill") +
++   labs(title="Port and Survival",y="Proportion",x="Port") +
++   stdtheme  
+> 
+> grid.arrange(p2.age,p2.fare,p2.cabgr1,p2.cabgr2,p.embarked,layout_matrix=matrix(c(1,5,2,2,3,4),3,2,byrow=TRUE))
+Warning messages:
+1: Removed 177 rows containing non-finite values (stat_bin). 
+2: Removed 60 rows containing missing values (geom_bar). 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> merged$AgeBucket[!is.na(merged$Age)] <- "0-20"
+> merged$AgeBucket[merged$Age>20 & merged$Age<=40] <- "20-40" 
+> merged$AgeBucket[merged$Age>40 & merged$Age<=60] <- "40-60" 
+> merged$AgeBucket[merged$Age>60] <- "60+"
+> 
+> age.sex_surv <- aggregate(Survived ~ AgeBucket + Sex,
++           data=merged,
++           FUN=function(x) {sum(x)/length(x)})
+> 
+> kable(age.sex_surv[order(-age.sex_surv$Survived),],"html",row.names=FALSE) %>% 
++   kable_styling(full_width=FALSE)
+<table class="table" style="width: auto !important; margin-left: auto; margin-right: auto;">
+ <thead>
+  <tr>
+   <th style="text-align:left;"> AgeBucket </th>
+   <th style="text-align:left;"> Sex </th>
+   <th style="text-align:right;"> Survived </th>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style="text-align:left;"> 60+ </td>
+   <td style="text-align:left;"> female </td>
+   <td style="text-align:right;"> 1.0000000 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> 20-40 </td>
+   <td style="text-align:left;"> female </td>
+   <td style="text-align:right;"> 0.7867647 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> 40-60 </td>
+   <td style="text-align:left;"> female </td>
+   <td style="text-align:right;"> 0.7555556 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> 0-20 </td>
+   <td style="text-align:left;"> female </td>
+   <td style="text-align:right;"> 0.6883117 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> 0-20 </td>
+   <td style="text-align:left;"> male </td>
+   <td style="text-align:right;"> 0.2843137 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> 40-60 </td>
+   <td style="text-align:left;"> male </td>
+   <td style="text-align:right;"> 0.1927711 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> 20-40 </td>
+   <td style="text-align:left;"> male </td>
+   <td style="text-align:right;"> 0.1847390 </td>
+  </tr>
+  <tr>
+   <td style="text-align:left;"> 60+ </td>
+   <td style="text-align:left;"> male </td>
+   <td style="text-align:right;"> 0.1052632 </td>
+  </tr>
+</tbody>
+</table>
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> names <- as.character(merged$Name)
+> titles <- strsplit(names,"[,.]") %>% sapply(FUN=function(x) x[2])
+> titles <- gsub("^ | $","",titles)
+> table(titles)
+titles
+        Capt          Col          Don         Dona           Dr     Jonkheer 
+           1            4            1            1            8            1 
+        Lady        Major       Master         Miss         Mlle          Mme 
+           1            2           61          260            2            1 
+          Mr          Mrs           Ms          Rev          Sir the Countess 
+         757          197            2            8            1            1 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> merged$Title = "Mr"
+> merged$Title[titles %in% c("Dona","Lady","Mme","Mrs","the Countess")] <- "Mrs"
+> merged$Title[titles %in% c("Miss","Mlle","Ms")] <- "Ms"
+> merged$Title <- factor(merged$Title)
+> 
+> prop.table(table(merged$Title,merged$Survived),1)
+     
+              0         1
+  Mr  0.8096886 0.1903114
+  Mrs 0.2031250 0.7968750
+  Ms  0.2972973 0.7027027
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> merged$nFam <- merged$SibSp + merged$Parch
+> 
+> ggplot(data=merged[!is.na(merged$Survived),],aes(x=nFam,fill=factor(Survived))) +
++   geom_bar(position="fill") +
++   stdtheme +
++   labs(title="Survival by num family members",x="Family members onboard",y="Survival rate") +
++   scale_y_continuous(breaks=seq(0,1,.1)) +
++   scale_x_continuous(breaks=0:10)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> merged[is.na(merged$Fare),]
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked CabinGr AgeBucket Title nFam
+1044   3701   NA  <NA>        S    <NA>       60+    Mr    0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(merged[!is.na(merged$Fare) & merged$Sex=="male" & merged$Pclass==3,],aes(x=Age,y=Fare)) +
++   geom_point() +
++   geom_smooth()
+`geom_smooth()` using method = 'loess' and formula 'y ~ x'
+Warning messages:
+1: Removed 144 rows containing non-finite values (stat_smooth). 
+2: Removed 144 rows containing missing values (geom_point). 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> missfare <- merged[merged$Pclass==3 & merged$Age>=50 & merged$Sex=="male",]$Fare %>% median(na.rm=TRUE)
+> 
+> merged$Fare[is.na(merged$Fare)] <- missfare
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> merged[is.na(merged$Embarked),]
+    PassengerId Survived Pclass                                      Name
+62           62        1      1                       Icard, Miss. Amelie
+830         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Cabin Embarked CabinGr AgeBucket Title
+62  female  38     0     0 113572   80   B28     <NA>       B     20-40    Ms
+830 female  62     0     0 113572   80   B28     <NA>       B       60+   Mrs
+    nFam
+62     0
+830    0
+> merged$Embarked[62] <- "S"
+> merged$Embarked[830] <- "S"
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> agefit <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title,
++                 data=merged[!is.na(merged$Age),],
++                 method="anova")
+> merged$Age[is.na(merged$Age)] <- predict(agefit,merged[is.na(merged$Age),])
+> 
+> 
+> ## ----eval=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ## train <- merged[1:891,]
+> ## test <- merged[892:1309,]
+> ## 
+> ## sfit <- rpart(Survived ~ Pclass + Name + Sex + SibSp + Parch + Fare + Embarked + AgeBucket + Title + nFam,
+> ##               train,
+> ##               method="class",
+> ##               control=rpart.control(minsplit=5))
+> ## 
+> ## prediction <- predict(sfit,test,type="class")
+> ## 
+> ## submit <- data.frame(PassengerId=test$PassengerId,Survived=prediction)
+> ## 
+> ## write.csv(submit,file="rpart.csv",row.names=FALSE)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  2.906   0.212   3.255 

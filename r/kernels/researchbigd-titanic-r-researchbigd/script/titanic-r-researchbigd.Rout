@@ -1,0 +1,219 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> 
+> 
+> #############
+> library(rpart)
+> library(rattle)
+Loading required package: tibble
+Loading required package: bitops
+Rattle: A free graphical interface for data science with R.
+Version 5.4.0 Copyright (c) 2006-2020 Togaware Pty Ltd.
+Type 'rattle()' to shake, rattle, and roll your data.
+
+Attaching package: ‘rattle’
+
+The following object is masked from ‘package:randomForest’:
+
+    importance
+
+Warning messages:
+1: package ‘rattle’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+> library(rpart.plot)
+> library(RColorBrewer)
+> print(date())
+[1] "Thu Sep 10 14:04:49 2020"
+> print("Prabhat's code")
+[1] "Prabhat's code"
+> ############
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> 
+> # We can inspect the train data. The results of this are printed in the log tab below
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> # 'data.frame':	891 obs. of  12 variables
+> str(test)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : Factor w/ 418 levels "Abbott, Master. Eugene Joseph",..: 210 409 273 414 182 370 85 58 5 104 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : Factor w/ 77 levels "","A11","A18",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+> # 'data.frame':	418 obs. of  11 variables:
+> summary(train)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked
+            :687    :  2   
+ B96 B98    :  4   C:168   
+ C23 C25 C27:  4   Q: 77   
+ G6         :  4   S:644   
+ C22 C26    :  3           
+ D          :  3           
+ (Other)    :186           
+> # Age has 197 NAs. Min age of 0.42, Tickets other 852, Max fare of 512 is to far from Q3, cabin 186 others
+> summary(test)
+  PassengerId         Pclass     
+ Min.   : 892.0   Min.   :1.000  
+ 1st Qu.: 996.2   1st Qu.:1.000  
+ Median :1100.5   Median :3.000  
+ Mean   :1100.5   Mean   :2.266  
+ 3rd Qu.:1204.8   3rd Qu.:3.000  
+ Max.   :1309.0   Max.   :3.000  
+                                 
+                                        Name         Sex           Age       
+ Abbott, Master. Eugene Joseph            :  1   female:152   Min.   : 0.17  
+ Abelseth, Miss. Karen Marie              :  1   male  :266   1st Qu.:21.00  
+ Abelseth, Mr. Olaus Jorgensen            :  1                Median :27.00  
+ Abrahamsson, Mr. Abraham August Johannes :  1                Mean   :30.27  
+ Abrahim, Mrs. Joseph (Sophie Halaut Easu):  1                3rd Qu.:39.00  
+ Aks, Master. Philip Frank                :  1                Max.   :76.00  
+ (Other)                                  :412                NA's   :86     
+     SibSp            Parch             Ticket         Fare        
+ Min.   :0.0000   Min.   :0.0000   PC 17608:  5   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.0000   113503  :  4   1st Qu.:  7.896  
+ Median :0.0000   Median :0.0000   CA. 2343:  4   Median : 14.454  
+ Mean   :0.4474   Mean   :0.3923   16966   :  3   Mean   : 35.627  
+ 3rd Qu.:1.0000   3rd Qu.:0.0000   220845  :  3   3rd Qu.: 31.500  
+ Max.   :8.0000   Max.   :9.0000   347077  :  3   Max.   :512.329  
+                                   (Other) :396   NA's   :1        
+             Cabin     Embarked
+                :327   C:102   
+ B57 B59 B63 B66:  3   Q: 46   
+ A34            :  2   S:270   
+ B45            :  2           
+ C101           :  2           
+ C116           :  2           
+ (Other)        : 80           
+> # Age has 86 NAs, Min age is 0.17, Tickets - others are 396, Fare 412 is way higer than q3, cabin has 80 others
+> table(train$Survived)
+
+  0   1 
+549 342 
+> # 0 549/1 342
+> table(train$Sex, train$Survived)
+        
+           0   1
+  female  81 233
+  male   468 109
+> # female 0 81, 1 233/male 0 468, 1 109
+> 
+> 
+> # Here we will plot the passenger survival by class
+> #train$Survived <- factor(train$Survived, levels=c(1,0))
+> #levels(train$Survived) <- c("Survived", "Died")
+> #train$Pclass <- as.factor(train$Pclass)
+> #levels(train$Pclass) <- c("1st Class", "2nd Class", "3rd Class")
+> 
+> png("1_survival_by_class.png", width=800, height=600)
+> mosaicplot(train$Pclass ~ train$Survived, main="Passenger Survival by Class",
++            color=c("#8dd3c7", "#fb8072"), shade=FALSE,  xlab="", ylab="",
++            off=c(0), cex.axis=1.4)
+> dev.off()
+null device 
+          1 
+> 
+> ########### Analyze decision tree ###########
+> # Build the decision tree
+> my_tree_two <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, data = train, method = "class")
+> 
+> # Visualize the decision tree using plot() and text()
+> plot(my_tree_two)
+> text(my_tree_two)
+> 
+> # Load in the packages to build a fancy plot
+> library(rattle)
+> library(rpart.plot)
+> library(RColorBrewer)
+> 
+> 
+> # Time to plot your fancy tree
+> fancyRpartPlot(my_tree_two)
+> 
+> # Make predictions on the test set
+> my_prediction <- predict(my_tree_two, newdata = test, type = "class")
+> 
+> # Finish the data.frame() call
+> my_solution <- data.frame(PassengerId = test$PassengerId, Survived = my_prediction)
+> 
+> # Use nrow() on my_solution
+> nrow(my_solution)
+[1] 418
+> 
+> # Finish the write.csv() call
+> write.csv(my_solution, file = "my_solution.csv", row.names = FALSE)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  0.527   0.080   0.937 

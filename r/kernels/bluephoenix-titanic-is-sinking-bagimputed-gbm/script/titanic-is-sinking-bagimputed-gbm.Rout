@@ -1,0 +1,686 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE)
+> getwd()
+[1] "/Users/alex/MachineLearning/TrustworthyML/KaggleCrawler/Aviral/korpus-master/notebooks/r/kernels/bluephoenix-titanic-is-sinking-bagimputed-gbm/script"
+> # clear the environment
+> rm(list= ls())
+> gc() # garbage collection
+         used (Mb) gc trigger (Mb) limit (Mb) max used (Mb)
+Ncells 291684 15.6     642180 34.3         NA   547777 29.3
+Vcells 481728  3.7    8388608 64.0      16384  1772154 13.6
+> 
+> 
+> ## ----initialize packages, results = FALSE, warning = FALSE, message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------
+> # load packages and set options
+> options(stringsAsFactors = FALSE)
+> 
+> # install packages if not available
+> packages <- c("readr", #read data
++               "lubridate", #date time conversion
++               "tidyverse", # full set of pkgs
++               "dplyr", #data exploratory + manipulation
++               "caTools", # features engineering
++               "ggplot2","ggthemes", "corrplot", # plotting graphs
++               "caret", # ML libs
++               "Hmisc" # EDA
++ )
+> 
+> if (length(setdiff(packages, rownames(installed.packages()))) > 0) {
++   install.packages(setdiff(packages, rownames(installed.packages())))
++ }
+> lapply(packages, require, character.only = TRUE)
+Loading required package: readr
+Loading required package: lubridate
+
+Attaching package: ‘lubridate’
+
+The following objects are masked from ‘package:base’:
+
+    date, intersect, setdiff, union
+
+Loading required package: tidyverse
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mforcats[39m 0.5.0
+[32m✓[39m [34mpurrr  [39m 0.3.4     
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mlubridate[39m::[32mas.difftime()[39m masks [34mbase[39m::as.difftime()
+[31mx[39m [34mlubridate[39m::[32mdate()[39m        masks [34mbase[39m::date()
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m          masks [34mstats[39m::filter()
+[31mx[39m [34mlubridate[39m::[32mintersect()[39m   masks [34mbase[39m::intersect()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m             masks [34mstats[39m::lag()
+[31mx[39m [34mlubridate[39m::[32msetdiff()[39m     masks [34mbase[39m::setdiff()
+[31mx[39m [34mlubridate[39m::[32munion()[39m       masks [34mbase[39m::union()
+Loading required package: caTools
+Loading required package: ggthemes
+Loading required package: corrplot
+corrplot 0.84 loaded
+Loading required package: caret
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+Loading required package: Hmisc
+Loading required package: survival
+
+Attaching package: ‘survival’
+
+The following object is masked from ‘package:caret’:
+
+    cluster
+
+Loading required package: Formula
+
+Attaching package: ‘Hmisc’
+
+The following objects are masked from ‘package:dplyr’:
+
+    src, summarize
+
+The following objects are masked from ‘package:base’:
+
+    format.pval, units
+
+[[1]]
+[1] TRUE
+
+[[2]]
+[1] TRUE
+
+[[3]]
+[1] TRUE
+
+[[4]]
+[1] TRUE
+
+[[5]]
+[1] TRUE
+
+[[6]]
+[1] TRUE
+
+[[7]]
+[1] TRUE
+
+[[8]]
+[1] TRUE
+
+[[9]]
+[1] TRUE
+
+[[10]]
+[1] TRUE
+
+Warning messages:
+1: package ‘lubridate’ was built under R version 3.6.2 
+2: package ‘ggplot2’ was built under R version 3.6.2 
+3: package ‘tibble’ was built under R version 3.6.2 
+4: package ‘tidyr’ was built under R version 3.6.2 
+5: package ‘purrr’ was built under R version 3.6.2 
+6: package ‘dplyr’ was built under R version 3.6.2 
+7: package ‘survival’ was built under R version 3.6.2 
+> 
+> 
+> ## ----Read inputs,  results = "hide", warning = FALSE, message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> # set TryCatch for input folder (on kaggle kernel or local)
+> 
+> ?tryCatch
+conditions                package:base                 R Documentation
+
+_C_o_n_d_i_t_i_o_n _H_a_n_d_l_i_n_g _a_n_d _R_e_c_o_v_e_r_y
+
+_D_e_s_c_r_i_p_t_i_o_n:
+
+     These functions provide a mechanism for handling unusual
+     conditions, including errors and warnings.
+
+_U_s_a_g_e:
+
+     tryCatch(expr, ..., finally)
+     withCallingHandlers(expr, ...)
+     
+     signalCondition(cond)
+     
+     simpleCondition(message, call = NULL)
+     simpleError    (message, call = NULL)
+     simpleWarning  (message, call = NULL)
+     simpleMessage  (message, call = NULL)
+     
+     errorCondition(message, ..., class = NULL, call = NULL)
+     warningCondition(message, ..., class = NULL, call = NULL)
+     
+     ## S3 method for class 'condition'
+     as.character(x, ...)
+     ## S3 method for class 'error'
+     as.character(x, ...)
+     ## S3 method for class 'condition'
+     print(x, ...)
+     ## S3 method for class 'restart'
+     print(x, ...)
+     
+     conditionCall(c)
+     ## S3 method for class 'condition'
+     conditionCall(c)
+     conditionMessage(c)
+     ## S3 method for class 'condition'
+     conditionMessage(c)
+     
+     withRestarts(expr, ...)
+     
+     computeRestarts(cond = NULL)
+     findRestart(name, cond = NULL)
+     invokeRestart(r, ...)
+     invokeRestartInteractively(r)
+     
+     isRestart(x)
+     restartDescription(r)
+     restartFormals(r)
+     
+     suspendInterrupts(expr)
+     allowInterrupts(expr)
+     
+     .signalSimpleWarning(msg, call)
+     .handleSimpleError(h, msg, call)
+     .tryResumeInterrupt()
+     
+_A_r_g_u_m_e_n_t_s:
+
+       c: a condition object.
+
+    call: call expression.
+
+    cond: a condition object.
+
+    expr: expression to be evaluated.
+
+ finally: expression to be evaluated before returning or exiting.
+
+       h: function.
+
+ message: character string.
+
+     msg: character string.
+
+    name: character string naming a restart.
+
+       r: restart object.
+
+       x: object.
+
+   class: character string naming a condition class.
+
+     ...: additional arguments; see details below.
+
+_D_e_t_a_i_l_s:
+
+     The condition system provides a mechanism for signaling and
+     handling unusual conditions, including errors and warnings.
+     Conditions are represented as objects that contain information
+     about the condition that occurred, such as a message and the call
+     in which the condition occurred.  Currently conditions are
+     S3-style objects, though this may eventually change.
+
+     Conditions are objects inheriting from the abstract class
+     ‘condition’.  Errors and warnings are objects inheriting from the
+     abstract subclasses ‘error’ and ‘warning’.  The class
+     ‘simpleError’ is the class used by ‘stop’ and all internal error
+     signals.  Similarly, ‘simpleWarning’ is used by ‘warning’, and
+     ‘simpleMessage’ is used by ‘message’.  The constructors by the
+     same names take a string describing the condition as argument and
+     an optional call.  The functions ‘conditionMessage’ and
+     ‘conditionCall’ are generic functions that return the message and
+     call of a condition.
+
+     The function ‘errorCondition’ and ‘warningCondition’ can be used
+     to construct error conditions of a particular class with
+     additional fields specified as the ‘...’ argument.
+     ‘warningCondition’ is analogous for warnings.
+
+     Conditions are signaled by ‘signalCondition’.  In addition, the
+     ‘stop’ and ‘warning’ functions have been modified to also accept
+     condition arguments.
+
+     The function ‘tryCatch’ evaluates its expression argument in a
+     context where the handlers provided in the ‘...’ argument are
+     available.  The ‘finally’ expression is then evaluated in the
+     context in which ‘tryCatch’ was called; that is, the handlers
+     supplied to the current ‘tryCatch’ call are not active when the
+     ‘finally’ expression is evaluated.
+
+     Handlers provided in the ‘...’ argument to ‘tryCatch’ are
+     established for the duration of the evaluation of ‘expr’.  If no
+     condition is signaled when evaluating ‘expr’ then ‘tryCatch’
+     returns the value of the expression.
+
+     If a condition is signaled while evaluating ‘expr’ then
+     established handlers are checked, starting with the most recently
+     established ones, for one matching the class of the condition.
+     When several handlers are supplied in a single ‘tryCatch’ then the
+     first one is considered more recent than the second.  If a handler
+     is found then control is transferred to the ‘tryCatch’ call that
+     established the handler, the handler found and all more recent
+     handlers are disestablished, the handler is called with the
+     condition as its argument, and the result returned by the handler
+     is returned as the value of the ‘tryCatch’ call.
+
+     Calling handlers are established by ‘withCallingHandlers’.  If a
+     condition is signaled and the applicable handler is a calling
+     handler, then the handler is called by ‘signalCondition’ in the
+     context where the condition was signaled but with the available
+     handlers restricted to those below the handler called in the
+     handler stack.  If the handler returns, then the next handler is
+     tried; once the last handler has been tried, ‘signalCondition’
+     returns ‘NULL’.
+
+     User interrupts signal a condition of class ‘interrupt’ that
+     inherits directly from class ‘condition’ before executing the
+     default interrupt action.
+
+     Restarts are used for establishing recovery protocols.  They can
+     be established using ‘withRestarts’.  One pre-established restart
+     is an ‘abort’ restart that represents a jump to top level.
+
+     ‘findRestart’ and ‘computeRestarts’ find the available restarts.
+     ‘findRestart’ returns the most recently established restart of the
+     specified name.  ‘computeRestarts’ returns a list of all restarts.
+     Both can be given a condition argument and will then ignore
+     restarts that do not apply to the condition.
+
+     ‘invokeRestart’ transfers control to the point where the specified
+     restart was established and calls the restart's handler with the
+     arguments, if any, given as additional arguments to
+     ‘invokeRestart’.  The restart argument to ‘invokeRestart’ can be a
+     character string, in which case ‘findRestart’ is used to find the
+     restart.
+
+     New restarts for ‘withRestarts’ can be specified in several ways.
+     The simplest is in ‘name = function’ form where the function is
+     the handler to call when the restart is invoked.  Another simple
+     variant is as ‘name = string’ where the string is stored in the
+     ‘description’ field of the restart object returned by
+     ‘findRestart’; in this case the handler ignores its arguments and
+     returns ‘NULL’.  The most flexible form of a restart specification
+     is as a list that can include several fields, including ‘handler’,
+     ‘description’, and ‘test’.  The ‘test’ field should contain a
+     function of one argument, a condition, that returns ‘TRUE’ if the
+     restart applies to the condition and ‘FALSE’ if it does not; the
+     default function returns ‘TRUE’ for all conditions.
+
+     One additional field that can be specified for a restart is
+     ‘interactive’.  This should be a function of no arguments that
+     returns a list of arguments to pass to the restart handler.  The
+     list could be obtained by interacting with the user if necessary.
+     The function ‘invokeRestartInteractively’ calls this function to
+     obtain the arguments to use when invoking the restart.  The
+     default ‘interactive’ method queries the user for values for the
+     formal arguments of the handler function.
+
+     Interrupts can be suspended while evaluating an expression using
+     ‘suspendInterrupts’.  Subexpression can be evaluated with
+     interrupts enabled using ‘allowInterrupts’.  These functions can
+     be used to make sure cleanup handlers cannot be interrupted.
+
+     ‘.signalSimpleWarning’, ‘.handleSimpleError’, and
+     ‘.tryResumeInterrupt’ are used internally and should not be called
+     directly.
+
+_R_e_f_e_r_e_n_c_e_s:
+
+     The ‘tryCatch’ mechanism is similar to Java error handling.
+     Calling handlers are based on Common Lisp and Dylan.  Restarts are
+     based on the Common Lisp restart mechanism.
+
+_S_e_e _A_l_s_o:
+
+     ‘stop’ and ‘warning’ signal conditions, and ‘try’ is essentially a
+     simplified version of ‘tryCatch’.  ‘assertCondition’ in package
+     ‘tools’ _tests_ that conditions are signalled and works with
+     several of the above handlers.
+
+_E_x_a_m_p_l_e_s:
+
+     tryCatch(1, finally = print("Hello"))
+     e <- simpleError("test error")
+     ## Not run:
+     
+      stop(e)
+      tryCatch(stop(e), finally = print("Hello"))
+      tryCatch(stop("fred"), finally = print("Hello"))
+     ## End(Not run)
+     
+     tryCatch(stop(e), error = function(e) e, finally = print("Hello"))
+     tryCatch(stop("fred"),  error = function(e) e, finally = print("Hello"))
+     withCallingHandlers({ warning("A"); 1+2 }, warning = function(w) {})
+     ## Not run:
+     
+      { withRestarts(stop("A"), abort = function() {}); 1 }
+     ## End(Not run)
+     
+     withRestarts(invokeRestart("foo", 1, 2), foo = function(x, y) {x + y})
+     
+     ##--> More examples are part of
+     ##-->   demo(error.catching)
+     
+
+> test <- tryCatch(read_csv("../input/test.csv"),
++                  error = function(e){
++                    print('Detect working environment is not Kaggle kernel')
++                    read_csv("./input/test.csv")
++                  })
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> train <- tryCatch(read_csv("../input/train.csv"),
++                  error = function(e){
++                    print('Detect working environment is not Kaggle kernel')
++                    read_csv("./input/train.csv")
++                  })
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> # Add target variable
+> test$Survived <- NA
+> 
+> 
+> ## ----EDA- Merge to get full dataset----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full <- rbind(train,test)
+> 
+> 
+> ## ----Missing data----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> aggr_plot <- VIM::aggr(full, 
++                        col=c('navyblue','red'), numbers=TRUE, sortVars=TRUE, labels=names(data), cex.axis=.7, gap=3,
++                        ylab=c("Histogram of missing data","Pattern"))
+
+ Variables sorted by number of missings: 
+    Variable        Count
+       Cabin 0.7746371276
+    Survived 0.3193277311
+         Age 0.2009167303
+    Embarked 0.0015278839
+        Fare 0.0007639419
+ PassengerId 0.0000000000
+      Pclass 0.0000000000
+        Name 0.0000000000
+         Sex 0.0000000000
+       SibSp 0.0000000000
+       Parch 0.0000000000
+      Ticket 0.0000000000
+Warning message:
+In plot.aggr(res, ...) : not enough horizontal space to display frequencies
+> 
+> 
+> ## ----EDA- Impute missing data----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> # Age vs Survived
+> ggplot(full[1:891,], aes(Age, fill = factor(Survived))) + 
++   geom_histogram(bins=30) + 
++   theme_few() +
++   xlab("Age") +
++   scale_fill_discrete(name = "Survived") + 
++   ggtitle("Age vs Survived")
+Warning message:
+Removed 177 rows containing non-finite values (stat_bin). 
+> 
+> # Age vs Sex vs Survived
+> ggplot(full[1:891,], aes(Age, fill = factor(Survived))) + 
++   geom_histogram(bins=30) + 
++   theme_few() +
++   xlab("Age") +
++   ylab("Count") +
++   facet_grid(.~Sex)+
++   scale_fill_discrete(name = "Survived") + 
++   theme_few()+
++   ggtitle("Age vs Sex vs Survived")
+Warning message:
+Removed 177 rows containing non-finite values (stat_bin). 
+> 
+> # Replace Embarked with most common 
+> train$Embarked <- replace(train$Embarked, which(is.na(train$Embarked)), 'S')
+> full$Embarked <- replace(full$Embarked, which(is.na(full$Embarked)), 'S')
+> 
+> ## Method 1- replace by mean
+> 
+> # # Replace missing age = mean of all ages / same with Fares
+> # train$Age[is.na(train$Age)] <- round(mean(train$Age, na.rm = T),0)
+> # train$Fare[is.na(train$Fare)] <- round(mean(train$Fare, na.rm = T),0)
+> 
+> # # Replace missing age = mean of all ages / same with Fares
+> # test$Age[is.na(test$Age)] <- round(mean(test$Age, na.rm = T),0)
+> # test$Fare[is.na(test$Fare)] <- round(mean(test$Fare, na.rm = T),0)
+> 
+> 
+> ## Method 2- baggedImpute on full dataset
+> # Age + Fare are 2 missing variables
+> 
+> missing.df <- full %>%
++   select(-c(Survived, Cabin, PassengerId, Name, Ticket))
+> 
+> missing_model <- caret::preProcess(missing.df, method = "bagImpute")
+> missing.result <- predict(missing_model, missing.df)
+> 
+> # Add back columns to full, train and test datasets
+> missing.result <- cbind(full$PassengerId, missing.result)
+> 
+> missing.result <- missing.result %>%
++   rename(PassengerId = 'full$PassengerId') %>%
++   select(PassengerId, Age, Fare)
+> 
+> full <- full %>%
++   select(-c(Age,Fare))
+> full <- left_join(full,missing.result, by = "PassengerId")
+> 
+> train <- train %>% 
++   select(-c(Age,Fare)) 
+> train <- left_join(train,missing.result, by = "PassengerId")
+> 
+> test <- test %>%
++   select(-c(Age,Fare))
+> test <- left_join(test,missing.result, by = "PassengerId")
+> 
+> 
+> 
+> ## ----Feature engineering---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Exclude unrelated features
+> train.df <- train %>%
++   select(-c(PassengerId,
++             Name,
++             Ticket,
++             Cabin))
+> 
+> 
+> ## ----FE- binning for ages--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> # Age distribution (full dataset)
+> qplot(full$Age,
++       geom = 'histogram', binwidth = 0.5,
++       main = 'Age distribution of passengers (full dataset)',
++       xlab = 'Age',
++       ylab = 'Count')
+> 
+> # Binning for train
+> train.df <- train.df %>%
++   mutate(Age_Range = case_when(
++     Age < 18 ~ 'Kids',
++     Age >=18 & Age < 60 ~ 'Adults',
++     Age >=60 ~ 'Seniors'
++   )) %>%
++   select (-Age)
+> 
+> 
+> 
+> ## ----FE- binning for fares-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Fare distribution
+> qplot(full$Fare,
++       geom = 'histogram', binwidth = 10,
++       main = 'Fare distribution of passengers',
++       xlab = 'Fare',
++       ylab = 'Count')
+> 
+> # Binning fare
+> train.df <- train.df %>%
++   mutate(Fare_Range = case_when(
++     Fare < 50 ~ 'Cheapest',
++     Fare >= 50 & Fare < 100 ~ 'Cheap',
++     Fare >= 100 & Fare < 200 ~ 'Moderate',
++     Fare >= 200 & Fare < 500 ~ 'Expensive',
++     Fare >= 500 ~ 'Most expensive'
++   )) %>%
++   select(-Fare)
+> 
+> 
+> 
+> ## ----FE- Bining siblings and partners--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Siblings distribution
+> qplot(full$SibSp,
++       geom = 'histogram', binwidth = 0.5,
++       main = 'Siblings distribution of passengers',
++       xlab = 'Siblings',
++       ylab = 'Count')
+> 
+> # Binning siblngs
+> train.df <- train.df %>%
++   mutate(Siblings_Range = case_when(
++     SibSp < 2 ~ 'Few',
++     SibSp >= 2 & SibSp < 4 ~ 'Some',
++     SibSp >= 4 ~ 'Many'
++   )) %>%
++   select(-SibSp)
+> 
+> #####
+> # Partner distribution
+> qplot(full$Parch,
++       geom = 'histogram', binwidth = 0.5,
++       main = 'Partner distribution of passengers',
++       xlab = 'Partners',
++       ylab = 'Count')
+> 
+> # Binning partner
+> train.df <- train.df %>%
++   mutate(Partner_Range = case_when(
++     Parch < 2 ~ 'Few',
++     Parch >= 2 & Parch < 4 ~ 'Some',
++     Parch >= 4 ~ 'Many'
++   )) %>%
++   select(-Parch)
+> 
+> 
+> 
+> ## ----FE- Perform on test dataset-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> # Replace Embarked with most common 
+> test$Embarked <- replace(test$Embarked, which(is.na(test$Embarked)), 'S')
+> 
+> # FE for test dataset
+> test.df <- test %>%
++   select(-c(PassengerId,
++             Name,
++             Ticket,
++             Cabin,
++             Survived)) %>%
++   mutate(Age_Range = case_when(
++     Age < 18 ~ 'Kids',
++     Age >=18 & Age < 60 ~ 'Adults',
++     Age >=60 ~ 'Seniors'
++   )) %>%
++   select (-Age) %>%
++   mutate(Partner_Range = case_when(
++     Parch < 2 ~ 'Few',
++     Parch >= 2 & Parch < 4 ~ 'Some',
++     Parch >= 4 ~ 'Many'
++   )) %>%
++   select(-Parch) %>%
++   mutate(Siblings_Range = case_when(
++     SibSp < 2 ~ 'Few',
++     SibSp >= 2 & SibSp < 4 ~ 'Some',
++     SibSp >= 4 ~ 'Many'
++   )) %>%
++   select(-SibSp) %>%
++   mutate(Fare_Range = case_when(
++     Fare < 50 ~ 'Cheapest',
++     Fare >= 50 & Fare < 100 ~ 'Cheap',
++     Fare >= 100 & Fare < 200 ~ 'Moderate',
++     Fare >= 200 & Fare < 500 ~ 'Expensive',
++     Fare >= 500 ~ 'Most expensive'
++   )) %>%
++   select(-Fare)
+> 
+> 
+> 
+> 
+> ## ----Models development (MD) preparation, results = "hide", warning = FALSE, message = FALSE-------------------------------------------------------------------------------------------------------------------------------------
+> # Set seed for code reproduction
+> 
+> set.seed(1908)
+> split <- caTools::sample.split(train.df$Survived, SplitRatio = 0.7)
+> 
+> train.df$Survived <- as.factor(train.df$Survived)
+> 
+> real.train <- subset(train.df , split == TRUE)
+> real.test <- subset(train.df, split == FALSE)
+> 
+> # Cross-validation (5)
+> train_control <- trainControl(## 5-cross validation
++   method = "cv",
++   number = 5)
+>   
+> 
+> 
+> ## ----MD - Baseline model with logistic regression (caret)------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> LogiModel <- train(Survived ~.,
++                    data = real.train,
++                    method = 'bayesglm',
++                    trControl = train_control)
+1 package is needed for this model and is not installed. (arm). Would you like to try to install it now?Error: Required package is missing
+Execution halted

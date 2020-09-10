@@ -1,0 +1,1 @@
+{"c(\"package:generics\", \"package:base\")":["as.factor"],"c(\"package:timeSeries\", \"package:base\")":["colnames"],"package:base":["c","factor","levels","library"],"package:graphics":["mosaicplot"],"package:grDevices":["dev.off","png"],"package:utils":["read.csv"]}

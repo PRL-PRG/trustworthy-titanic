@@ -1,0 +1,585 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> 
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> system("ls ../input")
+gender_submission.csv
+test.csv
+train.csv
+> 
+> # Any results you write to the current directory are saved as output.
+> 
+> set.seed(1293847)
+> trn_raw = read.csv('../input/train.csv')
+> HO_idx <- sample(seq_len(nrow(trn_raw)), size = floor(0.2 * nrow(trn_raw)))
+> trn_r = trn_raw[-HO_idx,]
+> val_r = trn_raw[HO_idx,]
+> tst_r = read.csv('../input/test.csv')
+> str(trn_r)
+'data.frame':	713 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> str(val_r)
+'data.frame':	178 obs. of  12 variables:
+ $ PassengerId: int  301 77 298 248 80 789 86 677 505 752 ...
+ $ Survived   : int  1 0 0 1 1 1 1 0 1 1 ...
+ $ Pclass     : int  3 3 1 2 3 3 3 3 1 3 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 436 783 18 327 228 212 53 735 506 554 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 1 2 1 1 1 2 1 2 1 2 ...
+ $ Age        : num  NA NA 2 24 30 1 33 24.5 16 6 ...
+ $ SibSp      : int  0 0 1 0 0 1 3 0 0 0 ...
+ $ Parch      : int  0 0 2 2 0 2 0 0 0 1 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 514 356 38 167 433 549 248 295 1 487 ...
+ $ Fare       : num  7.75 7.9 151.55 14.5 12.47 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 1 64 1 1 1 1 1 44 120 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 3 4 4 4 4 4 4 4 4 4 ...
+> str(tst_r)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : Factor w/ 418 levels "Abbott, Master. Eugene Joseph",..: 210 409 273 414 182 370 85 58 5 104 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : Factor w/ 77 levels "","A11","A18",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+> 
+> trn_m = trn_r
+> val_m = val_r
+> tst_m = tst_r
+> 
+> rbind(trn_m[trn_m$Embarked == "",],val_m[val_m$Embarked == "",])
+    PassengerId Survived Pclass                                      Name
+62           62        1      1                       Icard, Miss. Amelie
+830         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Cabin Embarked
+62  female  38     0     0 113572   80   B28         
+830 female  62     0     0 113572   80   B28         
+> 
+> table(trn_m$Embarked)/sum(table(trn_m$Embarked))
+
+                      C           Q           S 
+0.002805049 0.182328191 0.082748948 0.732117812 
+> 
+> trn_m[trn_m$Embarked == "",c('Embarked')] = 'S'
+> val_m[val_m$Embarked == "",c('Embarked')] = 'S'
+> 
+> colSums(is.na(trn_m))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0         133 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0           0           0 
+> colSums(is.na(val_m))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0          44 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0           0           0 
+> colSums(is.na(tst_m))
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+          0           0           0           0          86           0 
+      Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           1           0           0 
+> 
+> # Technique picked up from here: https://www.r-bloggers.com/imputing-missing-data-with-r-mice-package/:
+> pMiss <- function(x){sum(is.na(x))/length(x)*100}
+> apply(trn_m,2,pMiss)[apply(trn_m,2,pMiss)>0]
+     Age 
+18.65358 
+> apply(val_m,2,pMiss)[apply(val_m,2,pMiss)>0]
+    Age 
+24.7191 
+> apply(tst_m,2,pMiss)[apply(tst_m,2,pMiss)>0]
+       Age       Fare 
+20.5741627  0.2392344 
+> 
+> sd(trn_m$Fare)
+[1] 52.37513
+> median(trn_m$Fare)
+[1] 14.4542
+> fill_Fare = mean(trn_m$Fare)
+> tst_m$Fare_orig = tst_m$Fare
+> 
+> tst_m.origfare_noNA = tst_m[complete.cases(tst_m[,c('Fare')]),c('Fare')]
+> mean(tst_m.origfare_noNA)
+[1] 35.62719
+> sd(tst_m.origfare_noNA)
+[1] 55.90758
+> 
+> tst_m[is.na(tst_m$Fare),c('Fare')] = fill_Fare
+> mean(tst_m$Fare)
+[1] 35.62116
+> sd(tst_m$Fare)
+[1] 55.84064
+> 
+> tst_m = subset(tst_m, select=-c(Fare_orig))
+> 
+> fill_Age_mean = mean(trn_m[complete.cases(trn_m[,c('Age')]),c('Age')])
+> 
+> fill_Age_mean
+[1] 29.9885
+> sd(trn_m[complete.cases(trn_m[,c('Age')]),c('Age')])
+[1] 14.3801
+> median(trn_m[complete.cases(trn_m[,c('Age')]),c('Age')])
+[1] 29
+> 
+> trn_m$Age_comp_FM = trn_m$Age
+> val_m$Age_comp_FM = val_m$Age
+> tst_m$Age_comp_FM = tst_m$Age
+> 
+> trn_m[is.na(trn_m$Age_comp_FM),c('Age_comp_FM')] = fill_Age_mean
+> val_m[is.na(val_m$Age_comp_FM),c('Age_comp_FM')] = fill_Age_mean
+> tst_m[is.na(tst_m$Age_comp_FM),c('Age_comp_FM')] = fill_Age_mean
+> 
+> mean(trn_m$Age_comp_FM)
+[1] 29.9885
+> sd(trn_m$Age_comp_FM)
+[1] 12.96765
+> median(trn_m$Age_comp_FM)
+[1] 29.9885
+> 
+> par(mfrow=c(1,2))
+> hist(trn_m$Age, freq = FALSE, main = 'Age: Original', ylim = c(0,0.045))
+> hist(trn_m$Age_comp_FM, freq = FALSE, main = 'Age: Filled with Mean', ylim = c(0,0.045))
+> 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> cols_for_age_imp = c("Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked")
+> trn_imp_ds = trn_m[names(trn_m) %in% cols_for_age_imp]
+> trn_imp <- complete(mice(trn_imp_ds, seed = 123432))
+
+ iter imp variable
+  1   1  Age
+  1   2  Age
+  1   3  Age
+  1   4  Age
+  1   5  Age
+  2   1  Age
+  2   2  Age
+  2   3  Age
+  2   4  Age
+  2   5  Age
+  3   1  Age
+  3   2  Age
+  3   3  Age
+  3   4  Age
+  3   5  Age
+  4   1  Age
+  4   2  Age
+  4   3  Age
+  4   4  Age
+  4   5  Age
+  5   1  Age
+  5   2  Age
+  5   3  Age
+  5   4  Age
+  5   5  Age
+Warning message:
+Number of logged events: 25 
+> trn_m$Age_comp_MICE = trn_imp$Age
+> 
+> val_imp_ds = val_m[names(val_m) %in% cols_for_age_imp]
+> val_imp <- complete(mice(val_imp_ds, seed = 123412348))
+
+ iter imp variable
+  1   1  Age
+  1   2  Age
+  1   3  Age
+  1   4  Age
+  1   5  Age
+  2   1  Age
+  2   2  Age
+  2   3  Age
+  2   4  Age
+  2   5  Age
+  3   1  Age
+  3   2  Age
+  3   3  Age
+  3   4  Age
+  3   5  Age
+  4   1  Age
+  4   2  Age
+  4   3  Age
+  4   4  Age
+  4   5  Age
+  5   1  Age
+  5   2  Age
+  5   3  Age
+  5   4  Age
+  5   5  Age
+Warning message:
+Number of logged events: 25 
+> val_m$Age_comp_MICE = val_imp$Age
+> 
+> tst_imp_ds = tst_m[names(tst_m) %in% cols_for_age_imp]
+> tst_imp <- complete(mice(tst_imp_ds, seed = 123412348))
+
+ iter imp variable
+  1   1  Age
+  1   2  Age
+  1   3  Age
+  1   4  Age
+  1   5  Age
+  2   1  Age
+  2   2  Age
+  2   3  Age
+  2   4  Age
+  2   5  Age
+  3   1  Age
+  3   2  Age
+  3   3  Age
+  3   4  Age
+  3   5  Age
+  4   1  Age
+  4   2  Age
+  4   3  Age
+  4   4  Age
+  4   5  Age
+  5   1  Age
+  5   2  Age
+  5   3  Age
+  5   4  Age
+  5   5  Age
+> tst_m$Age_comp_MICE = tst_imp$Age
+> 
+> par(mfrow=c(3,3))
+> hist(trn_m$Age, freq= FALSE, main = "Training Data:  Original Age", ylim = c(0,0.045))
+> hist(trn_m$Age_comp_FM, freq= FALSE, main = "Training Data: Age via Mean", ylim = c(0,0.045))
+> hist(trn_m$Age_comp_MICE, freq= FALSE, main = "Training Data: Age via MICE", ylim = c(0,0.045))
+> 
+> hist(val_m$Age, freq= FALSE, main = "Vdalidation Data:  Original Age", ylim = c(0,0.045))
+> hist(val_m$Age_comp_FM, freq= FALSE, main = "Validation Data: Age via Mean", ylim = c(0,0.045))
+> hist(val_m$Age_comp_MICE, freq= FALSE, main = "Validation Data: Age via MICE", ylim = c(0,0.045))
+> 
+> hist(tst_m$Age, freq= FALSE, main = "Test Data:  Original Age", ylim = c(0,0.045))
+> hist(tst_m$Age_comp_FM, freq= FALSE, main = "Test Data: Age via Mean", ylim = c(0,0.045))
+> hist(tst_m$Age_comp_MICE, freq= FALSE, main = "Test Data: Age via MICE", ylim = c(0,0.045))
+> 
+> age_compare = data.frame( Dataset =character(), Calculation = character(),
++                    Mean = double(), StD = double(), 
++                    stringsAsFactors=FALSE)
+> 
+> age_compare[1,] = c('Train', 'Original', mean(trn_m[complete.cases(trn_m[,c('Age')]),c('Age')]), sd(trn_m[complete.cases(trn_m[,c('Age')]),c('Age')]))
+> age_compare[2,] = c('Train', 'Filled by Mean', mean(trn_m$Age_comp_FM), sd(trn_m$Age_comp_FM))
+> age_compare[3,] = c('Train', 'Filled by MICE', mean(trn_m$Age_comp_MICE), sd(trn_m$Age_comp_MICE))
+> 
+> age_compare[4,] = c('Val', 'Original', mean(val_m[complete.cases(val_m[,c('Age')]),c('Age')]), sd(val_m[complete.cases(val_m[,c('Age')]),c('Age')]))
+> age_compare[5,] = c('Val', 'Filled by Mean', mean(val_m$Age_comp_FM), sd(val_m$Age_comp_FM))
+> age_compare[6,] = c('Val', 'Filled by MICE', mean(val_m$Age_comp_MICE), sd(val_m$Age_comp_MICE))
+> 
+> age_compare[7,] = c('Test', 'Original', mean(tst_m[complete.cases(tst_m[,c('Age')]),c('Age')]), sd(tst_m[complete.cases(tst_m[,c('Age')]),c('Age')]))
+> age_compare[8,] = c('Test', 'Filled by Mean', mean(tst_m$Age_comp_FM), sd(tst_m$Age_comp_FM))
+> age_compare[9,] = c('Test', 'Filled by MICE', mean(tst_m$Age_comp_MICE), sd(tst_m$Age_comp_MICE))
+> 
+> age_compare
+  Dataset    Calculation             Mean              StD
+1   Train       Original          29.9885  14.380099530704
+2   Train Filled by Mean          29.9885 12.9676469170783
+3   Train Filled by MICE 29.3524964936886 14.5374597855744
+4     Val       Original 28.4465671641791 15.1354809509231
+5     Val Filled by Mean 28.8277191011236 13.1369929770847
+6     Val Filled by MICE  29.906404494382 15.8588519007358
+7    Test       Original 30.2725903614458 14.1812092356244
+8    Test Filled by Mean 30.2141411483254 12.6350573336789
+9    Test Filled by MICE 28.8361004784689 14.2763850847545
+> 
+> bp <- barplot(table(trn_m$Survived), main = 'Survival')
+> text(bp,table(trn_m$Survived)*.9,labels=table(trn_m$Survived))
+> text(bp,20,labels=round((table(trn_m$Survived)/sum(table(trn_m$Survived)))*100,2))
+> trn_m$Survived_F = factor(trn_m$Survived)
+> val_m$Survived_F = factor(val_m$Survived)
+> 
+> trn_m$Pclass = factor(trn_m$Pclass)
+> trn_m$Embarked = factor(trn_m$Embarked)
+> trn_m$Sex = factor(trn_m$Sex)
+> 
+> val_m$Pclass = factor(val_m$Pclass)
+> val_m$Embarked = factor(val_m$Embarked)
+> val_m$Sex = factor(val_m$Sex)
+> 
+> tst_m$Pclass = factor(tst_m$Pclass)
+> tst_m$Embarked = factor(tst_m$Embarked)
+> tst_m$Sex = factor(tst_m$Sex)
+> 
+> 
+> table(trn_m$Pclass, trn_m$Survived)
+   
+      0   1
+  1  67 108
+  2  81  67
+  3 295  95
+> print('Class')
+[1] "Class"
+> 
+> table(trn_m$Embarked,trn_m$Survived)
+   
+      0   1
+  C  61  69
+  Q  35  24
+  S 347 177
+> print('Embarked')
+[1] "Embarked"
+> 
+> table(trn_m$Sex,trn_m$Survived)
+        
+           0   1
+  female  67 188
+  male   376  82
+> print('Sex')
+[1] "Sex"
+> 
+> par(mfrow=c(2,2))
+> boxplot(Fare~Survived, data=trn_m, main = "Fare")
+> boxplot(Age_comp_MICE~Survived, data=trn_m, main = "Age (filled via MICE)")
+> boxplot(SibSp~Survived, data=trn_m, main = "Siblings/Spouses")
+> boxplot(Parch~Survived, data=trn_m, main = "Parents/Children")
+> 
+> trn_m$HasCabin <- factor(ifelse(trn_m$Cabin == "", c(0), c(1)))
+> trn_m$FamilySize = trn_m$SibSp + trn_m$Parch +1
+> trn_m$HasFamily <- factor(ifelse(trn_m$FamilySize == 1, c(0), c(1)))
+> 
+> val_m$HasCabin <- factor(ifelse(val_m$Cabin == "", c(0), c(1)))
+> val_m$FamilySize = val_m$SibSp + val_m$Parch +1
+> val_m$HasFamily <- factor(ifelse(val_m$FamilySize == 1, c(0), c(1)))
+> 
+> tst_m$HasCabin <- factor(ifelse(tst_m$Cabin == "", c(0), c(1)))
+> tst_m$FamilySize = tst_m$SibSp + tst_m$Parch +1
+> tst_m$HasFamily <- factor(ifelse(tst_m$FamilySize == 1, c(0), c(1)))
+> 
+> table(trn_m$HasCabin,trn_m$Survived)
+   
+      0   1
+  0 389 163
+  1  54 107
+> print('HasCabin')
+[1] "HasCabin"
+> 
+> table(trn_m$HasFamily,trn_m$Survived)
+   
+      0   1
+  0 303 133
+  1 140 137
+> print('HasFamily')
+[1] "HasFamily"
+> 
+> table(trn_m[,c("Pclass", "HasCabin")])
+      HasCabin
+Pclass   0   1
+     1  34 141
+     2 135  13
+     3 383   7
+> for (i in 1:3){
++   cat('Pclass', i,': ', ((table(trn_m[,c("Pclass", "HasCabin")])[i,]/sum(table(trn_m[,c("Pclass", "HasCabin")])[i,]))[2])*100, '%\n')
++ }
+Pclass 1 :  80.57143 %
+Pclass 2 :  8.783784 %
+Pclass 3 :  1.794872 %
+> 
+> trn_m$NonFC_wCabin <- ifelse(trn_m$Pclass != 1 & trn_m$HasCabin == 1, c(1), c(0)) 
+> table(trn_m[,c("NonFC_wCabin", "Survived")])
+            Survived
+NonFC_wCabin   0   1
+           0 438 255
+           1   5  15
+> for (i in 1:2){
++   cat('Survival rate of Non-First Class + Cabin Satus of ', i-1, ': ', ((table(trn_m[,c("NonFC_wCabin", "Survived")])[i,]/sum(table(trn_m[,c("NonFC_wCabin", "Survived")])[i,]))[2])*100, '%\n')
++ }
+Survival rate of Non-First Class + Cabin Satus of  0 :  36.79654 %
+Survival rate of Non-First Class + Cabin Satus of  1 :  75 %
+> 
+> cat(dim(trn_m[trn_m$Pclass == 1 & trn_m$Cabin == "" & trn_m$SibSp==0 & trn_m$Parch==0,])[1], ' people traveling alone; (', 
++     (dim(trn_m[trn_m$Pclass == 1 & trn_m$Cabin == "" & trn_m$SibSp==0 & trn_m$Parch==0,])[1]/table(trn_m[,c("Pclass", "HasCabin")])[1,1])*100, '% of those in PClass 1 without cabins)')
+27  people traveling alone; ( 79.41176 % of those in PClass 1 without cabins)> 
+> cabintable = table(trn_m$Cabin)
+> cab_occupancy = data.frame(cabintable)
+> colnames(cab_occupancy) = c('Cabin', 'Cab_Occ')
+> trn_m = merge(trn_m,cab_occupancy, by = 'Cabin')
+> 
+> trn_m$SharedCabin = ifelse(trn_m$Cab_Occ >1, c(1), c(0)) 
+> cat(table(trn_m$FamilySize,trn_m$SharedCabin)[1,2], 'people traveling without a parental, spousal, sibling or child relationship were sharing cabins.')
+383 people traveling without a parental, spousal, sibling or child relationship were sharing cabins.> 
+> trn_m$Age_Bin = cut(trn_m$Age_comp_MICE, breaks = c(0, 1, 12, 18, 60, 200))
+> val_m$Age_Bin = cut(val_m$Age_comp_MICE, breaks = c(0, 1, 12, 18, 60, 200))
+> tst_m$Age_Bin = cut(tst_m$Age_comp_MICE, breaks = c(0, 1, 12, 18, 60, 200))
+> table(trn_m$Age_Bin, trn_m$Survived)
+          
+             0   1
+  (0,1]      4   6
+  (1,12]    30  39
+  (12,18]   35  22
+  (18,60]  358 199
+  (60,200]  16   4
+> 
+> boxplot(Fare~Pclass,data=trn_m, main="Fare vs Class", 
++   	xlab="pClass", ylab="Fare")
+> 
+> ## Create an empty dataframe which will house the Chi-Squared results
+> Chi = data.frame( var_name =character(), val = character(),
++                    No_Survival = double(), Survived= double(), 
++                    pvalue= double(),
++                    stringsAsFactors=FALSE)
+> f=0
+> chirow = 0
+> disc_var = c("Pclass", "Sex", "Embarked", "HasCabin", "HasFamily", "Age_Bin")
+> cat('Running chi-squared tests on discrete independent variables...')
+Running chi-squared tests on discrete independent variables...> for (i in 1:length(disc_var)){
++ ##Run the chi2 test on the next dependent variable
++   tbl <- table(trn_m[,c(disc_var[i])],trn_m$Survived_F)
++   t=chisq.test(tbl)
++   ## grab the test results to populate the next two rows of the Chi dataframe (one row for each value of the independent variable)
++   for (f in 1:dim(tbl)[1]){
++     chirow = chirow+1
++     Chi[chirow, c(1,2)] <- c(disc_var[i], rownames(tbl)[f])
++     Chi[chirow, c(3,4,5)]<-c(tbl[f,1], tbl[f,2],t$p.value)}
++ }
+Warning message:
+In chisq.test(tbl) : Chi-squared approximation may be incorrect
+> Chi = Chi[with(Chi, order(pvalue,var_name,val)), ]
+> Chi
+    var_name      val No_Survival Survived       pvalue
+4        Sex   female          67      188 1.383190e-48
+5        Sex     male         376       82 1.383190e-48
+1     Pclass        1          67      108 3.151999e-17
+2     Pclass        2          81       67 3.151999e-17
+3     Pclass        3         295       95 3.151999e-17
+9   HasCabin        0         389      163 4.174358e-17
+10  HasCabin        1          54      107 4.174358e-17
+11 HasFamily        0         303      133 5.545655e-07
+12 HasFamily        1         140      137 5.545655e-07
+6   Embarked        C          61       69 2.360398e-04
+7   Embarked        Q          35       24 2.360398e-04
+8   Embarked        S         347      177 2.360398e-04
+13   Age_Bin    (0,1]           4        6 2.890181e-03
+14   Age_Bin   (1,12]          30       39 2.890181e-03
+15   Age_Bin  (12,18]          35       22 2.890181e-03
+16   Age_Bin  (18,60]         358      199 2.890181e-03
+17   Age_Bin (60,200]          16        4 2.890181e-03
+> 
+> train = trn_m[,append(disc_var,c("Survived_F"))]
+> val = val_m[,append(disc_var,c("Survived_F"))]
+> test = tst_m[,disc_var]
+> library(ROSE)
+Loaded ROSE 0.0-3
+
+> trn_cnt = as.numeric(table(train$Survived_F)[1]*2)
+> train_os <- ovun.sample(Survived_F ~ ., data = train, method = "over",N = trn_cnt)$data
+> table(train_os$Survived_F)
+
+  0   1 
+443 443 
+> 
+> # creating training variables & empty dataframe to store model assessment results
+> train_x = train[,-which(names(train) %in% c("Survived_F"))]
+> train_os_x = train_os[,-which(names(train_os) %in% c("Survived_F"))]
+> val_x = val[,-which(names(val) %in% c("Survived_F"))]
+> 
+> Model_compare = data.frame( Model =character(), Dataset = character(),
++                    AUC = double(), Accuracy= double(), 
++                    Sensitivity= double(), Specificity = double(), Precision = double(), 
++                    stringsAsFactors=FALSE)
+> 
+> # Naive Bayes
+> set.seed(12762)
+> 
+> library(e1071)
+> library(caret)
+Loading required package: lattice
+> library(pROC)
+Type 'citation("pROC")' for a citation.
+
+Attaching package: ‘pROC’
+
+The following objects are masked from ‘package:stats’:
+
+    cov, smooth, var
+
+> library(ROCR)
+Warning message:
+package ‘ROCR’ was built under R version 3.6.2 
+> model_NB_ubal = naiveBayes(Survived_F~., data = train)
+> p_NB_ubal = predict(model_NB_ubal,val, type="class")
+> roc_NB_ubal <- roc(val_m$Survived, as.numeric(p_NB_ubal)-1)
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+> cm_NB_ubal <- confusionMatrix(data=p_NB_ubal,reference=val$Survived_F, positive= '1')
+> 
+> Model_compare[1,] = c('Naive Bayes', 'Unbalanced', auc(roc_NB_ubal), 
++                      as.numeric(cm_NB_ubal$overall[1]), # Accuracy
++                      as.numeric(cm_NB_ubal$byClass[1]), # Sensitivity
++                      as.numeric(cm_NB_ubal$byClass[2]), # Specificity
++                      as.numeric(cm_NB_ubal$byClass[5])) # Precision
+> 
+> 
+> model_NB_bal = naiveBayes(Survived_F~., data = train_os)
+> p_NB_bal = predict(model_NB_bal,val, type="class")
+> roc_NB_bal <- roc(val_m$Survived, as.numeric(p_NB_bal)-1)
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+> cm_NB_bal <- confusionMatrix(data=p_NB_bal,reference=val$Survived_F, positive= '1')
+> 
+> Model_compare[2,] = c('Naive Bayes', 'Balanced', auc(roc_NB_bal), 
++                      as.numeric(cm_NB_bal$overall[1]), # Accuracy
++                      as.numeric(cm_NB_bal$byClass[1]), # Sensitivity
++                      as.numeric(cm_NB_bal$byClass[2]), # Specificity
++                      as.numeric(cm_NB_bal$byClass[5])) # Precision
+> 
+> 
+> # Logistic Regression
+> set.seed(23489234)
+> model_LR_ubal <- glm(Survived_F ~.,family=binomial(link='logit'),   data=train)
+> p_LR_ubal = predict(model_LR_ubal,val, type="response")
+> p_LR_ubal <- ifelse(p_LR_ubal > 0.5,1,0)
+> roc_LR_ubal <- roc(val_m$Survived, as.numeric(p_LR_ubal)-1)
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+> cm_LR_ubal <- confusionMatrix(data=p_LR_ubal,reference=val$Survived_F, positive= '1')
+Error: `data` and `reference` should be factors with the same levels.
+Execution halted

@@ -1,0 +1,340 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> quiet<-function(x){suppressWarnings(suppressMessages(x))} # quiet load
+> quiet(library(plyr))         # data manipulation
+> quiet(library(dplyr))        # data manipulation
+> quiet(library(ggplot2))      # fancy plotting
+> quiet(library(Rmisc))        # for multiplot
+> quiet(library(corrplot))     # for correlation matrix plotting
+> quiet(library(rpart))        # decision tree prediction
+> quiet(library(rpart.plot))   # decision tree plotting
+> quiet(library(randomForest)) # random forest prediction
+> quiet(library(e1071))        # svm prediction
+> quiet(library(caret))        # for k-fold cross-validation
+> 
+> titanic_train <- read.csv(file="../input/train.csv",head=TRUE)
+> titanic_test <- read.csv(file="../input/test.csv",head=TRUE)
+> suppressWarnings(titanic <- bind_rows(titanic_train, titanic_test))
+> 
+> str(titanic)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> summary(titanic)
+  PassengerId      Survived          Pclass     
+ Min.   :   1   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000  
+ Median : 655   Median :0.0000   Median :3.000  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295  
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :1309   Max.   :1.0000   Max.   :3.000  
+                NA's   :418                     
+                               Name          Sex           Age       
+ Connolly, Miss. Kate            :   2   female:466   Min.   : 0.17  
+ Kelly, Mr. James                :   2   male  :843   1st Qu.:21.00  
+ Abbing, Mr. Anthony             :   1                Median :28.00  
+ Abbott, Mr. Rossmore Edward     :   1                Mean   :29.88  
+ Abbott, Mrs. Stanton (Rosa Hunt):   1                3rd Qu.:39.00  
+ Abelson, Mr. Samuel             :   1                Max.   :80.00  
+ (Other)                         :1301                NA's   :263    
+     SibSp            Parch            Ticket          Fare        
+ Min.   :0.0000   Min.   :0.000   CA. 2343:  11   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.000   1601    :   8   1st Qu.:  7.896  
+ Median :0.0000   Median :0.000   CA 2144 :   8   Median : 14.454  
+ Mean   :0.4989   Mean   :0.385   3101295 :   7   Mean   : 33.295  
+ 3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7   3rd Qu.: 31.275  
+ Max.   :8.0000   Max.   :9.000   347082  :   7   Max.   :512.329  
+                                  (Other) :1261   NA's   :1        
+             Cabin      Embarked
+                :1014    :  2   
+ C23 C25 C27    :   6   C:270   
+ B57 B59 B63 B66:   5   Q:123   
+ G6             :   5   S:914   
+ B96 B98        :   4           
+ C22 C26        :   4           
+ (Other)        : 271           
+> 
+> mSurv <- mean(titanic_train$Survived)
+> titanic_train <- within(titanic_train, {Survived[Survived == 1] <- "Yes";Survived[Survived == 0] <- "No"})
+> add_mSurv <- function(x) {
++   return(x + geom_hline(aes(yintercept=mSurv, linetype=factor(mSurv)), show.legend = TRUE) + scale_linetype_manual(name = "Survival", values = "dashed", label ="average") + guides(fill = guide_legend(override.aes = list(linetype = "blank"))))
++ }
+> 
+> g1 <- ggplot(titanic_train) +
++   geom_bar(aes(Pclass, fill = Survived)) + labs(x = "Passenger's class", y = "Count")
+> g2 <- add_mSurv(ggplot(titanic_train) + geom_bar(aes(Pclass, fill = Survived), position="fill") + labs(x = "Passenger's class", y = "Part"))
+> multiplot(g1, g2, cols=2)
+> 
+> g1 <- ggplot(titanic_train) + geom_bar(aes(Sex, fill = Survived))
+> g2 <- add_mSurv(ggplot(titanic_train) + geom_bar(aes(Sex, fill = Survived), position="fill"))
+> multiplot(g1, g2, cols=2)
+> 
+> g1 <- ggplot(titanic_train) + geom_histogram(aes(Age, fill = Survived), binwidth = 5, na.rm=TRUE)
+> g2 <- add_mSurv(ggplot(titanic_train) + geom_histogram(aes(Age, fill = Survived), binwidth = 5, na.rm=TRUE, position="fill"))
+> multiplot(g1, g2, cols=2)
+> 
+> g1 <- ggplot(titanic_train) + geom_histogram(aes(Fare, fill = Survived), binwidth = 20, na.rm=TRUE)
+> g2 <- add_mSurv(ggplot(titanic_train) + geom_histogram(aes(Fare, fill = Survived), binwidth = 20, na.rm=TRUE, position="fill"))
+> multiplot(g1, g2, cols=2)
+> 
+> g1 <- ggplot(titanic_train) + geom_bar(aes(Embarked, fill = Survived))
+> g2 <- add_mSurv(ggplot(titanic_train) + geom_bar(aes(Embarked, fill = Survived), position="fill"))
+> multiplot(g1, g2, cols=2)
+> 
+> ggplot(titanic_train) + geom_bar(aes(Pclass, fill = Survived)) + facet_wrap(~ Embarked)
+> 
+> g1 <- ggplot(titanic_train) + geom_bar(aes(Parch, fill = Survived))
+> g2 <- add_mSurv(ggplot(titanic_train) + geom_bar(aes(Parch, fill = Survived), position="fill"))
+> multiplot(g1, g2, cols=2)
+> 
+> ggplot(filter(titanic_train, Parch > 0)) + geom_histogram(aes(Age, fill = Survived), binwidth = 5, na.rm=TRUE) + facet_grid(Parch ~ Sex)
+> 
+> g1 <- ggplot(titanic_train) + geom_bar(aes(SibSp, fill = Survived))
+> g2 <- add_mSurv(ggplot(titanic_train) + geom_bar(aes(SibSp, fill = Survived), position="fill"))
+> multiplot(g1, g2, cols=2)
+> 
+> ggplot(filter(titanic_train, SibSp > 0)) + geom_histogram(aes(Age, fill = Survived), binwidth = 5, na.rm=TRUE) + facet_grid(SibSp ~ Sex)
+> 
+> titanic_train$FamilyOnBoard <- titanic_train$Parch + titanic_train$SibSp
+> g1 <- ggplot(titanic_train) + geom_bar(aes(FamilyOnBoard, fill = Survived))
+> g2 <- add_mSurv(ggplot(titanic_train) + geom_bar(aes(FamilyOnBoard, fill = Survived), position="fill"))
+> multiplot(g1, g2, cols=2)
+> 
+> titanic_train$Family[(titanic_train$Parch + titanic_train$SibSp) == 0] <- "single"
+> titanic_train$Family[(titanic_train$Parch + titanic_train$SibSp) > 0 & (titanic_train$Parch + titanic_train$SibSp) < 4] <- "small"
+> titanic_train$Family[(titanic_train$Parch + titanic_train$SibSp) > 3] <- "large"
+> titanic_train$Family = as.factor(titanic_train$Family)
+> titanic_train$Family = factor(titanic_train$Family, levels = c("single","small","large")) # ordering
+> g1 <- ggplot(titanic_train) + geom_bar(aes(Family, fill = Survived))
+> g2 <- add_mSurv(ggplot(titanic_train) + geom_bar(aes(Family, fill = Survived), position="fill"))
+> multiplot(g1, g2, cols=2)
+> 
+> filter(titanic, Ticket == "PC 17599")$Fare
+[1] 71.2833 71.2833
+> filter(titanic, Ticket == "19950")$Fare
+[1] 263 263 263 263 263 263
+> filter(titanic, Ticket == "3101295")$Fare
+[1] 39.6875 39.6875 39.6875 39.6875 39.6875 39.6875 39.6875
+> 
+> cor(filter(titanic, !is.na(Fare))[,c('Pclass','Fare')])
+           Pclass       Fare
+Pclass  1.0000000 -0.5586287
+Fare   -0.5586287  1.0000000
+> 
+> pplOnTicket <- setNames(aggregate(titanic$Ticket,list(titanic$Ticket),length), c("Ticket","PplOnTicket"))
+> titanic <- left_join(titanic,pplOnTicket,by="Ticket")
+> titanic['FarePerson'] <- titanic$Fare / titanic$PplOnTicket
+> 
+> cor(filter(titanic, !is.na(FarePerson))[,c('Pclass','FarePerson')])
+               Pclass FarePerson
+Pclass      1.0000000 -0.7709763
+FarePerson -0.7709763  1.0000000
+> 
+> # apply Family on full set
+> titanic$Family[(titanic$Parch + titanic$SibSp) == 0] <- "single"
+> titanic$Family[(titanic$Parch + titanic$SibSp) > 0 & (titanic$Parch + titanic$SibSp) < 4] <- "small"
+> titanic$Family[(titanic$Parch + titanic$SibSp) > 3] <- "large"
+> titanic$Family = factor(titanic$Family, levels = c("single","small","large")) # ordering
+> 
+> sapply (titanic, function (x) sum (is.na (x) | x == ""))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1        1014           2 
+PplOnTicket  FarePerson      Family 
+          0           1           0 
+> 
+> filter(titanic, is.na(Fare))
+  PassengerId Survived Pclass               Name  Sex  Age SibSp Parch Ticket
+1        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0   3701
+  Fare Cabin Embarked PplOnTicket FarePerson Family
+1   NA              S           1         NA single
+> 
+> median(filter(titanic, Family=="single", Pclass==3, Embarked=="S")$Fare, na.rm=TRUE)
+[1] 7.8958
+> 
+> titanic$Fare[1044] <- median(filter(titanic, Family=="single", Pclass==3, Embarked=="S")$Fare, na.rm=TRUE)
+> titanic$FarePerson[1044] <- titanic$Fare[1044]
+> 
+> filter(titanic, Embarked == "")
+  PassengerId Survived Pclass                                      Name    Sex
+1          62        1      1                       Icard, Miss. Amelie female
+2         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn) female
+  Age SibSp Parch Ticket Fare Cabin Embarked PplOnTicket FarePerson Family
+1  38     0     0 113572   80   B28                    2         40 single
+2  62     0     0 113572   80   B28                    2         40 single
+> 
+> ggplot(filter(titanic, Embarked!="")) + geom_boxplot(aes(Embarked, FarePerson,color=Embarked), na.rm = TRUE) + geom_hline(yintercept=40, colour='darkred')
+> 
+> titanic$Embarked[titanic$Embarked == ""] <- "C"
+> 
+> predicted_ages <- rpart(Age ~ Pclass + Sex + Family + FarePerson + Embarked, data = filter(titanic, !is.na(Age)))
+> titanic$Age[is.na(titanic$Age)] <- predict(predicted_ages,filter(titanic, is.na(Age)))
+> 
+> corr <- select(titanic, -Ticket, -Fare, -Cabin, -Name, -Family)
+> corr$Sex <- as.numeric(revalue(corr$Sex, c("male"=1, "female" = 2)))
+> corr$Embarked <- as.numeric(revalue(corr$Embarked, c("S" = 1, "C" = 2, "Q" = 3)))
+> corr$Survived <- as.numeric(corr$Survived)
+> corr$Pclass <- as.numeric(corr$Pclass)
+> corr$PplOnTicket <- as.numeric(corr$PplOnTicket)
+> corr$FamilySize <- as.numeric(corr$SibSp+corr$Parch+1)
+> corr <- select(corr, -SibSp, -Parch)
+> corrplot(cor(corr),method="circle")
+> 
+> corrplot(cor(filter(subset(corr,select=-PassengerId),!is.na(Survived))),method="circle")
+> 
+> titanic <- select(titanic, -SibSp, -Parch, -Ticket, -Fare, -Cabin, -Name)
+> titanic$Survived <- as.factor(titanic$Survived)
+> titanic$Embarked <- as.factor(titanic$Embarked)
+> titanic$Sex <- as.factor(titanic$Sex)
+> titanic$Age <- as.numeric(titanic$Age)
+> titanic$Pclass <- as.factor(titanic$Pclass)
+> titanic$PplOnTicket <- as.integer(titanic$PplOnTicket)
+> titanic$FarePerson <- as.numeric(titanic$FarePerson)
+> titanic$Family <- as.factor(titanic$Family)
+> titanic_train <- filter(titanic, !is.na(Survived))
+> titanic_test <- filter(titanic, is.na(Survived))
+> titanic_formula <- (Survived ~ Pclass + Sex + Age + Embarked + PplOnTicket + FarePerson + Family)
+> 
+> spec <- c(train = .7, test = .3)
+> g <- sample(cut(
++   seq(nrow(titanic_train)),
++   nrow(titanic_train)*cumsum(c(0,spec)),
++   labels = names(spec)
++ ))
+> my_titanic <- split(titanic_train, g)
+> 
+> my_titanic_tree <- rpart(titanic_formula,data=my_titanic$train,control=rpart.control(minsplit=5,cp=0))
+> plotcp(my_titanic_tree)
+> 
+> my_titanic_tree_optimal <- prune(my_titanic_tree,cp=my_titanic_tree$cptable[which.min(my_titanic_tree$cptable[,4]),1])
+> prp(my_titanic_tree_optimal,extra=1)
+Warning message:
+Bad 'data' field in model 'call' (expected a data.frame or a matrix).
+To silence this warning:
+    Call prp with roundint=FALSE,
+    or rebuild the rpart model with model=TRUE. 
+> 
+> isCorrect <- predict(my_titanic_tree_optimal,newdata=my_titanic$test,type="class") == my_titanic$test$Survived
+> dt_score <- sum(isCorrect)/length(isCorrect)
+> dt_score
+[1] 0.8507463
+> 
+> titanic_tree <- rpart(titanic_formula,data=titanic_train,control=rpart.control(minsplit=5,cp=0))
+> plotcp(titanic_tree)
+> 
+> titanic_tree_optimal <- prune(titanic_tree,cp=titanic_tree$cptable[which.min(titanic_tree$cptable[,4]),1])
+> prp(titanic_tree_optimal,extra=1)
+> 
+> set.seed(19150415)
+> my_titanic_rf <- randomForest(titanic_formula, data = my_titanic$train)
+> plot(my_titanic_rf, ylim=c(0,0.4))
+> legend('topright', colnames(my_titanic_rf$err.rate), col=1:3, fill=1:3)
+> 
+> my_titanic_rf_importance <- importance(my_titanic_rf)
+> vars_importance <- data.frame(Variables = row.names(my_titanic_rf_importance), importance = round(my_titanic_rf_importance[,'MeanDecreaseGini'],2))
+> ggplot(vars_importance, aes(fill = importance)) + geom_bar(aes(reorder(Variables,importance),importance), stat = "identity") + coord_flip()
+> 
+> isCorrect <- predict(my_titanic_rf,newdata=my_titanic$test,type="class") == my_titanic$test$Survived
+> rf_score <- sum(isCorrect)/length(isCorrect)
+> rf_score
+[1] 0.8283582
+> 
+> set.seed(19150415)
+> titanic_rf <- randomForest(titanic_formula, data = titanic_train)
+> plot(titanic_rf)
+> 
+> titanic_rf_importance <- importance(titanic_rf)
+> vars_importance <- data.frame(Variables = row.names(titanic_rf_importance), importance = round(titanic_rf_importance[,'MeanDecreaseGini'],2))
+> ggplot(vars_importance, aes(fill = importance)) + geom_bar(aes(reorder(Variables,importance),importance), stat = "identity") + coord_flip()
+> 
+> svm_model <- svm(titanic_formula, data=my_titanic$train)
+> isCorrect <- predict(svm_model,newdata=my_titanic$test,type="class") == my_titanic$test$Survived
+> svm_score <- sum(isCorrect)/length(isCorrect)
+> svm_score
+[1] 0.8283582
+> 
+> data.frame(Method=c("Decision Tree","Random Forest","Support Vector Machine"),Score=c(dt_score,rf_score,svm_score))
+                  Method     Score
+1          Decision Tree 0.8507463
+2          Random Forest 0.8283582
+3 Support Vector Machine 0.8283582
+> 
+> # Score a model
+> score <- function(model, vData) {
++   isCorrect <- predict(model,newdata=vData,type="class") == vData$Survived
++   score <- sum(isCorrect)/length(isCorrect)
++   return(score)
++ }
+> # Get scores for the 3 methods
+> getScores <- function(formula,tData,vData) {
++   tree <- rpart(formula,data=tData,control=rpart.control(minsplit=5,cp=0))
++   tree_model <- prune(tree,cp=tree$cptable[which.min(tree$cptable[,4]),1])
++   tree_score <- score(tree_model, vData)
++  
++   rf_model <- randomForest(formula, data = tData)
++   rf_score <- score(rf_model, vData)
++  
++   svm_model <- svm(formula, data=tData)
++   svm_score <- score(svm_model, vData)
++  
++   return (data.frame(DecisionTree=tree_score, RandomForest=rf_score, SVM=svm_score))
++ }
+> 
+> validation <- data.frame()
+> for (n in seq(2,10,by=2)) {
++   folds <- split(titanic_train, cut(sample(1:nrow(titanic_train)),10))
++   x <- data.frame()
++   for (i in 1:length(folds)) {
++    test <- ldply(folds[i], data.frame)
++    train <- ldply(folds[-i], data.frame)
++    x <- rbind(x, getScores(titanic_formula,train,test))
++   }
++   validation <- rbind(validation, data.frame(DecisionTree=mean(x$DecisionTree), RandomForest=mean(x$RandomForest), SVM=mean(x$SVM)))
++ }
+>   sa <- stack(as.data.frame(validation))
+>   sa$x <- rep(seq(2,2*nrow(validation),by=2), ncol(validation))
+> 
+> qplot(x, values, data = sa, colour = ind, geom="line", xlab="cross validation folds number", ylab="score") + labs(colour="Methods") + theme(legend.position = "bottom")
+> 
+> prediction <- predict(titanic_rf, titanic_test)
+> summary(prediction)/length(prediction)
+        0         1 
+0.6650718 0.3349282 
+> 
+> solution <- data.frame(PassengerID = titanic_test$PassengerId, Survived = prediction)
+> write.csv(solution, file = "solution.csv", row.names = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+ 20.665   1.073  21.772 

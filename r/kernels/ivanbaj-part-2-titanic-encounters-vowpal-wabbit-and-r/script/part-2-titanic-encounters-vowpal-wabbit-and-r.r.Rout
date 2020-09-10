@@ -1,0 +1,44 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> library(dplyr, warn.conflicts = FALSE)
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> 
+> test_tbl <- tbl_df(read.csv('../input/test.csv', stringsAsFactors = FALSE))
+Warning message:
+`tbl_df()` is deprecated as of dplyr 1.0.0.
+Please use `tibble::as_tibble()` instead.
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+> 
+> submit <- tbl_df(select(test_tbl,PassengerId))
+> submit <- mutate(submit, Survived = 0)
+> write.csv(submit,file = "submit_all_die.csv", row.names = F)
+> 
+> submit <- tbl_df(select(test_tbl,PassengerId))
+> submit <- mutate(submit, Survived = 1)
+> write.csv(submit,file = "submit_all_survive.csv", row.names = F)
+> 
+> proc.time()
+   user  system elapsed 
+  0.382   0.046   0.428 

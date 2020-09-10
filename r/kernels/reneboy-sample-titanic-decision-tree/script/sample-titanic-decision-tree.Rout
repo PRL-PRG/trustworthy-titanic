@@ -1,0 +1,318 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> loaddata <- function(file) {
++  data <- read.csv(file, header = TRUE, stringsAsFactors=F)
++  # compute family size on dataset (including self)
++  data$FamilySize <- data$SibSp + data$Parch + 1
++ 
++  data
++ }
+> 
+> data <- loaddata("../input/train.csv")
+> # load real test data
+> titanic_test <- loaddata("../input/test.csv")
+> 
+> # change survived from integer to boolean
+> 
+> data$Survived <- as.logical(data$Survived)
+> levels(data$Survived) <- c("Not survived", "Survived")
+> 
+> # make explicit factor levels for specific variables: 3=Pclass, 5=Sex, 12=Embarked
+> for(i in c(3,5,12)) {
++   data[,i] <- as.factor(data[,i])
++ }
+> 
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> ggplot(data, aes(x=Age, y=Pclass, color=Survived)) + 
++   geom_jitter(position = position_jitter(height = .1)) +
++   scale_color_manual(values=c("red", "blue")) + facet_grid(Sex ~ .) +
++   ggtitle("Age, Sex, and Class as Survival Factors") + ylab("Pclass")
+Warning message:
+Removed 177 rows containing missing values (geom_point). 
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # e.g., if two people assigned to cabin A13 and familysize == 1 then bump up familysize to 2
+> # combine set of cabins from both test and training data
+> cabins <- data$Cabin # 1309 rows
+> n_occur <- data.frame(table(Var1=cabins))	# 187 rows
+> # remove missing cabin and/or juse the cabin letter code (e.g. D)
+> n_occur <- subset(n_occur, nchar(as.character(Var1)) > 1) # 183 rows
+> 
+> sharedCabins <- n_occur$Var1[n_occur$Freq > 1]
+> data$FamilySizeAdj <- data$FamilySize
+> print(table(data$FamilySize))
+
+  1   2   3   4   5   6   7   8  11 
+537 161 102  29  15  22  12   6   7 
+> 
+> sharedInd <- data$FamilySizeAdj == 1 & data$Cabin %in% sharedCabins
+> data$FamilySizeAdj[sharedInd] <- 2
+> rowCount <- sum(sharedInd)
+> print(c("adjusted rows", rowCount)) # 27 rows
+[1] "adjusted rows" "27"           
+> print(table(data$FamilySizeAdj))
+
+  1   2   3   4   5   6   7   8  11 
+510 188 102  29  15  22  12   6   7 
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(caret)
+Loading required package: lattice
+> set.seed(820)
+> inTrainingSet <- createDataPartition(data$Survived, p = 0.5, list=FALSE)
+> train <- data[inTrainingSet,]
+> test <- data[-inTrainingSet,]
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> modelaccuracy <- function(test, rpred) {
++   result_1 <- test$Survived == rpred
++   sum(result_1) / length(rpred)
++ }
+> 
+> checkaccuracy <- function(accuracy) {
++ 	if (accuracy > bestaccuracy) {
++ 	 bestaccuracy <- accuracy
++ 	 assign("bestaccuracy", accuracy, envir = .GlobalEnv)
++ 	 label <- 'better'
++ 	} else if (accuracy < bestaccuracy) {
++ 	 label <- 'worse'
++ 	} else {
++ 	 label <- 'no change'
++ 	}
++ 	label
++ }
+> 
+> library(rpart)
+> # starting with Age and Sex as indicators
+> fol <- formula(Survived ~ Age + Sex)						# 0.845
+> rmodel <- rpart(fol, method="class", data=train)
+> rpred <- predict(rmodel, newdata=test, type="class")
+> accuracy <- modelaccuracy(test, rpred)
+> bestaccuracy <- accuracy # init base accuracy
+> print(c("accuracy1", accuracy))								# baseline
+[1] "accuracy1"         "0.786516853932584"
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fol <- formula(Survived ~ Age + Sex + Pclass)				# 0.838
+> rmodel <- rpart(fol, method="class", data=train)
+> rpred <- predict(rmodel, newdata=test, type="class")
+> accuracy <- modelaccuracy(test, rpred)
+> accuracyLabel <- checkaccuracy(accuracy)
+> # almost as good but little worse
+> print(c("accuracy2", accuracy, accuracyLabel))				# worse
+[1] "accuracy2"         "0.793258426966292" "better"           
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fol <- formula(Survived ~ Age + Sex + Fare)					# 0.807
+> rmodel <- rpart(fol, method="class", data=train)
+> rpred <- predict(rmodel, newdata=test, type="class")
+> accuracy <- modelaccuracy(test, rpred)
+> accuracyLabel <- checkaccuracy(accuracy)
+> print(c("accuracy3", accuracy, accuracyLabel))				# worse
+[1] "accuracy3"         "0.786516853932584" "worse"            
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fol <- formula(Survived ~ Age + Sex + Pclass + Fare)		# 0.820
+> rmodel <- rpart(fol, method="class", data=train)
+> rpred <- predict(rmodel, newdata=test, type="class")
+> #print(rmodel)
+> accuracy <- modelaccuracy(test, rpred)
+> accuracyLabel <- checkaccuracy(accuracy)
+> print(c("accuracy4", accuracy, accuracyLabel))				# worse
+[1] "accuracy4"         "0.808988764044944" "better"           
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fol <- formula(Survived ~ Age + Sex + Pclass + Fare + SibSp + Parch) # 0.838
+> rmodel <- rpart(fol, method="class", data=train)
+> rpred <- predict(rmodel, newdata=test, type="class")
+> print(rmodel)
+n= 446 
+
+node), split, n, loss, yval, (yprob)
+      * denotes terminal node
+
+  1) root 446 171 FALSE (0.61659193 0.38340807)  
+    2) Sex=male 284  51 FALSE (0.82042254 0.17957746)  
+      4) Age>=3.5 274  43 FALSE (0.84306569 0.15693431) *
+      5) Age< 3.5 10   2 TRUE (0.20000000 0.80000000) *
+    3) Sex=female 162  42 TRUE (0.25925926 0.74074074)  
+      6) Pclass=3 73  35 FALSE (0.52054795 0.47945205)  
+       12) Fare>=22.90415 12   1 FALSE (0.91666667 0.08333333) *
+       13) Fare< 22.90415 61  27 TRUE (0.44262295 0.55737705)  
+         26) Age>=16.5 47  23 FALSE (0.51063830 0.48936170)  
+           52) Fare>=7.8875 26   9 FALSE (0.65384615 0.34615385)  
+            104) Fare< 15 18   3 FALSE (0.83333333 0.16666667) *
+            105) Fare>=15 8   2 TRUE (0.25000000 0.75000000) *
+           53) Fare< 7.8875 21   7 TRUE (0.33333333 0.66666667) *
+         27) Age< 16.5 14   3 TRUE (0.21428571 0.78571429) *
+      7) Pclass=1,2 89   4 TRUE (0.04494382 0.95505618) *
+> accuracy <- modelaccuracy(test, rpred)
+> accuracyLabel <- checkaccuracy(accuracy)
+> print(c("accuracy5", accuracy, accuracyLabel))				# worse
+[1] "accuracy5"        "0.81123595505618" "better"          
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # strip off cabin numbers
+> # Extract the deck number
+> # first letter : Deck (e.g. A31 -> A)
+> 
+> # make sure Deck in both sets has same levels
+> # if Test set has T but not Train set different levels causes error in model
+> train$Deck <- substr(train$Cabin,1,1)
+> train$Deck[train$Deck==''] = NA
+> test$Deck <- substr(test$Cabin,1,1)
+> test$Deck[test$Deck==''] = NA
+> 
+> train$Deck <- as.factor(train$Deck)
+> test$Deck <- as.factor(test$Deck)
+> 
+> # make Deck have same levels
+> c <- union(levels(train$Deck), levels(test$Deck))
+> levels(test$Deck) <- c
+> levels(train$Deck) <- c
+> 
+> # test if deck letter improves the prediction
+> 
+> fol <- formula(Survived ~ Age + Sex + Pclass + SibSp + Parch + Fare + Deck) # 0.807
+> rmodel <- rpart(fol, method="class", data=train)
+> rpred <- predict(rmodel, newdata=test, type="class")
+> #print(rmodel)
+> accuracy <- modelaccuracy(test, rpred)
+> accuracyLabel <- checkaccuracy(accuracy)
+> print(c("accuracy6", accuracy, accuracyLabel)) 							# 0.807 worse
+[1] "accuracy6"        "0.81123595505618" "no change"       
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fol <- formula(Survived ~ Age + Sex + Pclass + FamilySize)				# 0.872
+> rmodel <- rpart(fol, method="class", data=train)
+> rpred <- predict(rmodel, newdata=test, type="class")
+> print(rmodel)
+n= 446 
+
+node), split, n, loss, yval, (yprob)
+      * denotes terminal node
+
+ 1) root 446 171 FALSE (0.61659193 0.38340807)  
+   2) Sex=male 284  51 FALSE (0.82042254 0.17957746)  
+     4) Age>=3.5 274  43 FALSE (0.84306569 0.15693431) *
+     5) Age< 3.5 10   2 TRUE (0.20000000 0.80000000) *
+   3) Sex=female 162  42 TRUE (0.25925926 0.74074074)  
+     6) Pclass=3 73  35 FALSE (0.52054795 0.47945205)  
+      12) FamilySize>=4.5 12   1 FALSE (0.91666667 0.08333333) *
+      13) FamilySize< 4.5 61  27 TRUE (0.44262295 0.55737705) *
+     7) Pclass=1,2 89   4 TRUE (0.04494382 0.95505618) *
+> accuracy <- modelaccuracy(test, rpred)
+> accuracyLabel <- checkaccuracy(accuracy)
+> print(c("accuracy7", accuracy, accuracyLabel)) 						# best so far
+[1] "accuracy7"        "0.81123595505618" "no change"       
+> 
+> p <- ggplot(aes(x=Pclass,y=factor(FamilySize),color=Survived),data=data) + 
++  geom_jitter() + facet_grid(Sex ~ .)
+> p + ggtitle("Large Family Size >= 5 more likely to not survive") + theme_bw() + 
++  geom_hline(yintercept=5) + ylab("Family Size")
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> mosaicplot(table(FamilySize=data$FamilySize, Survived=data$Survived),
++  main="Passenger Survival by Family Size",
++  color=c("#fb8072", "#8dd3c7"), cex.axis=1.2)
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # make explicit factor levels for specific variables: Sex + Pclass
+> titanic_test$Sex <- as.factor(titanic_test$Sex)
+> titanic_test$Pclass <- as.factor(titanic_test$Pclass)
+> # now train on entire training set (714 rows)
+> fol <- formula(Survived ~ Age + Sex + Pclass + FamilySize)
+> model <- rpart(fol, method="class", data=data)
+> library(rpart.plot)	
+> rpart.plot(model,branch=0,branch.type=2,type=1,extra=102,shadow.col="pink",box.col="gray",split.col="magenta",
++   main="Decision tree for model")
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fol <- formula(Survived ~ Sex + Age + FamilySize)				    # 0.854
+> rmodel <- rpart(fol, method="class", data=train)
+> rpred <- predict(rmodel, newdata=test, type="class")
+> accuracy <- modelaccuracy(test, rpred)
+> accuracyLabel <- checkaccuracy(accuracy)
+> print(c("accuracy8", accuracy, accuracyLabel)) 	                    # worse
+[1] "accuracy8"         "0.804494382022472" "worse"            
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # does traveling alone contribute to outcome
+> fol <- formula(Survived ~ Age + Sex + Pclass + FamilySizeAdj)			# 0.872
+> rmodel <- rpart(fol, method="class", data=train)
+> rpred <- predict(rmodel, newdata=test, type="class")
+> # print(rmodel)
+> accuracy <- modelaccuracy(test, rpred)
+> accuracyLabel <- checkaccuracy(accuracy)
+> print(c("accuracy9", accuracy, accuracyLabel)) 							# no change
+[1] "accuracy9"        "0.81123595505618" "no change"       
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fol <- formula(Survived ~ Age + Sex + Pclass + TravelAlone)			# 0.843
+> train$TravelAlone <- train$FamilySize == 1
+> test$TravelAlone <- test$FamilySize == 1
+> rmodel <- rpart(fol, method="class", data=train)
+> rpred <- predict(rmodel, newdata=test, type="class")
+> accuracy <- modelaccuracy(test, rpred)
+> accuracyLabel <- checkaccuracy(accuracy)
+> print(c("accuracy10", accuracy, accuracyLabel)) 			        # worse / no better
+[1] "accuracy10"        "0.797752808988764" "worse"            
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fol <- formula(Survived ~ Age + Sex + Pclass + FamilySize + Embarked)	# 0.858 (worse)
+> rmodel <- rpart(fol, method="class", data=train)
+> rpred <- predict(rmodel, newdata=test, type="class")
+> accuracy <- modelaccuracy(test, rpred)
+> accuracyLabel <- checkaccuracy(accuracy)
+> print(c("accuracy11", accuracy, accuracyLabel)) 					    # little worse
+[1] "accuracy11"        "0.804494382022472" "worse"            
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> print (c("best accuracy", bestaccuracy))
+[1] "best accuracy"    "0.81123595505618"
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  2.266   0.194   2.637 

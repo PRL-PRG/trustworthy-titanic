@@ -1,0 +1,377 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> dados = read.csv("../input/train.csv",header = T)
+> head(dados);dim(dados)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+[1] 891  12
+> 
+> str(dados)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> 
+> dados = dados[,-c(4,9,11)]
+> 
+> # ha valores NA EM Age e Embarked
+> summary(dados)
+  PassengerId       Survived          Pclass          Sex           Age       
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000   female:314   Min.   : 0.42  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000   male  :577   1st Qu.:20.12  
+ Median :446.0   Median :0.0000   Median :3.000                Median :28.00  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309                Mean   :29.70  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000                3rd Qu.:38.00  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000                Max.   :80.00  
+                                                               NA's   :177    
+     SibSp           Parch             Fare        Embarked
+ Min.   :0.000   Min.   :0.0000   Min.   :  0.00    :  2   
+ 1st Qu.:0.000   1st Qu.:0.0000   1st Qu.:  7.91   C:168   
+ Median :0.000   Median :0.0000   Median : 14.45   Q: 77   
+ Mean   :0.523   Mean   :0.3816   Mean   : 32.20   S:644   
+ 3rd Qu.:1.000   3rd Qu.:0.0000   3rd Qu.: 31.00           
+ Max.   :8.000   Max.   :6.0000   Max.   :512.33           
+                                                           
+> 
+> by(dados$Embarked,dados$Pclass,table)
+dados$Pclass: 1
+
+      C   Q   S 
+  2  85   2 127 
+------------------------------------------------------------ 
+dados$Pclass: 2
+
+      C   Q   S 
+  0  17   3 164 
+------------------------------------------------------------ 
+dados$Pclass: 3
+
+      C   Q   S 
+  0  66  72 353 
+> by(dados$Embarked,dados$Sex,table)
+dados$Sex: female
+
+      C   Q   S 
+  2  73  36 203 
+------------------------------------------------------------ 
+dados$Sex: male
+
+      C   Q   S 
+  0  95  41 441 
+> by(dados$Embarked,dados$SibSp,table)
+dados$SibSp: 0
+
+      C   Q   S 
+  2 109  59 438 
+------------------------------------------------------------ 
+dados$SibSp: 1
+
+      C   Q   S 
+  0  53  11 145 
+------------------------------------------------------------ 
+dados$SibSp: 2
+
+    C  Q  S 
+ 0  6  3 19 
+------------------------------------------------------------ 
+dados$SibSp: 3
+
+    C  Q  S 
+ 0  0  0 16 
+------------------------------------------------------------ 
+dados$SibSp: 4
+
+    C  Q  S 
+ 0  0  4 14 
+------------------------------------------------------------ 
+dados$SibSp: 5
+
+  C Q S 
+0 0 0 5 
+------------------------------------------------------------ 
+dados$SibSp: 8
+
+  C Q S 
+0 0 0 7 
+> 
+> which(dados$Embarked=="")
+[1]  62 830
+> dados$Embarked[c(62,830)]="S"
+> 
+> by(dados$Age,dados$Pclass,summary)
+dados$Pclass: 1
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.92   27.00   37.00   38.23   49.00   80.00      30 
+------------------------------------------------------------ 
+dados$Pclass: 2
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.67   23.00   29.00   29.88   36.00   70.00      11 
+------------------------------------------------------------ 
+dados$Pclass: 3
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.42   18.00   24.00   25.14   32.00   74.00     136 
+> by(dados$Age,dados$Sex,summary)
+dados$Sex: female
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.75   18.00   27.00   27.92   37.00   63.00      53 
+------------------------------------------------------------ 
+dados$Sex: male
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.42   21.00   29.00   30.73   39.00   80.00     124 
+> by(dados$Age,dados$SibSp,summary)
+dados$SibSp: 0
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.42   22.00   29.00   31.40   39.00   80.00     137 
+------------------------------------------------------------ 
+dados$SibSp: 1
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.67   20.00   30.00   30.09   39.00   70.00      26 
+------------------------------------------------------------ 
+dados$SibSp: 2
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.75   16.00   23.00   22.62   28.00   53.00       3 
+------------------------------------------------------------ 
+dados$SibSp: 3
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   2.00    3.75    9.50   13.92   23.25   33.00       4 
+------------------------------------------------------------ 
+dados$SibSp: 4
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  1.000   3.250   6.500   7.056   9.000  17.000 
+------------------------------------------------------------ 
+dados$SibSp: 5
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+    1.0     9.0    11.0    10.2    14.0    16.0 
+------------------------------------------------------------ 
+dados$SibSp: 8
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+     NA      NA      NA     NaN      NA      NA       7 
+> by(dados$Age,dados$Parch,summary)
+dados$Parch: 0
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   5.00   22.00   30.00   32.18   39.00   80.00     157 
+------------------------------------------------------------ 
+dados$Parch: 1
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.42    6.25   23.00   24.42   39.00   70.00       8 
+------------------------------------------------------------ 
+dados$Parch: 2
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.83    5.75   16.50   17.22   25.00   58.00      12 
+------------------------------------------------------------ 
+dados$Parch: 3
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   16.0    24.0    24.0    33.2    48.0    54.0 
+------------------------------------------------------------ 
+dados$Parch: 4
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  29.00   37.25   42.50   44.50   49.75   64.00 
+------------------------------------------------------------ 
+dados$Parch: 5
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   38.0    39.0    39.0    39.2    39.0    41.0 
+------------------------------------------------------------ 
+dados$Parch: 6
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+     43      43      43      43      43      43 
+> by(dados$Age,dados$Embarked,summary)
+dados$Embarked: 
+NULL
+------------------------------------------------------------ 
+dados$Embarked: C
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.42   21.25   29.00   30.81   40.00   71.00      38 
+------------------------------------------------------------ 
+dados$Embarked: Q
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   2.00   17.50   27.00   28.09   34.50   70.50      49 
+------------------------------------------------------------ 
+dados$Embarked: S
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.67   21.00   28.00   29.52   38.00   80.00      90 
+> 
+> 
+> dados$Age[c(which(is.na(dados$Age)&dados$Parch==2))]=16.5
+> 
+> dados$Age[c(which(is.na(dados$Age)&dados$Pclass==1))]=37
+> dados$Age[c(which(is.na(dados$Age)&dados$Pclass==2))]=29
+> dados$Age[c(which(is.na(dados$Age)&dados$Pclass==3))]=24
+> 
+> sum(apply(dados,2,is.na)) # nao ha mais valores ausentes, podendo portanto passar aos modelos
+[1] 0
+> 
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> set.seed(70815)
+> treino = sample_n(dados,800,replace = F)
+> teste = dados[-as.integer(row.names(treino)),]
+> 
+> 
+> modelo_rg = glm(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked,
++                 family = "binomial",data = treino)
+> summary(modelo_rg)
+
+Call:
+glm(formula = Survived ~ Pclass + Sex + Age + SibSp + Parch + 
+    Fare + Embarked, family = "binomial", data = treino)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6427  -0.6194  -0.4269   0.6469   2.4376  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  5.224675   0.601045   8.693  < 2e-16 ***
+Pclass      -1.124326   0.153739  -7.313 2.61e-13 ***
+Sexmale     -2.591700   0.208038 -12.458  < 2e-16 ***
+Age         -0.041355   0.008399  -4.924 8.49e-07 ***
+SibSp       -0.335398   0.112279  -2.987  0.00282 ** 
+Parch       -0.098957   0.122365  -0.809  0.41869    
+Fare         0.002049   0.002420   0.847  0.39714    
+EmbarkedQ    0.032999   0.388151   0.085  0.93225    
+EmbarkedS   -0.333887   0.245082  -1.362  0.17309    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1065.39  on 799  degrees of freedom
+Residual deviance:  726.75  on 791  degrees of freedom
+AIC: 744.75
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> # Fare nao significativo
+> modelo_rg = update(modelo_rg,.~.-Fare)
+> summary(modelo_rg)
+
+Call:
+glm(formula = Survived ~ Pclass + Sex + Age + SibSp + Parch + 
+    Embarked, family = "binomial", data = treino)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.5958  -0.6195  -0.4276   0.6482   2.4497  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  5.454306   0.540620  10.089  < 2e-16 ***
+Pclass      -1.187301   0.135336  -8.773  < 2e-16 ***
+Sexmale     -2.593347   0.207852 -12.477  < 2e-16 ***
+Age         -0.041638   0.008383  -4.967  6.8e-07 ***
+SibSp       -0.322614   0.111081  -2.904  0.00368 ** 
+Parch       -0.076025   0.119334  -0.637  0.52407    
+EmbarkedQ    0.011996   0.387303   0.031  0.97529    
+EmbarkedS   -0.374864   0.239905  -1.563  0.11816    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1065.39  on 799  degrees of freedom
+Residual deviance:  727.51  on 792  degrees of freedom
+AIC: 743.51
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> # Parch nao significativo
+> modelo_rg = update(modelo_rg,.~.-Parch)
+> summary(modelo_rg)
+
+Call:
+glm(formula = Survived ~ Pclass + Sex + Age + SibSp + Embarked, 
+    family = "binomial", data = treino)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6270  -0.6258  -0.4260   0.6530   2.4531  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  5.407597   0.535049  10.107  < 2e-16 ***
+Pclass      -1.188317   0.135456  -8.773  < 2e-16 ***
+Sexmale     -2.564016   0.202166 -12.683  < 2e-16 ***
+Age         -0.041389   0.008362  -4.950 7.44e-07 ***
+SibSp       -0.343888   0.106457  -3.230  0.00124 ** 
+EmbarkedQ    0.036753   0.384722   0.096  0.92389    
+EmbarkedS   -0.374364   0.239818  -1.561  0.11852    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1065.39  on 799  degrees of freedom
+Residual deviance:  727.92  on 793  degrees of freedom
+AIC: 741.92
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> pchisq(modelo_rg$deviance,df=modelo_rg$df.residual,lower.tail = F)
+[1] 0.9519756
+> # deviance nao significativa, portanto, modelo adequado
+> 
+> library(hnp)
+Error in library(hnp) : there is no package called ‘hnp’
+Execution halted

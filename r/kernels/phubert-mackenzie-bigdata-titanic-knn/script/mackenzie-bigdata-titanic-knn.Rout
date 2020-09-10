@@ -1,0 +1,191 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> library(tidyverse) # metapackage with lots of helpful functions
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(class) # knn
+> 
+> ## Running code
+> 
+> ## Lendo dados de treino
+> dados = read.csv('../input/train.csv', sep = ',', header = T)
+> 
+> ## Arrumando base
+> colnames(dados)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"   
+> head(dados)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> 
+> dados = dados %>% subset(select = -c(PassengerId, Ticket, Name, Cabin, Embarked))
+> colnames(dados)
+[1] "Survived" "Pclass"   "Sex"      "Age"      "SibSp"    "Parch"    "Fare"    
+> 
+> ## Missing values
+> colSums(is.na(dados))
+Survived   Pclass      Sex      Age    SibSp    Parch     Fare 
+       0        0        0      177        0        0        0 
+> 
+> # 77 valores na idade 
+> # Inputando pela média (quick and dirty)
+> dados[which(is.na(dados$Age)), 'Age'] = mean(dados$Age, na.rm = T)
+> 
+> # Mudando variáveis categóricas para numéricas...
+> dados$Sex = as.character(dados$Sex)
+> dados[which(dados$Sex == 'male'), 'Sex'] = 1
+> dados[which(dados$Sex == 'female'), 'Sex'] = 0
+> dados$Sex = as.numeric(dados$Sex)
+> 
+> for(i in 1:ncol(dados)){
++     dados[,i] = as.numeric(dados[,i])
++     dados[,i] = (dados[,i]-min(dados[,i])) / (max(dados[,i])-min(dados[,i]))
++ }
+> 
+> X = dados %>% subset(select = -Survived)
+> y = dados %>% subset(select = Survived)
+> 
+> # Leave one-out cross validation
+> maxk = 15
+> loo.res = matrix(NA, nrow = maxk)
+> N = nrow(dados)
+> for(k in 1:maxk) {
++     tmp = 0
++     for(i in 1:N) {
++         Xtest = X[i, ]
++         ytest = y[i,]
++         Xtrain = X[-i,]
++         ytrain = y[-i,]
++         mod.knn = knn(train = Xtrain, test = Xtest, cl = ytrain, k = k, prob = FALSE)
++         tmp = tmp + ((ytest - as.numeric(levels(mod.knn))[mod.knn])^2)/N
++     }
++     print(paste0("k ", k, " - accuracy = ", tmp))
++     loo.res[k] = tmp
++ }
+[1] "k 1 - accuracy = 0.225589225589225"
+[1] "k 2 - accuracy = 0.210998877665544"
+[1] "k 3 - accuracy = 0.191919191919191"
+[1] "k 4 - accuracy = 0.18742985409652"
+[1] "k 5 - accuracy = 0.178451178451178"
+[1] "k 6 - accuracy = 0.189674523007856"
+[1] "k 7 - accuracy = 0.181818181818181"
+[1] "k 8 - accuracy = 0.193041526374859"
+[1] "k 9 - accuracy = 0.186307519640852"
+[1] "k 10 - accuracy = 0.196408529741863"
+[1] "k 11 - accuracy = 0.194163860830527"
+[1] "k 12 - accuracy = 0.188552188552188"
+[1] "k 13 - accuracy = 0.196408529741863"
+[1] "k 14 - accuracy = 0.195286195286195"
+[1] "k 15 - accuracy = 0.204264870931537"
+> 
+> plot(loo.res, type = 'b')
+> 
+> # Melhor k
+> print(paste0("Melhor k = ", which.max(loo.res)))
+[1] "Melhor k = 1"
+> 
+> ## Aplicando na amostra de teste
+> test = read.csv("../input/test.csv", stringsAsFactors = F)
+> 
+> colnames(test)
+ [1] "PassengerId" "Pclass"      "Name"        "Sex"         "Age"        
+ [6] "SibSp"       "Parch"       "Ticket"      "Fare"        "Cabin"      
+[11] "Embarked"   
+> test = test %>% subset(select = -c(Name, Ticket, Cabin, Embarked))
+> 
+> colSums(is.na(test))
+PassengerId      Pclass         Sex         Age       SibSp       Parch 
+          0           0           0          86           0           0 
+       Fare 
+          1 
+> 
+> test[which(is.na(test$Age)), 'Age'] = mean(test$Age, na.rm = T)
+> test[which(is.na(test$Fare)), 'Fare'] = mean(test$Fare, na.rm = T)
+> 
+> test[which(test$Sex == 'male'), 'Sex'] = 1
+> test[which(test$Sex == 'female'), 'Sex'] = 0
+> test$Sex = as.numeric(test$Sex)
+> 
+> summary(test)
+  PassengerId         Pclass           Sex              Age       
+ Min.   : 892.0   Min.   :1.000   Min.   :0.0000   Min.   : 0.17  
+ 1st Qu.: 996.2   1st Qu.:1.000   1st Qu.:0.0000   1st Qu.:23.00  
+ Median :1100.5   Median :3.000   Median :1.0000   Median :30.27  
+ Mean   :1100.5   Mean   :2.266   Mean   :0.6364   Mean   :30.27  
+ 3rd Qu.:1204.8   3rd Qu.:3.000   3rd Qu.:1.0000   3rd Qu.:35.75  
+ Max.   :1309.0   Max.   :3.000   Max.   :1.0000   Max.   :76.00  
+     SibSp            Parch             Fare        
+ Min.   :0.0000   Min.   :0.0000   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.0000   1st Qu.:  7.896  
+ Median :0.0000   Median :0.0000   Median : 14.454  
+ Mean   :0.4474   Mean   :0.3923   Mean   : 35.627  
+ 3rd Qu.:1.0000   3rd Qu.:0.0000   3rd Qu.: 31.500  
+ Max.   :8.0000   Max.   :9.0000   Max.   :512.329  
+> 
+> for(i in ncol(test)){
++     test[,i] = (test[,i]-min(test[,i]))/(max(test[,i])-min(test[,i]))
++ }
+> 
+> # Aplicando modelo com melhor k
+> k = which.max(loo.res)
+> 
+> pred = knn(train = X, test = test[,2:ncol(test)], cl = y[,], k, prob = F)
+> 
+> # Criando data frame para submissão
+> df = data.frame(PassengerID = test[,1], Survived = pred)
+> write.csv(df, file = 'knn_submit.csv', row.names = F)
+> 
+> proc.time()
+   user  system elapsed 
+ 11.893   0.705  12.789 

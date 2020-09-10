@@ -1,0 +1,551 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----include=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(tidyverse) #Cleaning, visualization...
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(ggthemes) # visualisation
+> library(stringr)
+> library(scales)
+
+Attaching package: ‘scales’
+
+The following object is masked from ‘package:purrr’:
+
+    discard
+
+The following object is masked from ‘package:readr’:
+
+    col_factor
+
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> library.path <- cat(.libPaths())
+/Library/Frameworks/R.framework/Versions/3.6/Resources/library> library("mice", lib.loc = library.path)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library(mice) # NA replacement
+> library(ranger)
+> library(caret)
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+> library(randomForest) # forecast
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ranger’:
+
+    importance
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- read.csv('../input/train.csv', stringsAsFactors = F)
+> test  <- read.csv('../input/test.csv', stringsAsFactors = F)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> test.survived<-data.frame(Survived= rep("None", nrow(test)), test[,])
+> head(test.survived)
+  Survived PassengerId Pclass                                         Name
+1     None         892      3                             Kelly, Mr. James
+2     None         893      3             Wilkes, Mrs. James (Ellen Needs)
+3     None         894      2                    Myles, Mr. Thomas Francis
+4     None         895      3                             Wirz, Mr. Albert
+5     None         896      3 Hirvonen, Mrs. Alexander (Helga E Lindqvist)
+6     None         897      3                   Svensson, Mr. Johan Cervin
+     Sex  Age SibSp Parch  Ticket    Fare Cabin Embarked
+1   male 34.5     0     0  330911  7.8292              Q
+2 female 47.0     1     0  363272  7.0000              S
+3   male 62.0     0     0  240276  9.6875              Q
+4   male 27.0     0     0  315154  8.6625              S
+5 female 22.0     1     1 3101298 12.2875              S
+6   male 14.0     0     0    7538  9.2250              S
+> ntest.survived<-test.survived[,c(2,1,3,4,5,6,7,8,9,10,11,12)]
+> head(ntest.survived)
+  PassengerId Survived Pclass                                         Name
+1         892     None      3                             Kelly, Mr. James
+2         893     None      3             Wilkes, Mrs. James (Ellen Needs)
+3         894     None      2                    Myles, Mr. Thomas Francis
+4         895     None      3                             Wirz, Mr. Albert
+5         896     None      3 Hirvonen, Mrs. Alexander (Helga E Lindqvist)
+6         897     None      3                   Svensson, Mr. Johan Cervin
+     Sex  Age SibSp Parch  Ticket    Fare Cabin Embarked
+1   male 34.5     0     0  330911  7.8292              Q
+2 female 47.0     1     0  363272  7.0000              S
+3   male 62.0     0     0  240276  9.6875              Q
+4   male 27.0     0     0  315154  8.6625              S
+5 female 22.0     1     1 3101298 12.2875              S
+6   male 14.0     0     0    7538  9.2250              S
+> names(train)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"   
+> names(ntest.survived)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"   
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data.combined<-rbind(train,ntest.survived)
+> glimpse(data.combined)
+Rows: 1,309
+Columns: 12
+$ PassengerId [3m[90m<int>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+$ Survived    [3m[90m<chr>[39m[23m "0", "1", "1", "1", "0", "0", "0", "0", "1", "1", "1", "1…
+$ Pclass      [3m[90m<int>[39m[23m 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Braund, Mr. Owen Harris", "Cumings, Mrs. John Bradley (F…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "female", "female", "male", "male", "ma…
+$ Age         [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+$ SibSp       [3m[90m<int>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+$ Parch       [3m[90m<int>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "A/5 21171", "PC 17599", "STON/O2. 3101282", "113803", "3…
+$ Fare        [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+$ Cabin       [3m[90m<chr>[39m[23m "", "C85", "", "C123", "", "", "E46", "", "", "", "G6", "…
+$ Embarked    [3m[90m<chr>[39m[23m "S", "C", "S", "S", "S", "Q", "S", "S", "S", "C", "S", "S…
+> 
+> data.combined$Survived<-as.factor(data.combined$Survived)
+> data.combined$Pclass<-as.factor(data.combined$Pclass)
+> glimpse(data.combined)
+Rows: 1,309
+Columns: 12
+$ PassengerId [3m[90m<int>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+$ Survived    [3m[90m<fct>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+$ Pclass      [3m[90m<fct>[39m[23m 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Braund, Mr. Owen Harris", "Cumings, Mrs. John Bradley (F…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "female", "female", "male", "male", "ma…
+$ Age         [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+$ SibSp       [3m[90m<int>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+$ Parch       [3m[90m<int>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "A/5 21171", "PC 17599", "STON/O2. 3101282", "113803", "3…
+$ Fare        [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+$ Cabin       [3m[90m<chr>[39m[23m "", "C85", "", "C123", "", "", "E46", "", "", "", "G6", "…
+$ Embarked    [3m[90m<chr>[39m[23m "S", "C", "S", "S", "S", "Q", "S", "S", "S", "C", "S", "S…
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> misses<-data.combined[which(str_detect(data.combined$Name,"Miss.")),]
+> head(misses)
+   PassengerId Survived Pclass                                 Name    Sex Age
+3            3        1      3               Heikkinen, Miss. Laina female  26
+11          11        1      3      Sandstrom, Miss. Marguerite Rut female   4
+12          12        1      1             Bonnell, Miss. Elizabeth female  58
+15          15        0      3 Vestrom, Miss. Hulda Amanda Adolfina female  14
+23          23        1      3          McGowan, Miss. Anna "Annie" female  15
+25          25        0      3        Palsson, Miss. Torborg Danira female   8
+   SibSp Parch           Ticket    Fare Cabin Embarked
+3      0     0 STON/O2. 3101282  7.9250              S
+11     1     1          PP 9549 16.7000    G6        S
+12     0     0           113783 26.5500  C103        S
+15     0     0           350406  7.8542              S
+23     0     0           330923  8.0292              Q
+25     3     1           349909 21.0750              S
+> mrses<-data.combined[which(str_detect(data.combined$Name,"Mrs.")),]
+> mrses[1:5,]
+   PassengerId Survived Pclass
+2            2        1      1
+4            4        1      1
+9            9        1      3
+10          10        1      2
+16          16        1      2
+                                                  Name    Sex Age SibSp Parch
+2  Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+4         Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+9    Johnson, Mrs. Oscar W (Elisabeth Vilhelmina Berg) female  27     0     2
+10                 Nasser, Mrs. Nicholas (Adele Achem) female  14     1     0
+16                    Hewlett, Mrs. (Mary D Kingcome)  female  55     0     0
+     Ticket    Fare Cabin Embarked
+2  PC 17599 71.2833   C85        C
+4    113803 53.1000  C123        S
+9    347742 11.1333              S
+10   237736 30.0708              C
+16   248706 16.0000              S
+> masters<-data.combined[which(str_detect(data.combined$Name,"Master")),]
+> masters[1:5,]
+   PassengerId Survived Pclass                               Name  Sex Age
+8            8        0      3     Palsson, Master. Gosta Leonard male   2
+17          17        0      3               Rice, Master. Eugene male   2
+51          51        0      3         Panula, Master. Juha Niilo male   7
+60          60        0      3 Goodwin, Master. William Frederick male  11
+64          64        0      3              Skoog, Master. Harald male   4
+   SibSp Parch  Ticket    Fare Cabin Embarked
+8      3     1  349909 21.0750              S
+17     4     1  382652 29.1250              Q
+51     4     1 3101295 39.6875              S
+60     5     2 CA 2144 46.9000              S
+64     3     2  347088 27.9000              S
+> mr<-data.combined[which(str_detect(data.combined$Name,"Mr.")),]
+> mr[1:5,]
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+     Ticket    Fare Cabin Embarked
+1 A/5 21171  7.2500              S
+2  PC 17599 71.2833   C85        C
+4    113803 53.1000  C123        S
+5    373450  8.0500              S
+6    330877  8.4583              Q
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> extractTitle<-function(Name){
++   Name<-as.character(Name)
++   if(length(grep("Miss.",Name))>0){
++     return("Miss.")
++   } else if (length(grep("Master.",Name))>0){
++     return("Master.")
++   } else if(length(grep("Mrs.",Name))>0){
++     return("Mrs.")
++   } else if(length(grep("Mr.", Name))>0){
++     return("Mr.")
++   } else {
++     return("Other")
++   }
++ }
+> titles<-NULL
+> for (i in 1:nrow(data.combined)){
++   titles<-c(titles,extractTitle(data.combined[i,"Name"]))
++ }
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data.combined$Title<-as.factor(titles)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data.combined$SibSp<-as.factor(data.combined$SibSp)
+> 
+> 
+> ## ----echo=T----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> g2.5<-ggplot(data.combined[1:891,],aes(x=SibSp, fill=Survived))+geom_bar(width=0.5)+
++ facet_wrap(~Pclass+Title)+
++   ggtitle("Pclass,Title")+
++   xlab("Sibsp")+
++   ylab("Total Count")+
++   ylim(0,300)+
++   labs(fill="Survived")
+> 
+> g2.5
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data.combined$Parch<-as.factor(data.combined$Parch)
+> 
+> 
+> ## ----echo=T----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> g2.6<-ggplot(data.combined[1:891,],aes(x=Parch, fill=Survived))+geom_bar(width=1)+
++    facet_wrap(~Pclass+Title)+
++    ggtitle("Pclass,Title")+
++    xlab("Parch")+
++    ylab("Total Count")+
++    ylim(0,300)+
++    labs(fill="Survived")
+>   
+> g2.6
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+>   temp.sibsp<-c(train$SibSp,test$SibSp)
+>   temp.parch<-c(train$Parch,test$Parch)
+>   data.combined$Family.Size<-as.factor(temp.sibsp+temp.parch+1)
+> 
+> ## ----echo=T----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> g2.7<-ggplot(data.combined[1:891,],aes(x=Family.Size, fill=Survived))+geom_bar(width=1)+
++     facet_wrap(~Pclass+Title)+
++     ggtitle("Pclass,Title")+
++     xlab("Family.Size")+
++     ylab("Total Count")+
++     ylim(0,300)+
++     labs(fill="Survived")
+>   
+>   g2.7
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> subsmr<-subset(data.combined[1:891,], is.na(Age) & Title=="Mr.")
+> summary(subsmr)
+  PassengerId    Survived   Pclass     Name               Sex           
+ Min.   :  6.0   0   :105   1:20   Length:119         Length:119        
+ 1st Qu.:266.0   1   : 14   2: 9   Class :character   Class :character  
+ Median :482.0   None:  0   3:90   Mode  :character   Mode  :character  
+ Mean   :460.2                                                          
+ 3rd Qu.:650.0                                                          
+ Max.   :879.0                                                          
+                                                                        
+      Age      SibSp       Parch        Ticket               Fare        
+ Min.   : NA   0:106   0      :115   Length:119         Min.   :  0.000  
+ 1st Qu.: NA   1:  8   2      :  4   Class :character   1st Qu.:  7.735  
+ Median : NA   2:  2   1      :  0   Mode  :character   Median :  7.896  
+ Mean   :NaN   3:  0   3      :  0                      Mean   : 18.566  
+ 3rd Qu.: NA   4:  0   4      :  0                      3rd Qu.: 19.967  
+ Max.   : NA   5:  0   5      :  0                      Max.   :227.525  
+ NA's   :119   8:  3   (Other):  0                                       
+    Cabin             Embarked             Title      Family.Size 
+ Length:119         Length:119         Master.:  0   1      :106  
+ Class :character   Class :character   Miss.  :  0   2      :  7  
+ Mode  :character   Mode  :character   Mr.    :119   11     :  3  
+                                       Mrs.   :  0   3      :  2  
+                                       Other  :  0   4      :  1  
+                                                     5      :  0  
+                                                     (Other):  0  
+> 
+> ## ----echo=T----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> g3.1<-ggplot(subsmr,aes(x=Pclass,fill=Survived))+geom_bar(width=0.5)+facet_wrap(~Family.Size)
+> g3.1
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+>    data.combined2<-data.combined
+>    
+>    data.combined2$Embarked[c(62,830)]
+[1] "" ""
+>    data.combined2$Embarked[c(62,830)]<-"C"
+>    data.combined2[1044,]
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044     None      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked Title Family.Size
+1044   3701   NA              S   Mr.           1
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+>    data.combined2$Fare[1044]<-median(data.combined2[data.combined2$Pclass==3 & data.combined2$Embarked=="S",]$Fare,na.rm=T)
+>    #Make variables factors into factors
+>    factor_vars <- c('PassengerId','Pclass','Sex','Embarked',
++                     'Title','Family.Size')
+>    
+>    data.combined2[factor_vars] <- lapply(data.combined2[factor_vars], function(x) as.factor(x))
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+>    ### Setting a random seed
+>    set.seed(129)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> mice_mod <- mice(data.combined2[, !names(data.combined2) %in% c('PassengerId','Name','Ticket','Cabin','Survived')], method='rf') 
+
+ iter imp variable
+  1   1  Age
+  1   2  Age
+  1   3  Age
+  1   4  Age
+  1   5  Age
+  2   1  Age
+  2   2  Age
+  2   3  Age
+  2   4  Age
+  2   5  Age
+  3   1  Age
+  3   2  Age
+  3   3  Age
+  3   4  Age
+  3   5  Age
+  4   1  Age
+  4   2  Age
+  4   3  Age
+  4   4  Age
+  4   5  Age
+  5   1  Age
+  5   2  Age
+  5   3  Age
+  5   4  Age
+  5   5  Age
+Warning message:
+Number of logged events: 25 
+> ### complete output saving
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+>    mice_output <- complete(mice_mod)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> par(mfrow=c(1,2))
+>    hist(data.combined2$Age, freq=F, main='Age: Original Data', 
++         col='darkgreen', ylim=c(0,0.04))
+>    hist(mice_output$Age, freq=F, main='Age: MICE Output', 
++         col='lightgreen', ylim=c(0,0.04))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data.combined2$Age <- mice_output$Age
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data.combined2$Deck <- mice_output$Deck
+> summary(data.combined2)
+  PassengerId   Survived   Pclass      Name               Sex     
+ 1      :   1   0   :549   1:323   Length:1309        female:466  
+ 2      :   1   1   :342   2:277   Class :character   male  :843  
+ 3      :   1   None:418   3:709   Mode  :character               
+ 4      :   1                                                     
+ 5      :   1                                                     
+ 6      :   1                                                     
+ (Other):1303                                                     
+      Age        SibSp       Parch         Ticket               Fare        
+ Min.   : 0.17   0:891   0      :1002   Length:1309        Min.   :  0.000  
+ 1st Qu.:21.00   1:319   1      : 170   Class :character   1st Qu.:  7.896  
+ Median :28.00   2: 42   2      : 113   Mode  :character   Median : 14.454  
+ Mean   :29.76   3: 20   3      :   8                      Mean   : 33.276  
+ 3rd Qu.:38.00   4: 22   4      :   6                      3rd Qu.: 31.275  
+ Max.   :80.00   5:  6   5      :   6                      Max.   :512.329  
+                 8:  9   (Other):   4                                       
+    Cabin           Embarked     Title      Family.Size 
+ Length:1309        C:272    Master.: 61   1      :790  
+ Class :character   Q:123    Miss.  :260   2      :235  
+ Mode  :character   S:914    Mr.    :758   3      :159  
+                             Mrs.   :199   4      : 43  
+                             Other  : 31   6      : 25  
+                                           5      : 22  
+                                           (Other): 35  
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+>    train <- data.combined2[1:891,]
+>    test <- data.combined2[892:1309,]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+>    set.seed(754)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rf_model <- train(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + 
++                            Fare + Embarked + Title,data=train,
++                            method="ranger",
++                            trControl = trainControl(method = "cv", number = 5, verboseIter = TRUE
++ ))
++ Fold1: mtry= 2, min.node.size=1, splitrule=gini 
+- Fold1: mtry= 2, min.node.size=1, splitrule=gini 
++ Fold1: mtry=13, min.node.size=1, splitrule=gini 
+- Fold1: mtry=13, min.node.size=1, splitrule=gini 
++ Fold1: mtry=24, min.node.size=1, splitrule=gini 
+- Fold1: mtry=24, min.node.size=1, splitrule=gini 
++ Fold1: mtry= 2, min.node.size=1, splitrule=extratrees 
+- Fold1: mtry= 2, min.node.size=1, splitrule=extratrees 
++ Fold1: mtry=13, min.node.size=1, splitrule=extratrees 
+- Fold1: mtry=13, min.node.size=1, splitrule=extratrees 
++ Fold1: mtry=24, min.node.size=1, splitrule=extratrees 
+- Fold1: mtry=24, min.node.size=1, splitrule=extratrees 
++ Fold2: mtry= 2, min.node.size=1, splitrule=gini 
+- Fold2: mtry= 2, min.node.size=1, splitrule=gini 
++ Fold2: mtry=13, min.node.size=1, splitrule=gini 
+- Fold2: mtry=13, min.node.size=1, splitrule=gini 
++ Fold2: mtry=24, min.node.size=1, splitrule=gini 
+- Fold2: mtry=24, min.node.size=1, splitrule=gini 
++ Fold2: mtry= 2, min.node.size=1, splitrule=extratrees 
+- Fold2: mtry= 2, min.node.size=1, splitrule=extratrees 
++ Fold2: mtry=13, min.node.size=1, splitrule=extratrees 
+- Fold2: mtry=13, min.node.size=1, splitrule=extratrees 
++ Fold2: mtry=24, min.node.size=1, splitrule=extratrees 
+- Fold2: mtry=24, min.node.size=1, splitrule=extratrees 
++ Fold3: mtry= 2, min.node.size=1, splitrule=gini 
+- Fold3: mtry= 2, min.node.size=1, splitrule=gini 
++ Fold3: mtry=13, min.node.size=1, splitrule=gini 
+- Fold3: mtry=13, min.node.size=1, splitrule=gini 
++ Fold3: mtry=24, min.node.size=1, splitrule=gini 
+- Fold3: mtry=24, min.node.size=1, splitrule=gini 
++ Fold3: mtry= 2, min.node.size=1, splitrule=extratrees 
+- Fold3: mtry= 2, min.node.size=1, splitrule=extratrees 
++ Fold3: mtry=13, min.node.size=1, splitrule=extratrees 
+- Fold3: mtry=13, min.node.size=1, splitrule=extratrees 
++ Fold3: mtry=24, min.node.size=1, splitrule=extratrees 
+- Fold3: mtry=24, min.node.size=1, splitrule=extratrees 
++ Fold4: mtry= 2, min.node.size=1, splitrule=gini 
+- Fold4: mtry= 2, min.node.size=1, splitrule=gini 
++ Fold4: mtry=13, min.node.size=1, splitrule=gini 
+- Fold4: mtry=13, min.node.size=1, splitrule=gini 
++ Fold4: mtry=24, min.node.size=1, splitrule=gini 
+- Fold4: mtry=24, min.node.size=1, splitrule=gini 
++ Fold4: mtry= 2, min.node.size=1, splitrule=extratrees 
+- Fold4: mtry= 2, min.node.size=1, splitrule=extratrees 
++ Fold4: mtry=13, min.node.size=1, splitrule=extratrees 
+- Fold4: mtry=13, min.node.size=1, splitrule=extratrees 
++ Fold4: mtry=24, min.node.size=1, splitrule=extratrees 
+- Fold4: mtry=24, min.node.size=1, splitrule=extratrees 
++ Fold5: mtry= 2, min.node.size=1, splitrule=gini 
+- Fold5: mtry= 2, min.node.size=1, splitrule=gini 
++ Fold5: mtry=13, min.node.size=1, splitrule=gini 
+- Fold5: mtry=13, min.node.size=1, splitrule=gini 
++ Fold5: mtry=24, min.node.size=1, splitrule=gini 
+- Fold5: mtry=24, min.node.size=1, splitrule=gini 
++ Fold5: mtry= 2, min.node.size=1, splitrule=extratrees 
+- Fold5: mtry= 2, min.node.size=1, splitrule=extratrees 
++ Fold5: mtry=13, min.node.size=1, splitrule=extratrees 
+- Fold5: mtry=13, min.node.size=1, splitrule=extratrees 
++ Fold5: mtry=24, min.node.size=1, splitrule=extratrees 
+- Fold5: mtry=24, min.node.size=1, splitrule=extratrees 
+Aggregating results
+Selecting tuning parameters
+Fitting mtry = 13, splitrule = gini, min.node.size = 1 on full training set
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 28.399   0.671  12.364 

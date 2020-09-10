@@ -1,0 +1,460 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> library('dplyr') # data manipulation
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library('ggplot2') # Data Visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library('ggthemes') # Data Visualization
+> 
+> options(warn = -1)
+> # load train.csv
+> train <- read.csv('../input/train.csv', stringsAsFactors = F)
+> # load test.csv
+> test  <- read.csv('../input/test.csv', stringsAsFactors = F)
+> # combine them as a whole
+> test$Survived <- NA
+> full <- rbind(train,test)
+> 
+> # show first several rows of the data
+> head(full)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> 
+> 
+> # check the data
+> str(full)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> # Process Age Column
+> 
+>     # create a new data set age
+> age <- full$Age
+> n = length(age)
+>     # replace missing value with a random sample from raw data
+> set.seed(123)
+> for(i in 1:n){
++   if(is.na(age[i])){
++     age[i] = sample(na.omit(full$Age),1)
++   }
++ }
+>     # check effect
+> par(mfrow=c(1,2))
+> hist(full$Age, freq=F, main='Before Replacement', 
++   col='lightblue', ylim=c(0,0.04),xlab = "age")
+> hist(age, freq=F, main='After Replacement', 
++   col='darkblue', ylim=c(0,0.04))
+> 
+> # Process Cabin Column to show number of cabins passenger has
+> cabin <- full$Cabin
+> n = length(cabin)
+> for(i in 1:n){
++   if(nchar(cabin[i]) == 0){
++     cabin[i] = 0
++   } else{
++     s = strsplit(cabin[i]," ")
++     cabin[i] = length(s[[1]])
++   }
++ } 
+> table(cabin)
+cabin
+   0    1    2    3    4 
+1014  254   26   10    5 
+> 
+> # for Fare column, we repace the missing value with median fare of according Pclass and Embarked
+> full$Fare[1044] <- median(full[full$Pclass == '3' & full$Embarked == 'S', ]$Fare, na.rm = TRUE)
+> 
+> # process embarked column
+> embarked <- full$Embarked
+> n = length(embarked)
+> for(i in 1:n){
++   if(embarked[i] != "S" && embarked[i] != "C" && embarked[i] != "Q"){
++     embarked[i] = "S"
++   }
++ }
+> table(embarked)
+embarked
+  C   Q   S 
+270 123 916 
+> 
+> # number of survivals and nonsurvivals across different age
+> d <- data.frame(Age = age[1:891], Survived = train$Survived)
+> ggplot(d, aes(Age,fill = factor(Survived))) +
++     geom_histogram()
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> # create bar chart to show relationship between survival rate and age intervals
+> cuts <- cut(d$Age,hist(d$Age,10,plot = F)$breaks)
+> rate <- tapply(d$Survived,cuts,mean)
+> d2 <- data.frame(age = names(rate),rate)
+> barplot(d2$rate, xlab = "age",ylab = "survival rate")
+> 
+> # create histgram to show effect of Sex on survival
+> ggplot(train, aes(Sex,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # calculate survival rate
+> tapply(train$Survived,train$Sex,mean)
+   female      male 
+0.7420382 0.1889081 
+> 
+> # extract title from Name 
+> # (here I process full data set but only plot title vs survival in train 
+> #    data set because there is no survival value for test data set)
+> n = length(full$Survived)
+> title = rep(NA,n)
+> for (i in 1:n){
++   lastname = strsplit(full$Name[i],", ")[[1]][2]
++   title[i] = strsplit(lastname,". ")[[1]][1]
++ }
+> 
+> # make a histogram of title v.s survival
+> d <- data.frame(title = title[1:891],Survived = train$Survived)
+> ggplot(d, aes(title,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # count of title
+> table(title)
+title
+    Capt      Col      Don     Dona       Dr Jonkheer     Lady    Major 
+       1        4        1        1        8        1        1        2 
+  Master     Miss     Mlle      Mme       Mr      Mrs       Ms      Rev 
+      61      260        2        1      757      197        2        8 
+     Sir       th 
+       1        1 
+> 
+> # survival rate
+> tapply(d$Survived,d$title,mean)
+     Capt       Col       Don        Dr  Jonkheer      Lady     Major    Master 
+0.0000000 0.5000000 0.0000000 0.4285714 0.0000000 1.0000000 0.5000000 0.5750000 
+     Miss      Mlle       Mme        Mr       Mrs        Ms       Rev       Sir 
+0.6978022 1.0000000 1.0000000 0.1566731 0.7920000 1.0000000 0.0000000 1.0000000 
+       th 
+1.0000000 
+> 
+> # replace rare titles to 'Rare'
+> title[title != 'Mr' & title != 'Miss' & title != 'Mrs' & title != 'Master'] <- 'Rare'
+> table(title)
+title
+Master   Miss     Mr    Mrs   Rare 
+    61    260    757    197     34 
+> 
+> # make a histogram
+> ggplot(train, aes(Pclass,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # calculate survival rate
+> tapply(train$Survived,train$Pclass,mean)
+        1         2         3 
+0.6296296 0.4728261 0.2423625 
+> 
+> # histogram of Parch
+> ggplot(train, aes(Parch,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # histogram of SibSp
+> ggplot(train, aes(SibSp,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # combine SibSp and Parch 
+> family <- full$SibSp + full$Parch
+> d <- data.frame(family = family[1:891],Survived = train$Survived)
+> ggplot(d, aes(family,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> tapply(d$Survived,d$family,mean)
+        0         1         2         3         4         5         6         7 
+0.3035382 0.5527950 0.5784314 0.7241379 0.2000000 0.1363636 0.3333333 0.0000000 
+       10 
+0.0000000 
+> 
+> # create histogram
+> d <- data.frame(Cabin = cabin[1:891],Survived = train$Survived)
+> ggplot(d, aes(Cabin,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # calculate survival rate
+> tapply(d$Survived,d$Cabin,mean)
+        0         1         2         3         4 
+0.2998544 0.6777778 0.5625000 0.5000000 1.0000000 
+> 
+> # make a histogram
+> ggplot(train, aes(Fare,fill = factor(Survived))) +
++     geom_histogram()
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> # calculate
+> cuts <- cut(train$Fare,hist(train$Fare,10,plot = F)$breaks)
+> rate <- tapply(train$Survived,cuts,mean)
+> d <- data.frame(fare = names(rate),rate)
+> barplot(d$rate, xlab = "fare",ylab = "survival rate")
+> 
+> # make histogram
+> d <- data.frame(Embarked = embarked[1:891], Survived = train$Survived)
+> ggplot(d, aes(Embarked,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # make table
+> tapply(train$Survived,train$Embarked,mean)
+                  C         Q         S 
+1.0000000 0.5535714 0.3896104 0.3369565 
+> 
+> # response variable
+> f.survived = train$Survived
+> 
+> # feature
+> # 1. age
+> f.age = age[1:891]    # for training
+> t.age = age[892:1309]  # for testing
+> 
+> # 2. fare
+> f.fare = full$Fare[1:891]
+> t.fare = full$Fare[892:1309]
+> 
+> # 3. cabin
+> f.cabin = cabin[1:891]
+> t.cabin = cabin[892:1309]
+> 
+> # 4. title
+> f.title = title[1:891]
+> t.title = title[892:1309]
+> 
+> # 5. family
+> family <- full$SibSp + full$Parch
+> f.family = family[1:891]
+> t.family = family[892:1309]
+> 
+> # 6. plcass
+> f.pclass = train$Pclass
+> t.pclass = test$Pclass
+> 
+> # 7. sex
+> f.sex = train$Sex
+> t.sex = test$Sex
+> 
+> # 8. embarked
+> f.embarked = embarked[1:891]
+> t.embarked = embarked[892:1309]
+> 
+> # construct training data frame
+> new_train = data.frame(survived = f.survived, age = f.age, fare = f.fare , sex = f.sex, 
++        embarked = f.embarked ,family = f.family ,title = f.title ,cabin =  f.cabin, pclass= f.pclass)
+> 
+> # logistic regression
+> fit_logit <- glm(factor(survived) ~ age + fare + sex + embarked + family 
++                  + title + cabin + pclass,data = new_train,family = binomial)
+>     # predicted result of regression
+> ans_logit = rep(NA,891)
+> for(i in 1:891){
++   ans_logit[i] = round(fit_logit$fitted.values[[i]],0)
++ }
+>     # check result
+> mean(ans_logit == train$Survived)
+[1] 0.8327722
+> table(ans_logit)
+ans_logit
+  0   1 
+570 321 
+> 
+> # random forest
+> library('randomForest')
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> 
+> set.seed(123)
+> fit_rf <- randomForest(factor(survived) ~ age + fare + sex + embarked + family 
++                  + title + cabin + pclass,data = new_train)
+> 
+>     # predicted result of regression
+> rf.fitted = predict(fit_rf)
+> ans_rf = rep(NA,891)
+> for(i in 1:891){
++   ans_rf[i] = as.integer(rf.fitted[[i]]) - 1
++ }
+>     # check result
+> mean(ans_rf == train$Survived)
+[1] 0.8294052
+> table(ans_rf)
+ans_rf
+  0   1 
+597 294 
+> 
+> 
+> # decision tree
+> library(rpart)
+> 
+> fit_dt <- rpart(factor(survived) ~ age + fare + sex + embarked + family 
++                  + title + cabin + pclass,data = new_train)
+> 
+>     # predicted result of regression
+> dt.fitted = predict(fit_dt)
+> ans_dt = rep(NA,891)
+> for(i in 1:891){
++   if(dt.fitted[i,1] >= dt.fitted[i,2] ){
++     ans_dt[i] = 0
++   } else{
++     ans_dt[i] = 1
++   }
++ }
+>     # check result
+> mean(ans_dt == train$Survived)
+[1] 0.8170595
+> table(ans_dt)
+ans_dt
+  0   1 
+568 323 
+> 
+> 
+> # svm
+> library(e1071)
+> 
+> fit_svm <- svm(factor(survived) ~ age + fare + sex + embarked + family 
++                  + title + cabin + pclass,data = new_train)
+> 
+>     # predicted result of regression
+> svm.fitted = predict(fit_svm)
+> ans_svm = rep(NA,891)
+> for(i in 1:891){
++   ans_svm[i] = as.integer(svm.fitted[[i]]) - 1
++ }
+>     # check result
+> mean(ans_svm == train$Survived)
+[1] 0.8361392
+> table(ans_svm)
+ans_svm
+  0   1 
+583 308 
+> 
+> 
+> # logistic
+> a = sum(ans_logit ==1 & f.survived == 1)
+> b = sum(ans_logit ==1 & f.survived == 0)
+> c = sum(ans_logit ==0 & f.survived == 1)
+> d = sum(ans_logit ==0 & f.survived == 0)
+> data.frame(a,b,c,d)
+    a  b  c   d
+1 257 64 85 485
+> 
+> # Random Forest
+> a = sum(ans_rf ==1 & f.survived == 1)
+> b = sum(ans_rf ==1 & f.survived == 0)
+> c = sum(ans_rf ==0 & f.survived == 1)
+> d = sum(ans_rf ==0 & f.survived == 0)
+> data.frame(a,b,c,d)
+    a  b   c   d
+1 242 52 100 497
+> 
+> # Decision Tree
+> a = sum(ans_dt ==1 & f.survived == 1)
+> b = sum(ans_dt ==1 & f.survived == 0)
+> c = sum(ans_dt ==0 & f.survived == 1)
+> d = sum(ans_dt ==0 & f.survived == 0)
+> data.frame(a,b,c,d)
+    a  b  c   d
+1 251 72 91 477
+> 
+> # SVM
+> a = sum(ans_svm ==1 & f.survived == 1)
+> b = sum(ans_svm ==1 & f.survived == 0)
+> c = sum(ans_svm ==0 & f.survived == 1)
+> d = sum(ans_svm ==0 & f.survived == 0)
+> data.frame(a,b,c,d)
+    a  b  c   d
+1 252 56 90 493
+> 
+> # construct testing data frame
+> test_data_set <- data.frame(age = t.age, fare = t.fare, sex = t.sex, embarked = t.embarked, 
++                             family = t.family, title = t.title,cabin =  t.cabin, pclass = t.pclass)
+> # make prediction
+> svm_predict = predict(fit_svm,newdata = test_data_set )
+> ans_svm_predict = rep(NA,418)
+> for(i in 1:418){
++   ans_svm_predict[i] = as.integer(svm_predict[[i]]) - 1
++ }
+> table(ans_svm_predict)
+ans_svm_predict
+  0   1 
+256 162 
+> 
+> 
+> # create a csv file for submittion
+> d<-data.frame(PassengerId = test$PassengerId, Survived = ans_svm_predict)
+> write.csv(d,file = "TitanicResult.csv",row.names = F)
+> 
+> proc.time()
+   user  system elapsed 
+  2.186   0.119   2.342 

@@ -1,0 +1,59 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> library("ggplot2")
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library("ggthemes")
+> train = read.csv('../input/train.csv')
+> # calculate the party size based upon number of siblings + number of parents / children + self
+> train$partySize = train$SibSp + train$Parch + 1
+> 
+> train$title <- gsub('(.*, )|(\\..*)', '', train$Name)
+> length(train$Sex)
+[1] 891
+> length(train$title)
+[1] 891
+> 
+> table(train$Sex, train$title)
+        
+         Capt Col Don  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs  Ms
+  female    0   0   0   1        0    1     0      0  182    2   1   0 125   1
+  male      1   2   1   6        1    0     2     40    0    0   0 517   0   0
+        
+         Rev Sir the Countess
+  female   0   0            1
+  male     6   1            0
+> rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+> 
+> train$title[train$title == 'Mlle']        <- 'Miss' 
+> train$title[train$title == 'Ms']          <- 'Miss'
+> train$title[train$title == 'Mme']         <- 'Mrs' 
+> train$title[train$title %in% rare_title]  <- 'Rare Title'
+> table(train$Sex, train$title)
+        
+         Master Miss  Mr Mrs Rare Title
+  female      0  185   0 126          3
+  male       40    0 517   0         20
+> 
+> proc.time()
+   user  system elapsed 
+  0.453   0.065   0.520 

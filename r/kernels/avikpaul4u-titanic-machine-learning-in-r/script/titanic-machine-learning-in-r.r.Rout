@@ -1,0 +1,408 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> ## Importing packages
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(ROCR)
+Warning message:
+package ‘ROCR’ was built under R version 3.6.2 
+> library(caret)
+Loading required package: lattice
+Loading required package: ggplot2
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(ggplot2)
+> library(rpart)
+> library(rpart.plot)
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> 
+> ## Reading in files
+> list.files(path = "../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> train <-read.csv("../input/train.csv")
+> test<-read.csv("../input/test.csv")
+> 
+> #Generating a version of the original data
+> train_df<-train
+> test_df<-test
+> 
+> #Generating the field for the dependent variable in the test data
+> test$Survived<-""
+> 
+> #Combining the test and train data
+> fullset<-rbind(train, test)
+> 
+> #Glimpse of the data
+> head(fullset)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> 
+> #Structure of the data
+> str(fullset)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : chr  "0" "1" "1" "1" ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> #Dropping the variable "Cabin" as its mostly empty and will not be of much help
+> fullset$Cabin<-NULL
+> 
+> #Converting the required categorical variables as factor
+> train_df$Survived<-as.factor(train_df$Survived)
+> train_df$Pclass<-as.factor(train_df$Pclass)
+> 
+> ggplot(train_df, aes(x= Pclass, fill = Survived)) +
++        geom_bar(width=0.3) 
+> 
+> 
+> ggplot(train_df, aes(x= Sex, fill = Survived)) +
++        geom_bar(width=0.3)
+> 
+> ggplot(train_df, aes(Sex)) +
++   facet_wrap(~Pclass) +
++   geom_bar(aes(y = (..count..)/sum(..count..), fill=Survived), stat= "count")+
++   geom_text(aes(label = scales::percent(round((..count..)/sum(..count..),2)),
++                 y= ((..count..)/sum(..count..))), stat="count",
++             vjust = -.25) +
++   ggtitle("Class") + labs(y = "percent")
+> 
+> Imbalance_Check<-aggregate(PassengerId~Survived,train_df,length)
+> colnames(Imbalance_Check)[2]<-"No_of_passengers"
+> Imbalance_Check$Contribution<-(Imbalance_Check$No_of_passengers/sum(Imbalance_Check$No_of_passengers))*100
+> Imbalance_Check
+  Survived No_of_passengers Contribution
+1        0              549     61.61616
+2        1              342     38.38384
+> 
+> #Checking for missing values
+> summary(fullset)
+  PassengerId     Survived             Pclass     
+ Min.   :   1   Length:1309        Min.   :1.000  
+ 1st Qu.: 328   Class :character   1st Qu.:2.000  
+ Median : 655   Mode  :character   Median :3.000  
+ Mean   : 655                      Mean   :2.295  
+ 3rd Qu.: 982                      3rd Qu.:3.000  
+ Max.   :1309                      Max.   :3.000  
+                                                  
+                               Name          Sex           Age       
+ Connolly, Miss. Kate            :   2   female:466   Min.   : 0.17  
+ Kelly, Mr. James                :   2   male  :843   1st Qu.:21.00  
+ Abbing, Mr. Anthony             :   1                Median :28.00  
+ Abbott, Mr. Rossmore Edward     :   1                Mean   :29.88  
+ Abbott, Mrs. Stanton (Rosa Hunt):   1                3rd Qu.:39.00  
+ Abelson, Mr. Samuel             :   1                Max.   :80.00  
+ (Other)                         :1301                NA's   :263    
+     SibSp            Parch            Ticket          Fare         Embarked
+ Min.   :0.0000   Min.   :0.000   CA. 2343:  11   Min.   :  0.000    :  2   
+ 1st Qu.:0.0000   1st Qu.:0.000   1601    :   8   1st Qu.:  7.896   C:270   
+ Median :0.0000   Median :0.000   CA 2144 :   8   Median : 14.454   Q:123   
+ Mean   :0.4989   Mean   :0.385   3101295 :   7   Mean   : 33.295   S:914   
+ 3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7   3rd Qu.: 31.275           
+ Max.   :8.0000   Max.   :9.000   347082  :   7   Max.   :512.329           
+                                  (Other) :1261   NA's   :1                 
+> 
+> fullset$Embarked[fullset$Embarked==""]<-"S"
+> summary(fullset$Embarked)
+      C   Q   S 
+  0 270 123 916 
+> 
+> #We segment the data using Pclass, Sex and Embarked and find the mean age of each segment 
+> Means_Age<-summarise(group_by(fullset,Pclass,Sex,Embarked), Mean_Age=mean(Age,na.rm=T))
+`summarise()` regrouping output by 'Pclass', 'Sex' (override with `.groups` argument)
+> Means_Age$key<-paste0(Means_Age$Pclass,"_",Means_Age$Sex,"_",Means_Age$Embarked)
+> 
+> head(Means_Age)
+[90m# A tibble: 6 x 5[39m
+[90m# Groups:   Pclass, Sex [2][39m
+  Pclass Sex    Embarked Mean_Age key       
+   [3m[90m<int>[39m[23m [3m[90m<fct>[39m[23m  [3m[90m<fct>[39m[23m       [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m     
+[90m1[39m      1 female C            38.1 1_female_C
+[90m2[39m      1 female Q            35   1_female_Q
+[90m3[39m      1 female S            36.0 1_female_S
+[90m4[39m      1 male   C            40.0 1_male_C  
+[90m5[39m      1 male   Q            44   1_male_Q  
+[90m6[39m      1 male   S            41.7 1_male_S  
+> 
+> #Mapping the mean of each segment back to the actual data
+> fullset$key<-paste0(fullset$Pclass,"_",fullset$Sex,"_",fullset$Embarked)
+> fullset<-merge(x=fullset, y=Means_Age[,c("key","Mean_Age")], by="key",all.x=T)
+> 
+> #Imputing the missing values of Age with the mean of the respective segments
+> fullset$Age<-ifelse(is.na(fullset$Age),fullset$Mean_Age,fullset$Age) 
+> fullset$Mean_Age<-NULL
+> fullset$key<-NULL
+> summary(fullset$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.17   22.00   26.74   29.41   36.05   80.00 
+> 
+> fullset$Fare<-ifelse(is.na(fullset$Fare),mean(fullset$Fare, na.rm=T), fullset$Fare)
+> 
+> fullset$Title <- sapply(as.character(fullset$Name),FUN = function(x){strsplit(x,"[,.]")[[1]][2]}) 
+> fullset$Title <- sub(' ', '', fullset$Title) 
+> fullset$Title<-as.factor(fullset$Title)
+> 
+> summary(fullset$Title)
+        Capt          Col          Don         Dona           Dr     Jonkheer 
+           1            4            1            1            8            1 
+        Lady        Major       Master         Miss         Mlle          Mme 
+           1            2           61          260            2            1 
+          Mr          Mrs           Ms          Rev          Sir the Countess 
+         757          197            2            8            1            1 
+> 
+> # There are many titles having less frequency and they can be grouped.
+> fullset$Title <- as.character(fullset$Title) 
+> fullset$Title[fullset$Title %in% c("Mlle","Ms")] <- "Miss" 
+> fullset$Title[fullset$Title == "Mme"] <- "Mrs" 
+> fullset$Title[fullset$Title %in% c( "Don", "Sir", "Jonkheer","Rev","Dr")] <- "Sir" 
+> fullset$Title[fullset$Title %in% c("Dona", "Lady", "the Countess")] <- "Lady" 
+> fullset$Title[fullset$Title %in% c("Capt","Col", "Major")] <- "Officer" 
+> fullset$Title <- as.factor(fullset$Title) 
+> 
+> summary(fullset$Title)
+   Lady  Master    Miss      Mr     Mrs Officer     Sir 
+      3      61     264     757     198       7      19 
+> 
+> fullset$FamSize <- fullset$SibSp + fullset$Parch 
+> table(fullset$FamSize)
+
+  0   1   2   3   4   5   6   7  10 
+790 235 159  43  22  25  16   8  11 
+> 
+> fullset$FamGroup[fullset$FamSize == 0] <- 'Individual' 
+> fullset$FamGroup[fullset$FamSize < 5 & fullset$FamSize > 0] <- 'small' 
+> fullset$FamGroup[fullset$FamSize > 4] <- 'large' 
+> fullset$FamGroup <- as.factor(fullset$FamGroup)
+> 
+> #Count of unique tickets
+> length(unique(fullset$Ticket))
+[1] 929
+> 
+> #Count of passengers
+> length(unique(fullset$PassengerId))
+[1] 1309
+> 
+> Ticket_Count <- data.frame(table(fullset$Ticket))
+> head(Ticket_Count)
+    Var1 Freq
+1 110152    3
+2 110413    3
+3 110465    2
+4 110564    1
+5 110813    2
+6 111240    1
+> 
+> # Assign the frequency of each ticket appearance
+> fullset <- merge(fullset,Ticket_Count, by.x="Ticket", by.y="Var1", all.x=T) 
+> 
+> fullset$Ticket_Size[fullset$Freq==1]<-'Single'
+> fullset$Ticket_Size[fullset$Freq >=2 & fullset$Freq < 5] <- "Small"
+> fullset$Ticket_Size[fullset$Freq>= 5]<-"Big"
+> fullset$Ticket_Size<-as.factor(fullset$Ticket_Size)
+> 
+> fullset$isMinor[fullset$Age < 18] <- 'Minor' 
+> fullset$isMinor[fullset$Age >= 18] <- 'Adult'
+> fullset$isMinor<-as.factor(fullset$isMinor)
+> 
+> #Checking the final prepared data
+> head(fullset)
+  Ticket PassengerId Survived Pclass
+1 110152         760        1      1
+2 110152         258        1      1
+3 110152         505        1      1
+4 110413         559        1      1
+5 110413         263        0      1
+6 110413         586        1      1
+                                                      Name    Sex Age SibSp
+1 Rothes, the Countess. of (Lucy Noel Martha Dyer-Edwards) female  33     0
+2                                     Cherry, Miss. Gladys female  30     0
+3                                    Maioni, Miss. Roberta female  16     0
+4                   Taussig, Mrs. Emil (Tillie Mandelbaum) female  39     1
+5                                        Taussig, Mr. Emil   male  52     1
+6                                      Taussig, Miss. Ruth female  18     0
+  Parch  Fare Embarked Title FamSize   FamGroup Freq Ticket_Size isMinor
+1     0 86.50        S  Lady       0 Individual    3       Small   Adult
+2     0 86.50        S  Miss       0 Individual    3       Small   Adult
+3     0 86.50        S  Miss       0 Individual    3       Small   Minor
+4     1 79.65        S   Mrs       2      small    3       Small   Adult
+5     1 79.65        S    Mr       2      small    3       Small   Adult
+6     2 79.65        S  Miss       2      small    3       Small   Adult
+> str(fullset)
+'data.frame':	1309 obs. of  17 variables:
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 1 1 1 2 2 2 3 3 682 683 ...
+ $ PassengerId: int  760 258 505 559 263 586 111 476 1227 1050 ...
+ $ Survived   : chr  "1" "1" "1" "1" ...
+ $ Pclass     : int  1 1 1 1 1 1 1 1 1 1 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 709 157 506 805 804 803 672 165 1134 930 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 1 1 1 1 2 1 2 2 2 2 ...
+ $ Age        : num  33 30 16 39 52 ...
+ $ SibSp      : int  0 0 0 1 1 0 0 0 0 0 ...
+ $ Parch      : int  0 0 0 1 1 2 0 0 0 0 ...
+ $ Fare       : num  86.5 86.5 86.5 79.7 79.7 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 4 4 4 4 4 4 4 4 4 ...
+ $ Title      : Factor w/ 7 levels "Lady","Master",..: 1 3 3 5 4 3 4 4 4 4 ...
+ $ FamSize    : int  0 0 0 2 2 2 0 0 0 0 ...
+ $ FamGroup   : Factor w/ 3 levels "Individual","large",..: 1 1 1 3 3 3 1 1 1 1 ...
+ $ Freq       : int  3 3 3 3 3 3 2 2 1 1 ...
+ $ Ticket_Size: Factor w/ 3 levels "Big","Single",..: 3 3 3 3 3 3 3 3 2 2 ...
+ $ isMinor    : Factor w/ 2 levels "Adult","Minor": 1 1 2 1 1 1 1 1 1 1 ...
+> 
+> #Converting the required categorical variables as factor
+> fullset$Survived<-as.factor(fullset$Survived)
+> fullset$Pclass<-as.factor(fullset$Pclass)
+> 
+> #Subsetting the train_df
+> train_df<-subset(fullset, !(fullset$Survived==""))
+> 
+> #The dependent variable has 3 levels, but needs it to be binomial so dropping the non-essential levels
+> str(train_df$Survived)
+ Factor w/ 3 levels "","0","1": 3 3 3 3 2 3 2 2 3 3 ...
+> x<-data.frame(Survived=droplevels(train_df$Survived))
+> train_df$Survived<-NULL
+> train_df<-cbind(train_df,x)
+> str(train_df$Survived)
+ Factor w/ 2 levels "0","1": 2 2 2 2 1 2 1 1 2 2 ...
+> 
+> train_val<-sample_frac(train_df, size=0.8)
+> test_val<-subset(train_df,!(train_df$PassengerId %in% train_val$PassengerId ))
+> 
+> mod<-glm(Survived ~ Pclass + Title + FamGroup + Sex +isMinor+ Ticket_Size+Embarked,
++          data= train_val, family= 'binomial')
+> summary(mod)
+
+Call:
+glm(formula = Survived ~ Pclass + Title + FamGroup + Sex + isMinor + 
+    Ticket_Size + Embarked, family = "binomial", data = train_val)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.3973  -0.5761  -0.3610   0.5533   2.6709  
+
+Coefficients:
+                   Estimate Std. Error z value Pr(>|z|)    
+(Intercept)        17.43804  535.41244   0.033 0.974018    
+Pclass2            -1.11438    0.32719  -3.406 0.000659 ***
+Pclass3            -2.17410    0.29915  -7.268 3.66e-13 ***
+TitleMiss         -15.46277  535.41209  -0.029 0.976960    
+TitleMr            -3.48666    0.62482  -5.580 2.40e-08 ***
+TitleMrs          -14.83859  535.41218  -0.028 0.977890    
+TitleOfficer       -3.03489    1.56719  -1.937 0.052804 .  
+TitleSir           -4.37714    1.01083  -4.330 1.49e-05 ***
+FamGrouplarge      -1.80229    0.73743  -2.444 0.014525 *  
+FamGroupsmall      -0.46298    0.36206  -1.279 0.200987    
+Sexmale           -14.98038  535.41179  -0.028 0.977679    
+isMinorMinor        0.48085    0.38538   1.248 0.212131    
+Ticket_SizeSingle   0.84023    0.56123   1.497 0.134366    
+Ticket_SizeSmall    1.11228    0.51071   2.178 0.029411 *  
+EmbarkedQ           0.04419    0.45387   0.097 0.922435    
+EmbarkedS          -0.33506    0.29237  -1.146 0.251782    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 944.03  on 712  degrees of freedom
+Residual deviance: 569.66  on 697  degrees of freedom
+AIC: 601.66
+
+Number of Fisher Scoring iterations: 12
+
+> 
+> predict_train <- predict(mod, train_val, type='response')
+> prob_train<-ifelse( predict_train > 0.5,1,0)
+> 
+> #Classification error
+> confusion_matrix_train <- table(prob_train,  train_val$Survived)
+> print(confusion_matrix_train)
+          
+prob_train   0   1
+         0 399  66
+         1  46 202
+> 
+> #Accuracy percent of the model
+> Accuracy_train<-sum(diag(confusion_matrix_train))/sum(confusion_matrix_train)
+> print(Accuracy_train*100)
+[1] 84.29173
+> 
+> #The ROCR Curve
+> pred1 <- prediction(predict(mod), train_val$Survived)
+> perf1 <- performance(pred1,"tpr","fpr")
+> plot(perf1)
+> 
+> predict_test<-predict(mod,test_val, type='response')
+Error in model.frame.default(Terms, newdata, na.action = na.action, xlev = object$xlevels) : 
+  factor Title has new levels Lady
+Calls: predict ... predict.glm -> predict.lm -> model.frame -> model.frame.default
+Execution halted

@@ -1,0 +1,408 @@
+---
+title: 'Titanic is back in R!'
+author: 'Vikas Dhyani'
+date: '29 August 2017'
+output:
+  html_document:
+    toc: true
+    number_sections: true
+    fig_width: 7
+    fig_height: 4.5
+    theme: readable
+    highlight: tango
+---
+
+The basis of this kernel is a tutorial that I would highly recommend to those who are beginning on
+Kaggle with R. Trevor Stephens has created [this](http://trevorstephens.com/kaggle-titanic-tutorial/getting-started-with-r/ "Titanic: Getting Started With R") excellent Titanic problem walkthrough that covers
+starting from setting up your R environment to reaching at the upper end of the leaderboard. While I
+have made a few changes wherever I felt the need to experiment, you should too because you learn
+when you try something new! I am myself a beginner and with this tutorial, I think I have found a 
+direction and a *decent* rank in the top 3%. 
+
+The primary audience of this report are the new kids on the [Data Science](https://www.ironsidegroup.com/2016/06/20/newbie-data-science-guide/) block. So, this report itself is documented
+in the form of a tutorial. I have tried to keep things as concise as possible and easy to follow.
+
+# Introduction
+
+The Titanic problem is a binary classification problem where every passenger either survives or 
+perishes. There are a lot of techniques and models that can be used in this scenario. However, to
+achieve a higher accuracy, an ensemble model may be needed. I am going to use `cforest` or Conditional
+Random Forests to build my model. For now, it is all fine to know just that `cforest` is similar to
+`randomForest` but uses conditional inference trees as base learners instead of decision trees.
+
+## Loading datasets
+
+We read our datasets as follows
+
+```{r, warning = FALSE}
+train <- read.csv('../input/train.csv')
+test <- read.csv('../input/test.csv')
+```
+
+The `read.csv()` function reads the datasets into the respective data frames. You will notice here that
+the **test** data frame has one less column than **train**. As obvious, it is missing the *Survived*
+column that our job is to predict.
+
+After this, we load some useful packages.
+    
+```{r, message = FALSE, warning = FALSE}
+#for decision trees
+library(rpart) 
+
+#for cforest
+library(party) 
+```
+
+# Feature Engineering
+
+We have been provided with a bunch of variables for prediction. But not all of them are going to be
+valuable for us. Some of them that don't look useful may still carry some importance which is not
+immediately obvious. Further, the model that we will build will perform better if it has more useful
+features. This call is for what is known as **Feature Engineering**. 
+
+In Trevor's own words, "Feature engineering really boils down to the human element in machine
+learning." Because anyone can build models from the available features using readymade packages 
+and make predictions which make it quite an objective task. Feature Engineering brings the
+subjective part to the table. In this stage, your creativity is your most important companion. 
+
+So, going ahead, we will first row bind the two datasets to form a single, consolidated dataset. To 
+do this, we will first need to make the number of columns same in both. 
+    
+```{r, message=FALSE, warning=FALSE}
+#Adding a column of NA (missing) values in test
+test$Survived <- NA     
+
+# row binding train and test
+combi  <- rbind(train, test) 
+
+# taking a look at the structure of combi
+str(combi) #or View(combi)
+```
+
+## Family Size
+
+First, we will put our focus on the two variables SibSp and Parch. Doesn't their sum make the
+size of the family of a passenger? We can quickly make this a new feature!
+
+```{r, warning=FALSE}
+# 1 is for the passenger himself/herself
+combi$FamilySize <- combi$SibSp + combi$Parch + 1          
+```
+
+Feature Engineering sounds quite easy, right? Well, this was just the beginning. Let's move forward
+and derive more features. 
+    
+## Titles
+    
+If you take a look at the Name column, you may notice that the names also carry their titles along
+with them. See, for example, 
+
+```{r, warning=FALSE}
+#to display the first 6 records in the Name column
+head(combi$Name) 
+```
+
+These titles can be in our second feature. But what stands in the way is their encapsulated presence
+within the Name feature. We need to extract the titles from all the names of the passengers. If we
+look closely, we see that there is a certain pattern in which the titles occur in the name. They
+always occur between a comma ',' and a period '.' We have a nice little function at our disposal
+that can make our work of segregating the titles from the names quite easy. Meet our friend,
+`strsplit()` --- 
+
+```{r, warning=FALSE}
+# first converting to character type
+combi$Name <- as.character(combi$Name)
+
+strsplit(combi$Name[1], split = '[,.]')
+```
+
+The symbols inside the square brackets are known as regular expressions. We can pick the title
+component out of these like this: 
+    
+```{r, warning=FALSE}
+strsplit(combi$Name[1], split = '[,.]')[[1]][2]
+```
+    
+Now to apply this function to each row of the Name feature, we will have to use another function
+known as `sapply()` ---
+    
+```{r, warning=FALSE}
+combi$Title <- sapply(combi$Name, FUN = function(x){ strsplit(x, split = '[,.]')[[1]][2]})
+```
+    
+Each row element goes into our function strsplit as variable x and gets operated upon. Our new
+feature is now almost ready. Only one more operation is required to get rid of the white space
+that exists before every title. We use the `sub()` function for that (sub = substitute),
+    
+```{r, warning=FALSE}
+#substitute the first occurrence of a white space with nothing
+combi$Title <- sub(' ', '', combi$Title) 
+```
+    
+We now have our second feature ready! You can have a statistical look at it. 
+    
+```{r, warning=FALSE}
+table(combi$Title)
+```
+    
+We see there are so much more titles than we had expected. Moreover, there are some titles that only 
+a single passenger has. To make the data more conformable, we will try to merge some titles into
+a single, broader category.
+    
+```{r, warning=FALSE}
+# The titles 'Mme' and 'Mlle' are merged into one 'Mlle' and similarly, for others. 
+# %in% is used to satisfy the logical OR condition, means if the title is one among the titles
+# in the given vector, condition is satisfied. Below is the way:
+    
+combi$Title[combi$Title %in% c('Mme', 'Mlle')] <- 'Mlle'
+combi$Title[combi$Title %in% c('Capt', 'Don', 'Jonkheer', 'Major', 'Sir')] <- 'Sir'
+combi$Title[combi$Title %in% c('Dona', 'Lady', 'Ms', 'the Countess', 'Mlle')] <- 'Lady'
+
+#To change into factor (datatype that contains categories)
+combi$Title <- factor(combi$Title) 
+table(combi$Title)
+```
+    
+At last, we have our newly engineered Title feature. You can go ahead and experiment with the number
+of categories of titles according to your own liking by submitting different outputs at the end of
+this walkthrough. 
+
+## FamilyId
+    
+One may be tempted to notice that the Name feature has more to offer than just the titles. It also
+carries with it the surnames of the passengers that may be categorical in nature. We may want to
+extract that too, for it may add valuable contribution to our model.
+    
+```{r, warning=FALSE}
+combi$Surname <- sapply(combi$Name, FUN = function(x){ strsplit(x, split = '[,.]')[[1]][1]})
+```
+
+We can also go one level higher by creating an artificial feature. We can combine FamilySize and
+Surname together to create FamilyId that would be unique for each family. Maybe, *some* type of
+families were more likely to survive than the others because of their **FamilySize**. That's why we
+can **paste** FamilySize with the Surname and expect accurate results. We can mark those unique families
+with less than 3 members as 'Small'. That would save us from having too many FamilyId categories.
+
+```{r, warning=FALSE}
+# pasting the two columns together
+combi$FamilyId <- paste(as.character(combi$FamilySize), combi$Surname, sep = '') 
+
+# as obvious below, those with family size less than or equal to 2 will be designated as Small
+combi$FamilyId[combi$FamilySize <= 2] <- 'Small'
+```
+    
+But wait, we can see when we run the command `table(combi$FamilyId)` some FamilyId values with 
+different values of pasted FamilySize and their frequencies, which should have been the same (didn't
+print it here because the output takes way too space). For instance, '3Strom' should have had at least 3
+passengers(frequency) with the same FamilyId. But it has only 1, which could mean that only 1 passenger
+was present in the ship with that FamilyId. This could mean that still, we would need to assign such
+FamilyId as 'Small'.
+    
+```{r, warning=FALSE}
+# famId, a temporary variable, will store the FamilyId with their frequencies
+famId <- data.frame(table(combi$FamilyId))
+
+# Now, famId will only contain records with frequency or number of passengers in that family 
+# less than or equal to 2
+famId <- famId[famId$Freq <= 2, ]
+
+# Any FamilyId existing in famId would then be declared 'Small'
+combi$FamilyId[combi$FamilyId %in% famId$Var1] <- 'Small'
+
+# finally converting to factor
+combi$FamilyId <- factor(combi$FamilyId)
+
+table(combi$FamilyId)
+```
+
+Let's look at other potentially useful columns.
+
+## Deck
+    
+We can see that we have a column called Cabin that carries values like 'C85', 'G6', etc. You can 
+use `head(combi$Cabin, n)` with n being any big enough value to see that. Moreover, you will also
+notice a lot of NA values. We will deal with them later, but, what is important here is a pattern
+in the Cabin values. The first character is repetitive and maybe, one may guess that it represents 
+the deck of the ship. We are going to move ahead with this notion and create further another
+feature called Deck.
+    
+```{r, warning=FALSE}
+#creating a column of NA values first
+combi$Deck <- NA  
+
+#NULL splits at each position
+combi$Deck <- sapply(as.character(combi$Cabin), function(x){ strsplit(x, NULL)[[1]][1]}) 
+combi$Deck <- factor(combi$Deck)
+summary(combi$Deck)
+```
+    
+This feature too has been successfully created. We will definitely address the issue of NA values
+later. 
+
+
+So, now we have a total of 4 features that we have engineered ourselves from the already existing
+features. However, we are yet not in a position to employ them to construct our predictor model.
+Some of the features need a little bit of retouching before that.
+    
+# Preprocessing of Features
+
+There are some features that have NA values in them. It is beneficial for us to get rid of those missing
+values. Moreover, some features may still not contain data in the form suitable for our model. This
+part of the walkthrough will deal with such issues.
+    
+## Treating Missing values
+
+First, we look at the features that we would actually want to use in our model and identify those that
+contain NA values.
+    
+```{r, warning=FALSE}
+summary(combi)
+```
+
+So, Age, Fare, Embarked and Deck are those features (Embarked has 2 blanks which are tantamount to NA here).
+We will address them one at a time. First, for Age, we will use decision tree function `rpart()`. We have
+already imported its library. It is a good model that can be used for both classification and regression
+problems (like in the case of Age). 
+
+```{r, warning=FALSE}
+# first creating the decision tree on the training data, or only the rows that contain a value for Age column
+fitAge <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + FamilySize, data = combi[!(is.na(combi$Age)), ], method = "anova")
+
+# now putting the predicted Age values in the rows that have NA in their Age column
+combi$Age[is.na(combi$Age)] <- predict(fitAge, combi[is.na(combi$Age), ])
+```
+
+For Fare, we find that only a single NA is present. We can assign the median value of the Fare values to the 
+NA.
+    
+```{r, warning = FALSE}
+# which row(s) has NA in the Fare column
+which(is.na(combi$Fare))  
+
+# median value assigned to the NA value.
+combi$Fare[1044] <- median(combi$Fare, na.rm = TRUE)
+```
+
+In case of Embarked, we observe there are just two missing values. Although it is not NA but blank spaces,
+it is equivalent to NA and we should clean them up too. To do that, we will replace these low number of 
+Embarked blank spaces with the value that appears most frequently, i.e., "Southampton". So, we replace with "S".
+    
+```{r, warning = FALSE}
+# which row has blank as Embarked
+which(combi$Embarked == '')
+
+combi$Embarked[c(62,830)] = 'S'
+```
+
+Now, in case of column Deck, we have a lot of NA values. We will again use `rpart()` but this time
+we will use `method = "class"` instead of "anova" as we did in the case of regression in the Age column's
+treatment.
+
+```{r, warning = FALSE}
+fitDeck <- rpart(Deck ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + FamilySize + Age, data = combi[!(is.na(combi$Deck)), ], method = "class")
+
+combi$Deck[is.na(combi$Deck)] <- predict(fitDeck, combi[is.na(combi$Deck), ], type = "class")
+```
+
+Go ahead and experiment with the `rpart()` function by adding or removing the predictor variables.
+
+## Fare Improvement
+
+I got this idea from one of the commenters on Trevor's blog. When I implemented it, my accuracy
+improved marginally, which is enough to jump ahead of a few hundred people in the leaderboard. I want to
+thank you, vruizext(Disqus name), if you ever see this. So, how it works is like this: You can find
+multiple passengers sharing the same ticket number and hence the same fare on the ticket. Those passengers
+may not be listed together in the dataset and hence may not be obvious immediately. What we would like
+to do here is to determine the **fare per passenger**. To find this, we will divide the Fare amounts
+by the total number of passengers sharing the corresponding Ticket numbers. 
+
+For example, if there are three passengers having Ticket value equal to `12345` and, therefore, having
+the same Fare amount of, let's say, `66`, then the fare *per passenger* will be equal to 66 divided
+by 3, which is 22. We will implement this to all the rows. 
+
+```{r, warning = FALSE}
+# create a temporary data frame storing Ticket values
+tempo <- data.frame(table(combi$Ticket))
+
+# store only those Ticket values that belong to more than one passenger
+tempo <- tempo[tempo$Freq > 1, ]
+
+tempo$Fare <- 0
+
+# run a nested loop to extract the Fare values for the Ticket values in tempo
+for(i in 1:nrow(combi)) {
+  for(j in 1:nrow(tempo)) {
+    if(combi$Ticket[i] == tempo$Var1[j]) {
+      tempo$Fare[j] = combi$Fare[i] } } } 
+
+# calculate the Fare per passenger
+tempo$Fare <- tempo$Fare / tempo$Freq
+
+# put back the Fare per passenger values to the combi data frame
+for(i in 1:nrow(combi)) {
+  for(j in 1:nrow(tempo)) {
+    if(combi$Ticket[i] == tempo$Var1[j]) {
+      combi$Fare[i] = tempo$Fare[j] } } }
+
+```
+    
+And we are done with our Fare improvement!
+
+# Building the Model
+    
+As said before, we are going to build an ensemble model known as Conditional Random Forest. We have
+already loaded the required package for `cforest()` known as `party`. But before building our model, we
+will split our **train** and **test** datasets from **combi**.
+    
+```{r, warning = FALSE}
+# 1:891 means 1 to 891(included)
+train <- combi[1:891, ]
+test <- combi[892:1309, ]
+```
+
+Now we are in the position to build our model, the last step before making the predictions!
+
+```{r, warning = FALSE}
+# setting the seed so that everytime the model is created, random numbers produced would be the same
+set.seed(400)
+
+# the way of building a model is quite similar to how we made a couple of decision trees
+# ntree specifies number of trees as base learners and mtry is for the number of variables to be used in each tree 
+fit <- cforest(factor(Survived) ~ Pclass + Age + Sex + SibSp + Parch + Fare + Embarked + Title + FamilySize + FamilyId + Deck, data = train, controls = cforest_unbiased(ntree = 2000, mtry = 3))
+
+# making a bar plot of the importance of predictor variables for the model
+par(las = 2)
+barplot(varimp(fit))
+```
+
+The bar plot is a testimony to the success of our engineered features, one of which (Title) is the most 
+important of all, i.e., removing that particular variable may cause a high decrease in the prediction
+accuracy. 
+
+We will now move forward to making the predictions on the test set. 
+
+# Prediction
+
+Since our model is ready, we are all set to predict the survival chances of the rest of the passengers
+in the test set. Along with the prediction, we will also prepare our submission CSV file holding 0s
+and 1s as **Survived** column values for the passengers.
+
+```{r, warning = FALSE}
+# our model operating upon the test set
+Prediction <- predict(fit, test, OOB = TRUE, type = "response")
+
+# create the submit data frame
+submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+
+# write the data frame as a csv file without the row numbers as a separate column
+write.csv(submit, file = "RFcondInfTrees.csv", row.names = FALSE)
+``` 
+
+So, this is it! Go ahead and make your submission. If you have already submitted before and didn't get
+a good score, you may get it this time. 
+
+This was my first kernel on RMarkdown and I hope you liked it. Please give me feedbacks if you have any
+suggestion or remark on how I can improve this. In case you have any doubt, please feel free to post
+it below. And even if I don't know the answer myself, we'll hunt for it together. 
+
+Thanks for visiting!

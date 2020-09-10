@@ -1,0 +1,395 @@
+
+
+# Data Mining Assignment 1 - The titanic / Data Exploration
+In this assignment, we investigate which factors predict survival in the titanic disaster. We start with loading the data and making a simple plot out of it.
+
+```{r load data}
+data = read.csv('../input/train.csv', header=TRUE)
+test = read.csv('../input/test.csv', header=TRUE)
+library(dplyr)
+library(ggplot2)
+library(dplyr)
+library(randomForest)
+plot(data)
+```
+
+Not much to see in the plot yet. Next, we need to assign the correct class to each part of the data. Pclass is in which class they travelled, SibSp is the number of siblings and spouses on board, Parch the number of parents and children on board, and Embarked is the place of embarkment (Cherbourg, Queenstown, or Southampton. 
+```{r plot}
+data$PassengerId <- as.integer(data$PassengerId)
+data$Survived <- as.logical(data$Survived)
+data$Pclass <- ordered(data$Pclass, levels=c(1,2,3))
+data$Name <- as.character(data$Name)
+data$Sex <- as.factor(data$Sex)
+data$Age <- as.numeric(data$Age)
+data$SibSp <- as.integer(data$SibSp)
+data$Parch <- as.integer(data$Parch)
+data$Ticket <- as.character(data$Ticket)
+data$Fare <- as.numeric(data$Fare)
+data$Cabin <- as.character(data$Cabin)
+data$Embarked <- as.factor(data$Embarked)
+```
+Next, we create some plots to inspect the relation between survival and the other factors
+```{r}
+ggplot(data, aes(Pclass, fill = Survived)) + 
+  geom_bar(stat="count", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1")
+```
+
+This plot shows that being in third class is a good predictor for not surviving
+
+```{r}
+ggplot(data, aes(Sex, fill = Survived)) + 
+  geom_bar(stat="count", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1")
+```
+
+Like being in third class, gender seems to also be a good predictor for survival.
+```{r}
+ggplot(data, aes(x=Age, fill=Survived)) + geom_histogram(position="dodge", bins = 9) + scale_x_continuous(breaks=seq(0,80, 10))
+```
+
+Age seems a surprisingly bad predictor, with only any predictive value for very old and very young people. There's only one person of 80 years old, but looking at the data it can't be considered an outlier, as he's only 6 years older than the second oldest and the data gets sparse in that area either way (third oldest is 71)
+
+```{r}
+ggplot(data[data$Sex=="female",], aes(x=Age, fill=Survived)) + geom_histogram(position="dodge", binwidth = 10) + scale_x_continuous(breaks=seq(0,70, 10))
+```
+```{r}
+ggplot(data[data$Sex=="male",], aes(x=Age, fill=Survived)) + geom_histogram(position="dodge", bins = 9) + scale_x_continuous(breaks=seq(0,80, 10))
+```
+
+When males and females are seperated, it becomes apparent that there is an effect of age: older women have a better survival rate that young ones, while young boys have a far higher survival rate than older ones, and men around the age of 20 are most likely to die.
+
+```{r}
+ggplot(data,aes(x=SibSp, fill=Survived)) + geom_histogram(position="dodge", binwidth=1) + scale_x_continuous(breaks=0:8)
+```
+
+
+Number of siblings and spouses seems to be a good predictor, as many with none didn't survive.
+
+```{r}
+ggplot(data,aes(x=Parch, fill=Survived)) + geom_histogram(position="dodge", binwidth=1)
+```
+
+Survival rate with no parents or children on board is also pretty low
+
+```{r}
+ggplot(data,aes(x=Parch+SibSp, fill=Survived)) + geom_histogram(position="dodge", binwidth=1) + scale_x_continuous(breaks=0:10)
+```
+
+The amount of family on board seems to be an even better predictor. There's one outlier at 10, which turns out to be the Sage family. Since only 7 out of 8 siblings are included in the training set, we can expect number 8 to turn up in the test set. As such, considering them outliers is not a good idea.
+
+```{r}
+ggplot(data[data$Sex=="male",],aes(x=Parch+SibSp, fill=Survived)) + geom_histogram(position="dodge", binwidth=1) + scale_x_continuous(breaks=0:10)
+```
+
+
+This becomes even more extreme if you only look at the men. With 1-3 family members, their chance of survival increases a lot.
+
+```{r}
+ggplot(data,aes(x=Fare, fill=Survived)) + geom_histogram(position="dodge", binwidth=50)
+```
+
+
+There seems to be a correlation between fare heigt and survival, with those with a high fare being more likely to survive. There's one extreme value, a fare of 512 pound, almost twice as much as the number 2. As they travel first class, it's unlikely that it's a mistake and it's possible more  high values will appear in the test set. It's worth noting that there's not a very strong correlation between class and fare:
+
+```{r}
+plot(data$Fare~data$Pclass)
+```
+
+It is even the case that those who paid less to get into first class were less likely to survive:
+
+```{r}
+ggplot(data[data$Pclass==1,],aes(x=Fare, fill=Survived)) + geom_histogram(position="dodge", binwidth=20)
+```
+
+As is visible, some people paid next to nothing or even nothing at all. These people can be expected to be crew members and special guests, the former of which is logically unlikely to survive, as they are supposed to focus on helping the passengers.
+
+```{r}
+ggplot(data[data$Sex=="male",],aes(x=Fare, fill=Survived)) + geom_histogram(position="dodge", binwidth=50) + scale_x_continuous(breaks=seq(0, 550,50))
+```
+
+
+```{r}
+ggplot(data[data$Sex=="female",],aes(x=Fare, fill=Survived)) + geom_histogram(position="dodge", binwidth=50, breaks=seq(0,550, 50))
+```
+
+The influence of fare becomes even more apparent when the groups are split up. Women who paid over 50 pounds almost never died, while men who paid over 50 have about a 50-50 chance of survival.
+
+```{r}
+table(data$Survived[data$Cabin!=""])
+table(data$Survived[data$Cabin==""])
+```
+
+Whether or not a cabin was assigned seems to be a good predictor for survival. Those who had a cabin usually don't survive.
+
+```{r}
+ggplot(data,aes(x=Embarked, fill=Survived)) + geom_histogram(stat="count",position="dodge")
+```
+
+
+Embarking at Southhampton (S) seems to be a good predictor for dying.
+
+
+## Conclusion
+- PassengerId contains no information for classification, but is required for printing the results
+- Survival is the variable to be predicted and should thus probably be seperated
+- Pclass is a good predictor of survival, with a better survival rate for every improvement in class.
+- Name contains no information that can be extracted
+- Sex is a great predictor for survival, with women having a far higher survival rate
+- Age on its own is not a great predictor, but it does have predictive value when combined with sex
+- Both siblings & spouse and parents & children are decent predictors, it is also worth looking at family (SibSp+Parch)
+- Ticket number shows who got onto the titanic together. It is hard to plot, but manual inspections doesn't show any obvious differences between ticket numbers and sharing a ticket with others or not.
+- Fare is a good predictor of survival, especially when combined with gender
+- Having a cabin or not is a good predictor of survival.
+- Place of embarkment is a good predictor of survival.
+
+- All outliers can be explained and similar ones may appear in the test set. As such, they should not be removed
+
+
+# Data Preperation
+We will now do the following:
+- Remove the 'Name' and 'Ticket' and 'Cabin' columns
+- Split survival into a separate prediction data frame, with passengerID as identifier
+- Create the new attribute 'family', which is the sum of SibSp and Parch
+- Fill in missing values 'Age' with average and 'Embarked' with most frequent
+- Transform Gender, Fare and Age to categorical
+
+Next, we do as mentioned above, remove Name and Ticket and take out Survived
+```{r}
+data$Name <- NULL
+data$Ticket <- NULL
+prediction = data.frame(PassengerId=data$PassengerId, Survived=data$Survived)
+data$Cabin <- NULL
+data$PassengerId <- NULL
+
+```
+
+Finally, we check the plot again
+```{r}
+plot(data)
+levels(data$Embarked)
+```
+
+Now, some information worth noting can be seen: Passengers that embarked at Queenstown generally paid little fare, parents with many children tended to travel third class, and younger people could have more siblings and spouses with them than older ones. 
+
+After, we replace Embarked missing values with most frequent ones and Age with the mean.
+```{r}
+data$Embarked <- gsub('', which.max(data$Embarked), data$Embarked)
+list_na <- colnames(data)[ apply(data, 2, anyNA) ]
+
+##Generate mean
+nonmissingage <- na.omit(data$Age) 
+meanmissingage <- mean(nonmissingage)
+
+##Replace values with mean
+df_titanic_replace <- data %>%
+   mutate(replace_mean_age  = ifelse(is.na(data$Age), meanmissingage, data$Age))
+
+##Add family size
+df_titanic_replace$familiy_size = data$SibSp+data$Parch
+
+##Remove the age
+df_titanic_replace$Age <- NULL
+```
+
+
+Now transform the data to be categorical instead of numerical
+```{r}
+##Transform age to categorical
+df_titanic_replace$Sex <- as.integer(df_titanic_replace$Sex)
+df_titanic_replace[df_titanic_replace=='1C1'] = 1
+df_titanic_replace[df_titanic_replace=='1Q1'] = 2
+df_titanic_replace[df_titanic_replace=='1S1'] = 3
+
+##Family size
+ggplot(data, aes(df_titanic_replace$familiy_size, fill = df_titanic_replace$Survived)) + 
+  geom_bar(stat="count", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1")
+
+##Categorize the ages
+df_titanic_replace$agecat = cut(df_titanic_replace$replace_mean_age, c(0,20,40,60,80,100), labels=c(1:5))
+df_titanic_replace$replace_mean_age = NULL
+
+##categorize the fare
+df_titanic_replace$farecat = cut(df_titanic_replace$Fare, c(-1,0,50,100,150,200,600), labels=c(0:5))
+df_titanic_replace$Fare = NULL
+
+##Fareplot
+ggplot(data, aes(df_titanic_replace$farecat, fill = df_titanic_replace$Survived)) + 
+  geom_bar(stat="count", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1")
+
+##Ageplot
+ggplot(data, aes(df_titanic_replace$agecat, fill = df_titanic_replace$Survived)) + 
+  geom_bar(stat="count", position = "dodge") + 
+  scale_fill_brewer(palette = "Set1")
+
+```
+It shows that family size seems to be a good predictor
+
+We then remove the siblings and the parch as they are replaced with family size.
+```{r}
+##remove the sibsp and parch
+df_titanic_replace$SibSp = NULL
+df_titanic_replace$Parch = NULL
+df_titanic_replace$Embarked = as.factor(df_titanic_replace$Embarked)
+head(df_titanic_replace)
+```
+
+
+We now cleanup the testset in the same manner
+
+```{r}
+test$PassengerId <- as.integer(test$PassengerId)
+test$Pclass <- ordered(test$Pclass, levels=c(1,2,3))
+test$Name <- as.character(test$Name)
+test$Sex <- as.factor(test$Sex)
+test$Age <- as.numeric(test$Age)
+test$SibSp <- as.integer(test$SibSp)
+test$Parch <- as.integer(test$Parch)
+test$Ticket <- as.character(test$Ticket)
+test$Fare <- as.numeric(test$Fare)
+test$Embarked <- as.character(test$Embarked)
+test$Name <- NULL
+test$Ticket <- NULL
+test$Cabin <- NULL
+
+list_na <- colnames(test)[ apply(test, 2, anyNA) ]
+
+##Generate age mean
+nonmissingage <- na.omit(test$Age) 
+meanmissingage <- mean(nonmissingage)
+
+#$Generate fare mean
+nomissinfare <- na.omit(test$Fare)
+meanmissingfare <- mean(nomissinfare)
+
+##Replace values with mean
+df_titanic_replace_test <- test %>%
+   mutate(replace_mean_age  = ifelse(is.na(test$Age), meanmissingage, test$Age),
+          replace_mean_fare = ifelse(is.na(test$Fare), meanmissingfare, test$Fare))
+
+##Add family size
+df_titanic_replace_test$familiy_size = test$SibSp+test$Parch
+df_titanic_replace_test$Age <- NULL
+
+##Transform age to categorical
+df_titanic_replace_test$Sex <- as.integer(df_titanic_replace_test$Sex)
+df_titanic_replace_test[df_titanic_replace_test=='C'] = 1
+df_titanic_replace_test[df_titanic_replace_test=='Q'] = 2
+df_titanic_replace_test[df_titanic_replace_test=='S'] = 3
+
+##Categorize the ages
+df_titanic_replace_test$agecat = cut(df_titanic_replace_test$replace_mean_age, c(0,20,40,60,80,100), labels=c(1:5))
+df_titanic_replace_test$replace_mean_age = NULL
+
+##categorize the fare
+df_titanic_replace_test$farecat = cut(df_titanic_replace_test$replace_mean_fare, c(-1,0,50,100,150,200,600), labels=c(0:5))
+df_titanic_replace_test$Fare = NULL
+df_titanic_replace_test$replace_mean_fare = NULL
+
+##remove the sibsp and parch
+df_titanic_replace_test$SibSp = NULL
+df_titanic_replace_test$Parch = NULL
+
+df_titanic_replace_test$Embarked = as.factor(df_titanic_replace_test$Embarked)
+head(df_titanic_replace_test)
+```
+
+We are now ready to feed our algorithms the data attributes we just prepared as the training set. First, the logistic regression will be tried.
+
+#Classification
+
+##Logistic Regression
+```{r}
+##Doing logistic regression
+model <- glm(df_titanic_replace$Survived ~.,family=binomial(link = 'logit'),data=df_titanic_replace)
+summary(model)
+```
+We can see that the model has some significant variables for each category which we made. Therefore, we don't remove any of them.
+
+Next we can check against some of the training values and make a rough evaluation of the model.
+
+```{r}
+#Predict on training set
+baseAcur = 549 / (549 + 342)
+
+predictTrain = predict(model, type = "response")
+table(df_titanic_replace$Survived, predictTrain >= 0.5)
+
+accuracy = (244 + 458) / nrow(df_titanic_replace)
+sensitivity = 244 / (244 + 98)
+specificity = 458 / (458 + 91)
+
+cat("accuracy: ", accuracy, " > ", "baseline: ", baseAcur)
+```
+It performs not bad, but we can expect that the real accuracy will go down a bit.
+
+
+```{r}
+
+#Predict on test set
+predictLogistic = predict(model, type = "response", newdata = df_titanic_replace_test)
+
+# no preference over error t = 0.5
+df_titanic_replace_test$Survived = as.numeric(predictLogistic >= 0.5)
+table(df_titanic_replace_test$Survived)
+
+predictionsLog = data.frame(df_titanic_replace_test[c("PassengerId","Survived")])
+write.csv(file = "TitanicLogisticPred", x = predictionsLog, row.names=FALSE)
+```
+
+
+Next, the Random Forest will be tried with 20 trees. This will have the best accuracy for now.
+
+##Random Forest
+```{r}
+##Random forest
+require(randomForest)
+titanic.randomforest <- randomForest(df_titanic_replace$Survived ~.,
+                      data=df_titanic_replace, 
+                      importance=TRUE, 
+                      ntree=20)
+summary(titanic.randomforest)
+```
+
+
+```{r}
+#Predict on training
+baseAcur = 549 / (549 + 342)
+predictTrain = predict(titanic.randomforest, type = "response")
+table(df_titanic_replace$Survived, predictTrain >= 0.5)
+
+accuracy = (229 + 487) / nrow(df_titanic_replace)
+sensitivity = 229 / (229 + 113)
+specificity = 487 / (487 + 62)
+cat("accuracy: ", accuracy, " > ", "baseline: ", baseAcur)
+
+```
+The accuracy is better than the Logistic Regression. We will check if it is significant enough with a statistical test.
+
+
+```{r}
+#Predict on test set
+predictRandomForest <- predict(titanic.randomforest, df_titanic_replace_test)
+df_titanic_replace_test$Survived = as.numeric(predictRandomForest >= 0.5)
+
+predictionsFor = data.frame(df_titanic_replace_test[c("PassengerId","Survived")])
+write.csv(file = "TitanicRandomForest", x = predictionsFor, row.names=FALSE)
+```
+
+##Statistical Test
+
+First we will check if data is normal
+```{r}
+qqnorm(predictLogistic, main="P-Values Logistic")
+qqnorm(predictRandomForest, main="P-Values Random Forests")
+```
+It seems it is not normal, so we will use the Wilcoxon test
+
+```{r}
+##Do a test to test if difference models are significant
+sigtest = wilcox.test(predictLogistic, predictRandomForest)
+sigtest
+```
+We can see that the Wilcoxon test was not significant with a p-value of: `r sigtest$p.value`. Thus, we cannot reject the H0 hypothesis and cannot conclude that the Random Forest is significantly better than the Regression model.

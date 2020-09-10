@@ -1,0 +1,240 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # Step 1: Load + Clean Data
+> Train = read.csv("../input/train.csv")
+> Test = read.csv("../input/test.csv")
+> 
+> str(Train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> summary(Train)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked
+            :687    :  2   
+ B96 B98    :  4   C:168   
+ C23 C25 C27:  4   Q: 77   
+ G6         :  4   S:644   
+ C22 C26    :  3           
+ D          :  3           
+ (Other)    :186           
+> 
+> # fill in missing values for Age
+> Train$Age[is.na(Train$Age)] = mean(Train$Age, na.rm = TRUE)
+> Test$Age[is.na(Test$Age)] = mean(Test$Age, na.rm = TRUE)
+> 
+> # Step 2: Create DF of independent/dependent variables
+> nonvars = c("PassengerId","Name","Ticket","Embarked","Cabin")
+> Train = Train[,!(names(Train) %in% nonvars)]
+> str(Train)
+'data.frame':	891 obs. of  7 variables:
+ $ Survived: int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass  : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age     : num  22 38 26 35 35 ...
+ $ SibSp   : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch   : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Fare    : num  7.25 71.28 7.92 53.1 8.05 ...
+> 
+> # Step 3: Check for MultiCollinearity
+> Train$Sex = as.numeric(Train$Sex)
+> Test$Sex = as.numeric(Test$Sex)
+> cor(Train)
+            Survived      Pclass         Sex         Age       SibSp
+Survived  1.00000000 -0.33848104 -0.54335138 -0.06980852 -0.03532250
+Pclass   -0.33848104  1.00000000  0.13190049 -0.33133877  0.08308136
+Sex      -0.54335138  0.13190049  1.00000000  0.08415344 -0.11463081
+Age      -0.06980852 -0.33133877  0.08415344  1.00000000 -0.23262459
+SibSp    -0.03532250  0.08308136 -0.11463081 -0.23262459  1.00000000
+Parch     0.08162941  0.01844267 -0.24548896 -0.17919092  0.41483770
+Fare      0.25730652 -0.54949962 -0.18233283  0.09156609  0.15965104
+               Parch        Fare
+Survived  0.08162941  0.25730652
+Pclass    0.01844267 -0.54949962
+Sex      -0.24548896 -0.18233283
+Age      -0.17919092  0.09156609
+SibSp     0.41483770  0.15965104
+Parch     1.00000000  0.21622494
+Fare      0.21622494  1.00000000
+> 
+> # Step 4: Build a Logistic Regression Model
+> TitanicLog1 = glm(Survived~., data = Train, family = binomial)
+> summary(TitanicLog1)
+
+Call:
+glm(formula = Survived ~ ., family = binomial, data = Train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.7129  -0.6032  -0.4273   0.6191   2.4186  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  7.723375   0.645814  11.959  < 2e-16 ***
+Pclass      -1.084297   0.139119  -7.794 6.49e-15 ***
+Sex         -2.762930   0.199011 -13.883  < 2e-16 ***
+Age         -0.039702   0.007797  -5.092 3.55e-07 ***
+SibSp       -0.350725   0.109552  -3.201  0.00137 ** 
+Parch       -0.111963   0.117400  -0.954  0.34024    
+Fare         0.002852   0.002361   1.208  0.22718    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  788.73  on 884  degrees of freedom
+AIC: 802.73
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> # Step 5: Revise Model
+> TitanicLog2 = glm(Survived ~ . - Parch, data = Train, family = binomial)
+> summary(TitanicLog2)
+
+Call:
+glm(formula = Survived ~ . - Parch, family = binomial, data = Train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.7458  -0.5948  -0.4170   0.6109   2.4501  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  7.668775   0.641018  11.963  < 2e-16 ***
+Pclass      -1.098189   0.137969  -7.960 1.72e-15 ***
+Sex         -2.726408   0.194561 -14.013  < 2e-16 ***
+Age         -0.039385   0.007773  -5.067 4.05e-07 ***
+SibSp       -0.378646   0.106212  -3.565 0.000364 ***
+Fare         0.002373   0.002250   1.054 0.291707    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  789.65  on 885  degrees of freedom
+AIC: 801.65
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> TitanicLog3 = glm(Survived ~ . - Parch - Fare, data = Train, family = binomial)
+> summary(TitanicLog3)
+
+Call:
+glm(formula = Survived ~ . - Parch - Fare, family = binomial, 
+    data = Train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6869  -0.6055  -0.4169   0.6111   2.4547  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  7.931782   0.594109  13.351  < 2e-16 ***
+Pclass      -1.172391   0.119725  -9.792  < 2e-16 ***
+Sex         -2.739806   0.194142 -14.112  < 2e-16 ***
+Age         -0.039793   0.007755  -5.131 2.88e-07 ***
+SibSp       -0.357788   0.104033  -3.439 0.000583 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  790.84  on 886  degrees of freedom
+AIC: 800.84
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> # Step 6: Test Accuracy of Model on Training Data
+> 
+> # always predict 0 (didn't survive)
+> baseAcur = 549 / (549 + 342)
+> 
+> predictTrain = predict(TitanicLog3, type = "response")
+> table(Train$Survived, predictTrain >= 0.5)
+   
+    FALSE TRUE
+  0   458   91
+  1    98  244
+> 
+> accuracy = (244 + 458) / nrow(Train)
+> sensitivity = 244 / (244 + 98)
+> specificity = 458 / (458 + 91)
+> 
+> cat("accuracy: ", accuracy, " > ", "baseline: ", baseAcur)
+accuracy:  0.7878788  >  baseline:  0.6161616> 
+> 
+> # Step 7: Use Model to predict survivability for Test Data
+> predictTest = predict(TitanicLog3, type = "response", newdata = Test)
+> 
+> # no preference over error t = 0.5
+> Test$Survived = as.numeric(predictTest >= 0.5)
+> table(Test$Survived)
+
+  0   1 
+256 162 
+> 
+> Predictions = data.frame(Test[c("PassengerId","Survived")])
+> write.csv(file = "TitanicPred", x = Predictions)
+> 
+> proc.time()
+   user  system elapsed 
+  0.195   0.039   0.229 

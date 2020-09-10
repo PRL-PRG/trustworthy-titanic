@@ -1,0 +1,559 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE)
+> knitr::opts_chunk$set(fig.height = 2.5)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(data.table)
+
+Attaching package: ‘data.table’
+
+The following objects are masked from ‘package:dplyr’:
+
+    between, first, last
+
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(DT)
+> library(plotly)
+
+Attaching package: ‘plotly’
+
+The following object is masked from ‘package:ggplot2’:
+
+    last_plot
+
+The following object is masked from ‘package:stats’:
+
+    filter
+
+The following object is masked from ‘package:graphics’:
+
+    layout
+
+Warning message:
+package ‘plotly’ was built under R version 3.6.2 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library(stringi)
+> 
+> 
+> ## ----loading---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ##Include length of name metric
+> ##Include Pictures for class selection
+> ##Make Fare input dependent on class
+> #Picture of deck
+> train <- read.csv("../input/train.csv")
+> test <- read.csv("../input/train.csv")
+> train <- as.data.table(train)
+> test. <- as.data.table(test)
+> names(train)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"   
+> 
+> 
+> ## ----Pclass----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train$Pclass <- as.factor(train$Pclass)
+> summary(train$Pclass)
+  1   2   3 
+216 184 491 
+> 
+> 
+> ## ----chart1, echo = FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(train, aes(x = Pclass, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge')# + scale_col_manual(colors()[78], colors()[16], colors()[55])
+> 
+> 
+> ## ----Name, echo = FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(sapply(as.character(unique(train$Name)),nchar))#Summary of lengths of name
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  12.00   20.00   25.00   26.97   30.00   82.00 
+> 
+> 
+> ## ----Tsplit, echo = FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train$Title <- gsub('(.*, )|(\\..*)', '', train$Name)
+> 
+> # Show titles by sex
+> table(train$Sex, train$Title)
+        
+         Capt Col Don  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs  Ms
+  female    0   0   0   1        0    1     0      0  182    2   1   0 125   1
+  male      1   2   1   6        1    0     2     40    0    0   0 517   0   0
+        
+         Rev Sir the Countess
+  female   0   0            1
+  male     6   1            0
+> 
+> 
+> ## ----sexs, echo = FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(train$Sex)#Almost twice as many men
+female   male 
+   314    577 
+> 
+> 
+> ## ----sexc, echo = FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> sb <- ggplot(train, aes(x=Sex)) + geom_bar(fill=c(colors()[542], colors()[121]), col=c(colors()[543], colors()[123]), lwd = 2)+labs(x="Class")
+> sb
+> 
+> 
+> ## ----age, echo = FALSE, warning = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(train$Age) #177 NA's, Median age is 28 aka born in 1884 (start of input), 
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.42   20.12   28.00   29.70   38.00   80.00     177 
+> 
+> ap <- ggplot(train, aes(x=Age))+geom_density(adjust=.5)
+> ap
+Warning message:
+Removed 177 rows containing non-finite values (stat_density). 
+> 
+> 
+> ## ----SibSp, include = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> unique(train$SibSp)
+[1] 1 0 3 4 2 5 8
+> 
+> 
+> ## ----sib2------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train$SibSp <- as.integer(train$SibSp) #possibly alone vs with family variable 
+> summary(train$SibSp) #median is 0
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  0.000   0.000   0.000   0.523   1.000   8.000 
+> 
+> 
+> ## ----sib3, echo = FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dim(train[SibSp > 0,])
+[1] 283  13
+> 
+> 
+> ## ----sib4, echo = FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dim(train[SibSp == 0,])
+[1] 608  13
+> 
+> 
+> ## ----sibplots, echo=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(train, aes(x = SibSp, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge') +
++   scale_x_continuous(breaks=c(1:7)) +
++   labs(x = 'SibSp')
+> 
+> 
+> ## ----sibp, echo=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(train, aes(x = SibSp, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge') +
++   scale_x_continuous(breaks=c(1:7)) +
++   labs(x = 'SibSp')+ ylim(0,115)
+Warning message:
+Removed 2 rows containing missing values (geom_bar). 
+> 
+> 
+> ## ----Parch, echo = FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(train$Parch)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.0000  0.0000  0.0000  0.3816  0.0000  6.0000 
+> 
+> 
+> ## ----p1, echo=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dim(train[Parch > 0,])
+[1] 213  13
+> 
+> 
+> ## ----p2,echo=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dim(train[Parch == 0,])
+[1] 678  13
+> 
+> 
+> ## ----p3, echo=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(train, aes(x = Parch, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge') +
++   scale_x_continuous(breaks=c(1:7)) +
++   labs(x = 'Parch')
+> 
+> 
+> ## ----p4, echo = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(train, aes(x = Parch, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge') +
++   scale_x_continuous(breaks=c(1:7)) +
++   labs(x = 'Parch')+ ylim(0,65)
+Warning message:
+Removed 2 rows containing missing values (geom_bar). 
+> 
+> 
+> ## ----Ticket, echo = FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> length(unique(train$Ticket)) #Create Ticket pre and ticket num and LINE value all as non-integers
+[1] 681
+> tt <- data.table(names(summary(train$Ticket)),summary(train$Ticket))
+> names(tt) <- c("Ticket", "Count")
+> setorder(tt, -Count)
+> 
+> 
+> ## ----tplot, echo = FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> datatable(tt)
+> #Use ticket to predict cabin
+> 
+> train$FL <- stri_extract_first_regex(train$Ticket, "[A-Z]+") #Grabs first Text occurence
+> train$FT <- stri_extract_first_regex(train$Ticket, "[0-9][0-9]+") #Grabs ticket number
+> train[is.na(train$FL),]$FL <- "NA"
+> 
+> 
+> ## ----plot, echo = FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> tpref <- train[!train$FL=="NA",]
+> gg <- ggplot(aes(y = Fare, x = FL), data = tpref) + geom_boxplot() + labs(title="Ticket Prefix")
+> gg
+> 
+> 
+> ## ----ticketplot, echo = FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> p2 <- ggplot(aes(x = FL, fill = factor(Survived)), data = tpref) + geom_bar(stat='count', position='dodge') + labs(title="Ticket Prefix")
+> p2
+> 
+> 
+> 
+> ## ----dig-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> tfix <- tpref[tpref$FL %in% c("A", "CA", "Soton", "W"),]
+> summary(sapply(as.character(train$FT),nchar))
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+  3.000   5.000   6.000   5.375   6.000   7.000       6 
+> summary(sapply(as.character(tfix$FT), nchar))
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  3.000   4.000   4.000   4.315   5.000   5.000 
+> 
+> 
+> ## ----numlength-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train$ticketlength <- sapply(as.character(train$FT),nchar)
+> 
+> 
+> ## ----plot23, echo = FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> s1 <- ggplot(aes(x = factor(ticketlength), fill = factor(Survived)), data = train) + geom_bar(stat='count', position='dodge') + labs(title="Ticket Number Length")
+> s1
+> 
+> f1 <- ggplot(aes(x = factor(ticketlength), y=Fare, fill = factor(Survived)), data = train) + geom_boxplot() + labs(title="Ticket Number Length")
+> f1
+> 
+> 
+> ## ----plot2, echo = FALSE, fig.height=20------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(gridExtra)
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> train$one <- sapply(train$FT, function(x){substr(x,1,1)})
+> train$two <- sapply(train$FT, function(x){substr(x,2,2)})
+> train$three <- sapply(train$FT, function(x){substr(x,3,3)})
+> train$four <- sapply(train$FT, function(x){substr(x,4,4)})
+> train$five <- sapply(train$FT, function(x){substr(x,5,5)})
+> train$six <- sapply(train$FT, function(x){substr(x,6,6)})
+> train$seven <- sapply(train$FT, function(x){substr(x,7,7)})
+> 
+> train$one <- as.factor(train$one)
+> train$two <- as.factor(train$two)
+> train$three <- as.factor(train$three)
+> train$four <- as.factor(train$four)
+> train$five <- as.factor(train$five)
+> train$six <- as.factor(train$six)
+> train$seven <- as.factor(train$seven)
+> 
+> onep <- ggplot(aes(y = Fare, x = factor(one)), data = train) + geom_boxplot() + labs(title="First Digit Price")
+> ones <- ggplot(aes(x = factor(one), fill = factor(Survived)), data = train) + geom_bar(stat='count') + labs(title="Second Digit Survival")
+> 
+> 
+> twop <- ggplot(aes(y = Fare, x = factor(two)), data = train) + geom_boxplot() + labs(title="Second Digit Price")
+> twos <- ggplot(aes(x = factor(two), fill = factor(Survived)), data = train) + geom_bar(stat='count') + labs(title="Second Digit Survival")
+> 
+> threep <- ggplot(aes(y = Fare, x = factor(three)), data = train) + geom_boxplot() + labs(title="Third Digit Price")
+> threes <- ggplot(aes(x = factor(three), fill = factor(Survived)), data = train) + geom_bar(stat='count') + labs(title="Third Digit Survival")
+> 
+> 
+> fourp <- ggplot(aes(y = Fare, x = factor(four)), data = train) + geom_boxplot() + labs(title="Fourth Digit Price")
+> fours <- ggplot(aes(x = factor(four), fill = factor(Survived)), data = train) + geom_bar(stat='count') + labs(title="Fourth Digit Survival")
+> 
+> fivep <- ggplot(aes(y = Fare, x = factor(five)), data = train) + geom_boxplot() + labs(title="Fifth Digit Price")
+> fives <- ggplot(aes(x = factor(five), fill = factor(Survived)), data = train) + geom_bar(stat='count') + labs(title="Fifth Digit Survival")
+> 
+> 
+> sixp <- ggplot(aes(y = Fare, x = factor(six)), data = train) + geom_boxplot() + labs(title="Sixth Digit Price")
+> sixs <- ggplot(aes(x = factor(six), fill = factor(Survived)), data = train) + geom_bar(stat='count') + labs(title="Sixth Digit Survival")
+> 
+> sevenp <- ggplot(aes(y = Fare, x = factor(seven)), data = train) + geom_boxplot() + labs(title="Seventh Digit Price")
+> sevens <- ggplot(aes(x = factor(seven), fill = factor(Survived)), data = train) + geom_bar(stat='count') + labs(title="Seventh Digit Survival")
+> 
+> grid.arrange(onep,ones,twop,twos, threep, threes, fourp, fours, fivep, fives, sixp, sixs, sevenp, sevens, ncol=2, nrow =7)
+> 
+> 
+> ## ----unFare----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train[Fare==0]$Sex
+ [1] male male male male male male male male male male male male male male male
+Levels: female male
+> 
+> 
+> ## ----fthis, echo = FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> length(unique(train$Fare)) #248 unique ticket prices, suggests 248 cabin assignment, use 
+[1] 248
+> 
+> 
+> ## ----fw, echo=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train %>% group_by(Pclass) %>% summarise_each(funs(min, max, mean, median),Fare) 
+[90m# A tibble: 3 x 5[39m
+  Pclass   min   max  mean median
+  [3m[90m<fct>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m
+[90m1[39m 1          0 512.   84.2  60.3 
+[90m2[39m 2          0  73.5  20.7  14.2 
+[90m3[39m 3          0  69.6  13.7   8.05
+Warning messages:
+1: `summarise_each_()` is deprecated as of dplyr 0.7.0.
+Please use `across()` instead.
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+2: `funs()` is deprecated as of dplyr 0.8.0.
+Please use a list of either functions or lambdas: 
+
+  # Simple named list: 
+  list(mean = mean, median = median)
+
+  # Auto named with `tibble::lst()`: 
+  tibble::lst(mean, median)
+
+  # Using lambdas
+  list(~ mean(., trim = .2), ~ median(., na.rm = TRUE))
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+> 
+> 
+> ## ----fthat, echo = FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train %>% group_by(Sex) %>% summarise_each(funs(min, max, mean, median),Fare) #Women pay way more for same (start of input)
+[90m# A tibble: 2 x 5[39m
+  Sex      min   max  mean median
+  [3m[90m<fct>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m
+[90m1[39m female  6.75  512.  44.5   23  
+[90m2[39m male    0     512.  25.5   10.5
+> #train %>% group_by(Sex, Pclass) %>% summarise_each(funs(min, max, mean, median),Fare) #Women pay way more for same (start of input)
+> 
+> 
+> ## ----cabin, echo = FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> sum(!substring(train$Cabin, 1, 1) == "")#Fill in cabin data
+[1] 204
+> datatable(data.frame(summary(train$Cabin))) # is it safe to impute cabin data?
+> 
+> 
+> ## ----CabinLetter-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train$CL <- substring(train$Cabin, 1, 1)
+> train$CL <- as.factor(train$CL)
+> unique(train$CL)
+[1]   C E G D A B F T
+Levels:  A B C D E F G T
+> 
+> 
+> ## ----Csum------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(train[!substring(train$Cabin, 1, 1) == "",]$Embarked)
+      C   Q   S 
+  2  69   4 129 
+> summary(train[!substring(train$Cabin, 1, 1) == "",]$Pclass)
+  1   2   3 
+176  16  12 
+> 
+> 
+> 
+> ## ----cabinsplit, echo = FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> cabins <- train[!substring(train$Cabin, 1, 1) == "",]
+> cabins$PCL <- interaction(cabins$Pclass, cabins$CL)
+> gg <- ggplot(aes(y = Fare, x = CL, fill = factor(Survived)), data = cabins) + geom_boxplot()
+> gg
+> 
+> 
+> ## ----cabinsplit2, echo=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> g2 <- ggplot(aes(x = CL, fill = factor(Survived)), data = cabins) + geom_bar(stat='count')
+> g2
+> 
+> 
+> ## ----cabinbin--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #train$Assigned <- 0
+> #train[!substring(train$Cabin, 1, 1) == "",]$Assigned <- 1
+> 
+> 
+> ## ----Embarked, echo = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> unique(train$Embarked)
+[1] S C Q  
+Levels:  C Q S
+> summary(train$Embarked)
+      C   Q   S 
+  2 168  77 644 
+> 
+> 
+> ## ----miss, echo = FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Missing Values
+> datatable(train[Embarked=="",])
+> 
+> 
+> ## ----pressure, echo = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> apply(train=="",2, sum)
+ PassengerId     Survived       Pclass         Name          Sex          Age 
+           0            0            0            0            0           NA 
+       SibSp        Parch       Ticket         Fare        Cabin     Embarked 
+           0            0            0            0          687            2 
+       Title           FL           FT ticketlength          one          two 
+           0            0           NA           NA           NA           NA 
+       three         four         five          six        seven           CL 
+          NA           NA           NA           NA           NA          687 
+> apply(is.na(train),2, sum)
+ PassengerId     Survived       Pclass         Name          Sex          Age 
+           0            0            0            0            0          177 
+       SibSp        Parch       Ticket         Fare        Cabin     Embarked 
+           0            0            0            0            0            0 
+       Title           FL           FT ticketlength          one          two 
+           0            0            6            6            6            6 
+       three         four         five          six        seven           CL 
+           6            6            6            6            6            0 
+> 
+> 
+> ## ----pr, results = 'hide'--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- as.data.frame(train)
+> #Imputing the missing age values with the MICE package
+> impute <- mice(train[, !names(train) %in% c('PassengerId','Name','Ticket','Cabin','Survived', 'Assigned','FL','FT','ticketlength','one','two','three','four','five','six','seven')], method='rf')
+
+ iter imp variable
+  1   1  Age
+  1   2  Age
+  1   3  Age
+  1   4  Age
+  1   5  Age
+  2   1  Age
+  2   2  Age
+  2   3  Age
+  2   4  Age
+  2   5  Age
+  3   1  Age
+  3   2  Age
+  3   3  Age
+  3   4  Age
+  3   5  Age
+  4   1  Age
+  4   2  Age
+  4   3  Age
+  4   4  Age
+  4   5  Age
+  5   1  Age
+  5   2  Age
+  5   3  Age
+  5   4  Age
+  5   5  Age
+Warning message:
+Number of logged events: 1 
+> 
+> trained_mouse <- complete(impute)
+> 
+> 
+> ## ----pplot, echo = FALSE, warning = FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Plotting Histograms
+> ap <- ggplot(train, aes(x=Age))+geom_density(adjust=.5)+labs(title="Original Data")
+> ap
+Warning message:
+Removed 177 rows containing non-finite values (stat_density). 
+> mp <- ggplot(trained_mouse, aes(x=Age))+geom_density(adjust=.5)+labs(title="Imputed Data")
+> mp
+> 
+> 
+> ## ----replace1--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train$Age <- trained_mouse$Age
+> 
+> 
+> ## ----Missing Cabin---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> unique(train[grep("*^B", train$Cabin),]$Embarked)
+[1] C   S
+Levels:  C Q S
+> 
+> 
+> ## ----cab, echo = FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train[grep("*^B", train$Cabin),] %>% group_by(Embarked) %>% summarize_each(funs(mean),Fare)
+[90m# A tibble: 3 x 2[39m
+  Embarked  Fare
+  [3m[90m<fct>[39m[23m    [3m[90m<dbl>[39m[23m
+[90m1[39m [90m"[39m[90m"[39m        80  
+[90m2[39m [90m"[39mC[90m"[39m      146. 
+[90m3[39m [90m"[39mS[90m"[39m       85.4
+> 
+> 
+> ## ----mcab, echo = FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train[grep("*^B", train$Cabin),] %>% group_by(Embarked) %>% summarize_each(funs(median),Fare)
+[90m# A tibble: 3 x 2[39m
+  Embarked  Fare
+  [3m[90m<fct>[39m[23m    [3m[90m<dbl>[39m[23m
+[90m1[39m [90m"[39m[90m"[39m        80  
+[90m2[39m [90m"[39mC[90m"[39m       79.2
+[90m3[39m [90m"[39mS[90m"[39m       86.5
+> 
+> 
+> ## ----bark, echo = FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> bark <- train[grep("*^B", train$Cabin),] %>% group_by(Embarked)
+> bark <- bark[!bark$Embarked=="",]
+> #Also, there a 72.4% change of any passenger embarking from Southampton
+> ggplot(bark, aes(x = Embarked, y = Fare, fill = factor(Pclass))) +
++   geom_boxplot() +
++   geom_hline(aes(yintercept=80), 
++     colour='red', linetype='dashed', lwd=2)
+> 
+> 
+> ## ----split, echo = FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(train$Embarked)
+      C   Q   S 
+  2 168  77 644 
+> bark2 <- train[!train$Embarked=="",]
+> ggplot(bark2, aes(x = Embarked, y = Fare, fill = factor(Pclass))) +
++   geom_boxplot() +
++   geom_hline(aes(yintercept=80), 
++     colour='red', linetype='dashed', lwd=2)
+> summary(train[grep("*^B", train$Cabin),]$Embarked)
+    C  Q  S 
+ 2 22  0 23 
+> 
+> 
+> ## ----replace---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train$Embarked[c(62, 830)] <- 'S'
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 14.690   0.413   7.980 

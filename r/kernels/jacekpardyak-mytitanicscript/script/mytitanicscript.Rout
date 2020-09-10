@@ -1,0 +1,155 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> 
+> test$Survived <- NA
+> train.test <- rbind(train, test)
+> train.test$Survived <- as.factor(train.test$Survived)
+> 
+> # fill missing Fare
+> train.test[is.na(train.test$Fare),"Fare"] <- 
++   median(train.test[train.test$Pclass == 3,"Fare"], na.rm = T)
+> 
+> summary(train.test)
+  PassengerId   Survived       Pclass     
+ Min.   :   1   0   :549   Min.   :1.000  
+ 1st Qu.: 328   1   :342   1st Qu.:2.000  
+ Median : 655   NA's:418   Median :3.000  
+ Mean   : 655              Mean   :2.295  
+ 3rd Qu.: 982              3rd Qu.:3.000  
+ Max.   :1309              Max.   :3.000  
+                                          
+                               Name          Sex           Age       
+ Connolly, Miss. Kate            :   2   female:466   Min.   : 0.17  
+ Kelly, Mr. James                :   2   male  :843   1st Qu.:21.00  
+ Abbing, Mr. Anthony             :   1                Median :28.00  
+ Abbott, Mr. Rossmore Edward     :   1                Mean   :29.88  
+ Abbott, Mrs. Stanton (Rosa Hunt):   1                3rd Qu.:39.00  
+ Abelson, Mr. Samuel             :   1                Max.   :80.00  
+ (Other)                         :1301                NA's   :263    
+     SibSp            Parch            Ticket          Fare        
+ Min.   :0.0000   Min.   :0.000   CA. 2343:  11   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.000   1601    :   8   1st Qu.:  7.896  
+ Median :0.0000   Median :0.000   CA 2144 :   8   Median : 14.454  
+ Mean   :0.4989   Mean   :0.385   3101295 :   7   Mean   : 33.276  
+ 3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7   3rd Qu.: 31.275  
+ Max.   :8.0000   Max.   :9.000   347082  :   7   Max.   :512.329  
+                                  (Other) :1261                    
+             Cabin      Embarked
+                :1014    :  2   
+ C23 C25 C27    :   6   C:270   
+ B57 B59 B63 B66:   5   Q:123   
+ G6             :   5   S:914   
+ B96 B98        :   4           
+ C22 C26        :   4           
+ (Other)        : 271           
+> # substitude Cabin with number of cabins
+> train.test$Cabin <- as.character(train.test$Cabin)
+> train.test$Cabin <- sapply(train.test$Cabin, function(x) length(unlist(strsplit(x, split = " "))))
+> 
+> # bin the age every 5 years
+> train.test$Age <- cut(train.test$Age, pretty(train.test$Age,n = 16))
+> 
+> summary(train.test)
+  PassengerId   Survived       Pclass     
+ Min.   :   1   0   :549   Min.   :1.000  
+ 1st Qu.: 328   1   :342   1st Qu.:2.000  
+ Median : 655   NA's:418   Median :3.000  
+ Mean   : 655              Mean   :2.295  
+ 3rd Qu.: 982              3rd Qu.:3.000  
+ Max.   :1309              Max.   :3.000  
+                                          
+                               Name          Sex           Age     
+ Connolly, Miss. Kate            :   2   female:466   (20,25]:195  
+ Kelly, Mr. James                :   2   male  :843   (25,30]:166  
+ Abbing, Mr. Anthony             :   1                (15,20]:133  
+ Abbott, Mr. Rossmore Edward     :   1                (30,35]:115  
+ Abbott, Mrs. Stanton (Rosa Hunt):   1                (35,40]: 95  
+ Abelson, Mr. Samuel             :   1                (Other):342  
+ (Other)                         :1301                NA's   :263  
+     SibSp            Parch            Ticket          Fare        
+ Min.   :0.0000   Min.   :0.000   CA. 2343:  11   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.000   1601    :   8   1st Qu.:  7.896  
+ Median :0.0000   Median :0.000   CA 2144 :   8   Median : 14.454  
+ Mean   :0.4989   Mean   :0.385   3101295 :   7   Mean   : 33.276  
+ 3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7   3rd Qu.: 31.275  
+ Max.   :8.0000   Max.   :9.000   347082  :   7   Max.   :512.329  
+                                  (Other) :1261                    
+     Cabin       Embarked
+ Min.   :0.000    :  2   
+ 1st Qu.:0.000   C:270   
+ Median :0.000   Q:123   
+ Mean   :0.272   S:914   
+ 3rd Qu.:0.000           
+ Max.   :4.000           
+                         
+> 
+> # age.data to build model predicting age
+> age.data <- train.test[!is.na(train.test$Age),]
+> # no.age.data without age which should be predicted
+> no.age.data <- train.test[is.na(train.test$Age),]
+> 
+> names(age.data)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"   
+> # formula used to build the model for age
+> formula <- as.formula(paste("Age", 
++       paste("Pclass", "Sex", "SibSp", "Parch", "Fare", "Cabin", "Embarked" , sep = "+"),
++       sep = "~"))
+> 
+> # build model for Age
+> require(randomForest)
+> fit <- randomForest(formula = formula, data = age.data, na.action = na.omit)
+> no.age.data$Age <- predict(fit, newdata = no.age.data, type = "class")
+> 
+> # merge and split the data
+> data <- rbind(age.data, no.age.data)
+> data.train <- data[!is.na(data$Survived),]
+> data.test  <- data[ is.na(data$Survived),]
+> 
+> # formula used to build the model for Survived
+> formula <- as.formula(paste("Survived", 
++                             paste("Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Cabin", "Embarked" , sep = "+"),
++                             sep = "~"))
+> # build model for Survived
+> require(randomForest)
+> fit <- randomForest(formula = formula, data = data.train, na.action = na.omit)
+> data.test$Survived <- predict(fit, newdata = data.test, type = "class")
+> 
+> submission <- data.frame(data.test[,c("PassengerId", "Survived")])
+> write.csv(submission, file="submission.csv", row.names = F)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  0.815   0.061   0.869 

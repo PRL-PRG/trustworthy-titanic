@@ -1,0 +1,1890 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> 
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> list.files("../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> 
+> # Any results you write to the current directory are saved as output.
+> 
+> data <- read_csv("../input/train.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> lm.fit <- glm(Survived~., data = data)
+> summary(lm.fit)
+
+Call:
+glm(formula = Survived ~ ., data = data)
+
+Deviance Residuals: 
+  [1]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+ [26]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+ [51]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+ [76]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+[101]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+[126]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+[151]  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0
+[176]  0  0  0  0  0  0  0  0
+
+Coefficients: (267 not defined because of singularities)
+                                                                                         Estimate
+(Intercept)                                                                             1.000e+00
+PassengerId                                                                             4.450e-19
+Pclass                                                                                 -9.007e-16
+NameAllison, Master. Hudson Trevor                                                     -1.289e-16
+NameAllison, Miss. Helen Loraine                                                       -1.000e+00
+NameAllison, Mrs. Hudson J C (Bessie Waldo Daniels)                                    -1.000e+00
+NameAnderson, Mr. Harry                                                                -7.683e-19
+NameAndrews, Miss. Kornelia Theodosia                                                  -1.332e-15
+NameAndrews, Mr. Thomas Jr                                                             -1.000e+00
+NameAppleton, Mrs. Edward Dale (Charlotte Lamson)                                      -9.055e-16
+NameAstor, Mrs. John Jacob (Madeleine Talmadge Force)                                  -5.725e-16
+NameAubart, Mme. Leontine Pauline                                                      -3.840e-16
+NameBall, Mrs. (Ada E Hall)                                                             1.007e-15
+NameBarkworth, Mr. Algernon Henry Wilson                                               -4.686e-16
+NameBaxter, Mr. Quigg Edmond                                                           -1.000e+00
+NameBaxter, Mrs. James (Helene DeLaudeniere Chaput)                                     2.980e-16
+NameBazzani, Miss. Albina                                                              -3.791e-16
+NameBecker, Master. Richard F                                                           1.068e-15
+NameBecker, Miss. Marion Louise                                                         6.058e-17
+NameBeckwith, Mr. Richard Leonard                                                       8.839e-16
+NameBeckwith, Mrs. Richard Leonard (Sallie Monypeny)                                   -1.429e-16
+NameBeesley, Mr. Lawrence                                                               8.482e-16
+NameBehr, Mr. Karl Howell                                                               1.692e-16
+NameBishop, Mr. Dickinson H                                                            -9.060e-16
+NameBishop, Mrs. Dickinson H (Helen Walton)                                            -9.907e-16
+NameBissette, Miss. Amelia                                                             -2.939e-16
+NameBjornstrom-Steffansson, Mr. Mauritz Hakan                                           1.140e-16
+NameBlackwell, Mr. Stephen Weart                                                       -1.000e+00
+NameBlank, Mr. Henry                                                                   -1.335e-15
+NameBonnell, Miss. Elizabeth                                                           -1.049e-15
+NameBowerman, Miss. Elsie Edith                                                         1.383e-15
+NameBrown, Miss. Amelia "Mildred"                                                       8.739e-16
+NameBrown, Mrs. James Joseph (Margaret Tobin)                                          -4.618e-16
+NameBurns, Miss. Elizabeth Margaret                                                    -9.586e-17
+NameButt, Major. Archibald Willingham                                                  -1.000e+00
+NameCalderhead, Mr. Edward Pennington                                                   6.306e-16
+NameCardeza, Mr. Thomas Drake Martinez                                                  1.536e-16
+NameCarlsson, Mr. Frans Olof                                                           -1.000e+00
+NameCarter, Master. William Thornton II                                                -5.467e-16
+NameCarter, Miss. Lucile Polk                                                          -2.756e-16
+NameCarter, Mr. William Ernest                                                         -4.987e-16
+NameCarter, Mrs. William Ernest (Lucile Polk)                                           4.095e-16
+NameCavendish, Mr. Tyrell William                                                      -1.000e+00
+NameChaffee, Mr. Herbert Fuller                                                        -1.000e+00
+NameChambers, Mr. Norman Campbell                                                      -5.606e-16
+NameChambers, Mrs. Norman Campbell (Bertha Griggs)                                      1.460e-15
+NameCherry, Miss. Gladys                                                               -1.048e-15
+NameColley, Mr. Edward Pomeroy                                                         -1.000e+00
+NameCompton, Miss. Sara Rebecca                                                        -1.651e-16
+NameCrosby, Capt. Edward Gifford                                                       -1.000e+00
+NameCrosby, Miss. Harriet R                                                            -6.814e-16
+NameCumings, Mrs. John Bradley (Florence Briggs Thayer)                                 2.373e-15
+NameDaly, Mr. Peter Denis                                                              -8.413e-16
+NameDavidson, Mr. Thornton                                                             -1.000e+00
+NameDick, Mr. Albert Adrian                                                            -3.112e-16
+NameDick, Mrs. Albert Adrian (Vera Gillespie)                                          -1.601e-16
+NameDodge, Master. Washington                                                          -4.182e-17
+NameDouglas, Mr. Walter Donald                                                         -1.000e+00
+NameDuff Gordon, Lady. (Lucille Christiana Sutherland) ("Mrs Morgan")                  -4.145e-16
+NameDuff Gordon, Sir. Cosmo Edmund ("Mr Morgan")                                        1.191e-16
+NameEndres, Miss. Caroline Louise                                                      -2.657e-16
+NameEustis, Miss. Elizabeth Mussey                                                     -1.561e-16
+NameFlynn, Mr. John Irwin ("Irving")                                                   -8.725e-17
+NameForeman, Mr. Benjamin Laventall                                                    -1.000e+00
+NameFortune, Miss. Alice Elizabeth                                                     -1.045e-16
+NameFortune, Miss. Mabel Helen                                                         -7.138e-16
+NameFortune, Mr. Charles Alexander                                                     -1.000e+00
+NameFortune, Mr. Mark                                                                  -1.000e+00
+NameFrancatelli, Miss. Laura Mabel                                                     -4.510e-16
+NameFrolicher-Stehli, Mr. Maxmillian                                                   -9.246e-16
+NameFrolicher, Miss. Hedwig Margaritha                                                 -8.723e-17
+NameFutrelle, Mr. Jacques Heath                                                        -1.000e+00
+NameFutrelle, Mrs. Jacques Heath (Lily May Peel)                                       -2.056e-15
+NameGee, Mr. Arthur H                                                                  -1.000e+00
+NameGiglio, Mr. Victor                                                                 -1.000e+00
+NameGoldenberg, Mr. Samuel L                                                           -1.326e-16
+NameGoldschmidt, Mr. George B                                                          -1.000e+00
+NameGraham, Miss. Margaret Edith                                                       -7.014e-16
+NameGraham, Mr. George Edward                                                          -1.000e+00
+NameGraham, Mrs. William Thompson (Edith Junkins)                                       5.173e-16
+NameGreenfield, Mr. William Bertram                                                    -2.822e-17
+NameGuggenheim, Mr. Benjamin                                                           -1.000e+00
+NameHarder, Mr. George Achilles                                                        -7.967e-16
+NameHarper, Mr. Henry Sleeper                                                          -4.551e-16
+NameHarper, Mrs. Henry Sleeper (Myna Haxtun)                                           -1.841e-16
+NameHarris, Mr. Henry Birkhardt                                                        -1.000e+00
+NameHarris, Mrs. Henry Birkhardt (Irene Wallach)                                        9.615e-16
+NameHarrison, Mr. William                                                              -1.000e+00
+NameHassab, Mr. Hammad                                                                 -2.495e-16
+NameHays, Miss. Margaret Bechstein                                                      6.108e-16
+NameHays, Mrs. Charles Melville (Clara Jennings Gregg)                                 -2.897e-16
+NameHippach, Miss. Jean Gertrude                                                        4.931e-17
+NameHippach, Mrs. Louis Albert (Ida Sophia Fischer)                                    -6.404e-16
+NameHogeboom, Mrs. John C (Anna Andrews)                                               -6.589e-16
+NameHoyt, Mr. Frederick Maxfield                                                        2.213e-16
+NameHoyt, Mrs. Frederick Maxfield (Jane Anne Forby)                                    -2.716e-16
+NameHumblen, Mr. Adolf Mathias Nicolai Olsen                                           -1.000e+00
+NameIsham, Miss. Ann Elizabeth                                                         -1.000e+00
+NameJerwan, Mrs. Amin S (Marie Marthe Thuillard)                                        1.632e-15
+NameKent, Mr. Edward Austin                                                            -1.000e+00
+NameKimball, Mr. Edwin Nelson Jr                                                       -1.059e-16
+NameLeader, Dr. Alice (Farnham)                                                        -1.483e-16
+NameLemore, Mrs. (Amelia Milley)                                                        1.925e-15
+NameLesurer, Mr. Gustave J                                                             -4.788e-16
+NameLevy, Mr. Rene Jacques                                                             -1.000e+00
+NameLines, Miss. Mary Conover                                                           1.208e-16
+NameLong, Mr. Milton Clyde                                                             -1.000e+00
+NameLongley, Miss. Gretchen Fiske                                                      -2.449e-17
+NameLurette, Miss. Elise                                                                1.057e-17
+NameMack, Mrs. (Mary)                                                                  -1.000e+00
+NameMadill, Miss. Georgette Alexandra                                                  -1.280e-15
+NameMaioni, Miss. Roberta                                                               8.048e-17
+NameMarvin, Mr. Daniel Warner                                                          -1.000e+00
+NameMayne, Mlle. Berthe Antonine ("Mrs de Villiers")                                   -3.564e-16
+NameMcCarthy, Mr. Timothy J                                                            -1.000e+00
+NameMcGough, Mr. James Robert                                                          -2.136e-16
+NameMillet, Mr. Francis Davis                                                          -1.000e+00
+NameMinahan, Dr. William Edward                                                        -1.000e+00
+NameMinahan, Miss. Daisy E                                                             -4.791e-16
+NameMoen, Mr. Sigurd Hansen                                                            -1.000e+00
+NameMolson, Mr. Harry Markland                                                         -1.000e+00
+NameMoor, Master. Meier                                                                 1.532e-15
+NameMoor, Mrs. (Beila)                                                                  1.062e-15
+NameNatsch, Mr. Charles H                                                              -1.000e+00
+NameNavratil, Master. Edmond Roger                                                      4.379e-16
+NameNavratil, Master. Michel M                                                          2.140e-15
+NameNavratil, Mr. Michel ("Louis M Hoffman")                                           -1.000e+00
+NameNewell, Miss. Madeleine                                                            -1.274e-15
+NameNewell, Miss. Marjorie                                                             -4.700e-16
+NameNewell, Mr. Arthur Webster                                                         -1.000e+00
+NameNewsom, Miss. Helen Monypeny                                                        3.880e-16
+NameNye, Mrs. (Elizabeth Ramell)                                                        6.929e-16
+NameOstby, Mr. Engelhart Cornelius                                                     -1.000e+00
+NamePartner, Mr. Austen                                                                -1.000e+00
+NamePears, Mr. Thomas Clinton                                                          -1.000e+00
+NamePears, Mrs. Thomas (Edith Wearne)                                                  -1.048e-15
+NamePenasco y Castellana, Mr. Victor de Satode                                         -1.000e+00
+NamePenasco y Castellana, Mrs. Victor de Satode (Maria Josefa Perez de Soto y Vallejo)  1.254e-15
+NamePerreault, Miss. Anne                                                              -3.145e-16
+NamePeuchen, Major. Arthur Godfrey                                                     -7.021e-16
+NamePickard, Mr. Berk (Berk Trembisky)                                                  1.497e-15
+NamePorter, Mr. Walter Chamberlain                                                     -1.000e+00
+NamePotter, Mrs. Thomas Jr (Lily Alexenia Wilson)                                      -7.004e-16
+NameRobert, Mrs. Edward Scott (Elisabeth Walton McMillan)                              -6.588e-16
+NameRoebling, Mr. Washington Augustus II                                               -1.000e+00
+NameRoss, Mr. John Hugo                                                                -1.000e+00
+NameRothes, the Countess. of (Lucy Noel Martha Dyer-Edwards)                           -4.431e-16
+NameRyerson, Miss. Emily Borie                                                         -1.202e-15
+NameRyerson, Miss. Susan Parker "Suzette"                                              -7.623e-16
+NameSagesser, Mlle. Emma                                                               -1.105e-15
+NameSandstrom, Miss. Marguerite Rut                                                     1.374e-15
+NameSandstrom, Mrs. Hjalmar (Agnes Charlotta Bengtsson)                                 2.171e-15
+NameShutes, Miss. Elizabeth W                                                          -1.260e-16
+NameSilverthorne, Mr. Spencer Victor                                                   -1.209e-15
+NameSilvey, Mr. William Baird                                                          -1.000e+00
+NameSilvey, Mrs. William Baird (Alice Munger)                                           9.161e-17
+NameSimonius-Blumer, Col. Oberst Alfons                                                 1.042e-17
+NameSloper, Mr. William Thompson                                                        4.969e-16
+NameSmith, Mr. James Clinch                                                            -1.000e+00
+NameSoholt, Mr. Peter Andreas Lauritz Andersen                                         -1.000e+00
+NameSpedden, Mrs. Frederic Oakley (Margaretta Corning Stone)                            2.876e-16
+NameStahelin-Maeglin, Dr. Max                                                          -5.500e-16
+NameStead, Mr. William Thomas                                                          -1.000e+00
+NameStephenson, Mrs. Walter Bertram (Martha Eustis)                                    -4.804e-16
+NameStrom, Miss. Telma Matilda                                                         -1.000e+00
+NameStrom, Mrs. Wilhelm (Elna Matilda Persson)                                         -1.000e+00
+NameSutton, Mr. Frederick                                                              -1.000e+00
+NameSwift, Mrs. Frederick Joel (Margaret Welles Barron)                                -8.242e-16
+NameTaussig, Miss. Ruth                                                                -3.345e-16
+NameTaussig, Mr. Emil                                                                  -1.000e+00
+NameTaussig, Mrs. Emil (Tillie Mandelbaum)                                             -9.948e-16
+NameTaylor, Mr. Elmer Zebley                                                           -2.763e-16
+NameThayer, Mr. John Borland                                                           -1.000e+00
+NameThayer, Mr. John Borland Jr                                                        -1.507e-15
+NameThayer, Mrs. John Borland (Marian Longstreth Morris)                               -2.176e-17
+NameTroutt, Miss. Edwina Celia "Winnie"                                                 2.448e-16
+NameVan der hoef, Mr. Wyckoff                                                          -1.000e+00
+NameWalker, Mr. William Anderson                                                       -1.000e+00
+NameWarren, Mrs. Frank Manley (Anna Sophia Atkinson)                                   -1.953e-15
+NameWebber, Miss. Susan                                                                        NA
+NameWhite, Mr. Percival Wayland                                                        -1.000e+00
+NameWhite, Mr. Richard Frasar                                                          -1.000e+00
+NameWick, Miss. Mary Natalie                                                           -9.113e-16
+NameWidener, Mr. Harry Elkins                                                          -1.000e+00
+NameYoung, Miss. Marie Grice                                                                   NA
+Sexmale                                                                                        NA
+Age                                                                                            NA
+SibSp                                                                                          NA
+Parch                                                                                          NA
+Ticket110413                                                                                   NA
+Ticket110465                                                                                   NA
+Ticket110564                                                                                   NA
+Ticket110813                                                                                   NA
+Ticket111240                                                                                   NA
+Ticket111320                                                                                   NA
+Ticket111361                                                                                   NA
+Ticket111369                                                                                   NA
+Ticket112050                                                                                   NA
+Ticket112053                                                                                   NA
+Ticket112059                                                                                   NA
+Ticket112277                                                                                   NA
+Ticket113043                                                                                   NA
+Ticket113050                                                                                   NA
+Ticket113051                                                                                   NA
+Ticket113055                                                                                   NA
+Ticket113501                                                                                   NA
+Ticket113503                                                                                   NA
+Ticket113505                                                                                   NA
+Ticket113509                                                                                   NA
+Ticket113514                                                                                   NA
+Ticket113760                                                                                   NA
+Ticket113773                                                                                   NA
+Ticket113776                                                                                   NA
+Ticket113781                                                                                   NA
+Ticket113783                                                                                   NA
+Ticket113784                                                                                   NA
+Ticket113786                                                                                   NA
+Ticket113787                                                                                   NA
+Ticket113788                                                                                   NA
+Ticket113803                                                                                   NA
+Ticket113806                                                                                   NA
+Ticket11751                                                                                    NA
+Ticket11752                                                                                    NA
+Ticket11753                                                                                    NA
+Ticket11755                                                                                    NA
+Ticket11765                                                                                    NA
+Ticket11767                                                                                    NA
+Ticket11769                                                                                    NA
+Ticket11771                                                                                    NA
+Ticket11813                                                                                    NA
+Ticket11967                                                                                    NA
+Ticket12749                                                                                    NA
+Ticket13049                                                                                    NA
+Ticket13213                                                                                    NA
+Ticket13214                                                                                    NA
+Ticket13502                                                                                    NA
+Ticket13507                                                                                    NA
+Ticket13509                                                                                    NA
+Ticket13567                                                                                    NA
+Ticket13568                                                                                    NA
+Ticket16966                                                                                    NA
+Ticket17421                                                                                    NA
+Ticket17453                                                                                    NA
+Ticket17463                                                                                    NA
+Ticket17465                                                                                    NA
+Ticket17466                                                                                    NA
+Ticket17474                                                                                    NA
+Ticket17764                                                                                    NA
+Ticket19877                                                                                    NA
+Ticket19928                                                                                    NA
+Ticket19943                                                                                    NA
+Ticket19950                                                                                    NA
+Ticket19952                                                                                    NA
+Ticket19996                                                                                    NA
+Ticket230080                                                                                   NA
+Ticket230136                                                                                   NA
+Ticket24160                                                                                    NA
+Ticket248698                                                                                   NA
+Ticket248733                                                                                   NA
+Ticket27042                                                                                    NA
+Ticket27267                                                                                    NA
+Ticket28551                                                                                    NA
+Ticket33638                                                                                    NA
+Ticket34218                                                                                    NA
+Ticket347054                                                                                   NA
+Ticket348121                                                                                   NA
+Ticket348123                                                                                   NA
+Ticket348124                                                                                   NA
+Ticket35273                                                                                    NA
+Ticket35281                                                                                    NA
+Ticket36928                                                                                    NA
+Ticket36947                                                                                    NA
+Ticket36963                                                                                    NA
+Ticket36967                                                                                    NA
+Ticket36973                                                                                    NA
+Ticket392096                                                                                   NA
+Ticket5727                                                                                     NA
+Ticket695                                                                                      NA
+TicketC.A. 29395                                                                               NA
+TicketC.A. 34260                                                                               NA
+TicketF.C. 12750                                                                               NA
+TicketPC 17473                                                                                 NA
+TicketPC 17474                                                                                 NA
+TicketPC 17475                                                                                 NA
+TicketPC 17476                                                                                 NA
+TicketPC 17477                                                                                 NA
+TicketPC 17482                                                                                 NA
+TicketPC 17485                                                                                 NA
+TicketPC 17558                                                                                 NA
+TicketPC 17569                                                                                 NA
+TicketPC 17572                                                                                 NA
+TicketPC 17582                                                                                 NA
+TicketPC 17590                                                                                 NA
+TicketPC 17592                                                                                 NA
+TicketPC 17593                                                                                 NA
+TicketPC 17595                                                                                 NA
+TicketPC 17596                                                                                 NA
+TicketPC 17599                                                                                 NA
+TicketPC 17608                                                                                 NA
+TicketPC 17610                                                                                 NA
+TicketPC 17754                                                                                 NA
+TicketPC 17755                                                                                 NA
+TicketPC 17756                                                                                 NA
+TicketPC 17757                                                                                 NA
+TicketPC 17758                                                                                 NA
+TicketPC 17759                                                                                 NA
+TicketPC 17760                                                                                 NA
+TicketPC 17761                                                                                 NA
+TicketPP 9549                                                                                  NA
+TicketS.O./P.P. 3                                                                              NA
+TicketSC/AH Basle 541                                                                          NA
+TicketSC/Paris 2163                                                                            NA
+TicketSOTON/O.Q. 392078                                                                        NA
+TicketW.E.P. 5734                                                                              NA
+TicketWE/P 5735                                                                                NA
+Fare                                                                                           NA
+CabinA16                                                                                       NA
+CabinA20                                                                                       NA
+CabinA23                                                                                       NA
+CabinA24                                                                                       NA
+CabinA26                                                                                       NA
+CabinA31                                                                                       NA
+CabinA34                                                                                       NA
+CabinA36                                                                                       NA
+CabinA5                                                                                        NA
+CabinA6                                                                                        NA
+CabinA7                                                                                        NA
+CabinB101                                                                                      NA
+CabinB18                                                                                       NA
+CabinB19                                                                                       NA
+CabinB20                                                                                       NA
+CabinB22                                                                                       NA
+CabinB3                                                                                        NA
+CabinB30                                                                                       NA
+CabinB35                                                                                       NA
+CabinB37                                                                                       NA
+CabinB38                                                                                       NA
+CabinB39                                                                                       NA
+CabinB4                                                                                        NA
+CabinB41                                                                                       NA
+CabinB42                                                                                       NA
+CabinB49                                                                                       NA
+CabinB5                                                                                        NA
+CabinB50                                                                                       NA
+CabinB51 B53 B55                                                                               NA
+CabinB57 B59 B63 B66                                                                           NA
+CabinB58 B60                                                                                   NA
+CabinB69                                                                                       NA
+CabinB71                                                                                       NA
+CabinB73                                                                                       NA
+CabinB77                                                                                       NA
+CabinB79                                                                                       NA
+CabinB80                                                                                       NA
+CabinB82 B84                                                                                   NA
+CabinB86                                                                                       NA
+CabinB94                                                                                       NA
+CabinB96 B98                                                                                   NA
+CabinC101                                                                                      NA
+CabinC103                                                                                      NA
+CabinC104                                                                                      NA
+CabinC110                                                                                      NA
+CabinC111                                                                                      NA
+CabinC118                                                                                      NA
+CabinC123                                                                                      NA
+CabinC124                                                                                      NA
+CabinC125                                                                                      NA
+CabinC126                                                                                      NA
+CabinC148                                                                                      NA
+CabinC2                                                                                        NA
+CabinC22 C26                                                                                   NA
+CabinC23 C25 C27                                                                               NA
+CabinC30                                                                                       NA
+CabinC32                                                                                       NA
+CabinC45                                                                                       NA
+CabinC46                                                                                       NA
+CabinC49                                                                                       NA
+CabinC50                                                                                       NA
+CabinC52                                                                                       NA
+CabinC54                                                                                       NA
+CabinC62 C64                                                                                   NA
+CabinC65                                                                                       NA
+CabinC68                                                                                       NA
+CabinC7                                                                                        NA
+CabinC70                                                                                       NA
+CabinC78                                                                                       NA
+CabinC82                                                                                       NA
+CabinC83                                                                                       NA
+CabinC85                                                                                       NA
+CabinC86                                                                                       NA
+CabinC87                                                                                       NA
+CabinC90                                                                                       NA
+CabinC91                                                                                       NA
+CabinC92                                                                                       NA
+CabinC93                                                                                       NA
+CabinC99                                                                                       NA
+CabinD                                                                                         NA
+CabinD10 D12                                                                                   NA
+CabinD11                                                                                       NA
+CabinD15                                                                                       NA
+CabinD17                                                                                       NA
+CabinD19                                                                                       NA
+CabinD20                                                                                       NA
+CabinD26                                                                                       NA
+CabinD28                                                                                       NA
+CabinD30                                                                                       NA
+CabinD33                                                                                       NA
+CabinD35                                                                                       NA
+CabinD36                                                                                       NA
+CabinD37                                                                                       NA
+CabinD46                                                                                       NA
+CabinD47                                                                                       NA
+CabinD48                                                                                       NA
+CabinD49                                                                                       NA
+CabinD50                                                                                       NA
+CabinD56                                                                                       NA
+CabinD6                                                                                        NA
+CabinD7                                                                                        NA
+CabinD9                                                                                        NA
+CabinE10                                                                                       NA
+CabinE101                                                                                      NA
+CabinE12                                                                                       NA
+CabinE121                                                                                      NA
+CabinE17                                                                                       NA
+CabinE24                                                                                       NA
+CabinE25                                                                                       NA
+CabinE31                                                                                       NA
+CabinE33                                                                                       NA
+CabinE34                                                                                       NA
+CabinE36                                                                                       NA
+CabinE38                                                                                       NA
+CabinE40                                                                                       NA
+CabinE44                                                                                       NA
+CabinE46                                                                                       NA
+CabinE49                                                                                       NA
+CabinE50                                                                                       NA
+CabinE58                                                                                       NA
+CabinE63                                                                                       NA
+CabinE67                                                                                       NA
+CabinE68                                                                                       NA
+CabinE77                                                                                       NA
+CabinE8                                                                                        NA
+CabinF G63                                                                                     NA
+CabinF G73                                                                                     NA
+CabinF2                                                                                        NA
+CabinF33                                                                                       NA
+CabinF4                                                                                        NA
+CabinG6                                                                                        NA
+CabinT                                                                                         NA
+EmbarkedQ                                                                                      NA
+EmbarkedS                                                                                      NA
+                                                                                       Std. Error
+(Intercept)                                                                                    NA
+PassengerId                                                                                    NA
+Pclass                                                                                         NA
+NameAllison, Master. Hudson Trevor                                                             NA
+NameAllison, Miss. Helen Loraine                                                               NA
+NameAllison, Mrs. Hudson J C (Bessie Waldo Daniels)                                            NA
+NameAnderson, Mr. Harry                                                                        NA
+NameAndrews, Miss. Kornelia Theodosia                                                          NA
+NameAndrews, Mr. Thomas Jr                                                                     NA
+NameAppleton, Mrs. Edward Dale (Charlotte Lamson)                                              NA
+NameAstor, Mrs. John Jacob (Madeleine Talmadge Force)                                          NA
+NameAubart, Mme. Leontine Pauline                                                              NA
+NameBall, Mrs. (Ada E Hall)                                                                    NA
+NameBarkworth, Mr. Algernon Henry Wilson                                                       NA
+NameBaxter, Mr. Quigg Edmond                                                                   NA
+NameBaxter, Mrs. James (Helene DeLaudeniere Chaput)                                            NA
+NameBazzani, Miss. Albina                                                                      NA
+NameBecker, Master. Richard F                                                                  NA
+NameBecker, Miss. Marion Louise                                                                NA
+NameBeckwith, Mr. Richard Leonard                                                              NA
+NameBeckwith, Mrs. Richard Leonard (Sallie Monypeny)                                           NA
+NameBeesley, Mr. Lawrence                                                                      NA
+NameBehr, Mr. Karl Howell                                                                      NA
+NameBishop, Mr. Dickinson H                                                                    NA
+NameBishop, Mrs. Dickinson H (Helen Walton)                                                    NA
+NameBissette, Miss. Amelia                                                                     NA
+NameBjornstrom-Steffansson, Mr. Mauritz Hakan                                                  NA
+NameBlackwell, Mr. Stephen Weart                                                               NA
+NameBlank, Mr. Henry                                                                           NA
+NameBonnell, Miss. Elizabeth                                                                   NA
+NameBowerman, Miss. Elsie Edith                                                                NA
+NameBrown, Miss. Amelia "Mildred"                                                              NA
+NameBrown, Mrs. James Joseph (Margaret Tobin)                                                  NA
+NameBurns, Miss. Elizabeth Margaret                                                            NA
+NameButt, Major. Archibald Willingham                                                          NA
+NameCalderhead, Mr. Edward Pennington                                                          NA
+NameCardeza, Mr. Thomas Drake Martinez                                                         NA
+NameCarlsson, Mr. Frans Olof                                                                   NA
+NameCarter, Master. William Thornton II                                                        NA
+NameCarter, Miss. Lucile Polk                                                                  NA
+NameCarter, Mr. William Ernest                                                                 NA
+NameCarter, Mrs. William Ernest (Lucile Polk)                                                  NA
+NameCavendish, Mr. Tyrell William                                                              NA
+NameChaffee, Mr. Herbert Fuller                                                                NA
+NameChambers, Mr. Norman Campbell                                                              NA
+NameChambers, Mrs. Norman Campbell (Bertha Griggs)                                             NA
+NameCherry, Miss. Gladys                                                                       NA
+NameColley, Mr. Edward Pomeroy                                                                 NA
+NameCompton, Miss. Sara Rebecca                                                                NA
+NameCrosby, Capt. Edward Gifford                                                               NA
+NameCrosby, Miss. Harriet R                                                                    NA
+NameCumings, Mrs. John Bradley (Florence Briggs Thayer)                                        NA
+NameDaly, Mr. Peter Denis                                                                      NA
+NameDavidson, Mr. Thornton                                                                     NA
+NameDick, Mr. Albert Adrian                                                                    NA
+NameDick, Mrs. Albert Adrian (Vera Gillespie)                                                  NA
+NameDodge, Master. Washington                                                                  NA
+NameDouglas, Mr. Walter Donald                                                                 NA
+NameDuff Gordon, Lady. (Lucille Christiana Sutherland) ("Mrs Morgan")                          NA
+NameDuff Gordon, Sir. Cosmo Edmund ("Mr Morgan")                                               NA
+NameEndres, Miss. Caroline Louise                                                              NA
+NameEustis, Miss. Elizabeth Mussey                                                             NA
+NameFlynn, Mr. John Irwin ("Irving")                                                           NA
+NameForeman, Mr. Benjamin Laventall                                                            NA
+NameFortune, Miss. Alice Elizabeth                                                             NA
+NameFortune, Miss. Mabel Helen                                                                 NA
+NameFortune, Mr. Charles Alexander                                                             NA
+NameFortune, Mr. Mark                                                                          NA
+NameFrancatelli, Miss. Laura Mabel                                                             NA
+NameFrolicher-Stehli, Mr. Maxmillian                                                           NA
+NameFrolicher, Miss. Hedwig Margaritha                                                         NA
+NameFutrelle, Mr. Jacques Heath                                                                NA
+NameFutrelle, Mrs. Jacques Heath (Lily May Peel)                                               NA
+NameGee, Mr. Arthur H                                                                          NA
+NameGiglio, Mr. Victor                                                                         NA
+NameGoldenberg, Mr. Samuel L                                                                   NA
+NameGoldschmidt, Mr. George B                                                                  NA
+NameGraham, Miss. Margaret Edith                                                               NA
+NameGraham, Mr. George Edward                                                                  NA
+NameGraham, Mrs. William Thompson (Edith Junkins)                                              NA
+NameGreenfield, Mr. William Bertram                                                            NA
+NameGuggenheim, Mr. Benjamin                                                                   NA
+NameHarder, Mr. George Achilles                                                                NA
+NameHarper, Mr. Henry Sleeper                                                                  NA
+NameHarper, Mrs. Henry Sleeper (Myna Haxtun)                                                   NA
+NameHarris, Mr. Henry Birkhardt                                                                NA
+NameHarris, Mrs. Henry Birkhardt (Irene Wallach)                                               NA
+NameHarrison, Mr. William                                                                      NA
+NameHassab, Mr. Hammad                                                                         NA
+NameHays, Miss. Margaret Bechstein                                                             NA
+NameHays, Mrs. Charles Melville (Clara Jennings Gregg)                                         NA
+NameHippach, Miss. Jean Gertrude                                                               NA
+NameHippach, Mrs. Louis Albert (Ida Sophia Fischer)                                            NA
+NameHogeboom, Mrs. John C (Anna Andrews)                                                       NA
+NameHoyt, Mr. Frederick Maxfield                                                               NA
+NameHoyt, Mrs. Frederick Maxfield (Jane Anne Forby)                                            NA
+NameHumblen, Mr. Adolf Mathias Nicolai Olsen                                                   NA
+NameIsham, Miss. Ann Elizabeth                                                                 NA
+NameJerwan, Mrs. Amin S (Marie Marthe Thuillard)                                               NA
+NameKent, Mr. Edward Austin                                                                    NA
+NameKimball, Mr. Edwin Nelson Jr                                                               NA
+NameLeader, Dr. Alice (Farnham)                                                                NA
+NameLemore, Mrs. (Amelia Milley)                                                               NA
+NameLesurer, Mr. Gustave J                                                                     NA
+NameLevy, Mr. Rene Jacques                                                                     NA
+NameLines, Miss. Mary Conover                                                                  NA
+NameLong, Mr. Milton Clyde                                                                     NA
+NameLongley, Miss. Gretchen Fiske                                                              NA
+NameLurette, Miss. Elise                                                                       NA
+NameMack, Mrs. (Mary)                                                                          NA
+NameMadill, Miss. Georgette Alexandra                                                          NA
+NameMaioni, Miss. Roberta                                                                      NA
+NameMarvin, Mr. Daniel Warner                                                                  NA
+NameMayne, Mlle. Berthe Antonine ("Mrs de Villiers")                                           NA
+NameMcCarthy, Mr. Timothy J                                                                    NA
+NameMcGough, Mr. James Robert                                                                  NA
+NameMillet, Mr. Francis Davis                                                                  NA
+NameMinahan, Dr. William Edward                                                                NA
+NameMinahan, Miss. Daisy E                                                                     NA
+NameMoen, Mr. Sigurd Hansen                                                                    NA
+NameMolson, Mr. Harry Markland                                                                 NA
+NameMoor, Master. Meier                                                                        NA
+NameMoor, Mrs. (Beila)                                                                         NA
+NameNatsch, Mr. Charles H                                                                      NA
+NameNavratil, Master. Edmond Roger                                                             NA
+NameNavratil, Master. Michel M                                                                 NA
+NameNavratil, Mr. Michel ("Louis M Hoffman")                                                   NA
+NameNewell, Miss. Madeleine                                                                    NA
+NameNewell, Miss. Marjorie                                                                     NA
+NameNewell, Mr. Arthur Webster                                                                 NA
+NameNewsom, Miss. Helen Monypeny                                                               NA
+NameNye, Mrs. (Elizabeth Ramell)                                                               NA
+NameOstby, Mr. Engelhart Cornelius                                                             NA
+NamePartner, Mr. Austen                                                                        NA
+NamePears, Mr. Thomas Clinton                                                                  NA
+NamePears, Mrs. Thomas (Edith Wearne)                                                          NA
+NamePenasco y Castellana, Mr. Victor de Satode                                                 NA
+NamePenasco y Castellana, Mrs. Victor de Satode (Maria Josefa Perez de Soto y Vallejo)         NA
+NamePerreault, Miss. Anne                                                                      NA
+NamePeuchen, Major. Arthur Godfrey                                                             NA
+NamePickard, Mr. Berk (Berk Trembisky)                                                         NA
+NamePorter, Mr. Walter Chamberlain                                                             NA
+NamePotter, Mrs. Thomas Jr (Lily Alexenia Wilson)                                              NA
+NameRobert, Mrs. Edward Scott (Elisabeth Walton McMillan)                                      NA
+NameRoebling, Mr. Washington Augustus II                                                       NA
+NameRoss, Mr. John Hugo                                                                        NA
+NameRothes, the Countess. of (Lucy Noel Martha Dyer-Edwards)                                   NA
+NameRyerson, Miss. Emily Borie                                                                 NA
+NameRyerson, Miss. Susan Parker "Suzette"                                                      NA
+NameSagesser, Mlle. Emma                                                                       NA
+NameSandstrom, Miss. Marguerite Rut                                                            NA
+NameSandstrom, Mrs. Hjalmar (Agnes Charlotta Bengtsson)                                        NA
+NameShutes, Miss. Elizabeth W                                                                  NA
+NameSilverthorne, Mr. Spencer Victor                                                           NA
+NameSilvey, Mr. William Baird                                                                  NA
+NameSilvey, Mrs. William Baird (Alice Munger)                                                  NA
+NameSimonius-Blumer, Col. Oberst Alfons                                                        NA
+NameSloper, Mr. William Thompson                                                               NA
+NameSmith, Mr. James Clinch                                                                    NA
+NameSoholt, Mr. Peter Andreas Lauritz Andersen                                                 NA
+NameSpedden, Mrs. Frederic Oakley (Margaretta Corning Stone)                                   NA
+NameStahelin-Maeglin, Dr. Max                                                                  NA
+NameStead, Mr. William Thomas                                                                  NA
+NameStephenson, Mrs. Walter Bertram (Martha Eustis)                                            NA
+NameStrom, Miss. Telma Matilda                                                                 NA
+NameStrom, Mrs. Wilhelm (Elna Matilda Persson)                                                 NA
+NameSutton, Mr. Frederick                                                                      NA
+NameSwift, Mrs. Frederick Joel (Margaret Welles Barron)                                        NA
+NameTaussig, Miss. Ruth                                                                        NA
+NameTaussig, Mr. Emil                                                                          NA
+NameTaussig, Mrs. Emil (Tillie Mandelbaum)                                                     NA
+NameTaylor, Mr. Elmer Zebley                                                                   NA
+NameThayer, Mr. John Borland                                                                   NA
+NameThayer, Mr. John Borland Jr                                                                NA
+NameThayer, Mrs. John Borland (Marian Longstreth Morris)                                       NA
+NameTroutt, Miss. Edwina Celia "Winnie"                                                        NA
+NameVan der hoef, Mr. Wyckoff                                                                  NA
+NameWalker, Mr. William Anderson                                                               NA
+NameWarren, Mrs. Frank Manley (Anna Sophia Atkinson)                                           NA
+NameWebber, Miss. Susan                                                                        NA
+NameWhite, Mr. Percival Wayland                                                                NA
+NameWhite, Mr. Richard Frasar                                                                  NA
+NameWick, Miss. Mary Natalie                                                                   NA
+NameWidener, Mr. Harry Elkins                                                                  NA
+NameYoung, Miss. Marie Grice                                                                   NA
+Sexmale                                                                                        NA
+Age                                                                                            NA
+SibSp                                                                                          NA
+Parch                                                                                          NA
+Ticket110413                                                                                   NA
+Ticket110465                                                                                   NA
+Ticket110564                                                                                   NA
+Ticket110813                                                                                   NA
+Ticket111240                                                                                   NA
+Ticket111320                                                                                   NA
+Ticket111361                                                                                   NA
+Ticket111369                                                                                   NA
+Ticket112050                                                                                   NA
+Ticket112053                                                                                   NA
+Ticket112059                                                                                   NA
+Ticket112277                                                                                   NA
+Ticket113043                                                                                   NA
+Ticket113050                                                                                   NA
+Ticket113051                                                                                   NA
+Ticket113055                                                                                   NA
+Ticket113501                                                                                   NA
+Ticket113503                                                                                   NA
+Ticket113505                                                                                   NA
+Ticket113509                                                                                   NA
+Ticket113514                                                                                   NA
+Ticket113760                                                                                   NA
+Ticket113773                                                                                   NA
+Ticket113776                                                                                   NA
+Ticket113781                                                                                   NA
+Ticket113783                                                                                   NA
+Ticket113784                                                                                   NA
+Ticket113786                                                                                   NA
+Ticket113787                                                                                   NA
+Ticket113788                                                                                   NA
+Ticket113803                                                                                   NA
+Ticket113806                                                                                   NA
+Ticket11751                                                                                    NA
+Ticket11752                                                                                    NA
+Ticket11753                                                                                    NA
+Ticket11755                                                                                    NA
+Ticket11765                                                                                    NA
+Ticket11767                                                                                    NA
+Ticket11769                                                                                    NA
+Ticket11771                                                                                    NA
+Ticket11813                                                                                    NA
+Ticket11967                                                                                    NA
+Ticket12749                                                                                    NA
+Ticket13049                                                                                    NA
+Ticket13213                                                                                    NA
+Ticket13214                                                                                    NA
+Ticket13502                                                                                    NA
+Ticket13507                                                                                    NA
+Ticket13509                                                                                    NA
+Ticket13567                                                                                    NA
+Ticket13568                                                                                    NA
+Ticket16966                                                                                    NA
+Ticket17421                                                                                    NA
+Ticket17453                                                                                    NA
+Ticket17463                                                                                    NA
+Ticket17465                                                                                    NA
+Ticket17466                                                                                    NA
+Ticket17474                                                                                    NA
+Ticket17764                                                                                    NA
+Ticket19877                                                                                    NA
+Ticket19928                                                                                    NA
+Ticket19943                                                                                    NA
+Ticket19950                                                                                    NA
+Ticket19952                                                                                    NA
+Ticket19996                                                                                    NA
+Ticket230080                                                                                   NA
+Ticket230136                                                                                   NA
+Ticket24160                                                                                    NA
+Ticket248698                                                                                   NA
+Ticket248733                                                                                   NA
+Ticket27042                                                                                    NA
+Ticket27267                                                                                    NA
+Ticket28551                                                                                    NA
+Ticket33638                                                                                    NA
+Ticket34218                                                                                    NA
+Ticket347054                                                                                   NA
+Ticket348121                                                                                   NA
+Ticket348123                                                                                   NA
+Ticket348124                                                                                   NA
+Ticket35273                                                                                    NA
+Ticket35281                                                                                    NA
+Ticket36928                                                                                    NA
+Ticket36947                                                                                    NA
+Ticket36963                                                                                    NA
+Ticket36967                                                                                    NA
+Ticket36973                                                                                    NA
+Ticket392096                                                                                   NA
+Ticket5727                                                                                     NA
+Ticket695                                                                                      NA
+TicketC.A. 29395                                                                               NA
+TicketC.A. 34260                                                                               NA
+TicketF.C. 12750                                                                               NA
+TicketPC 17473                                                                                 NA
+TicketPC 17474                                                                                 NA
+TicketPC 17475                                                                                 NA
+TicketPC 17476                                                                                 NA
+TicketPC 17477                                                                                 NA
+TicketPC 17482                                                                                 NA
+TicketPC 17485                                                                                 NA
+TicketPC 17558                                                                                 NA
+TicketPC 17569                                                                                 NA
+TicketPC 17572                                                                                 NA
+TicketPC 17582                                                                                 NA
+TicketPC 17590                                                                                 NA
+TicketPC 17592                                                                                 NA
+TicketPC 17593                                                                                 NA
+TicketPC 17595                                                                                 NA
+TicketPC 17596                                                                                 NA
+TicketPC 17599                                                                                 NA
+TicketPC 17608                                                                                 NA
+TicketPC 17610                                                                                 NA
+TicketPC 17754                                                                                 NA
+TicketPC 17755                                                                                 NA
+TicketPC 17756                                                                                 NA
+TicketPC 17757                                                                                 NA
+TicketPC 17758                                                                                 NA
+TicketPC 17759                                                                                 NA
+TicketPC 17760                                                                                 NA
+TicketPC 17761                                                                                 NA
+TicketPP 9549                                                                                  NA
+TicketS.O./P.P. 3                                                                              NA
+TicketSC/AH Basle 541                                                                          NA
+TicketSC/Paris 2163                                                                            NA
+TicketSOTON/O.Q. 392078                                                                        NA
+TicketW.E.P. 5734                                                                              NA
+TicketWE/P 5735                                                                                NA
+Fare                                                                                           NA
+CabinA16                                                                                       NA
+CabinA20                                                                                       NA
+CabinA23                                                                                       NA
+CabinA24                                                                                       NA
+CabinA26                                                                                       NA
+CabinA31                                                                                       NA
+CabinA34                                                                                       NA
+CabinA36                                                                                       NA
+CabinA5                                                                                        NA
+CabinA6                                                                                        NA
+CabinA7                                                                                        NA
+CabinB101                                                                                      NA
+CabinB18                                                                                       NA
+CabinB19                                                                                       NA
+CabinB20                                                                                       NA
+CabinB22                                                                                       NA
+CabinB3                                                                                        NA
+CabinB30                                                                                       NA
+CabinB35                                                                                       NA
+CabinB37                                                                                       NA
+CabinB38                                                                                       NA
+CabinB39                                                                                       NA
+CabinB4                                                                                        NA
+CabinB41                                                                                       NA
+CabinB42                                                                                       NA
+CabinB49                                                                                       NA
+CabinB5                                                                                        NA
+CabinB50                                                                                       NA
+CabinB51 B53 B55                                                                               NA
+CabinB57 B59 B63 B66                                                                           NA
+CabinB58 B60                                                                                   NA
+CabinB69                                                                                       NA
+CabinB71                                                                                       NA
+CabinB73                                                                                       NA
+CabinB77                                                                                       NA
+CabinB79                                                                                       NA
+CabinB80                                                                                       NA
+CabinB82 B84                                                                                   NA
+CabinB86                                                                                       NA
+CabinB94                                                                                       NA
+CabinB96 B98                                                                                   NA
+CabinC101                                                                                      NA
+CabinC103                                                                                      NA
+CabinC104                                                                                      NA
+CabinC110                                                                                      NA
+CabinC111                                                                                      NA
+CabinC118                                                                                      NA
+CabinC123                                                                                      NA
+CabinC124                                                                                      NA
+CabinC125                                                                                      NA
+CabinC126                                                                                      NA
+CabinC148                                                                                      NA
+CabinC2                                                                                        NA
+CabinC22 C26                                                                                   NA
+CabinC23 C25 C27                                                                               NA
+CabinC30                                                                                       NA
+CabinC32                                                                                       NA
+CabinC45                                                                                       NA
+CabinC46                                                                                       NA
+CabinC49                                                                                       NA
+CabinC50                                                                                       NA
+CabinC52                                                                                       NA
+CabinC54                                                                                       NA
+CabinC62 C64                                                                                   NA
+CabinC65                                                                                       NA
+CabinC68                                                                                       NA
+CabinC7                                                                                        NA
+CabinC70                                                                                       NA
+CabinC78                                                                                       NA
+CabinC82                                                                                       NA
+CabinC83                                                                                       NA
+CabinC85                                                                                       NA
+CabinC86                                                                                       NA
+CabinC87                                                                                       NA
+CabinC90                                                                                       NA
+CabinC91                                                                                       NA
+CabinC92                                                                                       NA
+CabinC93                                                                                       NA
+CabinC99                                                                                       NA
+CabinD                                                                                         NA
+CabinD10 D12                                                                                   NA
+CabinD11                                                                                       NA
+CabinD15                                                                                       NA
+CabinD17                                                                                       NA
+CabinD19                                                                                       NA
+CabinD20                                                                                       NA
+CabinD26                                                                                       NA
+CabinD28                                                                                       NA
+CabinD30                                                                                       NA
+CabinD33                                                                                       NA
+CabinD35                                                                                       NA
+CabinD36                                                                                       NA
+CabinD37                                                                                       NA
+CabinD46                                                                                       NA
+CabinD47                                                                                       NA
+CabinD48                                                                                       NA
+CabinD49                                                                                       NA
+CabinD50                                                                                       NA
+CabinD56                                                                                       NA
+CabinD6                                                                                        NA
+CabinD7                                                                                        NA
+CabinD9                                                                                        NA
+CabinE10                                                                                       NA
+CabinE101                                                                                      NA
+CabinE12                                                                                       NA
+CabinE121                                                                                      NA
+CabinE17                                                                                       NA
+CabinE24                                                                                       NA
+CabinE25                                                                                       NA
+CabinE31                                                                                       NA
+CabinE33                                                                                       NA
+CabinE34                                                                                       NA
+CabinE36                                                                                       NA
+CabinE38                                                                                       NA
+CabinE40                                                                                       NA
+CabinE44                                                                                       NA
+CabinE46                                                                                       NA
+CabinE49                                                                                       NA
+CabinE50                                                                                       NA
+CabinE58                                                                                       NA
+CabinE63                                                                                       NA
+CabinE67                                                                                       NA
+CabinE68                                                                                       NA
+CabinE77                                                                                       NA
+CabinE8                                                                                        NA
+CabinF G63                                                                                     NA
+CabinF G73                                                                                     NA
+CabinF2                                                                                        NA
+CabinF33                                                                                       NA
+CabinF4                                                                                        NA
+CabinG6                                                                                        NA
+CabinT                                                                                         NA
+EmbarkedQ                                                                                      NA
+EmbarkedS                                                                                      NA
+                                                                                       t value
+(Intercept)                                                                                 NA
+PassengerId                                                                                 NA
+Pclass                                                                                      NA
+NameAllison, Master. Hudson Trevor                                                          NA
+NameAllison, Miss. Helen Loraine                                                            NA
+NameAllison, Mrs. Hudson J C (Bessie Waldo Daniels)                                         NA
+NameAnderson, Mr. Harry                                                                     NA
+NameAndrews, Miss. Kornelia Theodosia                                                       NA
+NameAndrews, Mr. Thomas Jr                                                                  NA
+NameAppleton, Mrs. Edward Dale (Charlotte Lamson)                                           NA
+NameAstor, Mrs. John Jacob (Madeleine Talmadge Force)                                       NA
+NameAubart, Mme. Leontine Pauline                                                           NA
+NameBall, Mrs. (Ada E Hall)                                                                 NA
+NameBarkworth, Mr. Algernon Henry Wilson                                                    NA
+NameBaxter, Mr. Quigg Edmond                                                                NA
+NameBaxter, Mrs. James (Helene DeLaudeniere Chaput)                                         NA
+NameBazzani, Miss. Albina                                                                   NA
+NameBecker, Master. Richard F                                                               NA
+NameBecker, Miss. Marion Louise                                                             NA
+NameBeckwith, Mr. Richard Leonard                                                           NA
+NameBeckwith, Mrs. Richard Leonard (Sallie Monypeny)                                        NA
+NameBeesley, Mr. Lawrence                                                                   NA
+NameBehr, Mr. Karl Howell                                                                   NA
+NameBishop, Mr. Dickinson H                                                                 NA
+NameBishop, Mrs. Dickinson H (Helen Walton)                                                 NA
+NameBissette, Miss. Amelia                                                                  NA
+NameBjornstrom-Steffansson, Mr. Mauritz Hakan                                               NA
+NameBlackwell, Mr. Stephen Weart                                                            NA
+NameBlank, Mr. Henry                                                                        NA
+NameBonnell, Miss. Elizabeth                                                                NA
+NameBowerman, Miss. Elsie Edith                                                             NA
+NameBrown, Miss. Amelia "Mildred"                                                           NA
+NameBrown, Mrs. James Joseph (Margaret Tobin)                                               NA
+NameBurns, Miss. Elizabeth Margaret                                                         NA
+NameButt, Major. Archibald Willingham                                                       NA
+NameCalderhead, Mr. Edward Pennington                                                       NA
+NameCardeza, Mr. Thomas Drake Martinez                                                      NA
+NameCarlsson, Mr. Frans Olof                                                                NA
+NameCarter, Master. William Thornton II                                                     NA
+NameCarter, Miss. Lucile Polk                                                               NA
+NameCarter, Mr. William Ernest                                                              NA
+NameCarter, Mrs. William Ernest (Lucile Polk)                                               NA
+NameCavendish, Mr. Tyrell William                                                           NA
+NameChaffee, Mr. Herbert Fuller                                                             NA
+NameChambers, Mr. Norman Campbell                                                           NA
+NameChambers, Mrs. Norman Campbell (Bertha Griggs)                                          NA
+NameCherry, Miss. Gladys                                                                    NA
+NameColley, Mr. Edward Pomeroy                                                              NA
+NameCompton, Miss. Sara Rebecca                                                             NA
+NameCrosby, Capt. Edward Gifford                                                            NA
+NameCrosby, Miss. Harriet R                                                                 NA
+NameCumings, Mrs. John Bradley (Florence Briggs Thayer)                                     NA
+NameDaly, Mr. Peter Denis                                                                   NA
+NameDavidson, Mr. Thornton                                                                  NA
+NameDick, Mr. Albert Adrian                                                                 NA
+NameDick, Mrs. Albert Adrian (Vera Gillespie)                                               NA
+NameDodge, Master. Washington                                                               NA
+NameDouglas, Mr. Walter Donald                                                              NA
+NameDuff Gordon, Lady. (Lucille Christiana Sutherland) ("Mrs Morgan")                       NA
+NameDuff Gordon, Sir. Cosmo Edmund ("Mr Morgan")                                            NA
+NameEndres, Miss. Caroline Louise                                                           NA
+NameEustis, Miss. Elizabeth Mussey                                                          NA
+NameFlynn, Mr. John Irwin ("Irving")                                                        NA
+NameForeman, Mr. Benjamin Laventall                                                         NA
+NameFortune, Miss. Alice Elizabeth                                                          NA
+NameFortune, Miss. Mabel Helen                                                              NA
+NameFortune, Mr. Charles Alexander                                                          NA
+NameFortune, Mr. Mark                                                                       NA
+NameFrancatelli, Miss. Laura Mabel                                                          NA
+NameFrolicher-Stehli, Mr. Maxmillian                                                        NA
+NameFrolicher, Miss. Hedwig Margaritha                                                      NA
+NameFutrelle, Mr. Jacques Heath                                                             NA
+NameFutrelle, Mrs. Jacques Heath (Lily May Peel)                                            NA
+NameGee, Mr. Arthur H                                                                       NA
+NameGiglio, Mr. Victor                                                                      NA
+NameGoldenberg, Mr. Samuel L                                                                NA
+NameGoldschmidt, Mr. George B                                                               NA
+NameGraham, Miss. Margaret Edith                                                            NA
+NameGraham, Mr. George Edward                                                               NA
+NameGraham, Mrs. William Thompson (Edith Junkins)                                           NA
+NameGreenfield, Mr. William Bertram                                                         NA
+NameGuggenheim, Mr. Benjamin                                                                NA
+NameHarder, Mr. George Achilles                                                             NA
+NameHarper, Mr. Henry Sleeper                                                               NA
+NameHarper, Mrs. Henry Sleeper (Myna Haxtun)                                                NA
+NameHarris, Mr. Henry Birkhardt                                                             NA
+NameHarris, Mrs. Henry Birkhardt (Irene Wallach)                                            NA
+NameHarrison, Mr. William                                                                   NA
+NameHassab, Mr. Hammad                                                                      NA
+NameHays, Miss. Margaret Bechstein                                                          NA
+NameHays, Mrs. Charles Melville (Clara Jennings Gregg)                                      NA
+NameHippach, Miss. Jean Gertrude                                                            NA
+NameHippach, Mrs. Louis Albert (Ida Sophia Fischer)                                         NA
+NameHogeboom, Mrs. John C (Anna Andrews)                                                    NA
+NameHoyt, Mr. Frederick Maxfield                                                            NA
+NameHoyt, Mrs. Frederick Maxfield (Jane Anne Forby)                                         NA
+NameHumblen, Mr. Adolf Mathias Nicolai Olsen                                                NA
+NameIsham, Miss. Ann Elizabeth                                                              NA
+NameJerwan, Mrs. Amin S (Marie Marthe Thuillard)                                            NA
+NameKent, Mr. Edward Austin                                                                 NA
+NameKimball, Mr. Edwin Nelson Jr                                                            NA
+NameLeader, Dr. Alice (Farnham)                                                             NA
+NameLemore, Mrs. (Amelia Milley)                                                            NA
+NameLesurer, Mr. Gustave J                                                                  NA
+NameLevy, Mr. Rene Jacques                                                                  NA
+NameLines, Miss. Mary Conover                                                               NA
+NameLong, Mr. Milton Clyde                                                                  NA
+NameLongley, Miss. Gretchen Fiske                                                           NA
+NameLurette, Miss. Elise                                                                    NA
+NameMack, Mrs. (Mary)                                                                       NA
+NameMadill, Miss. Georgette Alexandra                                                       NA
+NameMaioni, Miss. Roberta                                                                   NA
+NameMarvin, Mr. Daniel Warner                                                               NA
+NameMayne, Mlle. Berthe Antonine ("Mrs de Villiers")                                        NA
+NameMcCarthy, Mr. Timothy J                                                                 NA
+NameMcGough, Mr. James Robert                                                               NA
+NameMillet, Mr. Francis Davis                                                               NA
+NameMinahan, Dr. William Edward                                                             NA
+NameMinahan, Miss. Daisy E                                                                  NA
+NameMoen, Mr. Sigurd Hansen                                                                 NA
+NameMolson, Mr. Harry Markland                                                              NA
+NameMoor, Master. Meier                                                                     NA
+NameMoor, Mrs. (Beila)                                                                      NA
+NameNatsch, Mr. Charles H                                                                   NA
+NameNavratil, Master. Edmond Roger                                                          NA
+NameNavratil, Master. Michel M                                                              NA
+NameNavratil, Mr. Michel ("Louis M Hoffman")                                                NA
+NameNewell, Miss. Madeleine                                                                 NA
+NameNewell, Miss. Marjorie                                                                  NA
+NameNewell, Mr. Arthur Webster                                                              NA
+NameNewsom, Miss. Helen Monypeny                                                            NA
+NameNye, Mrs. (Elizabeth Ramell)                                                            NA
+NameOstby, Mr. Engelhart Cornelius                                                          NA
+NamePartner, Mr. Austen                                                                     NA
+NamePears, Mr. Thomas Clinton                                                               NA
+NamePears, Mrs. Thomas (Edith Wearne)                                                       NA
+NamePenasco y Castellana, Mr. Victor de Satode                                              NA
+NamePenasco y Castellana, Mrs. Victor de Satode (Maria Josefa Perez de Soto y Vallejo)      NA
+NamePerreault, Miss. Anne                                                                   NA
+NamePeuchen, Major. Arthur Godfrey                                                          NA
+NamePickard, Mr. Berk (Berk Trembisky)                                                      NA
+NamePorter, Mr. Walter Chamberlain                                                          NA
+NamePotter, Mrs. Thomas Jr (Lily Alexenia Wilson)                                           NA
+NameRobert, Mrs. Edward Scott (Elisabeth Walton McMillan)                                   NA
+NameRoebling, Mr. Washington Augustus II                                                    NA
+NameRoss, Mr. John Hugo                                                                     NA
+NameRothes, the Countess. of (Lucy Noel Martha Dyer-Edwards)                                NA
+NameRyerson, Miss. Emily Borie                                                              NA
+NameRyerson, Miss. Susan Parker "Suzette"                                                   NA
+NameSagesser, Mlle. Emma                                                                    NA
+NameSandstrom, Miss. Marguerite Rut                                                         NA
+NameSandstrom, Mrs. Hjalmar (Agnes Charlotta Bengtsson)                                     NA
+NameShutes, Miss. Elizabeth W                                                               NA
+NameSilverthorne, Mr. Spencer Victor                                                        NA
+NameSilvey, Mr. William Baird                                                               NA
+NameSilvey, Mrs. William Baird (Alice Munger)                                               NA
+NameSimonius-Blumer, Col. Oberst Alfons                                                     NA
+NameSloper, Mr. William Thompson                                                            NA
+NameSmith, Mr. James Clinch                                                                 NA
+NameSoholt, Mr. Peter Andreas Lauritz Andersen                                              NA
+NameSpedden, Mrs. Frederic Oakley (Margaretta Corning Stone)                                NA
+NameStahelin-Maeglin, Dr. Max                                                               NA
+NameStead, Mr. William Thomas                                                               NA
+NameStephenson, Mrs. Walter Bertram (Martha Eustis)                                         NA
+NameStrom, Miss. Telma Matilda                                                              NA
+NameStrom, Mrs. Wilhelm (Elna Matilda Persson)                                              NA
+NameSutton, Mr. Frederick                                                                   NA
+NameSwift, Mrs. Frederick Joel (Margaret Welles Barron)                                     NA
+NameTaussig, Miss. Ruth                                                                     NA
+NameTaussig, Mr. Emil                                                                       NA
+NameTaussig, Mrs. Emil (Tillie Mandelbaum)                                                  NA
+NameTaylor, Mr. Elmer Zebley                                                                NA
+NameThayer, Mr. John Borland                                                                NA
+NameThayer, Mr. John Borland Jr                                                             NA
+NameThayer, Mrs. John Borland (Marian Longstreth Morris)                                    NA
+NameTroutt, Miss. Edwina Celia "Winnie"                                                     NA
+NameVan der hoef, Mr. Wyckoff                                                               NA
+NameWalker, Mr. William Anderson                                                            NA
+NameWarren, Mrs. Frank Manley (Anna Sophia Atkinson)                                        NA
+NameWebber, Miss. Susan                                                                     NA
+NameWhite, Mr. Percival Wayland                                                             NA
+NameWhite, Mr. Richard Frasar                                                               NA
+NameWick, Miss. Mary Natalie                                                                NA
+NameWidener, Mr. Harry Elkins                                                               NA
+NameYoung, Miss. Marie Grice                                                                NA
+Sexmale                                                                                     NA
+Age                                                                                         NA
+SibSp                                                                                       NA
+Parch                                                                                       NA
+Ticket110413                                                                                NA
+Ticket110465                                                                                NA
+Ticket110564                                                                                NA
+Ticket110813                                                                                NA
+Ticket111240                                                                                NA
+Ticket111320                                                                                NA
+Ticket111361                                                                                NA
+Ticket111369                                                                                NA
+Ticket112050                                                                                NA
+Ticket112053                                                                                NA
+Ticket112059                                                                                NA
+Ticket112277                                                                                NA
+Ticket113043                                                                                NA
+Ticket113050                                                                                NA
+Ticket113051                                                                                NA
+Ticket113055                                                                                NA
+Ticket113501                                                                                NA
+Ticket113503                                                                                NA
+Ticket113505                                                                                NA
+Ticket113509                                                                                NA
+Ticket113514                                                                                NA
+Ticket113760                                                                                NA
+Ticket113773                                                                                NA
+Ticket113776                                                                                NA
+Ticket113781                                                                                NA
+Ticket113783                                                                                NA
+Ticket113784                                                                                NA
+Ticket113786                                                                                NA
+Ticket113787                                                                                NA
+Ticket113788                                                                                NA
+Ticket113803                                                                                NA
+Ticket113806                                                                                NA
+Ticket11751                                                                                 NA
+Ticket11752                                                                                 NA
+Ticket11753                                                                                 NA
+Ticket11755                                                                                 NA
+Ticket11765                                                                                 NA
+Ticket11767                                                                                 NA
+Ticket11769                                                                                 NA
+Ticket11771                                                                                 NA
+Ticket11813                                                                                 NA
+Ticket11967                                                                                 NA
+Ticket12749                                                                                 NA
+Ticket13049                                                                                 NA
+Ticket13213                                                                                 NA
+Ticket13214                                                                                 NA
+Ticket13502                                                                                 NA
+Ticket13507                                                                                 NA
+Ticket13509                                                                                 NA
+Ticket13567                                                                                 NA
+Ticket13568                                                                                 NA
+Ticket16966                                                                                 NA
+Ticket17421                                                                                 NA
+Ticket17453                                                                                 NA
+Ticket17463                                                                                 NA
+Ticket17465                                                                                 NA
+Ticket17466                                                                                 NA
+Ticket17474                                                                                 NA
+Ticket17764                                                                                 NA
+Ticket19877                                                                                 NA
+Ticket19928                                                                                 NA
+Ticket19943                                                                                 NA
+Ticket19950                                                                                 NA
+Ticket19952                                                                                 NA
+Ticket19996                                                                                 NA
+Ticket230080                                                                                NA
+Ticket230136                                                                                NA
+Ticket24160                                                                                 NA
+Ticket248698                                                                                NA
+Ticket248733                                                                                NA
+Ticket27042                                                                                 NA
+Ticket27267                                                                                 NA
+Ticket28551                                                                                 NA
+Ticket33638                                                                                 NA
+Ticket34218                                                                                 NA
+Ticket347054                                                                                NA
+Ticket348121                                                                                NA
+Ticket348123                                                                                NA
+Ticket348124                                                                                NA
+Ticket35273                                                                                 NA
+Ticket35281                                                                                 NA
+Ticket36928                                                                                 NA
+Ticket36947                                                                                 NA
+Ticket36963                                                                                 NA
+Ticket36967                                                                                 NA
+Ticket36973                                                                                 NA
+Ticket392096                                                                                NA
+Ticket5727                                                                                  NA
+Ticket695                                                                                   NA
+TicketC.A. 29395                                                                            NA
+TicketC.A. 34260                                                                            NA
+TicketF.C. 12750                                                                            NA
+TicketPC 17473                                                                              NA
+TicketPC 17474                                                                              NA
+TicketPC 17475                                                                              NA
+TicketPC 17476                                                                              NA
+TicketPC 17477                                                                              NA
+TicketPC 17482                                                                              NA
+TicketPC 17485                                                                              NA
+TicketPC 17558                                                                              NA
+TicketPC 17569                                                                              NA
+TicketPC 17572                                                                              NA
+TicketPC 17582                                                                              NA
+TicketPC 17590                                                                              NA
+TicketPC 17592                                                                              NA
+TicketPC 17593                                                                              NA
+TicketPC 17595                                                                              NA
+TicketPC 17596                                                                              NA
+TicketPC 17599                                                                              NA
+TicketPC 17608                                                                              NA
+TicketPC 17610                                                                              NA
+TicketPC 17754                                                                              NA
+TicketPC 17755                                                                              NA
+TicketPC 17756                                                                              NA
+TicketPC 17757                                                                              NA
+TicketPC 17758                                                                              NA
+TicketPC 17759                                                                              NA
+TicketPC 17760                                                                              NA
+TicketPC 17761                                                                              NA
+TicketPP 9549                                                                               NA
+TicketS.O./P.P. 3                                                                           NA
+TicketSC/AH Basle 541                                                                       NA
+TicketSC/Paris 2163                                                                         NA
+TicketSOTON/O.Q. 392078                                                                     NA
+TicketW.E.P. 5734                                                                           NA
+TicketWE/P 5735                                                                             NA
+Fare                                                                                        NA
+CabinA16                                                                                    NA
+CabinA20                                                                                    NA
+CabinA23                                                                                    NA
+CabinA24                                                                                    NA
+CabinA26                                                                                    NA
+CabinA31                                                                                    NA
+CabinA34                                                                                    NA
+CabinA36                                                                                    NA
+CabinA5                                                                                     NA
+CabinA6                                                                                     NA
+CabinA7                                                                                     NA
+CabinB101                                                                                   NA
+CabinB18                                                                                    NA
+CabinB19                                                                                    NA
+CabinB20                                                                                    NA
+CabinB22                                                                                    NA
+CabinB3                                                                                     NA
+CabinB30                                                                                    NA
+CabinB35                                                                                    NA
+CabinB37                                                                                    NA
+CabinB38                                                                                    NA
+CabinB39                                                                                    NA
+CabinB4                                                                                     NA
+CabinB41                                                                                    NA
+CabinB42                                                                                    NA
+CabinB49                                                                                    NA
+CabinB5                                                                                     NA
+CabinB50                                                                                    NA
+CabinB51 B53 B55                                                                            NA
+CabinB57 B59 B63 B66                                                                        NA
+CabinB58 B60                                                                                NA
+CabinB69                                                                                    NA
+CabinB71                                                                                    NA
+CabinB73                                                                                    NA
+CabinB77                                                                                    NA
+CabinB79                                                                                    NA
+CabinB80                                                                                    NA
+CabinB82 B84                                                                                NA
+CabinB86                                                                                    NA
+CabinB94                                                                                    NA
+CabinB96 B98                                                                                NA
+CabinC101                                                                                   NA
+CabinC103                                                                                   NA
+CabinC104                                                                                   NA
+CabinC110                                                                                   NA
+CabinC111                                                                                   NA
+CabinC118                                                                                   NA
+CabinC123                                                                                   NA
+CabinC124                                                                                   NA
+CabinC125                                                                                   NA
+CabinC126                                                                                   NA
+CabinC148                                                                                   NA
+CabinC2                                                                                     NA
+CabinC22 C26                                                                                NA
+CabinC23 C25 C27                                                                            NA
+CabinC30                                                                                    NA
+CabinC32                                                                                    NA
+CabinC45                                                                                    NA
+CabinC46                                                                                    NA
+CabinC49                                                                                    NA
+CabinC50                                                                                    NA
+CabinC52                                                                                    NA
+CabinC54                                                                                    NA
+CabinC62 C64                                                                                NA
+CabinC65                                                                                    NA
+CabinC68                                                                                    NA
+CabinC7                                                                                     NA
+CabinC70                                                                                    NA
+CabinC78                                                                                    NA
+CabinC82                                                                                    NA
+CabinC83                                                                                    NA
+CabinC85                                                                                    NA
+CabinC86                                                                                    NA
+CabinC87                                                                                    NA
+CabinC90                                                                                    NA
+CabinC91                                                                                    NA
+CabinC92                                                                                    NA
+CabinC93                                                                                    NA
+CabinC99                                                                                    NA
+CabinD                                                                                      NA
+CabinD10 D12                                                                                NA
+CabinD11                                                                                    NA
+CabinD15                                                                                    NA
+CabinD17                                                                                    NA
+CabinD19                                                                                    NA
+CabinD20                                                                                    NA
+CabinD26                                                                                    NA
+CabinD28                                                                                    NA
+CabinD30                                                                                    NA
+CabinD33                                                                                    NA
+CabinD35                                                                                    NA
+CabinD36                                                                                    NA
+CabinD37                                                                                    NA
+CabinD46                                                                                    NA
+CabinD47                                                                                    NA
+CabinD48                                                                                    NA
+CabinD49                                                                                    NA
+CabinD50                                                                                    NA
+CabinD56                                                                                    NA
+CabinD6                                                                                     NA
+CabinD7                                                                                     NA
+CabinD9                                                                                     NA
+CabinE10                                                                                    NA
+CabinE101                                                                                   NA
+CabinE12                                                                                    NA
+CabinE121                                                                                   NA
+CabinE17                                                                                    NA
+CabinE24                                                                                    NA
+CabinE25                                                                                    NA
+CabinE31                                                                                    NA
+CabinE33                                                                                    NA
+CabinE34                                                                                    NA
+CabinE36                                                                                    NA
+CabinE38                                                                                    NA
+CabinE40                                                                                    NA
+CabinE44                                                                                    NA
+CabinE46                                                                                    NA
+CabinE49                                                                                    NA
+CabinE50                                                                                    NA
+CabinE58                                                                                    NA
+CabinE63                                                                                    NA
+CabinE67                                                                                    NA
+CabinE68                                                                                    NA
+CabinE77                                                                                    NA
+CabinE8                                                                                     NA
+CabinF G63                                                                                  NA
+CabinF G73                                                                                  NA
+CabinF2                                                                                     NA
+CabinF33                                                                                    NA
+CabinF4                                                                                     NA
+CabinG6                                                                                     NA
+CabinT                                                                                      NA
+EmbarkedQ                                                                                   NA
+EmbarkedS                                                                                   NA
+                                                                                       Pr(>|t|)
+(Intercept)                                                                                  NA
+PassengerId                                                                                  NA
+Pclass                                                                                       NA
+NameAllison, Master. Hudson Trevor                                                           NA
+NameAllison, Miss. Helen Loraine                                                             NA
+NameAllison, Mrs. Hudson J C (Bessie Waldo Daniels)                                          NA
+NameAnderson, Mr. Harry                                                                      NA
+NameAndrews, Miss. Kornelia Theodosia                                                        NA
+NameAndrews, Mr. Thomas Jr                                                                   NA
+NameAppleton, Mrs. Edward Dale (Charlotte Lamson)                                            NA
+NameAstor, Mrs. John Jacob (Madeleine Talmadge Force)                                        NA
+NameAubart, Mme. Leontine Pauline                                                            NA
+NameBall, Mrs. (Ada E Hall)                                                                  NA
+NameBarkworth, Mr. Algernon Henry Wilson                                                     NA
+NameBaxter, Mr. Quigg Edmond                                                                 NA
+NameBaxter, Mrs. James (Helene DeLaudeniere Chaput)                                          NA
+NameBazzani, Miss. Albina                                                                    NA
+NameBecker, Master. Richard F                                                                NA
+NameBecker, Miss. Marion Louise                                                              NA
+NameBeckwith, Mr. Richard Leonard                                                            NA
+NameBeckwith, Mrs. Richard Leonard (Sallie Monypeny)                                         NA
+NameBeesley, Mr. Lawrence                                                                    NA
+NameBehr, Mr. Karl Howell                                                                    NA
+NameBishop, Mr. Dickinson H                                                                  NA
+NameBishop, Mrs. Dickinson H (Helen Walton)                                                  NA
+NameBissette, Miss. Amelia                                                                   NA
+NameBjornstrom-Steffansson, Mr. Mauritz Hakan                                                NA
+NameBlackwell, Mr. Stephen Weart                                                             NA
+NameBlank, Mr. Henry                                                                         NA
+NameBonnell, Miss. Elizabeth                                                                 NA
+NameBowerman, Miss. Elsie Edith                                                              NA
+NameBrown, Miss. Amelia "Mildred"                                                            NA
+NameBrown, Mrs. James Joseph (Margaret Tobin)                                                NA
+NameBurns, Miss. Elizabeth Margaret                                                          NA
+NameButt, Major. Archibald Willingham                                                        NA
+NameCalderhead, Mr. Edward Pennington                                                        NA
+NameCardeza, Mr. Thomas Drake Martinez                                                       NA
+NameCarlsson, Mr. Frans Olof                                                                 NA
+NameCarter, Master. William Thornton II                                                      NA
+NameCarter, Miss. Lucile Polk                                                                NA
+NameCarter, Mr. William Ernest                                                               NA
+NameCarter, Mrs. William Ernest (Lucile Polk)                                                NA
+NameCavendish, Mr. Tyrell William                                                            NA
+NameChaffee, Mr. Herbert Fuller                                                              NA
+NameChambers, Mr. Norman Campbell                                                            NA
+NameChambers, Mrs. Norman Campbell (Bertha Griggs)                                           NA
+NameCherry, Miss. Gladys                                                                     NA
+NameColley, Mr. Edward Pomeroy                                                               NA
+NameCompton, Miss. Sara Rebecca                                                              NA
+NameCrosby, Capt. Edward Gifford                                                             NA
+NameCrosby, Miss. Harriet R                                                                  NA
+NameCumings, Mrs. John Bradley (Florence Briggs Thayer)                                      NA
+NameDaly, Mr. Peter Denis                                                                    NA
+NameDavidson, Mr. Thornton                                                                   NA
+NameDick, Mr. Albert Adrian                                                                  NA
+NameDick, Mrs. Albert Adrian (Vera Gillespie)                                                NA
+NameDodge, Master. Washington                                                                NA
+NameDouglas, Mr. Walter Donald                                                               NA
+NameDuff Gordon, Lady. (Lucille Christiana Sutherland) ("Mrs Morgan")                        NA
+NameDuff Gordon, Sir. Cosmo Edmund ("Mr Morgan")                                             NA
+NameEndres, Miss. Caroline Louise                                                            NA
+NameEustis, Miss. Elizabeth Mussey                                                           NA
+NameFlynn, Mr. John Irwin ("Irving")                                                         NA
+NameForeman, Mr. Benjamin Laventall                                                          NA
+NameFortune, Miss. Alice Elizabeth                                                           NA
+NameFortune, Miss. Mabel Helen                                                               NA
+NameFortune, Mr. Charles Alexander                                                           NA
+NameFortune, Mr. Mark                                                                        NA
+NameFrancatelli, Miss. Laura Mabel                                                           NA
+NameFrolicher-Stehli, Mr. Maxmillian                                                         NA
+NameFrolicher, Miss. Hedwig Margaritha                                                       NA
+NameFutrelle, Mr. Jacques Heath                                                              NA
+NameFutrelle, Mrs. Jacques Heath (Lily May Peel)                                             NA
+NameGee, Mr. Arthur H                                                                        NA
+NameGiglio, Mr. Victor                                                                       NA
+NameGoldenberg, Mr. Samuel L                                                                 NA
+NameGoldschmidt, Mr. George B                                                                NA
+NameGraham, Miss. Margaret Edith                                                             NA
+NameGraham, Mr. George Edward                                                                NA
+NameGraham, Mrs. William Thompson (Edith Junkins)                                            NA
+NameGreenfield, Mr. William Bertram                                                          NA
+NameGuggenheim, Mr. Benjamin                                                                 NA
+NameHarder, Mr. George Achilles                                                              NA
+NameHarper, Mr. Henry Sleeper                                                                NA
+NameHarper, Mrs. Henry Sleeper (Myna Haxtun)                                                 NA
+NameHarris, Mr. Henry Birkhardt                                                              NA
+NameHarris, Mrs. Henry Birkhardt (Irene Wallach)                                             NA
+NameHarrison, Mr. William                                                                    NA
+NameHassab, Mr. Hammad                                                                       NA
+NameHays, Miss. Margaret Bechstein                                                           NA
+NameHays, Mrs. Charles Melville (Clara Jennings Gregg)                                       NA
+NameHippach, Miss. Jean Gertrude                                                             NA
+NameHippach, Mrs. Louis Albert (Ida Sophia Fischer)                                          NA
+NameHogeboom, Mrs. John C (Anna Andrews)                                                     NA
+NameHoyt, Mr. Frederick Maxfield                                                             NA
+NameHoyt, Mrs. Frederick Maxfield (Jane Anne Forby)                                          NA
+NameHumblen, Mr. Adolf Mathias Nicolai Olsen                                                 NA
+NameIsham, Miss. Ann Elizabeth                                                               NA
+NameJerwan, Mrs. Amin S (Marie Marthe Thuillard)                                             NA
+NameKent, Mr. Edward Austin                                                                  NA
+NameKimball, Mr. Edwin Nelson Jr                                                             NA
+NameLeader, Dr. Alice (Farnham)                                                              NA
+NameLemore, Mrs. (Amelia Milley)                                                             NA
+NameLesurer, Mr. Gustave J                                                                   NA
+NameLevy, Mr. Rene Jacques                                                                   NA
+NameLines, Miss. Mary Conover                                                                NA
+NameLong, Mr. Milton Clyde                                                                   NA
+NameLongley, Miss. Gretchen Fiske                                                            NA
+NameLurette, Miss. Elise                                                                     NA
+NameMack, Mrs. (Mary)                                                                        NA
+NameMadill, Miss. Georgette Alexandra                                                        NA
+NameMaioni, Miss. Roberta                                                                    NA
+NameMarvin, Mr. Daniel Warner                                                                NA
+NameMayne, Mlle. Berthe Antonine ("Mrs de Villiers")                                         NA
+NameMcCarthy, Mr. Timothy J                                                                  NA
+NameMcGough, Mr. James Robert                                                                NA
+NameMillet, Mr. Francis Davis                                                                NA
+NameMinahan, Dr. William Edward                                                              NA
+NameMinahan, Miss. Daisy E                                                                   NA
+NameMoen, Mr. Sigurd Hansen                                                                  NA
+NameMolson, Mr. Harry Markland                                                               NA
+NameMoor, Master. Meier                                                                      NA
+NameMoor, Mrs. (Beila)                                                                       NA
+NameNatsch, Mr. Charles H                                                                    NA
+NameNavratil, Master. Edmond Roger                                                           NA
+NameNavratil, Master. Michel M                                                               NA
+NameNavratil, Mr. Michel ("Louis M Hoffman")                                                 NA
+NameNewell, Miss. Madeleine                                                                  NA
+NameNewell, Miss. Marjorie                                                                   NA
+NameNewell, Mr. Arthur Webster                                                               NA
+NameNewsom, Miss. Helen Monypeny                                                             NA
+NameNye, Mrs. (Elizabeth Ramell)                                                             NA
+NameOstby, Mr. Engelhart Cornelius                                                           NA
+NamePartner, Mr. Austen                                                                      NA
+NamePears, Mr. Thomas Clinton                                                                NA
+NamePears, Mrs. Thomas (Edith Wearne)                                                        NA
+NamePenasco y Castellana, Mr. Victor de Satode                                               NA
+NamePenasco y Castellana, Mrs. Victor de Satode (Maria Josefa Perez de Soto y Vallejo)       NA
+NamePerreault, Miss. Anne                                                                    NA
+NamePeuchen, Major. Arthur Godfrey                                                           NA
+NamePickard, Mr. Berk (Berk Trembisky)                                                       NA
+NamePorter, Mr. Walter Chamberlain                                                           NA
+NamePotter, Mrs. Thomas Jr (Lily Alexenia Wilson)                                            NA
+NameRobert, Mrs. Edward Scott (Elisabeth Walton McMillan)                                    NA
+NameRoebling, Mr. Washington Augustus II                                                     NA
+NameRoss, Mr. John Hugo                                                                      NA
+NameRothes, the Countess. of (Lucy Noel Martha Dyer-Edwards)                                 NA
+NameRyerson, Miss. Emily Borie                                                               NA
+NameRyerson, Miss. Susan Parker "Suzette"                                                    NA
+NameSagesser, Mlle. Emma                                                                     NA
+NameSandstrom, Miss. Marguerite Rut                                                          NA
+NameSandstrom, Mrs. Hjalmar (Agnes Charlotta Bengtsson)                                      NA
+NameShutes, Miss. Elizabeth W                                                                NA
+NameSilverthorne, Mr. Spencer Victor                                                         NA
+NameSilvey, Mr. William Baird                                                                NA
+NameSilvey, Mrs. William Baird (Alice Munger)                                                NA
+NameSimonius-Blumer, Col. Oberst Alfons                                                      NA
+NameSloper, Mr. William Thompson                                                             NA
+NameSmith, Mr. James Clinch                                                                  NA
+NameSoholt, Mr. Peter Andreas Lauritz Andersen                                               NA
+NameSpedden, Mrs. Frederic Oakley (Margaretta Corning Stone)                                 NA
+NameStahelin-Maeglin, Dr. Max                                                                NA
+NameStead, Mr. William Thomas                                                                NA
+NameStephenson, Mrs. Walter Bertram (Martha Eustis)                                          NA
+NameStrom, Miss. Telma Matilda                                                               NA
+NameStrom, Mrs. Wilhelm (Elna Matilda Persson)                                               NA
+NameSutton, Mr. Frederick                                                                    NA
+NameSwift, Mrs. Frederick Joel (Margaret Welles Barron)                                      NA
+NameTaussig, Miss. Ruth                                                                      NA
+NameTaussig, Mr. Emil                                                                        NA
+NameTaussig, Mrs. Emil (Tillie Mandelbaum)                                                   NA
+NameTaylor, Mr. Elmer Zebley                                                                 NA
+NameThayer, Mr. John Borland                                                                 NA
+NameThayer, Mr. John Borland Jr                                                              NA
+NameThayer, Mrs. John Borland (Marian Longstreth Morris)                                     NA
+NameTroutt, Miss. Edwina Celia "Winnie"                                                      NA
+NameVan der hoef, Mr. Wyckoff                                                                NA
+NameWalker, Mr. William Anderson                                                             NA
+NameWarren, Mrs. Frank Manley (Anna Sophia Atkinson)                                         NA
+NameWebber, Miss. Susan                                                                      NA
+NameWhite, Mr. Percival Wayland                                                              NA
+NameWhite, Mr. Richard Frasar                                                                NA
+NameWick, Miss. Mary Natalie                                                                 NA
+NameWidener, Mr. Harry Elkins                                                                NA
+NameYoung, Miss. Marie Grice                                                                 NA
+Sexmale                                                                                      NA
+Age                                                                                          NA
+SibSp                                                                                        NA
+Parch                                                                                        NA
+Ticket110413                                                                                 NA
+Ticket110465                                                                                 NA
+Ticket110564                                                                                 NA
+Ticket110813                                                                                 NA
+Ticket111240                                                                                 NA
+Ticket111320                                                                                 NA
+Ticket111361                                                                                 NA
+Ticket111369                                                                                 NA
+Ticket112050                                                                                 NA
+Ticket112053                                                                                 NA
+Ticket112059                                                                                 NA
+Ticket112277                                                                                 NA
+Ticket113043                                                                                 NA
+Ticket113050                                                                                 NA
+Ticket113051                                                                                 NA
+Ticket113055                                                                                 NA
+Ticket113501                                                                                 NA
+Ticket113503                                                                                 NA
+Ticket113505                                                                                 NA
+Ticket113509                                                                                 NA
+Ticket113514                                                                                 NA
+Ticket113760                                                                                 NA
+Ticket113773                                                                                 NA
+Ticket113776                                                                                 NA
+Ticket113781                                                                                 NA
+Ticket113783                                                                                 NA
+Ticket113784                                                                                 NA
+Ticket113786                                                                                 NA
+Ticket113787                                                                                 NA
+Ticket113788                                                                                 NA
+Ticket113803                                                                                 NA
+Ticket113806                                                                                 NA
+Ticket11751                                                                                  NA
+Ticket11752                                                                                  NA
+Ticket11753                                                                                  NA
+Ticket11755                                                                                  NA
+Ticket11765                                                                                  NA
+Ticket11767                                                                                  NA
+Ticket11769                                                                                  NA
+Ticket11771                                                                                  NA
+Ticket11813                                                                                  NA
+Ticket11967                                                                                  NA
+Ticket12749                                                                                  NA
+Ticket13049                                                                                  NA
+Ticket13213                                                                                  NA
+Ticket13214                                                                                  NA
+Ticket13502                                                                                  NA
+Ticket13507                                                                                  NA
+Ticket13509                                                                                  NA
+Ticket13567                                                                                  NA
+Ticket13568                                                                                  NA
+Ticket16966                                                                                  NA
+Ticket17421                                                                                  NA
+Ticket17453                                                                                  NA
+Ticket17463                                                                                  NA
+Ticket17465                                                                                  NA
+Ticket17466                                                                                  NA
+Ticket17474                                                                                  NA
+Ticket17764                                                                                  NA
+Ticket19877                                                                                  NA
+Ticket19928                                                                                  NA
+Ticket19943                                                                                  NA
+Ticket19950                                                                                  NA
+Ticket19952                                                                                  NA
+Ticket19996                                                                                  NA
+Ticket230080                                                                                 NA
+Ticket230136                                                                                 NA
+Ticket24160                                                                                  NA
+Ticket248698                                                                                 NA
+Ticket248733                                                                                 NA
+Ticket27042                                                                                  NA
+Ticket27267                                                                                  NA
+Ticket28551                                                                                  NA
+Ticket33638                                                                                  NA
+Ticket34218                                                                                  NA
+Ticket347054                                                                                 NA
+Ticket348121                                                                                 NA
+Ticket348123                                                                                 NA
+Ticket348124                                                                                 NA
+Ticket35273                                                                                  NA
+Ticket35281                                                                                  NA
+Ticket36928                                                                                  NA
+Ticket36947                                                                                  NA
+Ticket36963                                                                                  NA
+Ticket36967                                                                                  NA
+Ticket36973                                                                                  NA
+Ticket392096                                                                                 NA
+Ticket5727                                                                                   NA
+Ticket695                                                                                    NA
+TicketC.A. 29395                                                                             NA
+TicketC.A. 34260                                                                             NA
+TicketF.C. 12750                                                                             NA
+TicketPC 17473                                                                               NA
+TicketPC 17474                                                                               NA
+TicketPC 17475                                                                               NA
+TicketPC 17476                                                                               NA
+TicketPC 17477                                                                               NA
+TicketPC 17482                                                                               NA
+TicketPC 17485                                                                               NA
+TicketPC 17558                                                                               NA
+TicketPC 17569                                                                               NA
+TicketPC 17572                                                                               NA
+TicketPC 17582                                                                               NA
+TicketPC 17590                                                                               NA
+TicketPC 17592                                                                               NA
+TicketPC 17593                                                                               NA
+TicketPC 17595                                                                               NA
+TicketPC 17596                                                                               NA
+TicketPC 17599                                                                               NA
+TicketPC 17608                                                                               NA
+TicketPC 17610                                                                               NA
+TicketPC 17754                                                                               NA
+TicketPC 17755                                                                               NA
+TicketPC 17756                                                                               NA
+TicketPC 17757                                                                               NA
+TicketPC 17758                                                                               NA
+TicketPC 17759                                                                               NA
+TicketPC 17760                                                                               NA
+TicketPC 17761                                                                               NA
+TicketPP 9549                                                                                NA
+TicketS.O./P.P. 3                                                                            NA
+TicketSC/AH Basle 541                                                                        NA
+TicketSC/Paris 2163                                                                          NA
+TicketSOTON/O.Q. 392078                                                                      NA
+TicketW.E.P. 5734                                                                            NA
+TicketWE/P 5735                                                                              NA
+Fare                                                                                         NA
+CabinA16                                                                                     NA
+CabinA20                                                                                     NA
+CabinA23                                                                                     NA
+CabinA24                                                                                     NA
+CabinA26                                                                                     NA
+CabinA31                                                                                     NA
+CabinA34                                                                                     NA
+CabinA36                                                                                     NA
+CabinA5                                                                                      NA
+CabinA6                                                                                      NA
+CabinA7                                                                                      NA
+CabinB101                                                                                    NA
+CabinB18                                                                                     NA
+CabinB19                                                                                     NA
+CabinB20                                                                                     NA
+CabinB22                                                                                     NA
+CabinB3                                                                                      NA
+CabinB30                                                                                     NA
+CabinB35                                                                                     NA
+CabinB37                                                                                     NA
+CabinB38                                                                                     NA
+CabinB39                                                                                     NA
+CabinB4                                                                                      NA
+CabinB41                                                                                     NA
+CabinB42                                                                                     NA
+CabinB49                                                                                     NA
+CabinB5                                                                                      NA
+CabinB50                                                                                     NA
+CabinB51 B53 B55                                                                             NA
+CabinB57 B59 B63 B66                                                                         NA
+CabinB58 B60                                                                                 NA
+CabinB69                                                                                     NA
+CabinB71                                                                                     NA
+CabinB73                                                                                     NA
+CabinB77                                                                                     NA
+CabinB79                                                                                     NA
+CabinB80                                                                                     NA
+CabinB82 B84                                                                                 NA
+CabinB86                                                                                     NA
+CabinB94                                                                                     NA
+CabinB96 B98                                                                                 NA
+CabinC101                                                                                    NA
+CabinC103                                                                                    NA
+CabinC104                                                                                    NA
+CabinC110                                                                                    NA
+CabinC111                                                                                    NA
+CabinC118                                                                                    NA
+CabinC123                                                                                    NA
+CabinC124                                                                                    NA
+CabinC125                                                                                    NA
+CabinC126                                                                                    NA
+CabinC148                                                                                    NA
+CabinC2                                                                                      NA
+CabinC22 C26                                                                                 NA
+CabinC23 C25 C27                                                                             NA
+CabinC30                                                                                     NA
+CabinC32                                                                                     NA
+CabinC45                                                                                     NA
+CabinC46                                                                                     NA
+CabinC49                                                                                     NA
+CabinC50                                                                                     NA
+CabinC52                                                                                     NA
+CabinC54                                                                                     NA
+CabinC62 C64                                                                                 NA
+CabinC65                                                                                     NA
+CabinC68                                                                                     NA
+CabinC7                                                                                      NA
+CabinC70                                                                                     NA
+CabinC78                                                                                     NA
+CabinC82                                                                                     NA
+CabinC83                                                                                     NA
+CabinC85                                                                                     NA
+CabinC86                                                                                     NA
+CabinC87                                                                                     NA
+CabinC90                                                                                     NA
+CabinC91                                                                                     NA
+CabinC92                                                                                     NA
+CabinC93                                                                                     NA
+CabinC99                                                                                     NA
+CabinD                                                                                       NA
+CabinD10 D12                                                                                 NA
+CabinD11                                                                                     NA
+CabinD15                                                                                     NA
+CabinD17                                                                                     NA
+CabinD19                                                                                     NA
+CabinD20                                                                                     NA
+CabinD26                                                                                     NA
+CabinD28                                                                                     NA
+CabinD30                                                                                     NA
+CabinD33                                                                                     NA
+CabinD35                                                                                     NA
+CabinD36                                                                                     NA
+CabinD37                                                                                     NA
+CabinD46                                                                                     NA
+CabinD47                                                                                     NA
+CabinD48                                                                                     NA
+CabinD49                                                                                     NA
+CabinD50                                                                                     NA
+CabinD56                                                                                     NA
+CabinD6                                                                                      NA
+CabinD7                                                                                      NA
+CabinD9                                                                                      NA
+CabinE10                                                                                     NA
+CabinE101                                                                                    NA
+CabinE12                                                                                     NA
+CabinE121                                                                                    NA
+CabinE17                                                                                     NA
+CabinE24                                                                                     NA
+CabinE25                                                                                     NA
+CabinE31                                                                                     NA
+CabinE33                                                                                     NA
+CabinE34                                                                                     NA
+CabinE36                                                                                     NA
+CabinE38                                                                                     NA
+CabinE40                                                                                     NA
+CabinE44                                                                                     NA
+CabinE46                                                                                     NA
+CabinE49                                                                                     NA
+CabinE50                                                                                     NA
+CabinE58                                                                                     NA
+CabinE63                                                                                     NA
+CabinE67                                                                                     NA
+CabinE68                                                                                     NA
+CabinE77                                                                                     NA
+CabinE8                                                                                      NA
+CabinF G63                                                                                   NA
+CabinF G73                                                                                   NA
+CabinF2                                                                                      NA
+CabinF33                                                                                     NA
+CabinF4                                                                                      NA
+CabinG6                                                                                      NA
+CabinT                                                                                       NA
+EmbarkedQ                                                                                    NA
+EmbarkedS                                                                                    NA
+
+(Dispersion parameter for gaussian family taken to be NaN)
+
+    Null deviance: 4.0328e+01  on 182  degrees of freedom
+Residual deviance: 1.4525e-28  on   0  degrees of freedom
+  (708 observations deleted due to missingness)
+AIC: -11796
+
+Number of Fisher Scoring iterations: 1
+
+> 
+> proc.time()
+   user  system elapsed 
+  0.589   0.077   0.663 

@@ -1,0 +1,252 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE)
+> 
+> 
+> ## ----Libraries and Data, result = "hide", message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ##making sure all packages are already installed
+> if( !("dplyr" %in% installed.packages()) ) {
++     install.packages("dplyr")
++ }
+> if( !("ggplot2" %in% installed.packages()) ) {
++     install.packages("ggplot2")
++ }
+> if( !("tidyr" %in% installed.packages()) ) {
++     install.packages("tidyr")
++ }
+> if( !("missForest" %in% installed.packages()) ) {
++     install.packages("missForest")
++ }
+> if( !("corrplot" %in% installed.packages()) ) {
++     install.packages("corrplot")
++ }
+> 
+> ##loading neccessary installed packages
+> library(tidyr)
+Warning message:
+package ‘tidyr’ was built under R version 3.6.2 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(missForest)
+Loading required package: randomForest
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+Loading required package: foreach
+Loading required package: itertools
+Loading required package: iterators
+Warning message:
+package ‘foreach’ was built under R version 3.6.2 
+> library(corrplot)
+corrplot 0.84 loaded
+> 
+> 
+> ##downloading Kaggle datasets in the programm are giving me authintication errors.
+> ##These files were manually downloaded
+> train <- read.csv("../input/train.csv", stringsAsFactors = FALSE)
+> test <- read.csv("../input/test.csv", stringsAsFactors = FALSE)
+> 
+> 
+> ## ---- First Look-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> str(test)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : chr  "Kelly, Mr. James" "Wilkes, Mrs. James (Ellen Needs)" "Myles, Mr. Thomas Francis" "Wirz, Mr. Albert" ...
+ $ Sex        : chr  "male" "female" "male" "male" ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : chr  "330911" "363272" "240276" "315154" ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : chr  "" "" "" "" ...
+ $ Embarked   : chr  "Q" "S" "Q" "S" ...
+> 
+> 
+> ## ---- Impute Data, message = FALSE, result = "hide"------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ## must remove the character variables with more than 53 unique values to avoid error.
+> charColRemove <- c("Name", "Ticket", "Cabin")
+> trainImputed <- train %>% select(-one_of(charColRemove))
+> testImputed <- test %>% select(-one_of(charColRemove))
+> 
+> ##the rest of the character variables (less than 53 unique values) are converted to factors.
+> trainImputed <- trainImputed %>% mutate_if(is.character, as.factor)
+> testImputed <- testImputed %>% mutate_if(is.character, as.factor)
+> 
+> ##run missForest function to impute remaining data.
+> trainImputed <- missForest(trainImputed)
+  missForest iteration 1 in progress...done!
+  missForest iteration 2 in progress...done!
+  missForest iteration 3 in progress...done!
+  missForest iteration 4 in progress...done!
+  missForest iteration 5 in progress...done!
+  missForest iteration 6 in progress...done!
+> testImputed <- missForest(testImputed)
+  missForest iteration 1 in progress...done!
+  missForest iteration 2 in progress...done!
+  missForest iteration 3 in progress...done!
+> 
+> 
+> ##Here I should put the original data frame, including char vars, back together!
+> newTrain <- trainImputed$ximp %>% mutate(PassengerId = train$PassengerId, Name = train$Name, Ticket = train$Ticket, Cabin = train$Cabin)
+> 
+> 
+> ## ----Exp Analysis Plot 1---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> qplot(Age, as.numeric(Survived), data = trainImputed$ximp, facets = . ~ Sex, geom = c("point", "smooth"))
+`geom_smooth()` using method = 'loess' and formula 'y ~ x'
+> 
+> 
+> 
+> ## ----Exp Analysis Plot 2---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> qplot(Age, ..count.., data = trainImputed$ximp, fill = factor(Survived), facets = . ~ Pclass, geom = c("histogram"))
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainCorr <- trainImputed$ximp %>% mutate_if(is.factor, as.integer)
+> corrplot(cor(trainCorr))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> final <- glm(formula = Survived ~ Pclass + Sex + Age + SibSp, family = "binomial", data = newTrain)
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(final)
+
+Call:
+glm(formula = Survived ~ Pclass + Sex + Age + SibSp, family = "binomial", 
+    data = newTrain)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.8173  -0.5977  -0.3894   0.6077   2.4920  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  5.771084   0.515964  11.185  < 2e-16 ***
+Pclass      -1.303968   0.128397 -10.156  < 2e-16 ***
+Sexmale     -2.698763   0.195612 -13.796  < 2e-16 ***
+Age         -0.049327   0.008076  -6.108 1.01e-09 ***
+SibSp       -0.419097   0.105769  -3.962 7.42e-05 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  777.95  on 886  degrees of freedom
+AIC: 787.95
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> t1 <- table(train$Sex, train$Survived)
+> t1
+        
+           0   1
+  female  81 233
+  male   468 109
+> 
+> 
+> 
+> ## ----First Model Accuracy--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ## 233 women survived which our model would predict correctly
+> ## 468 men died which our model would predict correctly
+> (t1[3] + t1[2])/nrow(train)
+[1] 0.7867565
+> 
+> ##sensitivity would start with 233 because only women could have been successfully predicted to survive.
+> t1[3]/(t1[3]+t1[1])
+[1] 0.7420382
+> 
+> ##specificity would start with 468 because only men could have been successfully predicted dead.
+> t1[2]/(t1[2]+t1[4])
+[1] 0.8110919
+> 
+> 
+> ## ----Log Model Accuracy----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> predTrain <- predict(final, type = "response")
+> t2 <- table(train$Survived, predTrain >= 0.5)
+> 
+> (t2[1] + t2[4])/nrow(train)
+[1] 0.8103255
+> 
+> t2[4] / (t2[2] + t2[4])
+[1] 0.7192982
+> 
+> t2[1] / (t2[3] + t2[1])
+[1] 0.867031
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  3.374   0.207   3.584 

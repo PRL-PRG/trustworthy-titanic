@@ -1,0 +1,76 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ----dependencies, message = FALSE, warning = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library('e1071')
+> library('ggplot2') 
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library('ggthemes') 
+> library('scales') 
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> library('dplyr') 
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library('mice') 
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library('randomForest') 
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library('corrplot')
+corrplot 0.84 loaded
+> library ('glmnet')
+Loading required package: Matrix
+Loaded glmnet 4.0-2
+Warning message:
+package ‘glmnet’ was built under R version 3.6.2 
+> library('tree')
+Error in library("tree") : there is no package called ‘tree’
+Execution halted

@@ -1,0 +1,399 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ----message=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Loading libraries
+> library(ggplot2) #charting
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(plyr) #data wrangling
+> library(dplyr) #data wrangling
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:plyr’:
+
+    arrange, count, desc, failwith, id, mutate, rename, summarise,
+    summarize
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(Hmisc) #data wrangling
+Loading required package: lattice
+Loading required package: survival
+Loading required package: Formula
+
+Attaching package: ‘Hmisc’
+
+The following objects are masked from ‘package:dplyr’:
+
+    src, summarize
+
+The following objects are masked from ‘package:plyr’:
+
+    is.discrete, summarize
+
+The following objects are masked from ‘package:base’:
+
+    format.pval, units
+
+Warning message:
+package ‘survival’ was built under R version 3.6.2 
+> library(mice) #imputing variables
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library(randomForest) #modelling
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library(caret) #modelling
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:survival’:
+
+    cluster
+
+> 
+> 
+> traindata <- read.csv('../input/train.csv', stringsAsFactors = F)
+> testdata <- read.csv('../input/test.csv', stringsAsFactors = F)
+> 
+> c(object.size(traindata),object.size(testdata)) ## data is small so performance shouldn't be an issue
+[1] 193176  93128
+> 
+> ## I want to combine training and test sets because this makes it easier to perform the same 
+> ## operations on both sets
+> 
+> testdata$Survived <- "NA"
+> merged <- rbind(traindata,testdata)
+> 
+> length(unique(merged$PassengerId)) == length(merged$PassengerId) ## check no duped entries
+[1] TRUE
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> head(merged)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> colSums(is.na(merged))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1           0           0 
+> colSums(merged=="")
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0          NA 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0          NA        1014           2 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> merged$Pclass <- as.factor(merged$Pclass)
+> merged$Sex <- as.factor(merged$Sex)
+> 
+> g <- ggplot(merged[1:891,], aes(x=Pclass,fill=factor(Survived))) + geom_bar() + labs(fill = "Survived")
+> g <- g + labs(title="Survivor split by ticket class")
+> g
+> 
+> g <- g + facet_wrap(~Sex) + labs(title="Survivor split by ticket class and gender")
+> g
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> qplot(merged$Age)
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+Warning message:
+Removed 263 rows containing non-finite values (stat_bin). 
+> 
+> agebrackets <- c(0,13,18,30,55)
+> merged$Agebracket <- findInterval(merged$Age,agebrackets)
+> 
+> agetable <- data.frame(Agebracket=c(1,2,3,4,5),Age_range=c("<13","13-17","18-29","30-54","55+"))
+> merged <- join(merged,agetable,by="Agebracket")
+> merged$Agebracket <- as.factor(merged$Agebracket)
+> 
+> g <- ggplot(merged[1:891,], aes(x=Age_range,fill=factor(Survived))) + geom_bar() + labs(fill = "Survived")
+> g <- g + labs(title="Survivor split by age group")
+> g
+> 
+> g <- g + facet_wrap(~Sex) + labs(title="Survivor split by age and gender")
+> g
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> head(merged$Cabin,30)
+ [1] ""            "C85"         ""            "C123"        ""           
+ [6] ""            "E46"         ""            ""            ""           
+[11] "G6"          "C103"        ""            ""            ""           
+[16] ""            ""            ""            ""            ""           
+[21] ""            "D56"         ""            "A6"          ""           
+[26] ""            ""            "C23 C25 C27" ""            ""           
+> length(unique(merged$Cabin))/length(merged$Cabin) ## only 14% are unique so there are a lot shared.
+[1] 0.1428571
+> merged$Cabin[28] # this looks strange, multiple cabins on one ticket
+[1] "C23 C25 C27"
+> subset(merged,Cabin == "C23 C25 C27") # it was one family, the Fortunes
+    PassengerId Survived Pclass                                Name    Sex Age
+28           28        0      1      Fortune, Mr. Charles Alexander   male  19
+89           89        1      1          Fortune, Miss. Mabel Helen female  23
+342         342        1      1      Fortune, Miss. Alice Elizabeth female  24
+439         439        0      1                   Fortune, Mr. Mark   male  64
+945         945       NA      1          Fortune, Miss. Ethel Flora female  28
+961         961       NA      1 Fortune, Mrs. Mark (Mary McDougald) female  60
+    SibSp Parch Ticket Fare       Cabin Embarked Agebracket Age_range
+28      3     2  19950  263 C23 C25 C27        S          3     18-29
+89      3     2  19950  263 C23 C25 C27        S          3     18-29
+342     3     2  19950  263 C23 C25 C27        S          3     18-29
+439     1     4  19950  263 C23 C25 C27        S          5       55+
+945     3     2  19950  263 C23 C25 C27        S          3     18-29
+961     1     4  19950  263 C23 C25 C27        S          5       55+
+> 
+> merged$HasCabin <- as.factor(!(merged$Cabin==""))
+> 
+> g <- ggplot(merged[1:891,], aes(x=HasCabin,fill=factor(Survived))) + geom_bar()
+> g <- g +facet_wrap(~Pclass) + labs(title="Survivor split by class and Cabin")
+> g
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> qplot(merged$Fare,bins=150)
+Warning message:
+Removed 1 rows containing non-finite values (stat_bin). 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> subset(merged,is.na(merged$Fare))
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked Agebracket Age_range HasCabin
+1044   3701   NA              S          5       55+    FALSE
+> merged[1044,]$Fare <- mean(subset(merged,Pclass==3)$Fare,na.rm=TRUE)
+> 
+> merged$Farebracket <- as.factor(cut2(merged$Fare,g=5))
+> 
+> g <- ggplot(merged[1:891,], aes(x=Farebracket,fill=factor(Survived))) + geom_bar()
+> g <- g +facet_wrap(~Pclass) + labs(title="Survivor split by class and Fare Bracket")
+> g <- g + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+> g 
+> 
+> subset(merged,Fare==0)
+     PassengerId Survived Pclass                                  Name  Sex Age
+180          180        0      3                   Leonard, Mr. Lionel male  36
+264          264        0      1                 Harrison, Mr. William male  40
+272          272        1      3          Tornquist, Mr. William Henry male  25
+278          278        0      2           Parkes, Mr. Francis "Frank" male  NA
+303          303        0      3       Johnson, Mr. William Cahoone Jr male  19
+414          414        0      2        Cunningham, Mr. Alfred Fleming male  NA
+467          467        0      2                 Campbell, Mr. William male  NA
+482          482        0      2      Frost, Mr. Anthony Wood "Archie" male  NA
+598          598        0      3                   Johnson, Mr. Alfred male  49
+634          634        0      1         Parr, Mr. William Henry Marsh male  NA
+675          675        0      2            Watson, Mr. Ennis Hastings male  NA
+733          733        0      2                  Knight, Mr. Robert J male  NA
+807          807        0      1                Andrews, Mr. Thomas Jr male  39
+816          816        0      1                      Fry, Mr. Richard male  NA
+823          823        0      1       Reuchlin, Jonkheer. John George male  38
+1158        1158       NA      1 Chisholm, Mr. Roderick Robert Crispin male  NA
+1264        1264       NA      1               Ismay, Mr. Joseph Bruce male  49
+     SibSp Parch Ticket Fare       Cabin Embarked Agebracket Age_range HasCabin
+180      0     0   LINE    0                    S          4     30-54    FALSE
+264      0     0 112059    0         B94        S          4     30-54     TRUE
+272      0     0   LINE    0                    S          3     18-29    FALSE
+278      0     0 239853    0                    S       <NA>      <NA>    FALSE
+303      0     0   LINE    0                    S          3     18-29    FALSE
+414      0     0 239853    0                    S       <NA>      <NA>    FALSE
+467      0     0 239853    0                    S       <NA>      <NA>    FALSE
+482      0     0 239854    0                    S       <NA>      <NA>    FALSE
+598      0     0   LINE    0                    S          4     30-54    FALSE
+634      0     0 112052    0                    S       <NA>      <NA>    FALSE
+675      0     0 239856    0                    S       <NA>      <NA>    FALSE
+733      0     0 239855    0                    S       <NA>      <NA>    FALSE
+807      0     0 112050    0         A36        S          4     30-54     TRUE
+816      0     0 112058    0        B102        S       <NA>      <NA>     TRUE
+823      0     0  19972    0                    S          4     30-54    FALSE
+1158     0     0 112051    0                    S       <NA>      <NA>    FALSE
+1264     0     0 112058    0 B52 B54 B56        S          4     30-54     TRUE
+        Farebracket
+180  [ 0.00,  7.88)
+264  [ 0.00,  7.88)
+272  [ 0.00,  7.88)
+278  [ 0.00,  7.88)
+303  [ 0.00,  7.88)
+414  [ 0.00,  7.88)
+467  [ 0.00,  7.88)
+482  [ 0.00,  7.88)
+598  [ 0.00,  7.88)
+634  [ 0.00,  7.88)
+675  [ 0.00,  7.88)
+733  [ 0.00,  7.88)
+807  [ 0.00,  7.88)
+816  [ 0.00,  7.88)
+823  [ 0.00,  7.88)
+1158 [ 0.00,  7.88)
+1264 [ 0.00,  7.88)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> head(order(merged$Fare,decreasing = TRUE))
+[1]  259  680  738 1235   28   89
+> merged[259,]
+    PassengerId Survived Pclass             Name    Sex Age SibSp Parch
+259         259        1      1 Ward, Miss. Anna female  35     0     0
+      Ticket     Fare Cabin Embarked Agebracket Age_range HasCabin
+259 PC 17755 512.3292              C          4     30-54    FALSE
+       Farebracket
+259 [42.40,512.33]
+> 
+> subset(merged,Fare==merged$Fare[259])
+     PassengerId Survived Pclass
+259          259        1      1
+680          680        1      1
+738          738        1      1
+1235        1235       NA      1
+                                                                Name    Sex Age
+259                                                 Ward, Miss. Anna female  35
+680                               Cardeza, Mr. Thomas Drake Martinez   male  36
+738                                           Lesurer, Mr. Gustave J   male  35
+1235 Cardeza, Mrs. James Warburton Martinez (Charlotte Wardle Drake) female  58
+     SibSp Parch   Ticket     Fare       Cabin Embarked Agebracket Age_range
+259      0     0 PC 17755 512.3292                    C          4     30-54
+680      0     1 PC 17755 512.3292 B51 B53 B55        C          4     30-54
+738      0     0 PC 17755 512.3292        B101        C          4     30-54
+1235     0     1 PC 17755 512.3292 B51 B53 B55        C          5       55+
+     HasCabin    Farebracket
+259     FALSE [42.40,512.33]
+680      TRUE [42.40,512.33]
+738      TRUE [42.40,512.33]
+1235     TRUE [42.40,512.33]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> grep("Dawson",merged$Name)
+integer(0)
+> merged[grep("Rose",merged$Name),]
+     PassengerId Survived Pclass                                        Name
+856          856        1      3                  Aks, Mrs. Sam (Leah Rosen)
+1100        1100       NA      1               Rosenbaum, Miss. Edith Louise
+1219        1219       NA      1 Rosenshine, Mr. George (Mr George Thorne")"
+        Sex Age SibSp Parch   Ticket    Fare Cabin Embarked Agebracket
+856  female  18     0     1   392091  9.3500              S          3
+1100 female  33     0     0 PC 17613 27.7208   A11        C          4
+1219   male  46     0     0 PC 17585 79.2000              C          4
+     Age_range HasCabin    Farebracket
+856      18-29    FALSE [ 7.88, 10.52)
+1100     30-54     TRUE [22.02, 42.40)
+1219     30-54    FALSE [42.40,512.33]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> merged$Title <- gsub('(.*, )|(\\..*)', '', merged$Name)
+> 
+> count(merged,Title)
+          Title   n
+1          Capt   1
+2           Col   4
+3           Don   1
+4          Dona   1
+5            Dr   8
+6      Jonkheer   1
+7          Lady   1
+8         Major   2
+9        Master  61
+10         Miss 260
+11         Mlle   2
+12          Mme   1
+13           Mr 757
+14          Mrs 197
+15           Ms   2
+16          Rev   8
+17          Sir   1
+18 the Countess   1
+> 
+> VIP <- c("Capt","Col","Don","Dona","Dr","Jonkheer","Lady","Major",
++          "Mlle", "Mme","Rev","Sir","the Countess")
+> 
+> merged$Title[merged$Title %in% VIP] <- "VIP"
+> merged$Title <- as.factor(merged$Title)
+> 
+> count(merged,Title)
+   Title   n
+1 Master  61
+2   Miss 260
+3     Mr 757
+4    Mrs 197
+5     Ms   2
+6    VIP  32
+> 
+> ## I'm not that keen on only having 2 in the "Ms" camp
+> merged[merged$Title=="Ms",]$Title <- "Mrs"
+> 
+> g <- ggplot(merged[1:891,], aes(x=Title,fill=factor(Survived))) + geom_bar()
+> g <- g +facet_wrap(~Pclass) + labs(title="Survivor split by class and Title")
+> g
+> 
+> 
+> ## ----message=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(wru) # who r u - library to guess race from surname
+Error in library(wru) : there is no package called ‘wru’
+Execution halted

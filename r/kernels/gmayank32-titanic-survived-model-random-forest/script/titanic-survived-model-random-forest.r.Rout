@@ -1,0 +1,320 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> titanic.train <- read.csv('../input/train.csv')
+> titanic.test <- read.csv('../input/test.csv')
+> 
+> # Creating a column flag (0 for train, 1 for test data). We will 
+> # separate the data into train test on the basis of this variable.
+> titanic.train[,'flag'] <- 0
+> titanic.test[,'flag'] <- 1
+> 
+> # In order to bind train and test data, both should have
+> # same number of columns so adding survived to test data.
+> titanic.test[, 'Survived'] <- 0
+> whole.data <- rbind(titanic.train,titanic.test)
+> 
+> head(whole.data)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked flag
+1        A/5 21171  7.2500              S    0
+2         PC 17599 71.2833   C85        C    0
+3 STON/O2. 3101282  7.9250              S    0
+4           113803 53.1000  C123        S    0
+5           373450  8.0500              S    0
+6           330877  8.4583              Q    0
+> 
+> summary(whole.data)
+  PassengerId      Survived          Pclass     
+ Min.   :   1   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000  
+ Median : 655   Median :0.0000   Median :3.000  
+ Mean   : 655   Mean   :0.2613   Mean   :2.295  
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :1309   Max.   :1.0000   Max.   :3.000  
+                                                
+                               Name          Sex           Age       
+ Connolly, Miss. Kate            :   2   female:466   Min.   : 0.17  
+ Kelly, Mr. James                :   2   male  :843   1st Qu.:21.00  
+ Abbing, Mr. Anthony             :   1                Median :28.00  
+ Abbott, Mr. Rossmore Edward     :   1                Mean   :29.88  
+ Abbott, Mrs. Stanton (Rosa Hunt):   1                3rd Qu.:39.00  
+ Abelson, Mr. Samuel             :   1                Max.   :80.00  
+ (Other)                         :1301                NA's   :263    
+     SibSp            Parch            Ticket          Fare        
+ Min.   :0.0000   Min.   :0.000   CA. 2343:  11   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.000   1601    :   8   1st Qu.:  7.896  
+ Median :0.0000   Median :0.000   CA 2144 :   8   Median : 14.454  
+ Mean   :0.4989   Mean   :0.385   3101295 :   7   Mean   : 33.295  
+ 3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7   3rd Qu.: 31.275  
+ Max.   :8.0000   Max.   :9.000   347082  :   7   Max.   :512.329  
+                                  (Other) :1261   NA's   :1        
+             Cabin      Embarked      flag       
+                :1014    :  2    Min.   :0.0000  
+ C23 C25 C27    :   6   C:270    1st Qu.:0.0000  
+ B57 B59 B63 B66:   5   Q:123    Median :0.0000  
+ G6             :   5   S:914    Mean   :0.3193  
+ B96 B98        :   4            3rd Qu.:1.0000  
+ C22 C26        :   4            Max.   :1.0000  
+ (Other)        : 271                            
+> 
+> m <- regexpr("(?<=, ).+?(?=\\. )", whole.data$Name,perl = TRUE)
+> #get titles
+> unique(as.factor(regmatches(whole.data$Name, m)))
+ [1] Mr           Mrs          Miss         Master       Don         
+ [6] Rev          Dr           Mme          Ms           Major       
+[11] Lady         Sir          Mlle         Col          Capt        
+[16] the Countess Jonkheer     Dona        
+18 Levels: Capt Col Don Dona Dr Jonkheer Lady Major Master Miss Mlle Mme ... the Countess
+> 
+> whole.data[,'Title'] <- regmatches(whole.data$Name, m)
+> others = c("Don", "Rev", "Dr", "Major", "Lady", "Sir", "Col", "Capt", "the Countess", "Jonkheer", "Dona")
+> whole.data[whole.data$Title == 'Mlle' | whole.data$Title == 'Ms', 'Title'] <- 'Miss'
+> whole.data[whole.data$Title == 'Mme', 'Title'] <- 'Mrs'
+> whole.data[whole.data$Title %in% others, 'Title'] <- 'Others'
+> whole.data[,'Title'] <- as.factor(whole.data[,'Title'])
+> 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> g <- ggplot(whole.data, aes(x = factor(Survived))) + geom_bar() + facet_wrap( ~ Title)
+> g
+> 
+> # Adding number of children for a person and its sibling and spouse. +1 for himself/herself 
+> whole.data[,'FamilySize'] <- whole.data$SibSp + whole.data$Parch +1
+> 
+> family.survived <- ggplot(whole.data[whole.data$flag==0,], aes(x = FamilySize, fill = factor(Survived))) + geom_bar(position = 'dodge') + scale_x_continuous(breaks = c(1:11))
+> family.survived
+> 
+> whole.data[whole.data$FamilySize == 1,'FamilyGroup'] <- 'single'
+> whole.data[whole.data$FamilySize > 1 & whole.data$FamilySize < 5,'FamilyGroup'] <- 'small size'
+> whole.data[whole.data$FamilySize > 4,'FamilyGroup'] <- 'large'
+> 
+> class.paid.survival <- ggplot(whole.data[whole.data$flag==0 & !is.na(whole.data$Age), ], aes(Fare, fill = factor(Survived))) + geom_histogram(binwidth = 10, position = "dodge") + facet_wrap(~Pclass) + scale_x_continuous(limits = c(1,250), breaks = seq(0, 250, 20))
+> class.paid.survival
+Warning messages:
+1: Removed 16 rows containing non-finite values (stat_bin). 
+2: Removed 9 rows containing missing values (geom_bar). 
+> 
+> summary(whole.data)
+  PassengerId      Survived          Pclass     
+ Min.   :   1   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000  
+ Median : 655   Median :0.0000   Median :3.000  
+ Mean   : 655   Mean   :0.2613   Mean   :2.295  
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :1309   Max.   :1.0000   Max.   :3.000  
+                                                
+                               Name          Sex           Age       
+ Connolly, Miss. Kate            :   2   female:466   Min.   : 0.17  
+ Kelly, Mr. James                :   2   male  :843   1st Qu.:21.00  
+ Abbing, Mr. Anthony             :   1                Median :28.00  
+ Abbott, Mr. Rossmore Edward     :   1                Mean   :29.88  
+ Abbott, Mrs. Stanton (Rosa Hunt):   1                3rd Qu.:39.00  
+ Abelson, Mr. Samuel             :   1                Max.   :80.00  
+ (Other)                         :1301                NA's   :263    
+     SibSp            Parch            Ticket          Fare        
+ Min.   :0.0000   Min.   :0.000   CA. 2343:  11   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.000   1601    :   8   1st Qu.:  7.896  
+ Median :0.0000   Median :0.000   CA 2144 :   8   Median : 14.454  
+ Mean   :0.4989   Mean   :0.385   3101295 :   7   Mean   : 33.295  
+ 3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7   3rd Qu.: 31.275  
+ Max.   :8.0000   Max.   :9.000   347082  :   7   Max.   :512.329  
+                                  (Other) :1261   NA's   :1        
+             Cabin      Embarked      flag           Title       FamilySize    
+                :1014    :  2    Min.   :0.0000   Master: 61   Min.   : 1.000  
+ C23 C25 C27    :   6   C:270    1st Qu.:0.0000   Miss  :264   1st Qu.: 1.000  
+ B57 B59 B63 B66:   5   Q:123    Median :0.0000   Mr    :757   Median : 1.000  
+ G6             :   5   S:914    Mean   :0.3193   Mrs   :198   Mean   : 1.884  
+ B96 B98        :   4            3rd Qu.:1.0000   Others: 29   3rd Qu.: 2.000  
+ C22 C26        :   4            Max.   :1.0000                Max.   :11.000  
+ (Other)        : 271                                                          
+ FamilyGroup       
+ Length:1309       
+ Class :character  
+ Mode  :character  
+                   
+                   
+                   
+                   
+> 
+> g <- ggplot(whole.data, aes(Age, fill = Survived)) + geom_histogram(binwidth = 5) + facet_wrap(~Title)
+> g
+Warning message:
+Removed 263 rows containing non-finite values (stat_bin). 
+> 
+> titles <- unique(whole.data$Title)
+> for (i in titles){
++   whole.data[is.na(whole.data$Age) & whole.data$Title == i,'Age'] <- mean(whole.data[!is.na(whole.data$Age) & whole.data$Title == i,'Age'])
++ }
+> 
+> summary(whole.data)
+  PassengerId      Survived          Pclass     
+ Min.   :   1   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000  
+ Median : 655   Median :0.0000   Median :3.000  
+ Mean   : 655   Mean   :0.2613   Mean   :2.295  
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :1309   Max.   :1.0000   Max.   :3.000  
+                                                
+                               Name          Sex           Age       
+ Connolly, Miss. Kate            :   2   female:466   Min.   : 0.17  
+ Kelly, Mr. James                :   2   male  :843   1st Qu.:21.82  
+ Abbing, Mr. Anthony             :   1                Median :30.00  
+ Abbott, Mr. Rossmore Edward     :   1                Mean   :29.89  
+ Abbott, Mrs. Stanton (Rosa Hunt):   1                3rd Qu.:36.00  
+ Abelson, Mr. Samuel             :   1                Max.   :80.00  
+ (Other)                         :1301                               
+     SibSp            Parch            Ticket          Fare        
+ Min.   :0.0000   Min.   :0.000   CA. 2343:  11   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.000   1601    :   8   1st Qu.:  7.896  
+ Median :0.0000   Median :0.000   CA 2144 :   8   Median : 14.454  
+ Mean   :0.4989   Mean   :0.385   3101295 :   7   Mean   : 33.295  
+ 3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7   3rd Qu.: 31.275  
+ Max.   :8.0000   Max.   :9.000   347082  :   7   Max.   :512.329  
+                                  (Other) :1261   NA's   :1        
+             Cabin      Embarked      flag           Title       FamilySize    
+                :1014    :  2    Min.   :0.0000   Master: 61   Min.   : 1.000  
+ C23 C25 C27    :   6   C:270    1st Qu.:0.0000   Miss  :264   1st Qu.: 1.000  
+ B57 B59 B63 B66:   5   Q:123    Median :0.0000   Mr    :757   Median : 1.000  
+ G6             :   5   S:914    Mean   :0.3193   Mrs   :198   Mean   : 1.884  
+ B96 B98        :   4            3rd Qu.:1.0000   Others: 29   3rd Qu.: 2.000  
+ C22 C26        :   4            Max.   :1.0000                Max.   :11.000  
+ (Other)        : 271                                                          
+ FamilyGroup       
+ Length:1309       
+ Class :character  
+ Mode  :character  
+                   
+                   
+                   
+                   
+> 
+> for (i in unique(whole.data$Pclass)){(
++   whole.data[whole.data[,'Pclass']==i & is.na(whole.data$Fare), 'Fare'] <- median(whole.data[whole.data[,'Pclass']==i & !is.na(whole.data$Fare), 'Fare']))
++ }
+> 
+> whole.data[whole.data$Embarked == "",]
+    PassengerId Survived Pclass                                      Name
+62           62        1      1                       Icard, Miss. Amelie
+830         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Cabin Embarked flag Title FamilySize
+62  female  38     0     0 113572   80   B28             0  Miss          1
+830 female  62     0     0 113572   80   B28             0   Mrs          1
+    FamilyGroup
+62       single
+830      single
+> 
+> females.embarked <- ggplot(whole.data[whole.data$Embarked != "" & whole.data$Sex == 'female' & whole.data$Survived == 1 & whole.data$Pclass == 1 & whole.data$Fare > 75 & whole.data$Fare < 85,], aes(Age)) + geom_histogram(binwidth = 1) + facet_grid(~ Embarked)
+> females.embarked
+> 
+> females.paid <- ggplot(whole.data[whole.data$Pclass==1 & whole.data$Embarked != "",], aes(x = Embarked, y = Fare)) + geom_boxplot() + geom_hline(aes(yintercept = 80))
+> females.paid
+> 
+> whole.data[whole.data$Embarked == "", 'Embarked'] <- 'C'
+> 
+> age.survived <- ggplot(whole.data[whole.data$flag==0,], aes(Age, fill = factor(Survived))) + geom_histogram(binwidth = 10, position = 'dodge')
+> age.survived
+> 
+> whole.data[whole.data$Age>=0 & whole.data$Age<21, 'AgeBin'] <- '1'
+> whole.data[whole.data$Age>=21 & whole.data$Age<28, 'AgeBin'] <- '2'
+> whole.data[whole.data$Age>=28 & whole.data$Age<39, 'AgeBin'] <- '3'
+> whole.data[whole.data$Age>=39, 'AgeBin'] <- '4'
+> 
+> whole.data[whole.data$Age<18, 'Child'] <- '0'
+> whole.data[whole.data$Age>=18, 'Child'] <- '1'
+> 
+> whole.data[whole.data$Fare>=0 & whole.data$Fare<8, 'FareBin'] <- '1'
+> whole.data[whole.data$Fare>=8 & whole.data$Fare<15, 'FareBin'] <- '2'
+> whole.data[whole.data$Fare>=15 & whole.data$Fare<31, 'FareBin'] <- '3'
+> whole.data[whole.data$Fare>=31, 'FareBin'] <- '4'
+> 
+> for (name in c("Survived", "Pclass", "SibSp", "Parch", "FamilyGroup", "FareBin", "AgeBin", "Child")){
++   whole.data[, name] <- as.factor(whole.data[, name])
++ }
+> head(whole.data)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex      Age SibSp
+1                             Braund, Mr. Owen Harris   male 22.00000     1
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female 38.00000     1
+3                              Heikkinen, Miss. Laina female 26.00000     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female 35.00000     1
+5                            Allen, Mr. William Henry   male 35.00000     0
+6                                    Moran, Mr. James   male 32.25215     0
+  Parch           Ticket    Fare Cabin Embarked flag Title FamilySize
+1     0        A/5 21171  7.2500              S    0    Mr          2
+2     0         PC 17599 71.2833   C85        C    0   Mrs          2
+3     0 STON/O2. 3101282  7.9250              S    0  Miss          1
+4     0           113803 53.1000  C123        S    0   Mrs          2
+5     0           373450  8.0500              S    0    Mr          1
+6     0           330877  8.4583              Q    0    Mr          1
+  FamilyGroup AgeBin Child FareBin
+1  small size      2     1       1
+2  small size      3     1       4
+3      single      2     1       1
+4  small size      3     1       4
+5      single      3     1       2
+6      single      3     1       2
+> 
+> whole.data <- whole.data[,!(names(whole.data) %in% c("Name", "Cabin", "Ticket", "FamilySize","PassengerId", "SibSp", "Parch", "Age", "Fare"))]
+> head(whole.data)
+  Survived Pclass    Sex Embarked flag Title FamilyGroup AgeBin Child FareBin
+1        0      3   male        S    0    Mr  small size      2     1       1
+2        1      1 female        C    0   Mrs  small size      3     1       4
+3        1      3 female        S    0  Miss      single      2     1       1
+4        1      1 female        S    0   Mrs  small size      3     1       4
+5        0      3   male        S    0    Mr      single      3     1       2
+6        0      3   male        Q    0    Mr      single      3     1       2
+> 
+> titanic.train <- whole.data[whole.data$flag == 0,]
+> titanic.train <- titanic.train[,!(names(titanic.train) %in% c("flag"))]
+> titanic.test <- whole.data[whole.data$flag == 1,]
+> titanic.test <- titanic.test[,!(names(titanic.test) %in% c("flag", "Survived"))]
+> head(titanic.train)
+  Survived Pclass    Sex Embarked Title FamilyGroup AgeBin Child FareBin
+1        0      3   male        S    Mr  small size      2     1       1
+2        1      1 female        C   Mrs  small size      3     1       4
+3        1      3 female        S  Miss      single      2     1       1
+4        1      1 female        S   Mrs  small size      3     1       4
+5        0      3   male        S    Mr      single      3     1       2
+6        0      3   male        Q    Mr      single      3     1       2
+> 
+> library(tree)
+Error in library(tree) : there is no package called ‘tree’
+Execution halted

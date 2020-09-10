@@ -1,0 +1,121 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> library(dplyr); library(ggplot2)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> 
+> #loading the training and test data
+> 
+> train <- read.csv('../input/train.csv')
+> test <- read.csv('../input/test.csv')
+> 
+> # comparing training and test sets
+> 
+> colnames(train); colnames(test)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"   
+ [1] "PassengerId" "Pclass"      "Name"        "Sex"         "Age"        
+ [6] "SibSp"       "Parch"       "Ticket"      "Fare"        "Cabin"      
+[11] "Embarked"   
+> 
+> # the simplest possible model
+> 
+> train %>% filter(Survived==0) %>% summarize(length(Survived)/891)
+  length(Survived)/891
+1            0.6161616
+> 
+> 
+> #gender model
+> 
+> gender_model <- lm(Survived~Sex, data=train)
+> summary(gender_model)
+
+Call:
+lm(formula = Survived ~ Sex, data = train)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-0.7420 -0.1889 -0.1889  0.2580  0.8111 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  0.74204    0.02307   32.17   <2e-16 ***
+Sexmale     -0.55313    0.02866  -19.30   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.4087 on 889 degrees of freedom
+Multiple R-squared:  0.2952,	Adjusted R-squared:  0.2944 
+F-statistic: 372.4 on 1 and 889 DF,  p-value: < 2.2e-16
+
+> 
+> train$gender_model_pred <- predict(gender_model, train)
+> train$gender_model_pred <- round(train$gender_model_pred)
+>                                                                                   
+> train %>% filter(Survived==gender_model_pred) %>% summarize(length(Survived)/891)
+  length(Survived)/891
+1            0.7867565
+> 
+> #submitting to kaggle                                                                         
+> 
+> test$Survived <- round(predict(gender_model, test))
+> submit <- test %>% select(PassengerId, Survived)
+> write.csv(submit, file = "gender_model.csv", row.names = FALSE) 
+>                                                               
+> #https://www.kaggle.com/c/titanic
+>                                                                                   
+> # residuals
+> 
+> ggplot(train, aes(gender_model_pred, Survived))+geom_jitter()
+> 
+> ggplot(train, aes(gender_model_pred, Survived-gender_model_pred))+geom_jitter()
+>                                                                                   
+> #Passenger class
+> 
+> ggplot(train, aes(Pclass, Survived-gender_model_pred))+geom_jitter()
+> gender_pclass_model <- lm(Survived~Sex+Pclass, data=train)
+> train$gender_pclass_model_pred <- round(predict(gender_pclass_model, train))
+> train %>% filter(gender_pclass_model_pred != gender_model_pred)
+ [1] PassengerId              Survived                 Pclass                  
+ [4] Name                     Sex                      Age                     
+ [7] SibSp                    Parch                    Ticket                  
+[10] Fare                     Cabin                    Embarked                
+[13] gender_model_pred        gender_pclass_model_pred
+<0 rows> (or 0-length row.names)
+> 
+> proc.time()
+   user  system elapsed 
+  0.778   0.075   0.852 

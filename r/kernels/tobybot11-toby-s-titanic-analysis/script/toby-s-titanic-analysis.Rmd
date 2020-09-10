@@ -1,0 +1,142 @@
+---
+title: 'Titanic Survival - Kaggle'
+author: 'Tobias Ford'
+date: '`r Sys.Date()`'
+output:
+  html_document:
+    fig.captions: yes
+    keep_md: yes
+    toc: yes
+  pdf_document:
+    toc: yes
+---
+
+```{r set-options, echo=FALSE}
+options(width=120)
+```
+
+# Titanic Survival - Kaggle
+
+## Introduction
+
+Provided initial training set of data (train.csv) containing passenger roster with some key details.
+
+### Load Data
+
+```{r}
+train <- read.csv('../input/train.csv', stringsAsFactors = F)
+test <- read.csv('../input/test.csv', stringsAsFactors = F)
+
+str(train)
+```
+
+### Data Dictionary
+
+```{r}
+head(train,1)
+```
+
+* PassengerId
+* Survived
+* Pclass
+* Name
+* Sex
+* Age
+* SibSp
+* Parch
+* Ticket
+* Fare
+* Cabin
+* Embarked
+
+## First level of investigation
+
+### Distribution Based on Sex
+```{r}
+table(train$Sex)
+summary(train$Sex)
+prop.table(table(train$Sex))
+
+
+prop.table(table(train$Survived))
+
+train$SurvivedBoolean <- as.logical(train$Survived)
+train$SurvivedLabel[train$SurvivedBoolean == TRUE] <- 'Survived'
+train$SurvivedLabel[train$SurvivedBoolean == FALSE] <- 'Died'
+
+prop.table(table(train$Sex, train$SurvivedLabel))
+prop.table(table(train$Sex, train$SurvivedLabel),1)
+
+```
+
+### Diving into Age
+
+```{r}
+summary(train$Age)
+
+train$Child <- FALSE
+train$Child[train$Age < 18] <- TRUE
+
+table(train$Child)
+table(train$Child, train$Survived)
+
+aggregate(Survived ~ Child + Sex, data=train, FUN=sum)
+aggregate(Survived ~ Child + Sex, data=train, FUN=length)
+aggregate(Survived ~ Child + Sex, data=train, FUN=function(x) {sum(x)/length(x)})
+
+```
+
+### Diving into Fare
+
+```{r}
+train$Fare2 <- '30+'
+train$Fare2[train$Fare < 30 & train$Fare >= 20] <- '20-30'
+train$Fare2[train$Fare < 20 & train$Fare >= 10] <- '10-20'
+train$Fare2[train$Fare < 10] <- '<10'
+
+aggregate(Survived ~ Fare2 + Pclass + Sex, data=train, FUN=function(x) {sum(x)/length(x)})
+
+```
+Determined something meaningful here and added it to the submission.
+Women in class 3 who paid $20 or more for a fare didn't fair well (pun intended).
+
+
+### Using Decision Trees
+
+```{r}
+library(rpart)
+fit <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked,
+               data=train,
+               method="class")
+
+plot(fit)
+text(fit)
+
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+fancyRpartPlot(fit)
+
+Prediction <- predict(fit, test, type = "class")
+
+```
+
+## Submission
+
+# first attempt
+
+
+
+```{r}
+test$Survived <- rep(0, 418)
+test$Survived <- 0
+test$Survived[test$Sex == 'female'] <- 1
+test$Survived[test$Sex == 'female' & test$Pclass == 3 & test$Fare >= 20] <- 0
+
+head(test,10)
+
+submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+write.csv(submit, file = "theyallperish.csv", row.names=FALSE)
+
+```

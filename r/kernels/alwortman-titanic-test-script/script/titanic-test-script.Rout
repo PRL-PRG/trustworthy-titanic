@@ -1,0 +1,132 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> library(rpart)
+> library(rattle)
+Loading required package: tibble
+Loading required package: bitops
+Rattle: A free graphical interface for data science with R.
+Version 5.4.0 Copyright (c) 2006-2020 Togaware Pty Ltd.
+Type 'rattle()' to shake, rattle, and roll your data.
+
+Attaching package: ‘rattle’
+
+The following object is masked from ‘package:randomForest’:
+
+    importance
+
+Warning messages:
+1: package ‘rattle’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+> library(rpart.plot)
+> library(RColorBrewer)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following object is masked from ‘package:randomForest’:
+
+    combine
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> 
+> #Create Family Size variable
+> train$family_size <- train$SibSp + train$Parch + 1
+> test$family_size <- test$SibSp + test$Parch + 1
+> 
+> #Create Survived variable column in test and fill with NA
+> test$Survived <- NA
+> 
+> #Temporarily combine train and test to do formatting
+> combi <- rbind(train, test)
+> 
+> #Format combi
+> combi$Name <- as.character(combi$Name)
+> combi$Title <- sapply(combi$Name, FUN=function(x) {strsplit(x, split='[,.]')[[1]][2]})
+> combi$Title <- sub(' ', '', combi$Title)
+> combi$Title[combi$Title %in% c('Mme', 'Mlle')] <- 'Mlle'
+> combi$Title[combi$Title %in% c('Capt', 'Don', 'Major', 'Jonkheer', 'Sir')] <- 'Sir'
+> combi$Title[combi$Title %in% c('Dona', 'Lady', 'the Countess')] <- 'Lady'
+> combi$Title <- factor(combi$Title)
+> 
+> all_data = combi
+> 
+> #Fill NAs in Embarked variable
+> all_data$Embarked[c(62,830)] = "S"
+> all_data$Embarked <- factor(combi$Embarked)
+> 
+> #Fill NAs in Fare variable
+> all_data$Fare[1044] <- median(combi$Fare, na.rm=TRUE)
+> 
+> #Predict age for missing ages
+> predicted_age <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + family_size,
++                        
++                        data=all_data[!is.na(all_data$Age),], method="anova")
+> 
+> all_data$Age[is.na(all_data$Age)] <- predict(predicted_age, all_data[is.na(all_data$Age),])
+> 
+> #Reseparate train and test
+> train <- all_data[1:891,]
+> test <- all_data[892:1309,]
+> 
+> # Set seed for reproducibility
+> set.seed(111)
+> 
+> # Apply the Random Forest Algorithm
+> my_forest <- randomForest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title, data = train, importance = TRUE, ntree = 1000)
+> 
+> # Make your prediction using the test set
+> my_prediction <- predict(my_forest, test)
+> 
+> # Create a data frame with two columns: PassengerId & Survived. Survived contains your predictions
+> my_solution <- data.frame(PassengerId = test$PassengerId, Survived = my_prediction)
+> 
+> # Write your solution away to a csv file with the name my_solution.csv
+> write.csv(my_solution, file = "my_solution.csv", row.names = FALSE)
+> my_solution_df <- tbl_df(my_solution)
+Warning message:
+`tbl_df()` is deprecated as of dplyr 1.0.0.
+Please use `tibble::as_tibble()` instead.
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+> 
+> proc.time()
+   user  system elapsed 
+  1.764   0.149   1.985 

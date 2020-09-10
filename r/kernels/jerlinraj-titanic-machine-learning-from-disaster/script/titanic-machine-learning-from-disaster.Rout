@@ -1,0 +1,51 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> train <- read.csv("../input/train.csv")
+> test <- read.csv("../input/test.csv")
+> 
+> str(train$Sex)
+ Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+> 
+> prop.table(table(train$Sex, train$Survived))
+        
+                  0          1
+  female 0.09090909 0.26150393
+  male   0.52525253 0.12233446
+> prop.table(table(train$Sex, train$Survived), 1)
+        
+                 0         1
+  female 0.2579618 0.7420382
+  male   0.8110919 0.1889081
+> 
+> # Create new prediction that everyone dies
+> test$Survived <- 0
+> 
+> # Updating the prediction to say that all females will survive
+> test$Survived[test$Sex == 'female'] <- 1
+> 
+> # Create submission dataframe and output to file
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+> write.csv(submit, file = "gendermodel.csv", row.names = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  0.148   0.034   0.175 

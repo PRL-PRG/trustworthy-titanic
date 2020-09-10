@@ -1,0 +1,341 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> ### from Arda Yildrim Solution ###
+> 
+> ###############################
+> ######  READ ALL SOURCE  ######
+> ###############################
+> 
+> list.of.packages <- c("stringr","data.table","taRifx","methods","rgdal","sp","maptools","zoo","reshape2","plyr","rgeos","reshape","tidyr","ggplot2","rpart","rpart.plot")
+> new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+> if(length(new.packages)) install.packages(new.packages,repos="http://cran.r-project.org")
+> lapply(list.of.packages, library, character.only=T)
+
+Attaching package: ‘taRifx’
+
+The following objects are masked from ‘package:data.table’:
+
+    between, first, last, shift
+
+Loading required package: sp
+rgdal: version: 1.5-12, (SVN revision 1018)
+Geospatial Data Abstraction Library extensions to R successfully loaded
+Loaded GDAL runtime: GDAL 2.4.2, released 2019/06/28
+Path to GDAL shared files: /Library/Frameworks/R.framework/Versions/3.6/Resources/library/rgdal/gdal
+GDAL binary built with GEOS: FALSE 
+Loaded PROJ runtime: Rel. 5.2.0, September 15th, 2018, [PJ_VERSION: 520]
+Path to PROJ shared files: /Library/Frameworks/R.framework/Versions/3.6/Resources/library/rgdal/proj
+Linking to sp version:1.4-2
+Overwritten PROJ_LIB was /Library/Frameworks/R.framework/Versions/3.6/Resources/library/rgdal/proj
+Checking rgeos availability: TRUE
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+
+Attaching package: ‘reshape2’
+
+The following objects are masked from ‘package:data.table’:
+
+    dcast, melt
+
+rgeos version: 0.5-3, (SVN revision 634)
+ GEOS runtime version: 3.7.2-CAPI-1.11.2 
+ Linking to sp version: 1.4-1 
+ Polygon checking: TRUE 
+
+
+Attaching package: ‘reshape’
+
+The following objects are masked from ‘package:plyr’:
+
+    rename, round_any
+
+The following objects are masked from ‘package:reshape2’:
+
+    colsplit, melt, recast
+
+The following object is masked from ‘package:data.table’:
+
+    melt
+
+
+Attaching package: ‘tidyr’
+
+The following objects are masked from ‘package:reshape’:
+
+    expand, smiths
+
+The following object is masked from ‘package:reshape2’:
+
+    smiths
+
+[[1]]
+[1] "stringr"   "stats"     "graphics"  "grDevices" "utils"     "datasets" 
+[7] "methods"   "base"     
+
+[[2]]
+[1] "data.table" "stringr"    "stats"      "graphics"   "grDevices" 
+[6] "utils"      "datasets"   "methods"    "base"      
+
+[[3]]
+ [1] "taRifx"     "data.table" "stringr"    "stats"      "graphics"  
+ [6] "grDevices"  "utils"      "datasets"   "methods"    "base"      
+
+[[4]]
+ [1] "taRifx"     "data.table" "stringr"    "stats"      "graphics"  
+ [6] "grDevices"  "utils"      "datasets"   "methods"    "base"      
+
+[[5]]
+ [1] "rgdal"      "sp"         "taRifx"     "data.table" "stringr"   
+ [6] "stats"      "graphics"   "grDevices"  "utils"      "datasets"  
+[11] "methods"    "base"      
+
+[[6]]
+ [1] "rgdal"      "sp"         "taRifx"     "data.table" "stringr"   
+ [6] "stats"      "graphics"   "grDevices"  "utils"      "datasets"  
+[11] "methods"    "base"      
+
+[[7]]
+ [1] "maptools"   "rgdal"      "sp"         "taRifx"     "data.table"
+ [6] "stringr"    "stats"      "graphics"   "grDevices"  "utils"     
+[11] "datasets"   "methods"    "base"      
+
+[[8]]
+ [1] "zoo"        "maptools"   "rgdal"      "sp"         "taRifx"    
+ [6] "data.table" "stringr"    "stats"      "graphics"   "grDevices" 
+[11] "utils"      "datasets"   "methods"    "base"      
+
+[[9]]
+ [1] "reshape2"   "zoo"        "maptools"   "rgdal"      "sp"        
+ [6] "taRifx"     "data.table" "stringr"    "stats"      "graphics"  
+[11] "grDevices"  "utils"      "datasets"   "methods"    "base"      
+
+[[10]]
+ [1] "plyr"       "reshape2"   "zoo"        "maptools"   "rgdal"     
+ [6] "sp"         "taRifx"     "data.table" "stringr"    "stats"     
+[11] "graphics"   "grDevices"  "utils"      "datasets"   "methods"   
+[16] "base"      
+
+[[11]]
+ [1] "rgeos"      "plyr"       "reshape2"   "zoo"        "maptools"  
+ [6] "rgdal"      "sp"         "taRifx"     "data.table" "stringr"   
+[11] "stats"      "graphics"   "grDevices"  "utils"      "datasets"  
+[16] "methods"    "base"      
+
+[[12]]
+ [1] "reshape"    "rgeos"      "plyr"       "reshape2"   "zoo"       
+ [6] "maptools"   "rgdal"      "sp"         "taRifx"     "data.table"
+[11] "stringr"    "stats"      "graphics"   "grDevices"  "utils"     
+[16] "datasets"   "methods"    "base"      
+
+[[13]]
+ [1] "tidyr"      "reshape"    "rgeos"      "plyr"       "reshape2"  
+ [6] "zoo"        "maptools"   "rgdal"      "sp"         "taRifx"    
+[11] "data.table" "stringr"    "stats"      "graphics"   "grDevices" 
+[16] "utils"      "datasets"   "methods"    "base"      
+
+[[14]]
+ [1] "ggplot2"    "tidyr"      "reshape"    "rgeos"      "plyr"      
+ [6] "reshape2"   "zoo"        "maptools"   "rgdal"      "sp"        
+[11] "taRifx"     "data.table" "stringr"    "stats"      "graphics"  
+[16] "grDevices"  "utils"      "datasets"   "methods"    "base"      
+
+[[15]]
+ [1] "rpart"      "ggplot2"    "tidyr"      "reshape"    "rgeos"     
+ [6] "plyr"       "reshape2"   "zoo"        "maptools"   "rgdal"     
+[11] "sp"         "taRifx"     "data.table" "stringr"    "stats"     
+[16] "graphics"   "grDevices"  "utils"      "datasets"   "methods"   
+[21] "base"      
+
+[[16]]
+ [1] "rpart.plot" "rpart"      "ggplot2"    "tidyr"      "reshape"   
+ [6] "rgeos"      "plyr"       "reshape2"   "zoo"        "maptools"  
+[11] "rgdal"      "sp"         "taRifx"     "data.table" "stringr"   
+[16] "stats"      "graphics"   "grDevices"  "utils"      "datasets"  
+[21] "methods"    "base"      
+
+Warning messages:
+1: package ‘taRifx’ was built under R version 3.6.2 
+2: package ‘rgdal’ was built under R version 3.6.2 
+3: package ‘maptools’ was built under R version 3.6.2 
+4: package ‘zoo’ was built under R version 3.6.2 
+5: package ‘reshape2’ was built under R version 3.6.2 
+6: package ‘rgeos’ was built under R version 3.6.2 
+7: package ‘tidyr’ was built under R version 3.6.2 
+8: package ‘ggplot2’ was built under R version 3.6.2 
+>     
+> ### Read data ###
+> test<-read.csv("../input/test.csv",sep=",",header=TRUE)
+> train<-read.csv("../input/train.csv",sep=",",header=TRUE)
+>     
+> head(train)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> 
+> 
+> # there are many blank data in the dataset, firstly, we need to generalized the missing value #
+> 
+> ### Tidy up NA data ###
+> test$Survived<-NA
+> combine<-rbind(test,train)
+> combine.r<-combine
+> combine<-as.data.frame(apply(combine, 2, function(x) gsub("^$|^ $", NA, x)))
+>     
+> ### See NA value ###
+> sapply(combine,function(x) sum(is.na(x)))
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+          0           0           0           0         263           0 
+      Parch      Ticket        Fare       Cabin    Embarked    Survived 
+          0           0           1        1014           2         418 
+> par(mar = c(7,4,4,2) + 0.1)
+> barplot(sapply(combine,function(x) sum(is.na(x))),las=3,mar=c(5,4,4,2),main="NA Value Count")
+> 
+> # if you see on the plot or summary produced on the code above, there are 263,1,1014,2,and 418 missing value on Age, Fare, Cabin, Embarked, and Survived #
+> # Except survived parameter, whom we will find the result on, we will make an assumption based on causal relationship from the other parameter #
+> # first, to fill in the fare column, we take Pclass as our reference because it showed causal relationship with fare #
+> 
+> ### fill in NA in Fare ###
+> combine$Pclass<-as.character(combine$Pclass)
+> combine$Fare<-as.numeric(as.character(combine$Fare))
+> freq<-combine[,c("Pclass","Fare")]
+> ggplot(freq, aes(as.factor(Pclass), Fare)) + geom_boxplot()
+Warning message:
+Removed 1 rows containing non-finite values (stat_boxplot). 
+> # based on the plot at this step, there is a causal relationship for Pclass and Fare, so we use median value of Fare based on Pclass to fill in missing value in fare #
+> combine$fare.fill<-combine$Fare
+> combine[is.na(combine$fare.fill),]$fare.fill<-median(combine[combine$Pclass==combine[is.na(combine$fare.fill),]$Pclass,]$fare.fill,na.rm=TRUE)
+> 
+> ### separate the tittle ###
+> combine$tittle<-unlist(strsplit(as.character(combine$Name), ","))[c(F,T)]
+> combine$tittle<-substr(combine$tittle,2,str_locate(combine$tittle,"[.]")[,1])
+> 
+> ### tittle and age boxplot ###
+> combine$tittle<-as.character(combine$tittle)
+> combine$Age<-as.numeric(as.character(combine$Age))
+> freq<-combine[,c("tittle","Age")]
+> ggplot(freq, aes(as.factor(tittle), Age),las=3) + geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+Warning message:
+Removed 263 rows containing non-finite values (stat_boxplot). 
+> 
+> ### fill in NA in Age ###
+> combine$Age<-as.numeric(as.character(combine$Age))
+> sumif<-aggregate(Age ~ tittle, data=combine, median)
+> names(sumif)[names(sumif)=="Age"]<-"mean.tittle"
+> combine$rownum<-c(1:nrow(combine))
+> combine<-merge(combine,sumif,by="tittle",all.x=T,sort=FALSE)
+> combine<-combine[order(combine$rownum),]
+> combine$age.fill<-ifelse(is.na(combine$Age),round(combine$mean.tittle,0),combine$Age)
+> 
+> ### fill in NA in embark ###
+> combine$Embarked<-as.character(combine$Embarked)
+> combine$embarked.fill<-combine$Embarked
+> temp<-data.frame(table(combine$embarked.fill))
+> combine[is.na(combine$embarked.fill),]$embarked.fill<-as.character(temp[temp$Freq==max(temp$Freq),]$Var1)
+> 
+> ### total relative calculation ###
+> combine$SibS<-as.numeric(as.character(combine$SibS))
+> combine$Parch<-as.numeric(as.character(combine$Parch))
+> combine$total.relative<-combine$SibS+combine$Parch
+> 
+> ### tittle and survived plot ###
+> freq<-as.data.frame(table(combine[,c("tittle","Survived")]))
+> ggplot(freq, aes(tittle, Freq)) + geom_bar(aes(fill = Survived),stat="identity", position = "dodge")+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+> 
+> ### sex and survived plot ###
+> freq<-as.data.frame(table(combine[,c("Sex","Survived")]))
+> ggplot(freq, aes(Sex, Freq)) + geom_bar(aes(fill = Survived),stat="identity", position = "dodge")
+> 
+> ### age range and survived plot ###
+> combine$age.range<-ifelse(combine$age.fill<5,"TODDLER",ifelse(combine$age.fill<10,"HIGHSCHOOL",ifelse(combine$age.fill<21,"TEEN",ifelse(combine$age.fill<35,"ADULT",ifelse(combine$age.fill<55,"OLDADULT",ifelse(combine$age.fill<200,"ELDERLY",))))))
+> freq<-as.data.frame(table(combine[,c("age.range","Survived")]))
+> ggplot(freq, aes(age.range, Freq)) + geom_bar(aes(fill = Survived),stat="identity",, position = "dodge") + scale_x_discrete(limits=c("TODDLER","HIGHSCHOOL","TEEN","ADULT","OLDADULT","ELDERLY"))
+> 
+> ### Pclass and survived plot ###
+> freq<-as.data.frame(table(combine[,c("Pclass","Survived")]))
+> ggplot(freq, aes(Pclass, Freq)) + geom_bar(aes(fill = Survived),stat="identity", position = "dodge")
+> 
+> ### Fare range and survived plot ###
+> combine$fare.range<-ifelse(combine$fare.fill==0,"FREE",ifelse(combine$fare.fill<=as.numeric(quantile(combine[combine$fare.fill>0,]$fare.fill)[2]),"CHEAP",ifelse(combine$fare.fill<=as.numeric(quantile(combine[combine$fare.fill>0,]$fare.fill)[3]),"CHEAP-MODERATE",ifelse(combine$fare.fill<=as.numeric(quantile(combine[combine$fare.fill>0,]$fare.fill)[4]),"MODERATE-EXPENSIVE",ifelse(combine$fare.fill<=as.numeric(quantile(combine[combine$fare.fill>0,]$fare.fill)[5]),"EXPENSIVE","")))))
+> freq<-as.data.frame(table(combine[,c("fare.range","Survived")]))
+> ggplot(freq, aes(fare.range, Freq)) + geom_bar(aes(fill = Survived),stat="identity", position = "dodge")
+> 
+> ### total relative range and survived plot ###
+> combine$total.relative.range<-ifelse(combine$total.relative==0,"NO_RELATIVE",ifelse(combine$total.relative<=as.numeric(quantile(combine[combine$total.relative>0,]$total.relative)[2]),"SMALL_FAMILY",ifelse(combine$total.relative<=as.numeric(quantile(combine[combine$total.relative>0,]$total.relative)[3]),"SMALL-MODERATE_FAMILY",ifelse(combine$total.relative<=as.numeric(quantile(combine[combine$total.relative>0,]$total.relative)[4]),"MODERATE-BIG_FAMILY",ifelse(combine$total.relative<=as.numeric(quantile(combine[combine$total.relative>0,]$total.relative)[5]),"BIG_FAMILY")))))
+> freq<-as.data.frame(table(combine[,c("total.relative.range","Survived")]))
+> ggplot(freq, aes(total.relative.range, Freq)) + geom_bar(aes(fill = Survived),stat="identity", position = "dodge")+theme(axis.text.x = element_text(angle = 90, hjust = 1))+ scale_x_discrete(limits=c("NO_RELATIVE","SMALL_FAMILY","SMALL-MODERATE_FAMILY","MODERATE-BIG_FAMILY","BIG_FAMILY"))
+> 
+> ### embarked and survived plot ###
+> freq<-as.data.frame(table(combine[,c("embarked.fill","Survived")]))
+> ggplot(freq, aes(embarked.fill, Freq)) + geom_bar(aes(fill = Survived),stat="identity", position = "dodge")
+> 
+> ### ctree ###
+> test.edit<-combine[c(1:nrow(test)),]
+> train.edit<-combine[c(nrow(test)+1:nrow(train)),]
+> test.edit[test.edit$tittle=="Dona.",]$tittle<-"Lady."
+> my_tree <- rpart(Survived ~  Sex + tittle + age.fill + Pclass + fare.fill  + total.relative + embarked.fill , data = combine, method = "class", control=rpart.control(cp=0.0001))
+> prp(my_tree, type = 4, extra = 100)
+> 
+> my_prediction <- predict(my_tree, test.edit, type = "class")
+> test.edit<-cbind(test.edit,my_prediction)
+> test.result<-as.data.frame(cbind(test.edit$PassengerId,as.character(test.edit$my_prediction)))
+> names(test.result)<-c("PassengerId","Survived")
+> write.csv(test.result, file = 'R-EMBULAN_Titanic.csv', sep=",", row.names = FALSE)
+Warning message:
+In write.csv(test.result, file = "R-EMBULAN_Titanic.csv", sep = ",",  :
+  attempt to set 'sep' ignored
+> head(test.result)
+  PassengerId Survived
+1         892        0
+2         893        1
+3         894        0
+4         895        0
+5         896        1
+6         897        0
+> #write.csv(test.result,"C:/Users/ERHYADI/Desktop/Kaggle/Titanic/R-EMBULAN_Titanic.csv", sep=",",row.names=FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  2.614   0.188   2.811 

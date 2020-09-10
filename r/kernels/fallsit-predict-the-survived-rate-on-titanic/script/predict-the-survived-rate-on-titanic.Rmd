@@ -1,0 +1,537 @@
+---
+title: "Predict the survivor from Titanic dataset"
+author: "fallsit"
+date: "`r Sys.Date()`"
+output: 
+    html_document:
+        number_sections: yes
+        toc: yes
+        toc_depth: 3
+        code_folding: show
+---
+# Introduction
+This is my first try on data science. I choose the titanic dataset because there are a lot of good posts online that I can refer. please feel free to give me any advise/feedback.
+
+# Load the data and packages
+First, we load the packages that can use later. Second, we load the data into respective variables train and test. Third, we combine a train and test variable to the cb variable. The cb means combined data.
+```{r, message=FALSE}
+library(caret)
+library(ggplot2)
+library(randomForest)# Random forest tree
+library(mice)        # md.pattern looking for missing values
+library(VIM)         # Visualize the missing value
+library(party)       # Cforest
+library(rpart)       # Decision tree
+library(rpart.plot)  # Plot decision tree
+library(doSNOW)      # For multi-core training
+library(infotheo)    # The definition of mutual information.
+
+# Load raw data
+train<-read.csv("../input/train.csv",na.strings ="")
+test<-read.csv("../input/test.csv",na.strings = "")
+
+# Add "Survived" variable to the test dataset
+test$Survived<-NA
+
+# Combine train and test dataset into cb
+cb <- rbind(train, test)
+
+# Take a look about the dataset
+str(cb)
+
+# Change data type of some variables 
+cb$Survived <- as.factor(cb$Survived)
+cb$Pclass <- as.factor(cb$Pclass)
+```
+
+It's very clearly, we are deal with 1309 observations of 12 variables. From the data dictionary on kaggle we know the meaning of the variables:
+
+|Variable|Definition                           | Key                                            |
+|:------:|:-----------------------------------:|:----------------------------------------------:|
+|survival|Survival                             |0 = No, 1 = Yes                                 |
+|pclass  |Ticket class                         |1 = 1st, 2 = 2nd, 3 = 3rd                       |
+|sex     |Sex                                  |                                                |
+|Age     |Age in years                         |                                                |
+|sibsp   |siblings / spouses aboard the Titanic|                                                |
+|parch   |parents / children aboard the Titanic|                                                |
+|ticket  |Ticket number                        |                                                |
+|fare    |Passenger fare                       |                                                |
+|cabin   |Cabin number                         |                                                |
+|embarked|Port of Embarkation                  | C = Cherbourg, Q = Queenstown, S = Southampton |
+
+
+
+
+# Exploratory data
+We are going to predict the "Survived" variable of the test set in the final. So first, I am going to explore variable one by one. But before explore variable, we will count the Missing values from the varables.
+
+## Missing values
+There are five variables have with missing values.
+
+1. Age: about 20%
+2. Embarked: about 0.1%
+3. Fare: Only 1 missing values
+4. Cabin:52%
+5. Survived: ignore (It's what we want to predict.)
+We can deal with those missing values later.
+
+```{r}
+colSums(is.na(cb))
+md.pattern(cb)
+```
+
+
+## Plass vs Survived
+* The survived rate of pclass 1 is 0.6296296.
+* The survived rate of pclass 2 is 0.4728261.
+* The survived rate of pclass 3 is 0.2423625.
+
+It's obviously the class 1 has highest survived rate, and the class 2 has second high survived rate, and so on. We can infer that the class 1 was much close the boat deck than class 3. I think  we can take "Pclass" as an important parameter.
+```{r}
+Prob.PS<-prop.table(table(cb$Survived,cb$Pclass),2)
+Prob.PS
+train$Pclass <- as.factor(train$Pclass)
+ggplot(train, aes(x = Pclass, fill = factor(Survived))) +
+  geom_bar() +
+  xlab("Pclass") +
+  ylab("Total Count") +
+  labs(fill = "Survived") 
+```
+
+##  Name vs Survived
+The name variable is made up of Last name with comma then a title and first name and middle name. 
+If we use the "Name" variable as the predict parameter directly, it will be no meaning. So we are going extract "Title" & "FamilyName" From "Name".  
+
+* There are four major titles, Master, Miss, Mr and Mrs more than 60. The rest of title no more 10 so we count it as other.
+```{r}
+# Extract the title and familyname from "Name" variable
+cb$FamilyName<-gsub(',(.*?)\\.(.*)', '', cb$Name)
+cb$Title<-gsub('(.*?), |(\\..*)', '', cb$Name)
+
+table(cb$Title)
+rare_title <- c('Mme','Ms','Mlle','Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
+                'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+cb$Title[cb$Title %in% rare_title]  <- "other"
+cb$Title <- as.factor(cb$Title)
+```
+
+## Sex vs Survived
+It seems like women and girls have a better change to survive than men. Maybe we can find more clues from sex. For example like women, children first ?
+```{r}
+ggplot(train, aes(x = Sex, fill = factor(Survived))) +
+  geom_bar() +
+  xlab("Sex") +
+  ylab("Total Count") +
+  labs(fill = "Survived") 
+```
+
+
+## Woman and child first ?
+We haven't encounter the "Age" variable yet. Alternatively, we can look the title first.
+
+* It seems like we had a better survival rate if you were a woman or a child.
+* Title can be used as a proxy for age and sex. For example, Master male child or boy. Miss can be the female child girl or unmarried woman.
+```{r}
+prop.table((table(cb[1:891,]$Survived,cb[1:891,]$Pclass,cb[1:891,]$Title)),c(2,3))
+ggplot(cb[1:891,], aes(x = Title, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~Pclass) + 
+  ggtitle("Pclass") +
+  xlab("Title") +
+  ylab("Total Count") +
+  labs(fill = "Survived")
+```
+
+* In general, there is not much differece survived rate between the female in first and second class.
+* Female in third class not as good as female in first and second class, but female in third class still far better than male.
+* Male in first class have the best survived rate than the male in second and third class.
+```{r}
+prop.table(table(cb[1:891,]$Survived,cb[1:891,]$Sex,cb[1:891,]$Pclass),c(2,3))
+ggplot(cb[1:891,], aes(x = Sex, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~ Pclass) + 
+  ggtitle("Pclass") +
+  xlab("Sex") +
+  ylab("Total Count") +
+  labs(fill = "Survived")
+```
+
+## Age vs Survived
+We have 177 missing values in train dataset, 86 missing values in test dataset, totally 263 missing values. It's quite a lot, so I think we can use the "Title" variable to simulate age later.
+```{r}
+summary(cb$Age)
+summary(cb[1:891,"Age"])
+summary(cb[891:1309,"Age"])
+ggplot(cb[1:891,], aes(x = Age, fill = Survived)) +
+    geom_histogram(binwidth = 10) +
+    xlab("Age") +
+    ylab("Total Count")
+```
+
+* Title is "Master" means the age of the young boys. Those boys seem no more than 15 years old.
+* Title is "Miss" means the young girls and unmarried women. 
+* If wowen are traveling alone, their are probably adult female.(150 observation only 4 is child)
+```{r}
+summary(cb[which(cb$Title == "Master"), ]$Age)
+
+Miss <- cb[which(cb$Title == "Miss"), ]
+summary(Miss$Age)
+MissAlone <- Miss[which(Miss$SibSp == 0 & Miss$Parch == 0),]
+summary(MissAlone$Age)
+length(which(MissAlone$Age <= 14.5))
+
+```
+
+## Sibsp
+The median is 0 means more than half records have sibsp value 0.
+```{r}
+summary(cb$SibSp)
+length(table(cb$SibSp))
+```
+
+```{r}
+ggplot(cb[1:891,], aes(x = SibSp, fill = Survived)) +
+  geom_histogram(binwidth = 1) +
+  facet_wrap(~Pclass + Title) + 
+  ggtitle("Pclass & Title") +
+  xlab("SibSp") +
+  ylab("Total Count") +
+  ylim(0,300) +
+  labs(fill = "Survived")
+```
+
+
+## Parch
+The median is 0 means more than half records have value 0.
+```{r}
+summary(cb$Parch)
+length(table(cb$Parch))
+ggplot(cb[1:891,], aes(x = Parch, fill = Survived)) +
+ geom_histogram(binwidth = 1)  +
+  facet_wrap(~Pclass + Title) + 
+  ggtitle("Pclass & Title") +
+  xlab("ParCh") +
+  ylab("Total Count") +
+  ylim(0,300) +
+  labs(fill = "Survived")
+```
+
+
+## Tickets
+If the "Tickets" variable is factor, it will be too many levels(929 levels). So we must find other way to explore tickets. 
+```{r}
+length(unique(cb$Ticket))
+cb$Ticket <- as.character(cb$Ticket)
+head(cb$Ticket,10)
+```
+First, I thought we can take the first character of tickets as below. It will reduce the levels to 16 levels. From the plot we can see the character 1 seems 75% survived rate, character 2 maybe 50%, character 3 maybe 25%, and the character p seems have highest survived rate. Those singal seems have some patterns. We can dig it more.
+```{r}
+# We'll start with taking a look at the first character for each ticket
+# The numbers of levels become 16 levels.
+TicketFirstCharacter<-substr(cb$Ticket, 1, 1)
+unique(TicketFirstCharacter)
+length(unique(TicketFirstCharacter))
+
+
+# we can make TicketFirstCharacter as factor for analysis and visualize
+cb$TicketFirstCharacter <- as.factor(TicketFirstCharacter)
+
+# First, see the surface of the TicketFirstCharacter with survived
+ggplot(cb[1:891,], aes(x = TicketFirstCharacter, fill = Survived)) +
+  geom_bar() +
+  xlab("TicketFirstCharacter") +
+  ylab("Total Count") +
+  ylim(0,350) +
+  labs(fill = "Survived")
+```
+
+So we can plus the pclass into plot to check whether "TicketFirstCharacter" have some pattern with pclass and title. But it seems did not have too many signals or patterns in those two plot. I will ignore it first.
+```{r}
+
+# TicketFirstCharacter might be predictive, drill down a little bit
+ggplot(cb[1:891,], aes(x = TicketFirstCharacter, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~Pclass) + 
+  ggtitle("Pclass") +
+  xlab("TicketFirstCharacter") +
+  ylab("Total Count") +
+  ylim(0,300) +
+  labs(fill = "Survived")
+
+# Plus title to see whether it have pattern or not.
+ggplot(cb[1:891,], aes(x = TicketFirstCharacter, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~Pclass + Title) + 
+  ggtitle("Pclass, Title") +
+  xlab("TicketFirstCharacter") +
+  ylab("Total Count") +
+  ylim(0,200) +
+  labs(fill = "Survived")
+```
+
+## Fare
+First, we can infer "Pclass" have correlation with fare. Maybe the High class have high fare? But from the plot below we did not see the pattern.
+
+* The Fare have a missing value. We can deal with it later.
+```{r}
+# Check the fare
+class(cb$Fare)
+summary(cb$Fare)
+length(unique(cb$Fare))
+
+# Fare is continuous variable, it can't be factor. so it needs to use histogram.
+ggplot(cb, aes(x = Fare)) +
+  geom_histogram(binwidth = 5) +
+  ggtitle("Combined Fare Distribution") +
+  xlab("Fare") +
+  ylab("Total Count") +
+  ylim(0,200)
+
+
+# plus Pclass and Title to see whether fare has predictive power or not
+ggplot(cb[1:891,], aes(x = Fare, fill = Survived)) +
+  geom_histogram(binwidth = 5) +
+  facet_wrap(~Pclass ) + 
+  ggtitle("Pclass, Title") +
+  xlab("fare") +
+  ylab("Total Count") +
+  ylim(0,50) + 
+  labs(fill = "Survived")
+```
+
+## Cabin
+* The Cabin has 1014 missing value. 
+```{r}
+# Let's take a look about cabin variable
+str(cb$Cabin)
+sum(is.na(cb$Cabin))
+```
+We fill those missing values by "U" means unknow.The default random forest implementation in R can not handle fatcors with more than 32 levels. So, we should turn the cabin into character first.
+```{r}
+# Turn factor cabin into character cabin 
+cb$Cabin <- as.character(cb$Cabin)
+
+# Replace empty cabins by "U"
+cb[which(is.na(cb$Cabin)), "Cabin"] <- "U"
+
+# Assign cabin first character into CabinFirstCharacter and take a look at it
+cb$CabinFirstCharacter <- as.factor(substr(cb$Cabin, 1, 1))
+str(cb$CabinFirstCharacter)
+
+# CabinFirstCharacter vs Survived
+ggplot(cb[1:891,], aes(x = CabinFirstCharacter, fill = Survived)) +
+  geom_bar() +
+  xlab("CabinFirstCharacter") +
+  ylab("Total Count") +
+  ylim(0,750) +
+  labs(fill = "Survived")
+
+# Dig more...
+ggplot(cb[1:891,], aes(x = CabinFirstCharacter, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~Pclass) +
+  ggtitle("Pclass") +
+  xlab("Pclass") +
+  ylab("Total Count") +
+  ylim(0,500) +
+  labs(fill = "Survived")
+
+# What if plus Title?
+ggplot(cb[1:891,], aes(x = CabinFirstCharacter, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~Pclass + Title) +
+  ggtitle("Pclass & Title") +
+  xlab("CabinFirstCharacter") +
+  ylab("Total Count") +
+  ylim(0,500) +
+  labs(fill = "Survived")
+
+# What about the multiple cabins?
+cb$MultipleCabin <- as.factor(ifelse((nchar(cb$Cabin)>4),"Y","N"))
+ggplot(cb[1:891,], aes(x = MultipleCabin, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~Pclass + Title) +
+  ggtitle("Pclass, Title") +
+  xlab("cabin.multiple") +
+  ylab("Total Count") +
+  ylim(0,350) +
+  labs(fill = "Survived")
+```
+
+## Embarked
+The Fare have 2 missing value. We can deal with it later.
+```{r}
+# Does Survived rate depend on the port of embarkation?
+str(cb$Embarked)
+sum(is.na(cb$Embarked))
+```
+It seems the embarked did not have any correlation with survived rate.
+```{r}
+# Plot data for analysis
+ggplot(cb[1:891,], aes(x = Embarked, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~Pclass ) +
+  ggtitle("Pclass, Title") +
+  xlab("embarked") +
+  ylab("Total Count") +
+  ylim(0,300) +
+  labs(fill = "Survived")
+```
+
+## Conclusion
+
+We are going to take "Pclass" and "Title" as the parameters. Title can be a good proxy for the combination of sex and age.
+
+# Feature engineering
+## Family Size
+If we want to know someone whether go travel alone or not? Is there any variable can help? Maybe we could try the SibSp and Parch togehter as a total family size.
+First, we can combine sibSp and parch as a "FamilSize" variable and turn it to factor. Second, Let us look the plot of "FamilySize", "Title", "Pclass", with survived rate.
+```{r}
+# Assign sibsp plus parch to "FamilySize" variable.
+cb$FamilySize <- as.factor(cb$SibSp + cb$Parch + 1)
+
+# Let us see the predict power of FamilSize
+ggplot(cb[1:891,], aes(x = FamilySize, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~Title +Pclass) + 
+  ggtitle("Pclass, Title") +
+  xlab("familysize") +
+  ylab("Total Count") +
+  ylim(0,300) +
+  labs(fill = "Survived")
+```
+
+## New Title
+The titles have different meaning and there are four major titles, Master, Miss, Mr and Mrs more than 60. I want to classify the title into four group. We display the name and description as below:
+
+* Capt: It's an abbreviation of Captain. It equals Mr.
+* Col: It's an abbreviation of colonel. It equals Mr.
+* Major: It is a military rank of commissioned officer status. It equals Mr.
+* Don: A Spanish gentleman or nobleman. It equals Mr.
+* Dona: A Spanish courtesy title or form of address for a woman. It equals Mrs.
+* Mlle: The term Mademoiselle is a French familiar title, abbreviated Mlle, traditionally given to an unmarried woman. The equivalent in English is "Miss".
+* MME: In France, one traditionally calls a married woman Madame, whose abbreviation is Mme. It equals Mrs.
+* Jonkheer: It is a Dutch honorific of nobility. It equals Mr.
+* the Countess: It's a female which is a title in European countries for a noble. This title can be used by an unmarried woman in her own right, or by the wife of a man who is an earl or a count. Here the data shows the SibSp equals 0, so I think it belongs to Mrs.
+* Lady: We can see the Lady's name mentions "Mrs Morgan\". We can count it as a Mrs.
+* Rev: The abbreviation of Reverend is a courtesy title used when addressing a Christian cleric such as an pastor or priest. The sex is male but all dead. We can think their spirit as a "sacrifice themselves to save others". It equals Mr. 
+* Dr: It's abbreviation of Doctor. It is very importance for this disaster, especially female Dr. It equals Mr but there is 1 Dr is female.
+* Master: It is an English honorific for boys and young men. And it is very clearly, if FamilysSize more than 4, the survived rate seems lower. 
+* Ms is the same thing as Miss.
+```{r}
+# Extract Title from "Name" variable
+cb$NewTitle<-gsub('(.*, )|(\\..*)', '', cb$Name)
+
+# classify the titles
+cb$NewTitle[cb$NewTitle %in% c("Ms", "Mlle")] <- "Miss"
+cb$NewTitle[cb$NewTitle %in% c("Mme","Dona", "the Countess","Lady")] <- "Mrs"
+cb$NewTitle[cb$NewTitle %in% c("Col", "Capt", "Major","Dr","Rev","Sir","Jonkheer", "Don")] <- "Mr"
+cb$NewTitle <- as.factor(cb$NewTitle)
+
+#  Visualize new version of title
+ggplot(cb[1:891,], aes(x = NewTitle, fill = Survived)) +
+  geom_bar() +
+  facet_wrap(~ Pclass) + 
+  ggtitle("by pclass")
+```
+
+Note: Don't forget the title "Dr" have 1 person, Leader Dr. Alice (Farnham), who is female. So we have to revise the title Mr to Mrs.
+```{r}
+summary(cb[cb$NewTitle=="Mr",])
+cb[cb$NewTitle=="Mr" & cb$Sex=="female",]
+cb$NewTitle[which(cb$NewTitle=="Mr" & cb$Sex=="female")]<-"Mrs"
+
+# Make sure the "Newtitle" variable without any mistake.
+length(which(cb$Sex == "female" & 
+             (cb$NewTitle== "Master"|
+              cb$NewTitle == "Mr")))
+length(which(cb$Sex == "male" & 
+             (cb$NewTitle== "Miss"|
+              cb$NewTitle == "Mrs")))
+```
+ 
+
+we noticed that the same kind of the ticket have same fare. For example, the ticket PC 17755 with fare 512.3292, 17421 with fare 110.8833, so on.
+```{r}
+# let's show some example about ticket with fare 
+cb[cb$Ticket %in% c("PC 17755","PC 17611","17421"),c("Ticket","Fare")]
+```
+
+It seems the same fare for each kind of ticket, no matter how many cabin they use. So we think the fare is the total price for each kind of ticket. The next step is looking for the average fare.
+```{r}
+# let's show some example about ticket with fare 
+ 
+head(cb[which(cb$Ticket == "PC 17755" |
+                 cb$Ticket == "PC 17611" |
+                 cb$Ticket == "113760"   | 
+                 cb$Ticket=="17421"),],100)
+```
+
+## Average fare
+We classify the ticket for each type and calculate the mean of each kind of ticket. 
+Note: Do not forget the fare have 1 missing value. So we list the similar condition and take the median as the missing value. 
+```{r}
+# Classify the ticket
+TicketTypes<-as.data.frame(table(cb$Ticket))
+names(TicketTypes)<-c("Ticket","TicketTypeSize")
+cb<-merge(x=cb,y=TicketTypes,by.x="Ticket",sort=TRUE)[, union(names(cb), names(TicketTypes))]
+cb<-cb[order(cb$PassengerId),]
+rownames(cb)<-1:nrow(cb)
+cb$AveFare<-cb$Fare/cb$TicketTypeSize
+cb$AveFare<-as.numeric(cb$AveFare)
+
+# List who lost fare value
+cb[is.na(cb$AveFare), ]
+
+# Get records for similar conditional passengers and get the median of AveFare
+summary(cb$AveFare[which(cb$Pclass == "3" & cb$NewTitle == "Mr" & cb$FamilySize == 1 & cb$Ticket != "3701")])
+cb[is.na(cb$AveFare), "AveFare"] <- 7.840
+```
+
+
+
+# Prediction
+In this part, we are going to predict the survived rate. I have been trying conditional inference trees, random forest trees and decision tree. It seems th CItree is much better if we put a lot of parameters into model. I think not all of the missing value can be precise predict(like the age) and it is much better to find few key features than just put a lot of parameters into model. So i will use the "rpart" with about 5 key parameters and use the cross validation to reduce overfitting.
+
+## Building decision tree with cross validation
+```{r}
+#10-fold CV repeated 10 times
+set.seed(2348)
+cv.3.folds <- createMultiFolds(cb[1:891,"Survived"], k = 10, times = 10)
+ctrl.3 <- trainControl(method = "repeatedcv", number = 10, repeats = 10,
+                       index = cv.3.folds)
+
+# Run CV and check out results
+set.seed(34324)
+rpart.10cv.2<-train(x=cb[1:891,c("Pclass", "NewTitle", "FamilySize","TicketTypeSize","AveFare")],y=cb[1:891,"Survived"] ,method="rpart",tuneLength = 30, trControl= ctrl.3)
+rpart.10cv.2
+# Plot trees
+prp(rpart.10cv.2$finalModel, type = 0, extra = 1, under = TRUE)
+rpart.plot(rpart.10cv.2$finalModel)
+
+```
+
+
+## Write the submission file
+```{r}
+Prediction <- predict(rpart.10cv.2, cb[892:1309,]) 
+submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+write.csv(submit, file = "rpart_10CV_1.csv", row.names = FALSE)
+```
+
+# Conclusion
+I have been try the CItree and randomforest algorithm with 11 or more parameters and the highest score have been 0.81818. But I think we don't need too many parameters and not all of the missing value can be estimated. So I am going to use the rpart with those 5 key parameters as above which kaggle score is 0.80382. Please do not hesitate if you have any suggestion or recommendation.
+Thank you for your time to read the script. Here are few posts help me a lot that I want to thanks for as follows:
+
+
+Reference:
+    
+* https://github.com/trevorstephens/titanic
+* https://www.kaggle.com/mrisdal/exploring-survival-on-the-titanic/notebook
+* https://blog.datatons.com/2017/05/16/random-forest-titanic-voyage/
+* https://www.kaggle.com/vincentlugat/titanic-data-analysis-rf-prediction-0-81818/
+* https://www.r-bloggers.com/predicting-titanic-deaths-on-kaggle-iii-bagging/
+* https://www.youtube.com/watch?v=32o0DnuRjfg&list=PLTJTBoU5HOCRrTs3cJK-PbHM39cwCU0PF&index=1
+
+
+

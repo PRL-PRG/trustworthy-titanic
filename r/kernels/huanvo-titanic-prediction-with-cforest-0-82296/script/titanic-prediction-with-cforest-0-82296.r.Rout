@@ -1,0 +1,384 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> # Load packages
+> library('ggplot2') # visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library('ggthemes') # visualization
+> library('scales') # visualization
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> library('dplyr') # data manipulation
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library('mice') # imputation
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library('randomForest') # classification algorithm
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library('rpart') #decision tree
+> library(party) #cforest 
+Loading required package: grid
+Loading required package: mvtnorm
+Loading required package: modeltools
+Loading required package: stats4
+Loading required package: strucchange
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: sandwich
+Warning messages:
+1: package ‘party’ was built under R version 3.6.2 
+2: package ‘zoo’ was built under R version 3.6.2 
+> 
+> train <- read.csv('../input/train.csv')
+> test  <- read.csv('../input/test.csv')
+> 
+> #checking the structure of the train set 
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> #checking the structure of the test set
+> str(test)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : Factor w/ 418 levels "Abbott, Master. Eugene Joseph",..: 210 409 273 414 182 370 85 58 5 104 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : Factor w/ 77 levels "","A11","A18",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+> 
+> #load the first few rows of the data
+> head(train)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> 
+> #create a Survived column for the test set filled with NAs
+> test$Survived <- NA
+> 
+> #combine the train and test sets to a data set named combi
+> combi <- rbind(train, test)
+> 
+> # summarize the combi data set
+> summary(combi)
+  PassengerId      Survived          Pclass     
+ Min.   :   1   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000  
+ Median : 655   Median :0.0000   Median :3.000  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295  
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :1309   Max.   :1.0000   Max.   :3.000  
+                NA's   :418                     
+                               Name          Sex           Age       
+ Connolly, Miss. Kate            :   2   female:466   Min.   : 0.17  
+ Kelly, Mr. James                :   2   male  :843   1st Qu.:21.00  
+ Abbing, Mr. Anthony             :   1                Median :28.00  
+ Abbott, Mr. Rossmore Edward     :   1                Mean   :29.88  
+ Abbott, Mrs. Stanton (Rosa Hunt):   1                3rd Qu.:39.00  
+ Abelson, Mr. Samuel             :   1                Max.   :80.00  
+ (Other)                         :1301                NA's   :263    
+     SibSp            Parch            Ticket          Fare        
+ Min.   :0.0000   Min.   :0.000   CA. 2343:  11   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.000   1601    :   8   1st Qu.:  7.896  
+ Median :0.0000   Median :0.000   CA 2144 :   8   Median : 14.454  
+ Mean   :0.4989   Mean   :0.385   3101295 :   7   Mean   : 33.295  
+ 3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7   3rd Qu.: 31.275  
+ Max.   :8.0000   Max.   :9.000   347082  :   7   Max.   :512.329  
+                                  (Other) :1261   NA's   :1        
+             Cabin      Embarked
+                :1014    :  2   
+ C23 C25 C27    :   6   C:270   
+ B57 B59 B63 B66:   5   Q:123   
+ G6             :   5   S:914   
+ B96 B98        :   4           
+ C22 C26        :   4           
+ (Other)        : 271           
+> 
+> # convert Name to character
+> combi$Name <- as.character(combi$Name)
+> 
+> # extracting title from name
+> combi$Title <- sapply(combi$Name, FUN = function(x){strsplit(x, split = '[,.]')[[1]][2]})
+> # removing white space from the title
+> combi$Title <- sub(' ','', combi$Title)
+> 
+> table(combi$Title)
+
+        Capt          Col          Don         Dona           Dr     Jonkheer 
+           1            4            1            1            8            1 
+        Lady        Major       Master         Miss         Mlle          Mme 
+           1            2           61          260            2            1 
+          Mr          Mrs           Ms          Rev          Sir the Countess 
+         757          197            2            8            1            1 
+> 
+> combi$Title[combi$Title %in% c('Mme', 'Mlle')] <- 'Mlle'
+> combi$Title[combi$Title %in% c('Capt', 'Don', 'Major', 'Sir', 'Jonkheer')] <- 'Sir'
+> combi$Title[combi$Title %in% c('Dona', 'Lady', 'the Countess')] <- 'Lady'
+> 
+> combi$Title <- factor(combi$Title)
+> 
+> combi$FamilySize <- combi$SibSp + combi$Parch + 1 
+> 
+> combi$Surname <- sapply(combi$Name, FUN = function(x){strsplit(x, split = '[,.]')[[1]][1]})
+> 
+> combi$FamilyID <- paste(as.character(combi$FamilySize), combi$Surname, sep= "")
+> 
+> combi$FamilyID[combi$FamilySize <= 2] <- 'Small'
+> 
+> table(combi$FamilyID)
+
+           11Sage           3Abbott         3Appleton         3Beckwith 
+               11                 3                 1                 2 
+          3Boulos           3Bourke            3Brown         3Caldwell 
+                3                 3                 4                 3 
+         3Christy          3Collyer          3Compton          3Cornell 
+                2                 3                 3                 1 
+          3Coutts           3Crosby           3Danbom           3Davies 
+                3                 3                 3                 5 
+           3Dodge          3Douglas             3Drew            3Elias 
+                3                 1                 3                 3 
+      3Frauenthal        3Frolicher 3Frolicher-Stehli        3Goldsmith 
+                1                 1                 2                 3 
+      3Gustafsson       3Hamalainen           3Hansen             3Hart 
+                2                 2                 1                 3 
+            3Hays          3Hickman         3Hiltunen         3Hirvonen 
+                2                 3                 1                 1 
+        3Jefferys          3Johnson             3Kink    3Kink-Heilmann 
+                2                 3                 2                 2 
+          3Klasen         3Lahtinen           3Mallet            3McCoy 
+                3                 2                 3                 3 
+         3Minahan         3Moubarek            3Nakid         3Navratil 
+                1                 3                 3                 3 
+          3Newell           3Newsom         3Nicholls          3Peacock 
+                1                 1                 1                 3 
+           3Peter            3Quick         3Richards          3Rosblom 
+                3                 3                 2                 3 
+          3Samaan        3Sandstrom           3Silven          3Spedden 
+                3                 3                 1                 3 
+           3Strom          3Taussig           3Thayer           3Thomas 
+                1                 3                 3                 1 
+           3Touma     3van Billiard         3Van Impe    3Vander Planke 
+                3                 3                 3                 2 
+           3Wells             3Wick          3Widener          4Allison 
+                3                 3                 3                 4 
+       4Backstrom          4Baclini           4Becker           4Carter 
+                1                 4                 4                 4 
+        4Davidson             4Dean           4Herman          4Hocking 
+                1                 4                 4                 2 
+       4Jacobsohn         4Johnston          4Laroche           4Renouf 
+                1                 4                 4                 1 
+   4Vander Planke             4West             5Ford          5Hocking 
+                1                 4                 5                 1 
+   5Kink-Heilmann          5Lefebre          5Palsson          5Ryerson 
+                1                 5                 5                 5 
+         6Fortune           6Panula             6Rice         6Richards 
+                6                 6                 6                 1 
+           6Skoog        7Andersson          7Asplund          8Goodwin 
+                6                 9                 7                 8 
+            Small 
+             1025 
+> 
+> famIDs <- data.frame(table(combi$FamilyID))
+> 
+> head(famIDs)
+       Var1 Freq
+1    11Sage   11
+2   3Abbott    3
+3 3Appleton    1
+4 3Beckwith    2
+5   3Boulos    3
+6   3Bourke    3
+> 
+> famIDs <- famIDs[famIDs$Freq <= 2,]
+> 
+> combi$FamilyID[combi$FamilyID %in% famIDs$Var1] <- 'Small'
+> 
+> combi$FamilyID <- factor(combi$FamilyID)
+> 
+> table(combi$FamilyID)
+
+       11Sage       3Abbott       3Boulos       3Bourke        3Brown 
+           11             3             3             3             4 
+    3Caldwell      3Collyer      3Compton       3Coutts       3Crosby 
+            3             3             3             3             3 
+      3Danbom       3Davies        3Dodge         3Drew        3Elias 
+            3             5             3             3             3 
+   3Goldsmith         3Hart      3Hickman      3Johnson       3Klasen 
+            3             3             3             3             3 
+      3Mallet        3McCoy     3Moubarek        3Nakid     3Navratil 
+            3             3             3             3             3 
+     3Peacock        3Peter        3Quick      3Rosblom       3Samaan 
+            3             3             3             3             3 
+   3Sandstrom      3Spedden      3Taussig       3Thayer        3Touma 
+            3             3             3             3             3 
+3van Billiard     3Van Impe        3Wells         3Wick      3Widener 
+            3             3             3             3             3 
+     4Allison      4Baclini       4Becker       4Carter         4Dean 
+            4             4             4             4             4 
+      4Herman     4Johnston      4Laroche         4West         5Ford 
+            4             4             4             4             5 
+     5Lefebre      5Palsson      5Ryerson      6Fortune       6Panula 
+            5             5             5             6             6 
+        6Rice        6Skoog    7Andersson      7Asplund      8Goodwin 
+            6             6             9             7             8 
+        Small 
+         1074 
+> 
+> summary(combi$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.17   21.00   28.00   29.88   39.00   80.00     263 
+> 
+> Agefit <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + FamilySize,
++                data = combi[!is.na(combi$Age),],
++                method = "anova")
+> combi$Age[is.na(combi$Age)] <- predict(Agefit, combi[is.na(combi$Age),])
+> 
+> table(combi$Embarked)
+
+      C   Q   S 
+  2 270 123 914 
+> 
+> # find the position of the missing value
+> which(combi$Embarked == '')
+[1]  62 830
+> 
+> # fill in those positions with 'S'
+> combi$Embarked[c(62, 830)] = "S"
+> 
+> #convert Embarked to factor
+> combi$Embarked <- factor(combi$Embarked)
+> 
+> # find the position of the missing Fare value
+> which(is.na(combi$Fare))
+[1] 1044
+> 
+> # fill in the missing value with the media
+> combi$Fare[1044] <- median(combi$Fare, na.rm = TRUE)
+> 
+> # create a dataframe TicketGroup that group by the ticket
+> TicketGroup <- combi %>%
++             select(Ticket) %>%
++             group_by(Ticket) %>%
++             summarise(Tsize=n())
+`summarise()` ungrouping output (override with `.groups` argument)
+> 
+> #join the TicketGroup dataframe to combi on the Ticket feature
+> combi <- left_join(combi, TicketGroup, by = "Ticket")
+> 
+> #creating the fare per person variable 
+> combi$FarePP <- combi$Fare/combi$Tsize
+> 
+> #create a dataframe tab3 which computes the mean fare based on Pclass
+> tab3 <- combi[(!is.na(combi$FarePP)),] %>%
++         group_by(Pclass) %>%
++         summarise(MeanFarePP = mean(FarePP))
+`summarise()` ungrouping output (override with `.groups` argument)
+> # join the dataframe tab3 to combi on the Pclass feature
+> combi <- left_join(combi, tab3, by ="Pclass")
+> # replace FarePP = 0 by the mean fare based on Pclass
+> combi$FarePP[which(combi$FarePP==0)] <- combi$MeanFarePP[which(combi$FarePP==0)]
+> 
+> train <- combi[1:891,]
+> test <- combi[892:1309,]
+> 
+> set.seed(415)
+> fit <- cforest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + FarePP +
++                                        Embarked + Title + FamilySize + FamilyID,
++                  data = train, 
++                  controls=cforest_unbiased(ntree=2000, mtry=3))
+> 
+> Prediction <- predict(fit, test, OOB=TRUE, type = "response")
+> 
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+Error in data.frame(PassengerId = test$PassengerId, Survived = Prediction) : 
+  arguments imply differing number of rows: 418, 891
+Execution halted

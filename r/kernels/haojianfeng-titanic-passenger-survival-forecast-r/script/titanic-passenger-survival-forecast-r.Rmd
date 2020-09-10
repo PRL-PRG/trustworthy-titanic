@@ -1,0 +1,361 @@
+---
+title: "Titanic罹难乘客预测_R语言版本 "
+author: "郝建锋"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    number_sections: true
+    toc: true
+    fig_width: 7
+    fig_height: 4.5
+    theme: readable
+    highlight: tango
+---
+# 导言
+## 背景介绍
+本文借助RStudio的R Markdown完成，R Markdown 是通过R语言制作动态文档的文件格式，它提供快速、可复用的报告方式，最终的文档可以转变为任何文件类型（如本文为HTML类型），有关R Markdown的基本介绍与详细信息参见[R Markdown 简介——知乎](https://zhuanlan.zhihu.com/p/24884324)
+
+本文所有代码均通过R语言完成，有关R语言学习的书很多，个人比较推荐新手看**《R语言实战》**；
+关于R作图的书籍强烈推荐ggplot2包的开发者之一Winston Chang的**《R数据可视化手册》**；
+有关机器学习的书，系统学习当然推荐经典之极的**《The elements of statistical learning》**，实用上手较快且以R语言为基础的推荐阿里数据研究院高级专家孙亮的**《实用机器学习》**一书；
+或者你可以[点击这里](http://www.cnblogs.com/xmphoenix/p/3683870.html)获取更多有关机器学习的书籍推荐,附带pdf文档呦，良心资源。
+
+* 1、kaggle平台机制的介绍
+Kaggle 于 2010 年创立，专注数据科学，机器学习竞赛的举办，是全球最大的数据科学社区和数据竞赛平台。在 Kaggle 上，企业或者研究机构发布商业和科研难题，悬赏吸引全球的数据科学家，通过众包的方式解决建模问题。而参赛者可以接触到丰富的真实数据，解决实际问题，角逐名次，赢取奖金。诸如 Google，Facebook，Microsoft 等知名科技公司均在 Kaggle 上面举办过数据挖掘比赛。2017年3月，Kaggle 被 Google CloudNext 收购。
+kaggle的具体运作方式及比赛形式参见[Kaggle 数据挖掘比赛经验分享](http://blog.csdn.net/u013764485/article/details/73740138)，**强烈推荐有兴趣的同学了解一下**
+另：如果选择用google账号登陆而有翻墙需求（仅作学习使用）的同学也可以联系我。
+
+在本次报告中，由于本人仅仅是为了熟悉一下kaggle的运作方式以及想快点看到首次完成的成果，很多的类似于描述分析或者检验的工作由于其它文章已经多次验证或实力受限没有都写入报告中，本报告仅涉及对变量的特征工程处理以及最终的模型预测，实在称不上一篇合格的文章，亟待完善之处颇多，望众位理性看待，提出宝贵意见。
+
+* 2、Titanic项目的介绍
+看过电影的小伙伴们都知道，泰坦尼克号一艘奥林匹克级邮轮，在进行从英国到纽约的处女航时，从英国南安普敦（Southampton）出发，途径法国瑟堡（Cherbourg）-奥克特维尔以及爱尔兰昆斯敦（Queenstown），计划横渡大西洋前往美国纽约市。但因为人为错误，于1912年4月14日不幸的撞到了冰山上并沉没。在这场灾难中，人们争先恐后地逃离正在沉没的船。本事件被称为一个奇迹一部分归咎于“女士和儿童优先”是这次灾难中执行准则，由于救生艇数量不足，只有一小部分乘客存活下来。
+官方给出的数据集分成两个部分，训练集（train.csv）跟测试集（test.csv）。竞赛要求我们预测测试集当中的乘客在这次泰坦尼克号灾难中是否生存。
+
+对于这个项目，我很同意知乎上一位答主的回答：
+titanic作为一个训练项目，个人觉得练练手熟悉熟悉工具以及一些常见的特征选择和处理方法是十分适合的，实在没有太大的必要在这个任务上花太多精力去刷。好多成绩非常好的人都是使用了一些非常tricky的技巧，实用性不是很大。比如，一般来说姓名对于预测能否生还没有太大的价值，但在这个赛题的设置下，适当的考虑姓名可以发挥意想不到的作用。如训练集中头等舱一个姓Abel（随便起的，但是ms确实有这样的实例）的男性生还了，那么测试集中头等舱同样姓Abel的女子和小孩则很可能也能够生还，因为一家子基本上男的活下来了老婆孩子也问题不大。这种trick就基本没有实用性和普适性了。与其花很多精力在这个上面，还是关注一些其他有意思的赛题更好。
+作者：lystdo
+链接：https://www.zhihu.com/question/53999077/answer/144753652
+所以说，作为新手练手来说这个项目十分重视对变量的处理，是十分良好的练手工具，但为了刷分不断深究，用一些应用域非常窄的办法就意义不大了。
+
+下面我们开始正式处理完成项目：
+
+# 特征工程
+## 数据说明
+* 载入所需包
+在进行数据导入之前，我们需要先载入所需要的程辑包：
+```{r, message = FALSE, warning=FALSE}
+# 可视化包
+library('ggplot2')          
+library('ggthemes')         
+library('scales')     
+library('dplyr')        # 数据处理包
+library('rpart')        # 缺失值填补
+library('randomForest') # 随机森林包
+```
+**ggplot2**是一个绘制可视化图形的R包，汲取了R语言基础绘图系统(graphics)和lattice包的优点，摒弃了相关的缺点，创造出来的一套独立的绘图系统；
+ggplot2 有以下几个特点：
+1） 图形映射， 自动化的将数据映射到图形上；
+2） 图层叠加， 将不同形状的图表视为图层（layer）,  可以方便的进行叠加
+3）提供了范围控制（scale）， 坐标系转换（coord）, 分面（facet）等特性；
+**ggthemes和scales**都是辅助美观ggplot2作图的可视化包；
+**rpart**用决策树模型解决分类问题的程辑包；
+**randomForest**机器学习中集成学习部分的一种重要算法，随机森林就是通过集成学习的思想将多棵树集成的一种算法，它的基本单元是决策树，而它的本质属于机器学习的一大分支——集成学习（Ensemble Learning）方法。随机森林的名称中有两个关键词，一个是“随机”，一个就是“森林”。“森林”我们很好理解，一棵叫做树，那么成百上千棵就可以叫做森林了，这样的比喻还是很贴切的，其实这也是随机森林的主要思想--集成思想的体现。
+
+* 载入数据
+载入所需的程辑包后，将Titanic数据集的训练集导入：
+```{r, message=FALSE, warning=FALSE}
+train <- read.csv('../input/train.csv', stringsAsFactors = F)
+```
+
+首先让我们看一下数据集中都有哪些变量，以及这些变量的类型：
+```{r,message=FALSE, warning=FALSE}
+str(train)
+```
+
+可以看到整个训练集共有12个特征列（变量），可以确定的是其中PassengerId只是数据集中区分乘客的编号，与原数据以及我们的预测分析没有关系，所以我们对其不予考虑。所以我们现在共有11个特征列，每个特征列的具体含义如下：
+
+Variable Name | Description
+--------------|-------------
+Survived      | Survived (1) or died (0)
+Pclass        | Passenger's class
+Name          | Passenger's name
+Sex           | Passenger's sex
+Age           | Passenger's age
+SibSp         | Number of siblings/spouses aboard
+Parch         | Number of parents/children aboard
+Ticket        | Ticket number
+Fare          | Fare
+Cabin         | Cabin
+Embarked      | Port of embarkation
+
+如果您想获得更全面的变量信息，请[点击这里](https://www.kaggle.com/c/titanic/data)查看。
+
+接下来，我们将测试集数据导入，并且将两组数据合并以便后续处理：
+```{r,message=FALSE, warning=FALSE}
+test <- read.csv('../input/test.csv', stringsAsFactors = F)
+test$Survived <- NA
+# rbind函数需要两个数据集列数相同，所以创建test数据集的Survived变量
+train_test <- rbind(train,test)
+```
+这样我们第一道工序——数据导入与说明便告一段落，由于数据中存在着很多的缺失值，接下来我们的工作便是将这些缺失值删除或者选用适当的方式进行填补。
+
+## 缺失值处理【一】
+缺失值的处理基本是所有数据分析者都会遇到的问题，这里给出两篇有关缺失值填补方法的小文章，本文的填补方法基本都囊括在内——[数据挖掘缺失值处理](https://wenku.baidu.com/view/dfafc9cba1c7aa00b52acbd0.html)、[数据预处理](http://www.cnblogs.com/xiaohuahua108/p/6237906.html),当然前面的书单中有些书有更详尽的描述。
+
+首先我们来探查一下都有哪些变量存在缺失值：
+```{r,message=FALSE, warning=FALSE}
+sapply(train_test,function(x) sum(is.na(x)))
+sapply(train_test,function(x) sum(x == ""))
+```
+可以看到，其中Survived缺失418个观测值，这刚好合并test数据集而造成的，并不需要我们填补。需要我们进行缺失值处理的变量有**Fare[1]、Embarked[2]、Age[263]、Cabin[1014]**,下一步我们就开始对这几个变量进行缺失值处理。
+
+### 船票价格（Fare）
+```{r,message=FALSE, warning=FALSE}
+# 查看Fare缺失值的乘客基本信息
+faremiss <- which(is.na(train_test$Fare))
+train_test[faremiss,]
+```
+由他的已知信息可以得到这是位由*S港*登船的*三等舱*的*60.5岁*的乘客。根据相同的登船港口和船舱等级，以及年龄信息，我们对其他乘客的票价进行可视化处理来获取一些灵感：
+```{r,message=FALSE, warning=FALSE}
+Fare1 <- ggplot(train_test[train_test$Pclass=='3' & train_test$Embarked=='S' & train_test$Age>=50 ,],
+       aes( x=Fare )) +
+  geom_density( fill = '#99d6ff',alpha=0.4 ) +
+  geom_vline(aes(xintercept=median(Fare,na.rm=T)),colour='red',linetype='dashed',led=1 ) +
+  ggtitle("Fare1:Age considered") +
+  scale_x_continuous(labels=dollar_format()) +
+  theme_few()
+Fare2 <- ggplot(train_test[train_test$Pclass=='3' & train_test$Embarked=='S',],
+       aes( x=Fare )) +
+  geom_density( fill = '#99d6ff',alpha=0.4 ) +
+  geom_vline(aes(xintercept=median(Fare,na.rm=T)),colour='red',linetype='dashed',led=1 ) +
+  ggtitle("Fare2:Regardless of age") + 
+  scale_x_continuous(labels=dollar_format()) +
+  theme_few()
+# 载入分面数据包gridExtra
+library(gridExtra)
+grid.arrange(Fare1, Fare2, ncol=2, nrow=1)
+```
+
+从图中可以看到与次乘客有相似属性的乘客的Fare值都集中在8左右，我们来看一下其具体值：
+```{r, message=FALSE, warning=FALSE}
+Fare1 <- median(train_test[train_test$Pclass=='3' & train_test$Embarked=='S' & train_test$Age>=50 ,]$Fare,
+                na.rm = TRUE)
+Fare2 <- median(train_test[train_test$Pclass=='3' & train_test$Embarked=='S',]$Fare, na.rm = TRUE)
+Fare1
+Fare2
+```
+结果是令人欣喜的相似，于是我们可以将缺失的Fare值赋值为8.00
+```{r, message=FALSE, warning=FALSE}
+train_test$Fare[faremiss] <- 8.00
+# 可视化一下相关度
+ggplot(train_test[1:891,], aes(x = Fare, color = factor(Survived))) +
+  geom_line(stat='count', position='dodge') +
+  theme_few()
+```
+
+可以看出，船票费用确实对幸存率有影响，Fare越大，幸存率越高。
+
+### 登船港口（Embarked）
+探索数据发现，62和830号乘客的登船港口数据是缺失的
+```{r, message=FALSE, warning=FALSE}
+embarkedmiss <- which(train_test$Embarked=="")
+train_test[embarkedmiss,]
+```
+根据现实因素考虑可以得知每个港口登船的乘客的等级和票价一般会因为地区属性或其他因素的影响而产生差异，而且这两位乘客都是头等舱，票价也都是80，故我们可以根据其他Pclass为1且Fare为$80的乘客的登场港口分布情况来推测出两位乘客的登船港口。
+```{r, message=FALSE, warning=FALSE}
+# 去除带有缺失值的乘客的观测行
+library('dplyr')
+embark_fare <- train_test %>%
+  filter(PassengerId != 62 & PassengerId != 830)
+
+# 用ggplot2来可视化登船渡口与舱位等级和票价的关系
+ggplot(embark_fare, aes(x = Embarked, y = Fare, fill = factor(Pclass))) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept=80), 
+             colour='red', linetype='dashed', lwd=2) +
+  scale_y_continuous(labels=dollar_format()) +
+  theme_few()
+```
+
+
+
+由图可看出，在C港登船的乘客多住头等舱，并且住头等舱的票价中位数大概在$80左右，与我们带有缺失值的乘客的已知信息匹配度极高，所以将两位乘客的登船港口登记为“C”港是合理且必要的。
+
+```{r}
+train_test$Embarked[c(62, 830)] <- 'C'
+train_test$Embarked <- factor(train_test$Embarked)
+```
+
+## 创建新特征列【一】
+### 家庭规模（FsizeD）
+SibSb和Parch代表着乘客及其与之旅行的家庭成员人数，不同家庭规模逃生时往往聚集在一起，同时幸存或遇难的可能性比较高，我们把这两个变量组合成一个新的变量——**Fsize**
+* 家庭大小(Fsize)
+```{r, message=FALSE, warning=FALSE}
+# 创建家庭大小变量
+train_test$Fsize <- train_test$SibSp + train_test$Parch + 1
+# 用ggplot2可视化存活与否与家庭大小的关系
+ggplot(train_test[1:891,], aes(x = Fsize, fill = factor(Survived))) +
+  geom_bar(stat='count', position='dodge') +
+  scale_x_continuous(breaks=c(1:11)) +
+  labs(x = 'Family Size') +
+  theme_few()
+```
+
+可以看到的是，单身狗们和大家庭（家庭人员数>=5）在船上的人幸存率较低。这提醒我们可以将家庭大小划分为三个等级，创建**家庭规模**变量。
+
+* 家庭规模（FsizeD）
+```{r, message=FALSE, warning=FALSE}
+# 将家庭大小变量离散化，分成个人、小型家庭和大型家庭三个等级
+train_test$FsizeD[train_test$Fsize == 1] <- 'singleton'
+train_test$FsizeD[train_test$Fsize < 5 & train_test$Fsize > 1] <- 'small'
+train_test$FsizeD[train_test$Fsize > 4] <- 'large'
+# 转化为因子变量
+train_test$FsizeD <- factor(train_test$FsizeD)
+
+# 通过马赛克图来展示不同家庭规模幸存情况
+mosaicplot(table(train_test[1:891,]$FsizeD, train_test[1:891,]$Survived), main='Family Size by Survival',
+           shade=TRUE)
+```
+
+很好，不同规模的家庭的幸存率明显不同，这说明这个变量可能对模型有很高的贡献度，这个变量是可以作为我们模型的预测变量的。
+
+### 乘客头衔（Ptitle）
+乘客姓名很长，包含着许多的信息，我们可以将这个变量切片创建出新的变量——**乘客头衔（Ptitle）**。
+```{r, message=FALSE, warning=FALSE}
+# 从乘客名字中分离出头衔
+train_test$Ptitle <- gsub('(.*, )|(\\..*)', '', train_test$Name)
+# 根据性别显示头衔
+table(train_test$Sex, train_test$Ptitle)
+# 整合人数小的特殊头衔群体
+rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
+'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+
+# 整合语意重复头衔
+train_test$Ptitle[train_test$Ptitle == 'Mlle']        <- 'Miss' 
+train_test$Ptitle[train_test$Ptitle == 'Ms']          <- 'Miss'
+train_test$Ptitle[train_test$Ptitle == 'Mme']         <- 'Mrs' 
+train_test$Ptitle[train_test$Ptitle %in% rare_title]  <- 'Rare Title'
+# 转化为因子变量
+train_test$Ptitle <- factor(train_test$Ptitle)
+# 再次根据性别显示头衔
+table(train_test$Sex, train_test$Ptitle)
+```
+
+## 缺失值处理【二】
+### 乘客年龄（Age）
+由于Age缺失的数据量为263个，数据量比较大，不能采取简单的平均数或中位数来处理，这里我们借助rpart包预测填补Age的缺失数据。
+由于需要用到其他变量来进行预测，所以我们是在处理完一部分变量后才开始进行Age缺失值的填补：
+```{r}
+age_model <- rpart(Age~Pclass+Sex+SibSp+Parch+Fare+Embarked+Ptitle+FsizeD,
+                   data=train_test[!is.na(train_test$Age),],method='anova')
+train_test$Age[is.na(train_test$Age)] <- predict(age_model,train_test[is.na(train_test$Age),])
+```
+
+令人欣喜的，现在我们将年龄数据补充完整了，但是对年龄的处理并没有完成，为了使模型更具有容错率也更合理，我们需要创建一些基于年龄生成的变量：**年龄段**和**母亲**。
+
+## 创建新特征列【二】
+创建这两个变量的缘由一方面是由于对泰坦尼克号事件的新闻报道中十分强调妇女和孩子的获救率，所以我们做了一幅图来验证这个观点：
+```{r, message=FALSE, warning=FALSE}
+# 首先我们了解一下年龄和幸存情况的关系
+ggplot(train_test[1:891,], aes(Age, fill = factor(Survived))) + 
+  geom_histogram() + 
+  # 将性别也包括在内，因为性别也是一个重要的影响因素
+  facet_grid(.~Sex) + 
+  theme_few()
+```
+
+可以看到的是，孩子的获救率确实是超过成年人的，妇女的幸存率更是远远大于男性，所以我们十分有必要进一步创建新变量来反映这一情况。
+
+### 年龄段（Age_group）
+```{r, message=FALSE, warning=FALSE}
+# 创建分辨孩子的列，并判断是孩子还是成人
+train_test$Age_group[train_test$Age <= 12] <- 'Child'
+train_test$Age_group[train_test$Age > 12 & train_test$Age < 18] <- 'youth'
+train_test$Age_group[train_test$Age >= 18] <- 'Adult'
+# 转化为因子变量
+train_test$Age_group  <- factor(train_test$Age_group)
+
+# 可视化统计结果
+mosaicplot(table(train_test$Age_group,
+                 train_test$Survived),main='Comparison of child and adult',
+           color=c("pink","lightblue"))
+```
+
+可以明显的看到，幸存率：孩子 > 少年 > 成人。接下来，我们还需要完成**母亲**变量的创建。
+
+### 母亲(Mother)
+判断为母亲的条件是
+1. 女性；
+2. 18岁以上；
+3. 至少一个小孩；
+4. 头衔不是“小姐”。
+```{r, message=FALSE, warning=FALSE}
+# 加入母亲变量
+train_test$Mother <- 'Not Mother'
+train_test$Mother[train_test$Sex == 'female' & train_test$Parch > 0 & train_test$Age > 18 & 
+                  train_test$Ptitle != 'Miss'] <- 'Mother'
+# 可视化统计结果
+mosaicplot(table(train_test$Mother,train_test$Survived),
+           main='Comparison of mother and non mother',
+           color=c("pink","lightblue"))
+```
+
+可以看出，身为母亲幸存率确实会比其他人高很多。
+
+```{r, message=FALSE, warning=FALSE}
+# 转化为因子变量
+train_test$Mother <- factor(train_test$Mother)
+```
+
+# 建模预测
+```{r, message=FALSE, warning=FALSE}
+train_test$Sex <- factor(train_test$Sex)
+train <- train_test[1:891,]
+test <- train_test[892:1309,]
+# 设置随机种子
+set.seed(754)
+# 训练模型
+rf_model <- randomForest(factor(Survived) ~ Sex + Ptitle + Pclass + Embarked +
+                                            Age_group + Mother + Fare + FsizeD,data = train)
+```
+
+查看变量重要性
+```{r, message=FALSE, warning=FALSE}
+importance    <- importance(rf_model)
+varImportance <- data.frame(Variables = row.names(importance), 
+                            Importance = round(importance[ ,'MeanDecreaseGini'],2))
+
+rankImportance <- varImportance %>%
+  mutate(Rank = paste0('#',dense_rank(desc(Importance))))
+
+ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
+    y = Importance, fill = Importance)) +
+  geom_bar(stat='identity') + 
+  geom_text(aes(x = Variables, y = 0.5, label = Rank),
+    hjust=0, vjust=0.55, size = 4, colour = 'red') +
+  labs(x = 'Variables') +
+  coord_flip() + 
+  theme_few()
+```
+
+做预测
+```{r}
+prediction <- predict(rf_model, test)
+
+solution <- data.frame(PassengerID = test$PassengerId, Survived = prediction)
+
+write.csv(solution, file = 'gender_submission.csv', row.names = F)
+```
+
+
+# 总结
+本次预测公共分数0.81339，排名524/8261，大约在全部队伍中7%的水平。
+由于Titanic是入门级的练手公开项目，现在有很多的公开内核，分数并不能代表什么，
+这个项目最重要的还是对新手来说你学到了什么，收获了什么：
+通过本次的报告编写我进一步明白了数据处理的方法以及学习了预测性分类问题的一种普遍的解决方法——随机森林，
+但不足之处仍有很多，比如对数据的探索式分析不够详尽，最终的预测有点随机撞大运的意思，
+并且由于知识有限对关联特征没有进行检验与处理，使报告不免有些不十分可靠。
+不过，知有缺方觉不足，识有限更需勉力，路漫漫其修远兮，期待大家的一起前行——欢迎大家一起来玩耍！！！
+
+闲着也是闲着，没事来kaggle练练手吧。
+我的kaggle主页：[Diviner](https://www.kaggle.com/haojianfeng)

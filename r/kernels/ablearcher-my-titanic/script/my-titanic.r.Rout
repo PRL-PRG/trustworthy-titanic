@@ -1,0 +1,314 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(caret)
+Loading required package: lattice
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library(rpart)
+> library(rpart.plot)
+> 
+> train <- read.csv("../input/train.csv", header = TRUE, stringsAsFactors = FALSE)
+> test <- read.csv("../input/test.csv", header = TRUE, stringsAsFactors = FALSE)
+> test$Survived <- NA
+> all <- rbind(train, test)
+> all$Survived <- as.factor(all$Survived)
+> 
+> #Checking for missing data, a missing data point can be an indication that
+> #someone died
+> all$MissingData <- apply(all, 1, function(x) any(is.na(x)))
+> 
+> all %>% group_by(MissingData) %>%
++   summarise(n = n()) %>%
++   mutate(share = n / sum(n))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 2 x 3[39m
+  MissingData     n share
+  [3m[90m<lgl>[39m[23m       [3m[90m<int>[39m[23m [3m[90m<dbl>[39m[23m
+[90m1[39m FALSE         714 0.545
+[90m2[39m TRUE          595 0.455
+> 
+> #Name variable contains a last name and title
+> all$LastName <- gsub(", .*", "", all$Name)
+> 
+> #Taking out the title from the name variable
+> all$Title = gsub(".*, |\\. .*", "", all$Name)
+> table(all$Title)
+
+        Capt          Col          Don         Dona           Dr     Jonkheer 
+           1            4            1            1            8            1 
+        Lady        Major       Master         Miss         Mlle          Mme 
+           1            2           61          260            2            1 
+          Mr          Mrs           Ms          Rev          Sir the Countess 
+         757          197            2            8            1            1 
+> 
+> #Some weird titles
+> men <- c("Capt", "Col", "Don", "Dr", "Jonkheer", "Major", "Rev", "Sir")
+> women <- c("Dona", "Lady", "Mme", "the Countess")
+> girls <- c("Mlle", "Ms")
+> all$Title[all$Title %in% men] <- "Mr"
+> all$Title[all$Title %in% women] <- "Mrs"
+> all$Title[all$Title %in% girls] <- "Miss"
+> all$Title <- as.factor(all$Title)
+> 
+> #Pclass is complete and can turned into factor, I don't think it makes sense to 
+> #view it as numeric
+> table(all$Pclass)
+
+  1   2   3 
+323 277 709 
+> all$Pclass <- as.factor(all$Pclass)
+> 
+> #Making a ggplot comparing survival by ticket class
+> all %>% filter(!is.na(Survived)) %>% 
++   group_by(Pclass, Survived = ifelse(Survived == 1, "Yes", "No")) %>%
++   summarise(n = n()) %>%
++   mutate(share = n / sum(n)) %>%
++   ggplot(aes(Pclass, share, fill = Survived, label = paste(round(share * 100), "%", sep =""))) +
++   geom_bar(position = "stack", stat = "identity", color = "black") +
++   geom_text(position = position_stack(vjust = 0.5)) +
++   labs(x = "Ticket class", y = "Survival", title = "Survival by ticket class") +
++   scale_y_continuous(labels = scales::percent) +
++   theme_bw()
+`summarise()` regrouping output by 'Pclass' (override with `.groups` argument)
+> 
+> #Sex is complete and can turned into factor
+> table(all$Sex)
+
+female   male 
+   466    843 
+> all$Sex <- as.factor(all$Sex)
+> 
+> #Making a ggplot comparing survival by gender and ticket class
+> all %>% filter(!is.na(Survived)) %>% 
++   group_by(Sex, Pclass, Survived = ifelse(Survived == 1, "Yes", "No")) %>%
++   summarise(n = n()) %>%
++   mutate(share = n / sum(n)) %>%
++   ggplot(aes(Sex, share, fill = Survived, label = paste(round(share * 100), "%", sep =""))) +
++   geom_bar(position = "stack", stat = "identity", color = "black") +
++   geom_text(position = position_stack(vjust = 0.5)) +
++   labs(x = "Ticket class", y = "Survival", title = "Survival by ticket class and class") +
++   scale_y_continuous(labels = scales::percent) +
++   facet_wrap(. ~ Pclass) +
++   theme_bw()
+`summarise()` regrouping output by 'Sex', 'Pclass' (override with `.groups` argument)
+> 
+> #Have to deal with age as there are so many unknown
+> length(which(is.na(all$Age)))
+[1] 263
+> 
+> #SibSp and Parch are both without unknown (although I suspect the data is not 100%
+> #correct anyway). Obviously kept as a numeric variable.
+> length(which(is.na(all$SibSp)))
+[1] 0
+> length(which(is.na(all$Parch)))
+[1] 0
+> 
+> #Adding family size
+> all$FamilySize <- all$SibSp + all$Parch + 1
+> 
+> #Ticket is complete but the char values make little sense to me, kept as char
+> length(which(is.na(all$Ticket)))
+[1] 0
+> 
+> #One with unknown fare. Shouldn't waste too much time there, replace with median
+> #class fare of same family size (fare doesn't seem to be by person but by ticket)
+> length(which(is.na(all$Fare)))
+[1] 1
+> noFareRow <- which(is.na(all$Fare))
+> all$Fare[noFareRow] <- median(all$Fare[all$Pclass == all$Pclass[noFareRow] & 
++                                          all$FamilySize == all$FamilySize[noFareRow]], na.rm = TRUE)
+> 
+> all$FarePerson <- apply(all, 1, function(x) as.numeric(x["Fare"]) / nrow(all[all$Ticket == x["Ticket"], ]))
+> 
+> #Plenty of blanks in Cabin variable but no NA, mostly Pclass 1 have cabin numbers
+> length(which(is.na(all$Cabin)))
+[1] 0
+> table(all$Cabin == "", all$Pclass)
+       
+          1   2   3
+  FALSE 256  23  16
+  TRUE   67 254 693
+> 
+> #No missing embarked, turned to factor
+> length(which(is.na(all$Embarked)))
+[1] 0
+> all$Embarked <- as.factor(all$Embarked)
+> 
+> #Trying to classify passengers into family/company groups
+> all$Family <- NA
+> workData <- all[, c("LastName", "Ticket", "FamilySize")]
+> repeat {
++   row <- workData[1, ]
++   ticket <- row$Ticket
++   lastName <- row$LastName
++   famSize <- row$FamilySize
++   famData <- workData[workData$LastName == lastName & workData$FamilySize == famSize, ]
++   if (!nrow(famData) == row$FamilySize) {
++     if (nrow(famData[famData$Ticket == ticket, ]) == famSize) {
++       famData <- famData[famData$Ticket == ticket, ]
++     } else {
++       famData <- workData[1, ]
++     }
++   }
++   tickets <- unique(famData$Ticket)
++   famData <- workData[workData$Ticket %in% tickets, ]
++   famCount <- nrow(famData)
++   lastNames <- paste(unique(famData$LastName), collapse = "/")
++   indices <- row.names(famData)
++   if (famCount > 1) all[row.names(all) %in% indices, "Family"] <- paste(lastNames, famCount, ticket)
++   workData <- workData[!row.names(workData) %in% indices, ]
++   if (nrow(workData) == 0) {
++     break
++   }
++ }
+> 
+> #Now that we have families, let's create two variables indicating whether a family member
+> #survived or died
+> all$FamilyLive <- NA
+> all$FamilyDied <- NA
+> for (i in 1:nrow(all)) {
++   famData <- all[all$Family == all$Family[i] & all$PassengerId != all$PassengerId[i], ]
++   all$FamilyLive[i] <- ifelse(length(which(famData$Survived == 1)) > 0, 1, 0)
++   all$FamilyDied[i] <- ifelse(length(which(famData$Survived == 0)) > 0, 1, 0)
++ }
+> all$FamilyLive <- as.factor(all$FamilyLive)
+> all$FamilyDied <- as.factor(all$FamilyDied)
+> 
+> #Making a bar chart comparing survival between people with and without family survivors
+> all %>% filter(!is.na(Survived)) %>%
++   group_by(FamilyLive = ifelse(FamilyLive == 1, "Yes", "No"), Survived) %>%
++   summarise(n = n()) %>%
++   mutate(share = n / sum(n)) %>%
++   ggplot(aes(x = FamilyLive, y = share, fill = Survived, label = paste(round(share * 100), "%", sep = ""))) +
++   geom_bar(stat = "identity", position = "stack", color = "black") +
++   geom_text(position = position_stack(vjust = 0.5)) +
++   scale_y_continuous(labels = scales::percent)
+`summarise()` regrouping output by 'FamilyLive' (override with `.groups` argument)
+> 
+> #Making a bar chart comparing survival between people with and without family causulties
+> all %>% filter(!is.na(Survived)) %>%
++   group_by(FamilyDied = ifelse(FamilyDied == 1, "Yes", "No"), Survived) %>%
++   summarise(n = n()) %>%
++   mutate(share = n / sum(n)) %>%
++   ggplot(aes(x = FamilyDied, y = share, fill = Survived, label = paste(round(share * 100), "%", sep = ""))) +
++   geom_bar(stat = "identity", position = "stack", color = "black") +
++   geom_text(position = position_stack(vjust = 0.5)) +
++   scale_y_continuous(labels = scales::percent) +
++   theme_bw()
+`summarise()` regrouping output by 'FamilyDied' (override with `.groups` argument)
+> 
+> #Now dealing with the age problem, making a dummy matrix from possibly relevant 
+> imputeData <- all[, c("Pclass", "Sex", "Age", "Fare", "Embarked", "FamilySize", "Title")]
+> dummies <- predict(dummyVars(" ~ .", data = imputeData), imputeData)
+> 
+> #The predict function is a genric function producing something from a model.
+> #Both dummyVars and preprocess are treated like models in that way here.
+> preprocess <- preProcess(dummies, method = "bagImpute")
+> imputed <- as.data.frame(predict(preprocess, dummies))
+> 
+> #Transfering the age variable with the predicted values
+> all$Age = imputed$Age
+> 
+> #Making a graph comparing age and survival
+> all %>% filter(!is.na(Survived)) %>%
++   mutate(bin = paste(floor(Age / 10) * 10, "-", ceiling((Age + 0.1) / 10) * 10)) %>%
++   group_by(bin, Survived) %>%
++   summarise(n = n()) %>%
++   mutate(share = n / sum(n)) %>%
++   ggplot(aes(x = bin, fill = Survived, y = n, label = paste(round(share * 100), "%", sep = ""))) +
++   geom_bar(stat = "identity", position = "stack", color = "black") +
++   geom_text(position = position_stack(vjust = 0.5)) +
++   labs(x = "Age group", y = "Count") +
++   theme_bw()
+`summarise()` regrouping output by 'bin' (override with `.groups` argument)
+> 
+> #Some combination of age, family size and title seem a bit exotic to a modern
+> #person but trying to capture who is a child and not
+> all$Child <- ifelse(all$Age < 17 & all$Title != "Mrs", 1, 0)
+> 
+> #Making a chart comparing survival per family size, facet by child and gender
+> ggplot(all[!is.na(all$Survived), ], aes(x = FamilySize, y = as.numeric(ifelse(Survived == 0, 0, 1)))) +
++   geom_bar(aes(y = (..count..)/sum(..count..))) +
++   geom_line(stat = "summary", fun.y = "mean", color = "blue") +
++   labs(y = "Survival") +
++   ylim(NA, 1) +
++   facet_wrap(Sex ~ ifelse(Child == 1, "child", "adult")) +
++   theme_bw()
+No summary function supplied, defaulting to `mean_se()`
+No summary function supplied, defaulting to `mean_se()`
+No summary function supplied, defaulting to `mean_se()`
+No summary function supplied, defaulting to `mean_se()`
+Warning message:
+Ignoring unknown parameters: fun.y 
+> 
+> features <- c("Sex", "Child", "FamilyDied", "FamilySize", "FarePerson", "Pclass")
+> trainData <- all[!is.na(all$Survived), features]
+> outcome <- all$Survived[!is.na(all$Survived)]
+> 
+> set.seed(111)
+> folds <- createMultiFolds(outcome, k = 3, times = 10)
+> control <- trainControl(method = "repeatedcv", number = 3, repeats = 10, index = folds)
+> 
+> rpartModel <- train(x = trainData, y = outcome, method = "rpart", tuneLength = 30, trControl = control)
+> prp(rpartModel$finalModel, type = 0, extra = 1, under = TRUE)
+> 
+> rfModel <- randomForest(x = trainData, y = outcome, importance = TRUE)
+> 
+> testData <- all[is.na(all$Survived), features]
+> predictions <- as.data.frame(predict(rfModel, testData))
+> submission <- cbind(all$PassengerId[is.na(all$Survived)], predictions)
+> names(submission) <- c("PassengerId", "Survived")
+> write.csv(submission, "titanic_20180921_1.csv", row.names = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+ 14.811   0.463  15.610 

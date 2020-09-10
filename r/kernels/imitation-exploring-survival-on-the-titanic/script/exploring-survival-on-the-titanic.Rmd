@@ -1,0 +1,376 @@
+
+## Title: "Titanic Survival Prediction via RF"
+#### Author: Rahima Karimova (Inspired by David Langer's Titanic 
+#### Data Analysis video https://www.youtube.com/watch?v=32o0DnuRjfg 
+#### and kaggler-Megan Risdal)
+#### Date: 29.11.2016
+
+### Necessary packages 
+#### library(tidyverse) 
+#### library(ggthemes)
+#### library(stringr)
+#### library(scales)
+#### library(mice)
+#### library(randomForest)
+```{r include=FALSE}
+library(tidyverse) #Cleaning, visualization...
+library(ggthemes) # visualisation
+library(stringr)
+library(scales)
+library(mice) # NA replacement
+library(randomForest) # forecast
+```
+# Reading your data
+```{r}
+train <- read.csv('../input/train.csv', stringsAsFactors = F)
+test  <- read.csv('../input/test.csv', stringsAsFactors = F)
+```
+
+# Discovering your data
+```{r}
+glimpse(train)
+glimpse(test)
+```
+## Preparing train and test for binding
+```{r}
+test.survived<-data.frame(Survived= rep("None", nrow(test)), test[,])
+head(test.survived)
+ntest.survived<-test.survived[,c(2,1,3,4,5,6,7,8,9,10,11,12)]
+head(ntest.survived)
+names(train)
+names(ntest.survived)
+```
+
+## Binding data sets
+```{r}
+data.combined<-rbind(train,ntest.survived)
+glimpse(data.combined)
+
+data.combined$Survived<-as.factor(data.combined$Survived)
+data.combined$Pclass<-as.factor(data.combined$Pclass)
+glimpse(data.combined)
+```
+## Visualisation part 1
+
+### Survival distribution
+```{r}
+table(data.combined$Survived)
+```
+### Distribution around classes
+```{r}
+table(data.combined$Pclass)
+```
+
+### Proportion of SEX by PClass
+```{r,echo=T}
+g2.3<-ggplot(data.combined,aes(x=factor(Pclass),fill=factor(Sex)))+geom_bar(position="fill")
+g2.3
+```
+### Rich folks survival rate higher? Looking at Pclass and Sex
+```{r,echo=T}
+g1<-ggplot(test,aes(x=(Pclass),fill=(Sex)))+geom_bar(width=0.5)
+g1
+g2<-ggplot(train,aes(x=factor(Pclass),fill=factor(Sex)))+geom_bar(position="dodge")+facet_grid(.~Survived)
+g2
+```
+## Survival rate depending on Age, Pclass and Sex
+```{r}
+posn.j <- position_jitter(0.5, 0)
+g3<-ggplot(train,aes(x=factor(Pclass),y=Age,col=factor(Sex)))+geom_jitter(position=posn.j,alpha=0.5,size=3)+facet_grid(.~Survived)
+g3
+```
+
+#Data Cleaning
+
+## How many unique names are there in both test and train datasets?
+```{r}
+length(unique(data.combined$Name))
+str(data.combined)
+```
+### So we have 1307 unique names vs. 1309 names. Lets see if there are duplicates.
+```{r}
+dup.names<-as.character(data.combined[which(duplicated(as.character(data.combined$Name))),"Name"])
+data.combined[which(data.combined$Name %in% dup.names),]
+```
+# Feature extraction
+
+### Any valuable information in the Title (Mrs, Miss, Mr, Master)?
+
+```{r}
+misses<-data.combined[which(str_detect(data.combined$Name,"Miss.")),]
+head(misses)
+mrses<-data.combined[which(str_detect(data.combined$Name,"Mrs.")),]
+mrses[1:5,]
+masters<-data.combined[which(str_detect(data.combined$Name,"Master")),]
+masters[1:5,]
+mr<-data.combined[which(str_detect(data.combined$Name,"Mr.")),]
+mr[1:5,]
+```
+## Adding new variable - Title
+```{r}
+extractTitle<-function(Name){
+  Name<-as.character(Name)
+  if(length(grep("Miss.",Name))>0){
+    return("Miss.")
+  } else if (length(grep("Master.",Name))>0){
+    return("Master.")
+  } else if(length(grep("Mrs.",Name))>0){
+    return("Mrs.")
+  } else if(length(grep("Mr.", Name))>0){
+    return("Mr.")
+  } else {
+    return("Other")
+  }
+}
+titles<-NULL
+for (i in 1:nrow(data.combined)){
+  titles<-c(titles,extractTitle(data.combined[i,"Name"]))
+}
+```
+### Ok. Lets factorise our new feature
+```{r}
+data.combined$Title<-as.factor(titles)
+```
+# Visualisation part 2
+### Lets see how Passenger class and Title is influencing the survival rate
+```{r, echo=T}
+p2.1<-ggplot(data.combined[1:891,],aes(x=Title,fill=Survived))+geom_bar(width=0.5)+
+  facet_wrap(~Pclass)+
+  ggtitle("Pclass")+
+  xlab("Title")+
+  ylab("Total Count")+
+labs(fill="Survived")
+
+p2.1
+```
+## Whats the distribution of females and males in test and train sets?
+```{r}
+table(data.combined$Sex)
+```
+```{r}
+p2.2<-ggplot(data.combined[1:891,],aes(x=Sex,fill=Survived))+geom_bar(width=0.5)+
+  facet_wrap(~Pclass)+
+  ggtitle("Pclass")+
+  xlab("Title")+
+  ylab("Total Count")+
+  labs(fill="Survived")
+
+p2.2
+
+summary(data.combined$Age)
+```
+## Is there any pattern among Male and Female passengers and Pclass?
+```{r, echo=T}
+g2.3<-ggplot(data.combined[1:891,],aes(x=Age,fill=Survived))+geom_bar(width=0.5)+
+  facet_wrap(~Sex + Pclass)+
+  geom_bar(binwidth = 10)+
+  xlab("Age")+
+  ylab("Total Count")
+
+g2.3
+```
+
+### Validate that Master is a good proxy for male children 
+```{r}
+boys<-data.combined[which(data.combined$Title=="Master."),]
+summary(boys$Age)
+```
+### Miss is more complicated,lets look
+```{r}
+misses<-data.combined[which(data.combined$Title=="Miss."),]
+summary(misses$Age)
+```
+### Is there any pattern within Misses between Pclass?
+```{r, echo=T}
+g2.4<-ggplot(misses[misses$Survived !="None",],aes(x=Age,fill=Survived))+
+  facet_wrap(~Pclass)+
+  geom_bar(binwidth=5)+
+  ggtitle("Age for Miss by Pclass")+
+  xlab("Age")+
+  ylab("Total Count")
+
+g2.4
+```
+### Appears female children have diffrent survival rate
+```{r}
+misses.alone<-misses[which(misses$SibSp==0, misses$Parch==0),]
+summary(misses.alone$Age)
+```
+### move on Subsp variable
+```{r}
+summary(data.combined$SibSp)
+```
+### Factoring Sibsp variable to further continue with histogram plotting
+```{r}
+data.combined$SibSp<-as.factor(data.combined$SibSp)
+```
+## Visualization of the survival rate by Sibsp, Title and Pclass
+```{r,echo=T}
+g2.5<-ggplot(data.combined[1:891,],aes(x=SibSp, fill=Survived))+geom_bar(width=0.5)+
+facet_wrap(~Pclass+Title)+
+  ggtitle("Pclass,Title")+
+  xlab("Sibsp")+
+  ylab("Total Count")+
+  ylim(0,300)+
+  labs(fill="Survived")
+
+g2.5
+```
+
+### Factoring Parch variable
+```{r}
+data.combined$Parch<-as.factor(data.combined$Parch)
+```
+## Visualization of the Survival rate by Parch, Title and Pclass
+``` {r,echo=T}
+g2.6<-ggplot(data.combined[1:891,],aes(x=Parch, fill=Survived))+geom_bar(width=1)+
+   facet_wrap(~Pclass+Title)+
+   ggtitle("Pclass,Title")+
+   xlab("Parch")+
+   ylab("Total Count")+
+   ylim(0,300)+
+   labs(fill="Survived")
+  
+g2.6
+``` 
+## Creating the Family Size feature
+```{r}
+  temp.sibsp<-c(train$SibSp,test$SibSp)
+  temp.parch<-c(train$Parch,test$Parch)
+  data.combined$Family.Size<-as.factor(temp.sibsp+temp.parch+1)
+```
+```{r,echo=T}
+g2.7<-ggplot(data.combined[1:891,],aes(x=Family.Size, fill=Survived))+geom_bar(width=1)+
+    facet_wrap(~Pclass+Title)+
+    ggtitle("Pclass,Title")+
+    xlab("Family.Size")+
+    ylab("Total Count")+
+    ylim(0,300)+
+    labs(fill="Survived")
+  
+  g2.7
+```
+# Working on NAs.
+##Constructing subgroups
+```{r}
+subsmr<-subset(data.combined[1:891,], is.na(Age) & Title=="Mr.")
+summary(subsmr)
+```
+```{r,echo=T}
+g3.1<-ggplot(subsmr,aes(x=Pclass,fill=Survived))+geom_bar(width=0.5)+facet_wrap(~Family.Size)
+g3.1
+```   
+```{r}  
+summary(misses.alone$Age)
+```
+### Here we see the age range is wide so we need futher classification
+  
+  
+## Substituting NAs with means
+```{r} 
+   data.combined2<-data.combined
+   
+   data.combined2$Embarked[c(62,830)]
+   data.combined2$Embarked[c(62,830)]<-"C"
+   data.combined2[1044,]
+```   
+### Replacement of missing fare value with median fare for class/embarkment
+```{r}
+   data.combined2$Fare[1044]<-median(data.combined2[data.combined2$Pclass==3 & data.combined2$Embarked=="S",]$Fare,na.rm=T)
+   #Make variables factors into factors
+   factor_vars <- c('PassengerId','Pclass','Sex','Embarked',
+                    'Title','Family.Size')
+   
+   data.combined2[factor_vars] <- lapply(data.combined2[factor_vars], function(x) as.factor(x))
+```
+```{r}
+   ### Setting a random seed
+   set.seed(129)
+```
+### Performing mice imputation, excluding certain less-than-useful variables:
+```{r}
+mice_mod <- mice(data.combined2[, !names(data.combined2) %in% c('PassengerId','Name','Ticket','Cabin','Survived')], method='rf') 
+### complete output saving
+```{r}
+   mice_output <- complete(mice_mod)
+```  
+   ## Ploting age distributions
+```{r}
+par(mfrow=c(1,2))
+   hist(data.combined2$Age, freq=F, main='Age: Original Data', 
+        col='darkgreen', ylim=c(0,0.04))
+   hist(mice_output$Age, freq=F, main='Age: MICE Output', 
+        col='lightgreen', ylim=c(0,0.04))
+```
+   
+### Replacement of Age variable from the mice model.
+```{r}
+data.combined2$Age <- mice_output$Age
+```
+
+### Replacement of Deck variable from the mice model.
+  ```{r}
+data.combined2$Deck <- mice_output$Deck
+summary(data.combined2)
+```
+# Prediction
+
+## Splitting the data back into a train set and a test set
+```{r}
+   train <- data.combined2[1:891,]
+   test <- data.combined2[892:1309,]
+```   
+### Set a random seed
+```{r}
+   set.seed(754)
+```
+   
+   ## Building the model (note: not all possible variables are used)
+   ```{r}
+   rf_model <- randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + 
+                              Fare + Embarked + Title,ntree=100, importance=T,
+                               data = train)
+   ```
+   ## Showing model error
+   ```{r,echo=T}
+   plot(rf_model, ylim=c(0,0.36))
+   legend('topright', colnames(rf_model$err.rate), col=1:3, fill=1:3)
+  ```
+  
+   ## Getting importance
+   ```{r}
+   importance    <- importance(rf_model)
+   varImportance <- data.frame(Variables = row.names(importance), 
+                               Importance = round(importance[ ,'MeanDecreaseGini'],2))
+  ```
+   ## Creating a rank variable based on importance
+   ```{r}
+   rankImportance <- varImportance %>%
+     mutate(Rank = paste0('#',dense_rank(desc(Importance))))
+  ``` 
+   ### Variables relative importance visualisation
+   ```{r,echo=T}
+   ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
+                              y = Importance, fill = Importance)) +
+     geom_bar(stat='identity') + 
+     geom_text(aes(x = Variables, y = 0.5, label = Rank),
+               hjust=0, vjust=0.55, size = 4, colour = 'red') +
+     labs(x = 'Variables') +
+     coord_flip() + 
+     
+     theme_few()
+    ```
+   #Prediction
+   
+   ##Prediction using the test set
+   ```{r}
+   prediction <- predict(rf_model, test)
+   ```
+   ## Saving the solution to a dataframe with two columns: PassengerId and Survived (prediction)
+   ```{r}
+   solution <- data.frame(PassengerID = test$PassengerId, Survived = prediction)
+   ```
+   ## Writing the solution to file
+   ```{r}
+   write.csv(solution, file = 'rf_mod_Solution.csv', row.names = F)
+   ```

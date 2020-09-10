@@ -1,0 +1,361 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> library(data.table)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:data.table’:
+
+    between, first, last
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(tidyr)
+Warning message:
+package ‘tidyr’ was built under R version 3.6.2 
+> library(ggplot2)
+> library(gbm)
+Loaded gbm 2.1.8
+Warning message:
+package ‘gbm’ was built under R version 3.6.2 
+> 
+> library(caret)
+Loading required package: lattice
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> system("ls ../input")
+gender_submission.csv
+test.csv
+train.csv
+> 
+> train_data = fread('../input/train.csv', na.strings = "")
+> test_data = fread('../input/test.csv', na.strings = "")
+> 
+> data = rbind(train_data, test_data, fill = T)
+> summary(data)
+  PassengerId      Survived          Pclass          Name          
+ Min.   :   1   Min.   :0.0000   Min.   :1.000   Length:1309       
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median : 655   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295                     
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :1309   Max.   :1.0000   Max.   :3.000                     
+                NA's   :418                                        
+     Sex                 Age            SibSp            Parch      
+ Length:1309        Min.   : 0.17   Min.   :0.0000   Min.   :0.000  
+ Class :character   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000  
+ Mode  :character   Median :28.00   Median :0.0000   Median :0.000  
+                    Mean   :29.88   Mean   :0.4989   Mean   :0.385  
+                    3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000  
+                    Max.   :80.00   Max.   :8.0000   Max.   :9.000  
+                    NA's   :263                                     
+    Ticket               Fare            Cabin             Embarked        
+ Length:1309        Min.   :  0.000   Length:1309        Length:1309       
+ Class :character   1st Qu.:  7.896   Class :character   Class :character  
+ Mode  :character   Median : 14.454   Mode  :character   Mode  :character  
+                    Mean   : 33.295                                        
+                    3rd Qu.: 31.275                                        
+                    Max.   :512.329                                        
+                    NA's   :1                                              
+> 
+> colSums(is.na(data))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1        1014           2 
+> 
+> numerical_data = data[,c("Survived", "Age", "SibSp", "Parch", "Fare") ]
+> corr_mat = round(cor(numerical_data, use = "na.or.complete"), 2)
+> head(corr_mat)
+         Survived   Age SibSp Parch Fare
+Survived     1.00 -0.08 -0.02  0.09 0.27
+Age         -0.08  1.00 -0.31 -0.19 0.10
+SibSp       -0.02 -0.31  1.00  0.38 0.14
+Parch        0.09 -0.19  0.38  1.00 0.21
+Fare         0.27  0.10  0.14  0.21 1.00
+> 
+> melted_cormat <- melt(corr_mat)
+Warning message:
+In melt(corr_mat) :
+  The melt generic in data.table has been passed a matrix and will attempt to redirect to the relevant reshape2 method; please note that reshape2 is deprecated, and this redirection is now deprecated as well. To continue using melt methods from reshape2 while both libraries are attached, e.g. melt.list, you can prepend the namespace like reshape2::melt(corr_mat). In the next version, this warning will become an error.
+> head(melted_cormat)
+      Var1     Var2 value
+1 Survived Survived  1.00
+2      Age Survived -0.08
+3    SibSp Survived -0.02
+4    Parch Survived  0.09
+5     Fare Survived  0.27
+6 Survived      Age -0.08
+> ggplot(melted_cormat, aes(x = Var1, y = Var2, fill = value)) +
++     geom_tile() + 
++     scale_fill_gradient2(low = "blue", high = "red", mid = "white", midpoint = 0, 
++         limit = c(-1,1), space = "Lab", name="Pearson\nCorrelation") + 
++     geom_text(aes(Var2, Var1, label = value), color = "black", size = 4)
+> 
+> 
+> #### Siblings Spouse ####
+> 
+> ggplot(data = train_data, aes(x = SibSp, fill = as.factor(Survived))) + 
++ geom_bar(position = 'fill') + 
++ labs(y = "Survival Probability", fill = "Survival Probability")
+> 
+> #### Parent Child ####
+> ggplot(data = train_data, aes(x = Parch, fill = as.factor(Survived))) + 
++ geom_bar(position = "fill") + 
++ labs(y = "Survival Probability", fill = "Survival Probability")
+> 
+> #### Age ####
+> ggplot(data = train_data, aes(x = Age, fill = as.factor(Survived))) + 
++ geom_density(alpha = 0.6) + 
++ labs(fill = "Survival Probability")
+Warning message:
+Removed 177 rows containing non-finite values (stat_density). 
+> 
+> ggplot(data = train_data, aes(x = Age)) + 
++ geom_density(alpha = 0.6) + facet_wrap(~ as.factor(Survived)) +
++ labs(fill = "Survival Probability")
+Warning message:
+Removed 177 rows containing non-finite values (stat_density). 
+> 
+> #### Fare ####
+> sum(is.na(data$Fare))
+[1] 1
+> data$Fare[is.na(data$Fare)] = median(data$Fare, na.rm = TRUE)
+> 
+> ggplot(data, aes(x = Fare)) + 
++ geom_histogram(aes(y = ..density..), bins = 50, boundary = 0) +
++ geom_density()
+> 
+> data$LogFare = ifelse(data$Fare > 0, log(data$Fare), 0)
+> 
+> ggplot(data, aes(x = LogFare)) + 
++ geom_histogram(aes(y = ..density..), bins = 50, boundary = 0) +
++ geom_density()
+> 
+> 
+> #### Pclass vs Survived With Sex ####
+> ggplot(train_data, aes(x = as.factor(Sex), fill = as.factor(Survived))) + 
++     geom_bar(position = 'fill') + 
++     facet_wrap(~Pclass) +
++     labs(y = 'Survival Probability', x = 'Gender', fill = 'Survived')
+> 
+> #### Pclass vs Survived ####
+> ggplot(train_data, aes(x = Pclass, fill = as.factor(Survived))) + 
++     geom_bar(position = 'fill') +
++     labs(y = 'Survival Probability', fill = 'Survived')
+> 
+> 
+> #### Impute Embarked Data ####
+> data$Embarked[is.na(data$Embarked)] = "S"
+> train_data = data %>% filter(!is.na(Survived))
+> #table(train_data$Embarked)
+> 
+> #### Embarked Data With Pclass Split ###
+> ggplot(train_data, aes(x = Pclass, fill = as.factor(Pclass))) + 
++     geom_bar(position = 'dodge') + 
++     facet_wrap(~Embarked) + 
++     labs(fill = 'Pclass')
+> 
+> ggplot(train_data, aes(x = Pclass, fill = as.factor(Survived))) + 
++     geom_bar(position = 'fill') + 
++     facet_wrap(~Embarked) + 
++     labs(y = 'Survival Probability', fill = 'Survived')
+> 
+> #### Embarked Data ####
+> ggplot(train_data, aes(x = Embarked, fill = as.factor(Survived))) + 
++     geom_bar(position = 'fill') + 
++     labs(y = 'Survival Probability', fill = 'Survived')
+> 
+> colSums(is.na(data))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0        1014           0 
+    LogFare 
+          0 
+> 
+> #### SibSp Age Distribution ####
+> ggplot(data, aes(x = as.factor(SibSp), y = Age, fill = SibSp)) + 
++     geom_boxplot() +
++     labs(x = 'SibSp')
+Warning message:
+Removed 263 rows containing non-finite values (stat_boxplot). 
+> 
+> #### Parch Age Distribution ####
+> ggplot(data, aes(x = as.factor(Parch), y = Age, fill = Parch)) + 
++     geom_boxplot() +
++     labs(x = 'Parch')
+Warning message:
+Removed 263 rows containing non-finite values (stat_boxplot). 
+> 
+> #### Gender Class Age Ditribution ####
+> ggplot(data, aes(x = as.factor(Pclass), y = Age, fill = Pclass)) + 
++     geom_boxplot() +
++     facet_wrap(~Sex) + 
++     labs(x = 'Pclass')
+Warning message:
+Removed 263 rows containing non-finite values (stat_boxplot). 
+> 
+> #### Gender Age Ditribution ####
+> ggplot(data, aes(x = Sex, y = Age, fill = Sex)) + 
++     geom_boxplot()
+Warning message:
+Removed 263 rows containing non-finite values (stat_boxplot). 
+> 
+> ## Impute Age ##
+> median_age = median(data$Age, na.rm = T)
+> age_estimate_feature_bucket = data %>% group_by(Parch, SibSp, Pclass) %>% summarise(age_est = median(Age, na.rm = T))
+`summarise()` regrouping output by 'Parch', 'SibSp' (override with `.groups` argument)
+> age_estimate_feature_bucket$age_est[is.na(age_estimate_feature_bucket$age_est)] = median_age
+> 
+> imputed_data = merge(data, age_estimate_feature_bucket, by = c('Parch', 'SibSp', 'Pclass'))
+> imputed_data$Age = imputed_data$age_est
+> 
+> dim(imputed_data)
+[1] 1309   14
+> sum(is.na(imputed_data$age_est))
+[1] 0
+> colnames(imputed_data)
+ [1] "Parch"       "SibSp"       "Pclass"      "PassengerId" "Survived"   
+ [6] "Name"        "Sex"         "Age"         "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"    "LogFare"     "age_est"    
+> 
+> title_extract = function(name) strsplit(strsplit(name, ',')[[1]][2], '\\.')[[1]][1]
+> imputed_data$Title =  sapply(imputed_data$Name, title_extract)
+> 
+> RareTitleList = c(' Don', ' Major', ' Dr',  ' Col', ' the Countess', ' Jonkheer', ' Dona', ' Rev', ' Lady', ' Sir', ' Capt')
+> MarriedFemaleTitleList = c( ' Mrs', ' Mme', ' Mlle', ' Ms')
+> imputed_data = imputed_data %>% 
++             mutate(title = ifelse(Title %in% RareTitleList, "Rare", ifelse(Title %in% MarriedFemaleTitleList, "Mrs/Mme", Title)))
+> imputed_train_data = imputed_data %>% filter(!is.na(Survived))
+> table(imputed_train_data$Survived)
+
+  0   1 
+549 342 
+> unique(imputed_data$title)
+[1] " Mr"     " Miss"   "Rare"    "Mrs/Mme" " Master"
+> 
+> ggplot(data = imputed_data, aes(x = as.factor(title))) + 
++     geom_bar() + 
++     labs(x = 'Title') + 
++     theme(axis.text.x = element_text(angle = 45, hjust = 1))
+> 
+> ggplot(data = imputed_train_data, aes(x = as.factor(title), fill = as.factor(Survived))) + 
++     geom_bar(position = 'fill') + 
++     labs(x = 'Title', y = 'Survival Probability', fill = 'Survived')
+> 
+> 
+> imputed_data$FamilySize = imputed_data$Parch + imputed_data$SibSp + 1
+> 
+> imputed_train_data = imputed_data %>% filter(!is.na(Survived))
+> ggplot(data = imputed_train_data, aes(x = as.factor(FamilySize), fill = as.factor(Survived))) + 
++     geom_bar(position = 'fill') + 
++     labs(fill = 'Survived', x = 'FamilySize')
+> 
+> 
+> sum(is.na(imputed_data$Cabin))
+[1] 1014
+> imputed_data = imputed_data %>% mutate(Deck = substr(Cabin, 1, 1))
+> imputed_data$Deck[is.na(imputed_data$Deck)] = 'X'
+> imputed_train_data = imputed_data %>% filter(!is.na(Survived))
+> 
+> ggplot(data = imputed_train_data, aes(x = as.factor(Deck), fill = as.factor(Survived))) + 
++     geom_bar(position = 'fill') + 
++     labs(fill = 'Survived', x = 'Deck')
+> 
+> imputed_data = imputed_data %>% 
++                 mutate(TicketPrefix = ifelse(grepl('^[[:digit:]]+\\.*[[:digit:]]*$',Ticket), 'X', gsub('([[:digit:]]+)','',Ticket))) %>%
++                 mutate(TicketPrefix = gsub('\\.| |/','',TicketPrefix))
+> table(imputed_data$TicketPrefix)
+
+        A        AQ        AS         C        CA   CASOTON        Fa        FC 
+       39         2         1         8        68         1         1         3 
+      FCC      LINE        LP        PC        PP       PPP        SC       SCA 
+        9         4         1        92         4         2         2         3 
+     SCAH SCAHBasle      SCOW   SCParis   SCPARIS       SOC       SOP      SOPP 
+        4         1         1         5        14         8         1         7 
+   SOTONO   SOTONOQ        SP     STONO    STONOQ      SWPP        WC       WEP 
+        3        24         1        21         1         2        15         4 
+        X 
+      957 
+> colnames(imputed_data)
+ [1] "Parch"        "SibSp"        "Pclass"       "PassengerId"  "Survived"    
+ [6] "Name"         "Sex"          "Age"          "Ticket"       "Fare"        
+[11] "Cabin"        "Embarked"     "LogFare"      "age_est"      "Title"       
+[16] "title"        "FamilySize"   "Deck"         "TicketPrefix"
+> 
+> train_data = imputed_data %>% filter(!is.na(Survived))
+> test_data = imputed_data %>% filter(is.na(Survived))
+> 
+> dim(train_data)
+[1] 891  19
+> dim(test_data)
+[1] 418  19
+> 
+> table(train_data$Survived)
+
+  0   1 
+549 342 
+> 
+> ## Remove Redundant Columns ##
+> drop_cols = c('Title', 'age_est', 'Ticket', 'Name', 'Cabin', 'PassengerId', 'Name')
+> imputed_data = imputed_data %>% select(-one_of(drop_cols))
+> str(imputed_data)
+Classes ‘data.table’ and 'data.frame':	1309 obs. of  13 variables:
+ $ Parch       : int  0 0 0 0 0 0 0 0 0 0 ...
+ $ SibSp       : int  0 0 0 0 0 0 0 0 0 0 ...
+ $ Pclass      : int  1 1 1 1 1 1 1 1 1 1 ...
+ $ Survived    : int  0 1 1 0 1 1 0 0 0 0 ...
+ $ Sex         : chr  "male" "female" "male" "male" ...
+ $ Age         : num  39 39 39 39 39 39 39 39 39 39 ...
+ $ Fare        : num  51.9 26.6 35.5 27.7 35.5 ...
+ $ Embarked    : chr  "S" "S" "S" "C" ...
+ $ LogFare     : num  3.95 3.28 3.57 3.32 3.57 ...
+ $ title       : chr  " Mr" " Miss" " Mr" "Rare" ...
+ $ FamilySize  : num  1 1 1 1 1 1 1 1 1 1 ...
+ $ Deck        : chr  "E" "C" "A" "X" ...
+ $ TicketPrefix: chr  "X" "X" "X" "PC" ...
+ - attr(*, ".internal.selfref")=<externalptr> 
+> 
+> factor_colnames = c("Sex", "Embarked", "title", "Deck", "TicketPrefix")
+> class(imputed_data[factor_colnames[1]])
+Error in `[.data.table`(imputed_data, factor_colnames[1]) : 
+  When i is a data.table (or character vector), the columns to join by must be specified using 'on=' argument (see ?data.table), by keying x (i.e. sorted, and, marked as sorted, see ?setkey), or by sharing column names between x and i (i.e., a natural join). Keyed joins might have further speed benefits on very large data due to x being sorted in RAM.
+Calls: [ -> [.data.table
+Execution halted

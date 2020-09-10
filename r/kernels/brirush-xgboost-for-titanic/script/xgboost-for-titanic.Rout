@@ -1,0 +1,1142 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> library(Matrix)
+> library(xgboost)
+Warning message:
+package ‘xgboost’ was built under R version 3.6.2 
+> 
+> # The train and test data is stored in the ../input directory
+> temptrain <- read.csv("../input/train.csv")
+> temptest  <- read.csv("../input/test.csv")
+> 
+> train<-temptrain[,c("SibSp","Parch","Sex","Pclass", "Fare","Survived")]
+> test<-temptest[,c("SibSp","Parch","Sex", "Pclass", "Fare","PassengerId")]
+> 
+> train[,"Sex"]<-as.numeric(train[,"Sex"])
+> test[,"Sex"]<-as.numeric(test[,"Sex"])
+> train[,"Pclass"]<-as.numeric(train[,"Pclass"])
+> test[,"Pclass"]<-as.numeric(test[,"Pclass"])
+> 
+> train[is.na(train)]<-0
+> test[is.na(test)]<-0
+> 
+> #Silly way to force the dataframe into numeric. I spent so long frustrated with this!
+> train[[1,"SibSp"]]<-1.00
+> train[[1,"Parch"]]<-0.00
+> 
+> test[[1,"SibSp"]]<-0.00
+> test[[1,"Parch"]]<-0.00
+> 
+> str(train)
+'data.frame':	891 obs. of  6 variables:
+ $ SibSp   : num  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch   : num  0 0 0 0 0 0 0 1 2 0 ...
+ $ Sex     : num  2 1 1 1 2 2 2 2 1 1 ...
+ $ Pclass  : num  3 1 3 1 3 3 1 3 3 2 ...
+ $ Fare    : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Survived: int  0 1 1 1 0 0 0 0 1 1 ...
+> str(test)
+'data.frame':	418 obs. of  6 variables:
+ $ SibSp      : num  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : num  0 0 0 0 1 0 0 1 0 0 ...
+ $ Sex        : num  2 1 2 2 1 2 1 2 1 2 ...
+ $ Pclass     : num  3 3 2 3 3 3 3 2 3 3 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+> summary(train)
+     SibSp           Parch             Sex            Pclass     
+ Min.   :0.000   Min.   :0.0000   Min.   :1.000   Min.   :1.000  
+ 1st Qu.:0.000   1st Qu.:0.0000   1st Qu.:1.000   1st Qu.:2.000  
+ Median :0.000   Median :0.0000   Median :2.000   Median :3.000  
+ Mean   :0.523   Mean   :0.3816   Mean   :1.648   Mean   :2.309  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   3rd Qu.:2.000   3rd Qu.:3.000  
+ Max.   :8.000   Max.   :6.0000   Max.   :2.000   Max.   :3.000  
+      Fare           Survived     
+ Min.   :  0.00   Min.   :0.0000  
+ 1st Qu.:  7.91   1st Qu.:0.0000  
+ Median : 14.45   Median :0.0000  
+ Mean   : 32.20   Mean   :0.3838  
+ 3rd Qu.: 31.00   3rd Qu.:1.0000  
+ Max.   :512.33   Max.   :1.0000  
+> summary(test)
+     SibSp            Parch             Sex            Pclass     
+ Min.   :0.0000   Min.   :0.0000   Min.   :1.000   Min.   :1.000  
+ 1st Qu.:0.0000   1st Qu.:0.0000   1st Qu.:1.000   1st Qu.:1.000  
+ Median :0.0000   Median :0.0000   Median :2.000   Median :3.000  
+ Mean   :0.4474   Mean   :0.3923   Mean   :1.636   Mean   :2.266  
+ 3rd Qu.:1.0000   3rd Qu.:0.0000   3rd Qu.:2.000   3rd Qu.:3.000  
+ Max.   :8.0000   Max.   :9.0000   Max.   :2.000   Max.   :3.000  
+      Fare          PassengerId    
+ Min.   :  0.000   Min.   : 892.0  
+ 1st Qu.:  7.896   1st Qu.: 996.2  
+ Median : 14.454   Median :1100.5  
+ Mean   : 35.542   Mean   :1100.5  
+ 3rd Qu.: 31.472   3rd Qu.:1204.8  
+ Max.   :512.329   Max.   :1309.0  
+> 
+> 
+> param       = list("objective" = "multi:softmax", # multi class classification
++ 	      "num_class"= 2 ,  		# Number of classes in the dependent variable.
++               "eval_metric" = "mlogloss",  	 # evaluation metric 
++               "nthread" = 8,   			 # number of threads to be used 
++               "max_depth" = 16,    		 # maximum depth of tree 
++               "eta" = 0.3,    			 # step size shrinkage 
++               "gamma" = 0,    			 # minimum loss reduction 
++               "subsample" = 0.7,    		 # part of data instances to grow tree 
++               "colsample_bytree" = 1, 		 # subsample ratio of columns when constructing each tree 
++               "min_child_weight" = 12  		 # minimum sum of instance weight needed in a child 
++               )
+> 
+> #Identify the Predictors and the dependent variable, aka label.
+> predictors = colnames(train[,-ncol(train)])
+> str(predictors)
+ chr [1:5] "SibSp" "Parch" "Sex" "Pclass" "Fare"
+> #xgboost works only if the labels are numeric. Hence, convert the labels (Species) to numeric.
+> label = as.numeric(train[,"Survived"])
+> print(table (label))
+label
+  0   1 
+549 342 
+> #Alas, xgboost works only if the numeric labels start from 0. Hence, subtract 1 from the label.
+> print(table (label))
+label
+  0   1 
+549 342 
+> 
+> bst = xgboost(
++ 		param=param,
++ 		data =as.matrix(train[,predictors]),
++ 		label = label,
++ 		nrounds=1000)
+[1]	train-mlogloss:0.574705 
+[2]	train-mlogloss:0.512639 
+[3]	train-mlogloss:0.475464 
+[4]	train-mlogloss:0.450988 
+[5]	train-mlogloss:0.434080 
+[6]	train-mlogloss:0.424259 
+[7]	train-mlogloss:0.416247 
+[8]	train-mlogloss:0.408237 
+[9]	train-mlogloss:0.401970 
+[10]	train-mlogloss:0.397962 
+[11]	train-mlogloss:0.394159 
+[12]	train-mlogloss:0.390987 
+[13]	train-mlogloss:0.388123 
+[14]	train-mlogloss:0.385897 
+[15]	train-mlogloss:0.383181 
+[16]	train-mlogloss:0.381108 
+[17]	train-mlogloss:0.378668 
+[18]	train-mlogloss:0.376323 
+[19]	train-mlogloss:0.374627 
+[20]	train-mlogloss:0.372894 
+[21]	train-mlogloss:0.371514 
+[22]	train-mlogloss:0.370205 
+[23]	train-mlogloss:0.368953 
+[24]	train-mlogloss:0.366794 
+[25]	train-mlogloss:0.365235 
+[26]	train-mlogloss:0.364415 
+[27]	train-mlogloss:0.362952 
+[28]	train-mlogloss:0.361682 
+[29]	train-mlogloss:0.360667 
+[30]	train-mlogloss:0.359172 
+[31]	train-mlogloss:0.357673 
+[32]	train-mlogloss:0.357382 
+[33]	train-mlogloss:0.355916 
+[34]	train-mlogloss:0.355328 
+[35]	train-mlogloss:0.354356 
+[36]	train-mlogloss:0.353223 
+[37]	train-mlogloss:0.352572 
+[38]	train-mlogloss:0.351551 
+[39]	train-mlogloss:0.350545 
+[40]	train-mlogloss:0.349808 
+[41]	train-mlogloss:0.349247 
+[42]	train-mlogloss:0.348424 
+[43]	train-mlogloss:0.347669 
+[44]	train-mlogloss:0.346880 
+[45]	train-mlogloss:0.345788 
+[46]	train-mlogloss:0.345247 
+[47]	train-mlogloss:0.344792 
+[48]	train-mlogloss:0.344027 
+[49]	train-mlogloss:0.343248 
+[50]	train-mlogloss:0.342420 
+[51]	train-mlogloss:0.342001 
+[52]	train-mlogloss:0.341121 
+[53]	train-mlogloss:0.340618 
+[54]	train-mlogloss:0.340196 
+[55]	train-mlogloss:0.339409 
+[56]	train-mlogloss:0.338716 
+[57]	train-mlogloss:0.338252 
+[58]	train-mlogloss:0.337633 
+[59]	train-mlogloss:0.336915 
+[60]	train-mlogloss:0.336199 
+[61]	train-mlogloss:0.335671 
+[62]	train-mlogloss:0.335330 
+[63]	train-mlogloss:0.334816 
+[64]	train-mlogloss:0.334213 
+[65]	train-mlogloss:0.333739 
+[66]	train-mlogloss:0.333570 
+[67]	train-mlogloss:0.333175 
+[68]	train-mlogloss:0.332219 
+[69]	train-mlogloss:0.331778 
+[70]	train-mlogloss:0.331098 
+[71]	train-mlogloss:0.330586 
+[72]	train-mlogloss:0.329952 
+[73]	train-mlogloss:0.329106 
+[74]	train-mlogloss:0.328854 
+[75]	train-mlogloss:0.328307 
+[76]	train-mlogloss:0.327666 
+[77]	train-mlogloss:0.327461 
+[78]	train-mlogloss:0.326983 
+[79]	train-mlogloss:0.326501 
+[80]	train-mlogloss:0.326192 
+[81]	train-mlogloss:0.325845 
+[82]	train-mlogloss:0.325650 
+[83]	train-mlogloss:0.325428 
+[84]	train-mlogloss:0.324664 
+[85]	train-mlogloss:0.324167 
+[86]	train-mlogloss:0.323671 
+[87]	train-mlogloss:0.323209 
+[88]	train-mlogloss:0.322738 
+[89]	train-mlogloss:0.322369 
+[90]	train-mlogloss:0.321886 
+[91]	train-mlogloss:0.321659 
+[92]	train-mlogloss:0.321128 
+[93]	train-mlogloss:0.321020 
+[94]	train-mlogloss:0.320478 
+[95]	train-mlogloss:0.320152 
+[96]	train-mlogloss:0.319971 
+[97]	train-mlogloss:0.319601 
+[98]	train-mlogloss:0.318888 
+[99]	train-mlogloss:0.318482 
+[100]	train-mlogloss:0.318121 
+[101]	train-mlogloss:0.317950 
+[102]	train-mlogloss:0.317602 
+[103]	train-mlogloss:0.317281 
+[104]	train-mlogloss:0.316853 
+[105]	train-mlogloss:0.316612 
+[106]	train-mlogloss:0.316243 
+[107]	train-mlogloss:0.316042 
+[108]	train-mlogloss:0.315537 
+[109]	train-mlogloss:0.315279 
+[110]	train-mlogloss:0.314842 
+[111]	train-mlogloss:0.314635 
+[112]	train-mlogloss:0.314219 
+[113]	train-mlogloss:0.314020 
+[114]	train-mlogloss:0.313754 
+[115]	train-mlogloss:0.313620 
+[116]	train-mlogloss:0.313144 
+[117]	train-mlogloss:0.312795 
+[118]	train-mlogloss:0.312406 
+[119]	train-mlogloss:0.312180 
+[120]	train-mlogloss:0.311690 
+[121]	train-mlogloss:0.311560 
+[122]	train-mlogloss:0.311413 
+[123]	train-mlogloss:0.311214 
+[124]	train-mlogloss:0.310748 
+[125]	train-mlogloss:0.310538 
+[126]	train-mlogloss:0.310345 
+[127]	train-mlogloss:0.310094 
+[128]	train-mlogloss:0.309602 
+[129]	train-mlogloss:0.309402 
+[130]	train-mlogloss:0.308971 
+[131]	train-mlogloss:0.308711 
+[132]	train-mlogloss:0.308706 
+[133]	train-mlogloss:0.308252 
+[134]	train-mlogloss:0.307916 
+[135]	train-mlogloss:0.307685 
+[136]	train-mlogloss:0.307237 
+[137]	train-mlogloss:0.307010 
+[138]	train-mlogloss:0.306625 
+[139]	train-mlogloss:0.306401 
+[140]	train-mlogloss:0.306273 
+[141]	train-mlogloss:0.305895 
+[142]	train-mlogloss:0.305759 
+[143]	train-mlogloss:0.305295 
+[144]	train-mlogloss:0.305143 
+[145]	train-mlogloss:0.304943 
+[146]	train-mlogloss:0.304781 
+[147]	train-mlogloss:0.304555 
+[148]	train-mlogloss:0.304257 
+[149]	train-mlogloss:0.304044 
+[150]	train-mlogloss:0.303714 
+[151]	train-mlogloss:0.303352 
+[152]	train-mlogloss:0.303191 
+[153]	train-mlogloss:0.302855 
+[154]	train-mlogloss:0.302700 
+[155]	train-mlogloss:0.302553 
+[156]	train-mlogloss:0.302323 
+[157]	train-mlogloss:0.302098 
+[158]	train-mlogloss:0.302148 
+[159]	train-mlogloss:0.301707 
+[160]	train-mlogloss:0.301448 
+[161]	train-mlogloss:0.301320 
+[162]	train-mlogloss:0.300957 
+[163]	train-mlogloss:0.300749 
+[164]	train-mlogloss:0.300571 
+[165]	train-mlogloss:0.300172 
+[166]	train-mlogloss:0.300083 
+[167]	train-mlogloss:0.299812 
+[168]	train-mlogloss:0.299802 
+[169]	train-mlogloss:0.299724 
+[170]	train-mlogloss:0.299527 
+[171]	train-mlogloss:0.299322 
+[172]	train-mlogloss:0.299065 
+[173]	train-mlogloss:0.298876 
+[174]	train-mlogloss:0.298570 
+[175]	train-mlogloss:0.298449 
+[176]	train-mlogloss:0.298071 
+[177]	train-mlogloss:0.297915 
+[178]	train-mlogloss:0.297663 
+[179]	train-mlogloss:0.297461 
+[180]	train-mlogloss:0.297099 
+[181]	train-mlogloss:0.297064 
+[182]	train-mlogloss:0.296940 
+[183]	train-mlogloss:0.296575 
+[184]	train-mlogloss:0.296325 
+[185]	train-mlogloss:0.296008 
+[186]	train-mlogloss:0.295860 
+[187]	train-mlogloss:0.295631 
+[188]	train-mlogloss:0.295515 
+[189]	train-mlogloss:0.295369 
+[190]	train-mlogloss:0.295268 
+[191]	train-mlogloss:0.295076 
+[192]	train-mlogloss:0.294816 
+[193]	train-mlogloss:0.294772 
+[194]	train-mlogloss:0.294561 
+[195]	train-mlogloss:0.294509 
+[196]	train-mlogloss:0.294363 
+[197]	train-mlogloss:0.294153 
+[198]	train-mlogloss:0.293858 
+[199]	train-mlogloss:0.293795 
+[200]	train-mlogloss:0.293490 
+[201]	train-mlogloss:0.293396 
+[202]	train-mlogloss:0.293061 
+[203]	train-mlogloss:0.292959 
+[204]	train-mlogloss:0.292787 
+[205]	train-mlogloss:0.292535 
+[206]	train-mlogloss:0.292382 
+[207]	train-mlogloss:0.292465 
+[208]	train-mlogloss:0.292357 
+[209]	train-mlogloss:0.292042 
+[210]	train-mlogloss:0.291909 
+[211]	train-mlogloss:0.291985 
+[212]	train-mlogloss:0.291636 
+[213]	train-mlogloss:0.291428 
+[214]	train-mlogloss:0.291006 
+[215]	train-mlogloss:0.290806 
+[216]	train-mlogloss:0.290691 
+[217]	train-mlogloss:0.290356 
+[218]	train-mlogloss:0.290176 
+[219]	train-mlogloss:0.290290 
+[220]	train-mlogloss:0.290349 
+[221]	train-mlogloss:0.289843 
+[222]	train-mlogloss:0.289773 
+[223]	train-mlogloss:0.289633 
+[224]	train-mlogloss:0.289404 
+[225]	train-mlogloss:0.289289 
+[226]	train-mlogloss:0.289056 
+[227]	train-mlogloss:0.289131 
+[228]	train-mlogloss:0.288775 
+[229]	train-mlogloss:0.288702 
+[230]	train-mlogloss:0.288633 
+[231]	train-mlogloss:0.288490 
+[232]	train-mlogloss:0.288414 
+[233]	train-mlogloss:0.288072 
+[234]	train-mlogloss:0.287890 
+[235]	train-mlogloss:0.287798 
+[236]	train-mlogloss:0.287771 
+[237]	train-mlogloss:0.287735 
+[238]	train-mlogloss:0.287690 
+[239]	train-mlogloss:0.287316 
+[240]	train-mlogloss:0.287082 
+[241]	train-mlogloss:0.286832 
+[242]	train-mlogloss:0.286648 
+[243]	train-mlogloss:0.286499 
+[244]	train-mlogloss:0.286376 
+[245]	train-mlogloss:0.286112 
+[246]	train-mlogloss:0.286111 
+[247]	train-mlogloss:0.285986 
+[248]	train-mlogloss:0.285681 
+[249]	train-mlogloss:0.285694 
+[250]	train-mlogloss:0.285436 
+[251]	train-mlogloss:0.285336 
+[252]	train-mlogloss:0.285090 
+[253]	train-mlogloss:0.284883 
+[254]	train-mlogloss:0.284846 
+[255]	train-mlogloss:0.284752 
+[256]	train-mlogloss:0.284836 
+[257]	train-mlogloss:0.284645 
+[258]	train-mlogloss:0.284440 
+[259]	train-mlogloss:0.284207 
+[260]	train-mlogloss:0.284052 
+[261]	train-mlogloss:0.283923 
+[262]	train-mlogloss:0.283855 
+[263]	train-mlogloss:0.283668 
+[264]	train-mlogloss:0.283560 
+[265]	train-mlogloss:0.283415 
+[266]	train-mlogloss:0.283218 
+[267]	train-mlogloss:0.283264 
+[268]	train-mlogloss:0.283100 
+[269]	train-mlogloss:0.283033 
+[270]	train-mlogloss:0.282977 
+[271]	train-mlogloss:0.282917 
+[272]	train-mlogloss:0.282737 
+[273]	train-mlogloss:0.282752 
+[274]	train-mlogloss:0.282634 
+[275]	train-mlogloss:0.282520 
+[276]	train-mlogloss:0.282247 
+[277]	train-mlogloss:0.282109 
+[278]	train-mlogloss:0.282068 
+[279]	train-mlogloss:0.281813 
+[280]	train-mlogloss:0.281745 
+[281]	train-mlogloss:0.281503 
+[282]	train-mlogloss:0.281417 
+[283]	train-mlogloss:0.281396 
+[284]	train-mlogloss:0.281293 
+[285]	train-mlogloss:0.281008 
+[286]	train-mlogloss:0.280999 
+[287]	train-mlogloss:0.280951 
+[288]	train-mlogloss:0.280804 
+[289]	train-mlogloss:0.280637 
+[290]	train-mlogloss:0.280665 
+[291]	train-mlogloss:0.280605 
+[292]	train-mlogloss:0.280686 
+[293]	train-mlogloss:0.280547 
+[294]	train-mlogloss:0.280323 
+[295]	train-mlogloss:0.280184 
+[296]	train-mlogloss:0.279982 
+[297]	train-mlogloss:0.279849 
+[298]	train-mlogloss:0.279793 
+[299]	train-mlogloss:0.279485 
+[300]	train-mlogloss:0.279353 
+[301]	train-mlogloss:0.279363 
+[302]	train-mlogloss:0.279279 
+[303]	train-mlogloss:0.279162 
+[304]	train-mlogloss:0.279038 
+[305]	train-mlogloss:0.278913 
+[306]	train-mlogloss:0.278915 
+[307]	train-mlogloss:0.278725 
+[308]	train-mlogloss:0.278650 
+[309]	train-mlogloss:0.278469 
+[310]	train-mlogloss:0.278532 
+[311]	train-mlogloss:0.278285 
+[312]	train-mlogloss:0.278182 
+[313]	train-mlogloss:0.277938 
+[314]	train-mlogloss:0.277879 
+[315]	train-mlogloss:0.277819 
+[316]	train-mlogloss:0.277902 
+[317]	train-mlogloss:0.277611 
+[318]	train-mlogloss:0.277542 
+[319]	train-mlogloss:0.277664 
+[320]	train-mlogloss:0.277498 
+[321]	train-mlogloss:0.277519 
+[322]	train-mlogloss:0.277452 
+[323]	train-mlogloss:0.277294 
+[324]	train-mlogloss:0.277007 
+[325]	train-mlogloss:0.276922 
+[326]	train-mlogloss:0.276679 
+[327]	train-mlogloss:0.276677 
+[328]	train-mlogloss:0.276622 
+[329]	train-mlogloss:0.276374 
+[330]	train-mlogloss:0.276260 
+[331]	train-mlogloss:0.276209 
+[332]	train-mlogloss:0.276056 
+[333]	train-mlogloss:0.276041 
+[334]	train-mlogloss:0.275901 
+[335]	train-mlogloss:0.275832 
+[336]	train-mlogloss:0.275733 
+[337]	train-mlogloss:0.275618 
+[338]	train-mlogloss:0.275628 
+[339]	train-mlogloss:0.275568 
+[340]	train-mlogloss:0.275498 
+[341]	train-mlogloss:0.275438 
+[342]	train-mlogloss:0.275237 
+[343]	train-mlogloss:0.275041 
+[344]	train-mlogloss:0.274920 
+[345]	train-mlogloss:0.274920 
+[346]	train-mlogloss:0.274816 
+[347]	train-mlogloss:0.274734 
+[348]	train-mlogloss:0.274708 
+[349]	train-mlogloss:0.274803 
+[350]	train-mlogloss:0.274698 
+[351]	train-mlogloss:0.274639 
+[352]	train-mlogloss:0.274501 
+[353]	train-mlogloss:0.274410 
+[354]	train-mlogloss:0.274283 
+[355]	train-mlogloss:0.274306 
+[356]	train-mlogloss:0.274210 
+[357]	train-mlogloss:0.274096 
+[358]	train-mlogloss:0.274010 
+[359]	train-mlogloss:0.273904 
+[360]	train-mlogloss:0.273949 
+[361]	train-mlogloss:0.273766 
+[362]	train-mlogloss:0.273832 
+[363]	train-mlogloss:0.274078 
+[364]	train-mlogloss:0.273858 
+[365]	train-mlogloss:0.273688 
+[366]	train-mlogloss:0.273611 
+[367]	train-mlogloss:0.273612 
+[368]	train-mlogloss:0.273521 
+[369]	train-mlogloss:0.273585 
+[370]	train-mlogloss:0.273234 
+[371]	train-mlogloss:0.273112 
+[372]	train-mlogloss:0.273021 
+[373]	train-mlogloss:0.272870 
+[374]	train-mlogloss:0.272881 
+[375]	train-mlogloss:0.272843 
+[376]	train-mlogloss:0.272768 
+[377]	train-mlogloss:0.272749 
+[378]	train-mlogloss:0.272614 
+[379]	train-mlogloss:0.272370 
+[380]	train-mlogloss:0.272478 
+[381]	train-mlogloss:0.272382 
+[382]	train-mlogloss:0.272072 
+[383]	train-mlogloss:0.271813 
+[384]	train-mlogloss:0.271802 
+[385]	train-mlogloss:0.271698 
+[386]	train-mlogloss:0.271485 
+[387]	train-mlogloss:0.271430 
+[388]	train-mlogloss:0.271306 
+[389]	train-mlogloss:0.271299 
+[390]	train-mlogloss:0.271237 
+[391]	train-mlogloss:0.271212 
+[392]	train-mlogloss:0.271127 
+[393]	train-mlogloss:0.271153 
+[394]	train-mlogloss:0.271171 
+[395]	train-mlogloss:0.271258 
+[396]	train-mlogloss:0.271129 
+[397]	train-mlogloss:0.271063 
+[398]	train-mlogloss:0.271180 
+[399]	train-mlogloss:0.270913 
+[400]	train-mlogloss:0.270718 
+[401]	train-mlogloss:0.270736 
+[402]	train-mlogloss:0.270710 
+[403]	train-mlogloss:0.270375 
+[404]	train-mlogloss:0.270396 
+[405]	train-mlogloss:0.270284 
+[406]	train-mlogloss:0.270127 
+[407]	train-mlogloss:0.270019 
+[408]	train-mlogloss:0.270032 
+[409]	train-mlogloss:0.269832 
+[410]	train-mlogloss:0.269919 
+[411]	train-mlogloss:0.269648 
+[412]	train-mlogloss:0.269475 
+[413]	train-mlogloss:0.269592 
+[414]	train-mlogloss:0.269464 
+[415]	train-mlogloss:0.269252 
+[416]	train-mlogloss:0.269197 
+[417]	train-mlogloss:0.269119 
+[418]	train-mlogloss:0.268948 
+[419]	train-mlogloss:0.269209 
+[420]	train-mlogloss:0.269193 
+[421]	train-mlogloss:0.269042 
+[422]	train-mlogloss:0.269009 
+[423]	train-mlogloss:0.269019 
+[424]	train-mlogloss:0.268690 
+[425]	train-mlogloss:0.268525 
+[426]	train-mlogloss:0.268442 
+[427]	train-mlogloss:0.268729 
+[428]	train-mlogloss:0.268670 
+[429]	train-mlogloss:0.268417 
+[430]	train-mlogloss:0.268399 
+[431]	train-mlogloss:0.268363 
+[432]	train-mlogloss:0.268127 
+[433]	train-mlogloss:0.268037 
+[434]	train-mlogloss:0.268154 
+[435]	train-mlogloss:0.268189 
+[436]	train-mlogloss:0.267935 
+[437]	train-mlogloss:0.267854 
+[438]	train-mlogloss:0.267771 
+[439]	train-mlogloss:0.267749 
+[440]	train-mlogloss:0.267507 
+[441]	train-mlogloss:0.267485 
+[442]	train-mlogloss:0.267380 
+[443]	train-mlogloss:0.267416 
+[444]	train-mlogloss:0.267483 
+[445]	train-mlogloss:0.267462 
+[446]	train-mlogloss:0.267421 
+[447]	train-mlogloss:0.267357 
+[448]	train-mlogloss:0.267451 
+[449]	train-mlogloss:0.267395 
+[450]	train-mlogloss:0.267115 
+[451]	train-mlogloss:0.267026 
+[452]	train-mlogloss:0.266935 
+[453]	train-mlogloss:0.266915 
+[454]	train-mlogloss:0.266883 
+[455]	train-mlogloss:0.266504 
+[456]	train-mlogloss:0.266527 
+[457]	train-mlogloss:0.266556 
+[458]	train-mlogloss:0.266493 
+[459]	train-mlogloss:0.266374 
+[460]	train-mlogloss:0.266327 
+[461]	train-mlogloss:0.266214 
+[462]	train-mlogloss:0.266077 
+[463]	train-mlogloss:0.266054 
+[464]	train-mlogloss:0.266098 
+[465]	train-mlogloss:0.265931 
+[466]	train-mlogloss:0.266131 
+[467]	train-mlogloss:0.265878 
+[468]	train-mlogloss:0.265885 
+[469]	train-mlogloss:0.266054 
+[470]	train-mlogloss:0.265862 
+[471]	train-mlogloss:0.265550 
+[472]	train-mlogloss:0.265673 
+[473]	train-mlogloss:0.265355 
+[474]	train-mlogloss:0.265357 
+[475]	train-mlogloss:0.265311 
+[476]	train-mlogloss:0.265194 
+[477]	train-mlogloss:0.265078 
+[478]	train-mlogloss:0.264963 
+[479]	train-mlogloss:0.264954 
+[480]	train-mlogloss:0.264944 
+[481]	train-mlogloss:0.265072 
+[482]	train-mlogloss:0.264919 
+[483]	train-mlogloss:0.264995 
+[484]	train-mlogloss:0.264901 
+[485]	train-mlogloss:0.264809 
+[486]	train-mlogloss:0.264696 
+[487]	train-mlogloss:0.264719 
+[488]	train-mlogloss:0.264557 
+[489]	train-mlogloss:0.264583 
+[490]	train-mlogloss:0.264524 
+[491]	train-mlogloss:0.264444 
+[492]	train-mlogloss:0.264410 
+[493]	train-mlogloss:0.264389 
+[494]	train-mlogloss:0.264267 
+[495]	train-mlogloss:0.264320 
+[496]	train-mlogloss:0.264198 
+[497]	train-mlogloss:0.264235 
+[498]	train-mlogloss:0.264085 
+[499]	train-mlogloss:0.264014 
+[500]	train-mlogloss:0.263742 
+[501]	train-mlogloss:0.263823 
+[502]	train-mlogloss:0.263810 
+[503]	train-mlogloss:0.263846 
+[504]	train-mlogloss:0.263853 
+[505]	train-mlogloss:0.263684 
+[506]	train-mlogloss:0.263695 
+[507]	train-mlogloss:0.263719 
+[508]	train-mlogloss:0.263641 
+[509]	train-mlogloss:0.263373 
+[510]	train-mlogloss:0.263404 
+[511]	train-mlogloss:0.263214 
+[512]	train-mlogloss:0.263251 
+[513]	train-mlogloss:0.263208 
+[514]	train-mlogloss:0.262955 
+[515]	train-mlogloss:0.262889 
+[516]	train-mlogloss:0.262796 
+[517]	train-mlogloss:0.262744 
+[518]	train-mlogloss:0.262782 
+[519]	train-mlogloss:0.262573 
+[520]	train-mlogloss:0.262549 
+[521]	train-mlogloss:0.262414 
+[522]	train-mlogloss:0.262339 
+[523]	train-mlogloss:0.262262 
+[524]	train-mlogloss:0.262275 
+[525]	train-mlogloss:0.262229 
+[526]	train-mlogloss:0.262118 
+[527]	train-mlogloss:0.261994 
+[528]	train-mlogloss:0.261974 
+[529]	train-mlogloss:0.261935 
+[530]	train-mlogloss:0.261916 
+[531]	train-mlogloss:0.261807 
+[532]	train-mlogloss:0.261811 
+[533]	train-mlogloss:0.261797 
+[534]	train-mlogloss:0.261700 
+[535]	train-mlogloss:0.261698 
+[536]	train-mlogloss:0.261556 
+[537]	train-mlogloss:0.261568 
+[538]	train-mlogloss:0.261592 
+[539]	train-mlogloss:0.261597 
+[540]	train-mlogloss:0.261606 
+[541]	train-mlogloss:0.261374 
+[542]	train-mlogloss:0.261394 
+[543]	train-mlogloss:0.261427 
+[544]	train-mlogloss:0.261232 
+[545]	train-mlogloss:0.261258 
+[546]	train-mlogloss:0.261291 
+[547]	train-mlogloss:0.261217 
+[548]	train-mlogloss:0.261223 
+[549]	train-mlogloss:0.261200 
+[550]	train-mlogloss:0.261295 
+[551]	train-mlogloss:0.261249 
+[552]	train-mlogloss:0.261188 
+[553]	train-mlogloss:0.260927 
+[554]	train-mlogloss:0.260915 
+[555]	train-mlogloss:0.260738 
+[556]	train-mlogloss:0.260759 
+[557]	train-mlogloss:0.260658 
+[558]	train-mlogloss:0.260717 
+[559]	train-mlogloss:0.260714 
+[560]	train-mlogloss:0.260514 
+[561]	train-mlogloss:0.260548 
+[562]	train-mlogloss:0.260708 
+[563]	train-mlogloss:0.260692 
+[564]	train-mlogloss:0.260756 
+[565]	train-mlogloss:0.260609 
+[566]	train-mlogloss:0.260705 
+[567]	train-mlogloss:0.260536 
+[568]	train-mlogloss:0.260608 
+[569]	train-mlogloss:0.260603 
+[570]	train-mlogloss:0.260378 
+[571]	train-mlogloss:0.260495 
+[572]	train-mlogloss:0.260441 
+[573]	train-mlogloss:0.260370 
+[574]	train-mlogloss:0.260274 
+[575]	train-mlogloss:0.260208 
+[576]	train-mlogloss:0.260086 
+[577]	train-mlogloss:0.259996 
+[578]	train-mlogloss:0.260204 
+[579]	train-mlogloss:0.259943 
+[580]	train-mlogloss:0.259809 
+[581]	train-mlogloss:0.259647 
+[582]	train-mlogloss:0.259494 
+[583]	train-mlogloss:0.259471 
+[584]	train-mlogloss:0.259317 
+[585]	train-mlogloss:0.259379 
+[586]	train-mlogloss:0.259310 
+[587]	train-mlogloss:0.259075 
+[588]	train-mlogloss:0.259007 
+[589]	train-mlogloss:0.258989 
+[590]	train-mlogloss:0.258981 
+[591]	train-mlogloss:0.259023 
+[592]	train-mlogloss:0.258948 
+[593]	train-mlogloss:0.258930 
+[594]	train-mlogloss:0.258956 
+[595]	train-mlogloss:0.258938 
+[596]	train-mlogloss:0.258847 
+[597]	train-mlogloss:0.258742 
+[598]	train-mlogloss:0.258669 
+[599]	train-mlogloss:0.258558 
+[600]	train-mlogloss:0.258613 
+[601]	train-mlogloss:0.258483 
+[602]	train-mlogloss:0.258436 
+[603]	train-mlogloss:0.258527 
+[604]	train-mlogloss:0.258418 
+[605]	train-mlogloss:0.258489 
+[606]	train-mlogloss:0.258182 
+[607]	train-mlogloss:0.258124 
+[608]	train-mlogloss:0.258207 
+[609]	train-mlogloss:0.258157 
+[610]	train-mlogloss:0.258106 
+[611]	train-mlogloss:0.257946 
+[612]	train-mlogloss:0.257943 
+[613]	train-mlogloss:0.257826 
+[614]	train-mlogloss:0.257866 
+[615]	train-mlogloss:0.257770 
+[616]	train-mlogloss:0.257702 
+[617]	train-mlogloss:0.257733 
+[618]	train-mlogloss:0.257665 
+[619]	train-mlogloss:0.257675 
+[620]	train-mlogloss:0.257612 
+[621]	train-mlogloss:0.257482 
+[622]	train-mlogloss:0.257529 
+[623]	train-mlogloss:0.257591 
+[624]	train-mlogloss:0.257506 
+[625]	train-mlogloss:0.257464 
+[626]	train-mlogloss:0.257368 
+[627]	train-mlogloss:0.257309 
+[628]	train-mlogloss:0.257265 
+[629]	train-mlogloss:0.257215 
+[630]	train-mlogloss:0.257167 
+[631]	train-mlogloss:0.257127 
+[632]	train-mlogloss:0.256942 
+[633]	train-mlogloss:0.256851 
+[634]	train-mlogloss:0.256827 
+[635]	train-mlogloss:0.256914 
+[636]	train-mlogloss:0.256851 
+[637]	train-mlogloss:0.256824 
+[638]	train-mlogloss:0.256885 
+[639]	train-mlogloss:0.257025 
+[640]	train-mlogloss:0.256616 
+[641]	train-mlogloss:0.256693 
+[642]	train-mlogloss:0.256660 
+[643]	train-mlogloss:0.256555 
+[644]	train-mlogloss:0.256488 
+[645]	train-mlogloss:0.256334 
+[646]	train-mlogloss:0.256268 
+[647]	train-mlogloss:0.256246 
+[648]	train-mlogloss:0.256396 
+[649]	train-mlogloss:0.256152 
+[650]	train-mlogloss:0.256349 
+[651]	train-mlogloss:0.256393 
+[652]	train-mlogloss:0.256369 
+[653]	train-mlogloss:0.256048 
+[654]	train-mlogloss:0.255957 
+[655]	train-mlogloss:0.256031 
+[656]	train-mlogloss:0.255936 
+[657]	train-mlogloss:0.255793 
+[658]	train-mlogloss:0.255906 
+[659]	train-mlogloss:0.255778 
+[660]	train-mlogloss:0.256138 
+[661]	train-mlogloss:0.256042 
+[662]	train-mlogloss:0.255708 
+[663]	train-mlogloss:0.255604 
+[664]	train-mlogloss:0.255672 
+[665]	train-mlogloss:0.255556 
+[666]	train-mlogloss:0.255663 
+[667]	train-mlogloss:0.255595 
+[668]	train-mlogloss:0.255530 
+[669]	train-mlogloss:0.255630 
+[670]	train-mlogloss:0.255491 
+[671]	train-mlogloss:0.255377 
+[672]	train-mlogloss:0.255388 
+[673]	train-mlogloss:0.255364 
+[674]	train-mlogloss:0.255488 
+[675]	train-mlogloss:0.255490 
+[676]	train-mlogloss:0.255348 
+[677]	train-mlogloss:0.255325 
+[678]	train-mlogloss:0.255265 
+[679]	train-mlogloss:0.255213 
+[680]	train-mlogloss:0.255170 
+[681]	train-mlogloss:0.255104 
+[682]	train-mlogloss:0.255127 
+[683]	train-mlogloss:0.255108 
+[684]	train-mlogloss:0.254941 
+[685]	train-mlogloss:0.254918 
+[686]	train-mlogloss:0.254995 
+[687]	train-mlogloss:0.254954 
+[688]	train-mlogloss:0.254861 
+[689]	train-mlogloss:0.254792 
+[690]	train-mlogloss:0.254642 
+[691]	train-mlogloss:0.254666 
+[692]	train-mlogloss:0.254704 
+[693]	train-mlogloss:0.254866 
+[694]	train-mlogloss:0.254853 
+[695]	train-mlogloss:0.254645 
+[696]	train-mlogloss:0.254589 
+[697]	train-mlogloss:0.254640 
+[698]	train-mlogloss:0.254527 
+[699]	train-mlogloss:0.254506 
+[700]	train-mlogloss:0.254400 
+[701]	train-mlogloss:0.254337 
+[702]	train-mlogloss:0.254292 
+[703]	train-mlogloss:0.254252 
+[704]	train-mlogloss:0.254371 
+[705]	train-mlogloss:0.254299 
+[706]	train-mlogloss:0.254281 
+[707]	train-mlogloss:0.254156 
+[708]	train-mlogloss:0.254034 
+[709]	train-mlogloss:0.253921 
+[710]	train-mlogloss:0.253912 
+[711]	train-mlogloss:0.253939 
+[712]	train-mlogloss:0.253936 
+[713]	train-mlogloss:0.253883 
+[714]	train-mlogloss:0.253793 
+[715]	train-mlogloss:0.253930 
+[716]	train-mlogloss:0.253687 
+[717]	train-mlogloss:0.253787 
+[718]	train-mlogloss:0.253735 
+[719]	train-mlogloss:0.253721 
+[720]	train-mlogloss:0.253738 
+[721]	train-mlogloss:0.253713 
+[722]	train-mlogloss:0.253551 
+[723]	train-mlogloss:0.253404 
+[724]	train-mlogloss:0.253493 
+[725]	train-mlogloss:0.253508 
+[726]	train-mlogloss:0.253458 
+[727]	train-mlogloss:0.253291 
+[728]	train-mlogloss:0.253325 
+[729]	train-mlogloss:0.253301 
+[730]	train-mlogloss:0.253430 
+[731]	train-mlogloss:0.253553 
+[732]	train-mlogloss:0.253555 
+[733]	train-mlogloss:0.253555 
+[734]	train-mlogloss:0.253537 
+[735]	train-mlogloss:0.253555 
+[736]	train-mlogloss:0.253355 
+[737]	train-mlogloss:0.253338 
+[738]	train-mlogloss:0.253192 
+[739]	train-mlogloss:0.253200 
+[740]	train-mlogloss:0.253055 
+[741]	train-mlogloss:0.253220 
+[742]	train-mlogloss:0.253100 
+[743]	train-mlogloss:0.252985 
+[744]	train-mlogloss:0.252725 
+[745]	train-mlogloss:0.252737 
+[746]	train-mlogloss:0.252723 
+[747]	train-mlogloss:0.252766 
+[748]	train-mlogloss:0.252938 
+[749]	train-mlogloss:0.252823 
+[750]	train-mlogloss:0.252646 
+[751]	train-mlogloss:0.252628 
+[752]	train-mlogloss:0.252569 
+[753]	train-mlogloss:0.252529 
+[754]	train-mlogloss:0.252461 
+[755]	train-mlogloss:0.252370 
+[756]	train-mlogloss:0.252393 
+[757]	train-mlogloss:0.252388 
+[758]	train-mlogloss:0.252359 
+[759]	train-mlogloss:0.252349 
+[760]	train-mlogloss:0.252260 
+[761]	train-mlogloss:0.252287 
+[762]	train-mlogloss:0.252223 
+[763]	train-mlogloss:0.252211 
+[764]	train-mlogloss:0.252223 
+[765]	train-mlogloss:0.252010 
+[766]	train-mlogloss:0.252093 
+[767]	train-mlogloss:0.252056 
+[768]	train-mlogloss:0.251845 
+[769]	train-mlogloss:0.251868 
+[770]	train-mlogloss:0.251784 
+[771]	train-mlogloss:0.251819 
+[772]	train-mlogloss:0.251878 
+[773]	train-mlogloss:0.251839 
+[774]	train-mlogloss:0.252082 
+[775]	train-mlogloss:0.251885 
+[776]	train-mlogloss:0.251786 
+[777]	train-mlogloss:0.251735 
+[778]	train-mlogloss:0.251768 
+[779]	train-mlogloss:0.251696 
+[780]	train-mlogloss:0.251648 
+[781]	train-mlogloss:0.251603 
+[782]	train-mlogloss:0.251654 
+[783]	train-mlogloss:0.251549 
+[784]	train-mlogloss:0.251430 
+[785]	train-mlogloss:0.251402 
+[786]	train-mlogloss:0.251482 
+[787]	train-mlogloss:0.251456 
+[788]	train-mlogloss:0.251390 
+[789]	train-mlogloss:0.251299 
+[790]	train-mlogloss:0.251361 
+[791]	train-mlogloss:0.251439 
+[792]	train-mlogloss:0.251302 
+[793]	train-mlogloss:0.251130 
+[794]	train-mlogloss:0.251040 
+[795]	train-mlogloss:0.251141 
+[796]	train-mlogloss:0.251193 
+[797]	train-mlogloss:0.251130 
+[798]	train-mlogloss:0.251006 
+[799]	train-mlogloss:0.251042 
+[800]	train-mlogloss:0.250999 
+[801]	train-mlogloss:0.250960 
+[802]	train-mlogloss:0.250906 
+[803]	train-mlogloss:0.250934 
+[804]	train-mlogloss:0.251014 
+[805]	train-mlogloss:0.251243 
+[806]	train-mlogloss:0.251089 
+[807]	train-mlogloss:0.251005 
+[808]	train-mlogloss:0.250942 
+[809]	train-mlogloss:0.250864 
+[810]	train-mlogloss:0.250744 
+[811]	train-mlogloss:0.250753 
+[812]	train-mlogloss:0.250715 
+[813]	train-mlogloss:0.250576 
+[814]	train-mlogloss:0.250566 
+[815]	train-mlogloss:0.250554 
+[816]	train-mlogloss:0.250537 
+[817]	train-mlogloss:0.250622 
+[818]	train-mlogloss:0.250601 
+[819]	train-mlogloss:0.250621 
+[820]	train-mlogloss:0.250594 
+[821]	train-mlogloss:0.250515 
+[822]	train-mlogloss:0.250518 
+[823]	train-mlogloss:0.250682 
+[824]	train-mlogloss:0.250574 
+[825]	train-mlogloss:0.250688 
+[826]	train-mlogloss:0.250613 
+[827]	train-mlogloss:0.250453 
+[828]	train-mlogloss:0.250353 
+[829]	train-mlogloss:0.250331 
+[830]	train-mlogloss:0.250430 
+[831]	train-mlogloss:0.250267 
+[832]	train-mlogloss:0.250464 
+[833]	train-mlogloss:0.250173 
+[834]	train-mlogloss:0.250219 
+[835]	train-mlogloss:0.250146 
+[836]	train-mlogloss:0.250045 
+[837]	train-mlogloss:0.250009 
+[838]	train-mlogloss:0.249953 
+[839]	train-mlogloss:0.250024 
+[840]	train-mlogloss:0.249937 
+[841]	train-mlogloss:0.249898 
+[842]	train-mlogloss:0.249867 
+[843]	train-mlogloss:0.249980 
+[844]	train-mlogloss:0.249832 
+[845]	train-mlogloss:0.249824 
+[846]	train-mlogloss:0.249838 
+[847]	train-mlogloss:0.249912 
+[848]	train-mlogloss:0.249762 
+[849]	train-mlogloss:0.249826 
+[850]	train-mlogloss:0.249732 
+[851]	train-mlogloss:0.249658 
+[852]	train-mlogloss:0.249721 
+[853]	train-mlogloss:0.249617 
+[854]	train-mlogloss:0.249575 
+[855]	train-mlogloss:0.249557 
+[856]	train-mlogloss:0.249653 
+[857]	train-mlogloss:0.249533 
+[858]	train-mlogloss:0.249481 
+[859]	train-mlogloss:0.249711 
+[860]	train-mlogloss:0.249652 
+[861]	train-mlogloss:0.249367 
+[862]	train-mlogloss:0.249484 
+[863]	train-mlogloss:0.249415 
+[864]	train-mlogloss:0.249351 
+[865]	train-mlogloss:0.249246 
+[866]	train-mlogloss:0.249373 
+[867]	train-mlogloss:0.249253 
+[868]	train-mlogloss:0.249204 
+[869]	train-mlogloss:0.249151 
+[870]	train-mlogloss:0.249040 
+[871]	train-mlogloss:0.249082 
+[872]	train-mlogloss:0.249119 
+[873]	train-mlogloss:0.249160 
+[874]	train-mlogloss:0.249055 
+[875]	train-mlogloss:0.248963 
+[876]	train-mlogloss:0.249186 
+[877]	train-mlogloss:0.249166 
+[878]	train-mlogloss:0.249110 
+[879]	train-mlogloss:0.249042 
+[880]	train-mlogloss:0.249156 
+[881]	train-mlogloss:0.249092 
+[882]	train-mlogloss:0.249014 
+[883]	train-mlogloss:0.249134 
+[884]	train-mlogloss:0.249082 
+[885]	train-mlogloss:0.249155 
+[886]	train-mlogloss:0.249115 
+[887]	train-mlogloss:0.249022 
+[888]	train-mlogloss:0.248998 
+[889]	train-mlogloss:0.248943 
+[890]	train-mlogloss:0.249087 
+[891]	train-mlogloss:0.248835 
+[892]	train-mlogloss:0.248784 
+[893]	train-mlogloss:0.248736 
+[894]	train-mlogloss:0.248982 
+[895]	train-mlogloss:0.248906 
+[896]	train-mlogloss:0.248746 
+[897]	train-mlogloss:0.248689 
+[898]	train-mlogloss:0.248649 
+[899]	train-mlogloss:0.248694 
+[900]	train-mlogloss:0.248767 
+[901]	train-mlogloss:0.248776 
+[902]	train-mlogloss:0.248786 
+[903]	train-mlogloss:0.248576 
+[904]	train-mlogloss:0.248583 
+[905]	train-mlogloss:0.248416 
+[906]	train-mlogloss:0.248423 
+[907]	train-mlogloss:0.248358 
+[908]	train-mlogloss:0.248276 
+[909]	train-mlogloss:0.248296 
+[910]	train-mlogloss:0.248303 
+[911]	train-mlogloss:0.248394 
+[912]	train-mlogloss:0.248390 
+[913]	train-mlogloss:0.248206 
+[914]	train-mlogloss:0.248194 
+[915]	train-mlogloss:0.248087 
+[916]	train-mlogloss:0.248128 
+[917]	train-mlogloss:0.248105 
+[918]	train-mlogloss:0.248127 
+[919]	train-mlogloss:0.248063 
+[920]	train-mlogloss:0.248037 
+[921]	train-mlogloss:0.247885 
+[922]	train-mlogloss:0.247836 
+[923]	train-mlogloss:0.247824 
+[924]	train-mlogloss:0.247735 
+[925]	train-mlogloss:0.247750 
+[926]	train-mlogloss:0.247806 
+[927]	train-mlogloss:0.247808 
+[928]	train-mlogloss:0.247613 
+[929]	train-mlogloss:0.247562 
+[930]	train-mlogloss:0.247611 
+[931]	train-mlogloss:0.247615 
+[932]	train-mlogloss:0.247659 
+[933]	train-mlogloss:0.247699 
+[934]	train-mlogloss:0.247651 
+[935]	train-mlogloss:0.247769 
+[936]	train-mlogloss:0.247727 
+[937]	train-mlogloss:0.247486 
+[938]	train-mlogloss:0.247302 
+[939]	train-mlogloss:0.247323 
+[940]	train-mlogloss:0.247474 
+[941]	train-mlogloss:0.247295 
+[942]	train-mlogloss:0.247216 
+[943]	train-mlogloss:0.247251 
+[944]	train-mlogloss:0.247246 
+[945]	train-mlogloss:0.247167 
+[946]	train-mlogloss:0.247164 
+[947]	train-mlogloss:0.247281 
+[948]	train-mlogloss:0.247145 
+[949]	train-mlogloss:0.247170 
+[950]	train-mlogloss:0.247263 
+[951]	train-mlogloss:0.247195 
+[952]	train-mlogloss:0.247058 
+[953]	train-mlogloss:0.247074 
+[954]	train-mlogloss:0.246958 
+[955]	train-mlogloss:0.246914 
+[956]	train-mlogloss:0.246941 
+[957]	train-mlogloss:0.246993 
+[958]	train-mlogloss:0.246927 
+[959]	train-mlogloss:0.246860 
+[960]	train-mlogloss:0.246845 
+[961]	train-mlogloss:0.246743 
+[962]	train-mlogloss:0.246733 
+[963]	train-mlogloss:0.246747 
+[964]	train-mlogloss:0.246763 
+[965]	train-mlogloss:0.246762 
+[966]	train-mlogloss:0.246750 
+[967]	train-mlogloss:0.246731 
+[968]	train-mlogloss:0.246604 
+[969]	train-mlogloss:0.246634 
+[970]	train-mlogloss:0.246687 
+[971]	train-mlogloss:0.246790 
+[972]	train-mlogloss:0.246671 
+[973]	train-mlogloss:0.246629 
+[974]	train-mlogloss:0.246616 
+[975]	train-mlogloss:0.246634 
+[976]	train-mlogloss:0.246590 
+[977]	train-mlogloss:0.246379 
+[978]	train-mlogloss:0.246383 
+[979]	train-mlogloss:0.246477 
+[980]	train-mlogloss:0.246591 
+[981]	train-mlogloss:0.246623 
+[982]	train-mlogloss:0.246508 
+[983]	train-mlogloss:0.246437 
+[984]	train-mlogloss:0.246432 
+[985]	train-mlogloss:0.246381 
+[986]	train-mlogloss:0.246210 
+[987]	train-mlogloss:0.246270 
+[988]	train-mlogloss:0.246207 
+[989]	train-mlogloss:0.246066 
+[990]	train-mlogloss:0.246012 
+[991]	train-mlogloss:0.246076 
+[992]	train-mlogloss:0.246025 
+[993]	train-mlogloss:0.246098 
+[994]	train-mlogloss:0.245982 
+[995]	train-mlogloss:0.246125 
+[996]	train-mlogloss:0.246159 
+[997]	train-mlogloss:0.246044 
+[998]	train-mlogloss:0.246015 
+[999]	train-mlogloss:0.245945 
+[1000]	train-mlogloss:0.245863 
+> 
+> # Make prediction on the testing data.
+> 
+> train.prediction = predict(bst, as.matrix(test))
+Error in predict.xgb.Booster(bst, as.matrix(test)) : 
+  Feature names stored in `object` and `newdata` are different!
+Calls: predict -> predict.xgb.Booster
+Execution halted

@@ -1,0 +1,740 @@
+---
+title: "Titanic Tragedy: Survival Prediction with Machine Learning"
+author: "Mohammed K. Barakat"
+date: "February 9, 2018"
+output:
+  html_document:
+    number_sections: yes
+    toc: yes
+  pdf_document:
+    toc: yes
+  word_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+The sinking of the RMS Titanic is one of the most infamous shipwrecks in history.  On April 15, 1912, during her maiden voyage, the Titanic sank after colliding with an iceberg, killing 1502 out of 2224 passengers and crew. This sensational tragedy shocked the international community and led to better safety regulations for ships.
+
+One of the reasons that the shipwreck led to such loss of life was that there were not enough lifeboats for the passengers and crew. Although there was some element of luck involved in surviving the sinking, some groups of people were more likely to survive than others, such as women, children, and the upper-class.
+
+This research tries to answer the question of *"what sorts of people were likely to survive"*. Using Machine Learning tools and techniques the research predicts which passengers survived the tragedy.
+
+More about the *RMS Titanic* tragedy is available in [Wikipedia](https://en.wikipedia.org/wiki/RMS_Titanic)
+
+# Executive Summary
+
+The research follows the *Reproducible Research* methodology. It starts by defining the objective, acquiring and defining input data, data cleaning, feature engineering, data exploration (EDA), and finally by model training, selection, and prediction.
+
+Several R packages are used in the research. Packages cover data visualization, data manipulation, model training and prediction, and text mining.
+
+Several prediction algorithms have been used. One of which was used to predict missing passenger ages (*Generalized Linear Model (glm)*). Other three algorithms were used to make final predictions of passengers’ survival in the Kaggle test data set. The algorithms used in survival prediction are: *Random Forest (RF)*, *Gradient Boosting Machine (GBM)*, and the *Support Vector Machine (SVM)*.
+
+Although both the *RF* and the *SVM* models were very competitive in terms of prediction accuracy, the *SVM* surpassed the *RF* with an accuracy of **83.9%** versus **82.5%** for the *RF*.
+
+The research ends by predicting survival in the Kaggle test set where the survival rate was **37.3%** (**156** passengers have been predicted to survive the tragedy compared to **262** who could not make it).
+
+# Research Data
+
+Data of the research has been obtained from *Kaggle* and is available under this [link](https://www.kaggle.com/c/titanic/data).
+
+The data is split into two data sets:
+
+* **training set (train.csv)** which will be used to train the prediction models. Since the available testing set does not contain the *ground truth* of each passenger, this training set will be split into training (*trainTemp*) and testing (*testTemp*) data. The temporary training set will be used to train prediction models, whereas the temporary testing set will be used to validate model performance and, hence, selection of the best model before being used to predict passenger survivals in the Kaggle-provided testing set.
+
+* **testing set (test.csv)** in which the ground truth (outcome) is not provided. The research aims at predicting the outcome in this set. For each passenger in the test set, the best trained model will be used to predict whether or not passengers survived the sinking of the Titanic.
+
+## *R* Libraries
+
+The research uses the libraries loaded below:
+
+```{r, message=FALSE, warning=FALSE}
+library(knitr)
+library(ggplot2)
+library(ggthemes)
+library(gridExtra)
+library(scales)
+library(dplyr)
+library(qdap)
+library(pROC)
+library(caret)
+library(qdap)
+library(tm)
+library(wordcloud)
+```
+
+## Importing Kaggle data sets
+
+Kaggle *training* and *testing* data sets are imported into *R*. Then, both sets are combined into one set (**allSet**) for *Data Cleaning* and *Feature Engineering* before being used in model training and prediction.
+
+```{r}
+train <- read.csv("../input/train.csv", stringsAsFactors = F)
+test <- read.csv("../input/test.csv", stringsAsFactors = F)
+allSet <- bind_rows(train, test) # combining train and test data in one set
+```
+
+## Data dimensions and structure
+
+```{r}
+trainDim <- dim(train)
+testDim <- dim(test)
+trainR <- trainDim[1];testR <- testDim[1];allSetC <- dim(allSet)[2]
+```
+
+By having a look at the dimensions of the training and testing data, we see that they have **`r trainR`** and **`r testR`** observations (passengers), respectively. And both of them have **`r allSetC`** columns (features).
+
+We can also have a glimpse of the data structure. It is clear that we have features that are either numeric (integers and double) or characters. It's worth noticing that the outcome variable (*Survived*) is integer, which gives us a hint in the *Feature Engineering* section.
+
+```{r}
+glimpse(allSet)
+```
+
+## Data dictionary
+
+Below is a description of each of the features existing in the data sets to give insight of what information we have about passengers.
+
+Feature|Description
+-------|-------------------------------------------------------
+PassengerId|Passenger Id
+Survived|Survival (survived = 1, deceased = 0)
+Pclass|Ticket class (upper = 1, middle = 2, lower = 3)
+Name|Passenger name
+Sex|Sex (male, female)
+Age|Age in years or fraction
+SibSp|Number of siblings / spouses aboard
+Parch|Number of parents / children aboard
+Ticket|Ticket number
+Fare|Passenger fare
+Cabin|Cabin number
+Embarked|Port of Embarkation  (C = Cherbourg, Q = Queenstown, S = Southampton)
+-------------------------------------------------------------------------------
+
+# Data Cleaning
+
+By exploring the data set, as shown in the below subset, it is realized that the data needs to be processed and cleaned. Data cleaning involves removing duplicates, handling missing values, or fixing features classes.
+
+```{r}
+kable(head(allSet))
+```
+
+## Removing duplicate observations
+
+Since the data sets represent passengers' details, they should not contain any duplicate record of passengers. *PassengerId* feature is best to be used for uniqueness of observations.
+
+```{r}
+ifelse(length(unique(allSet[,1])) == nrow(allSet),"No duplicates","Duplicates detected!")
+```
+Both data sets (training and testing) represented by *allSet* do not contain any duplicate observations of passengers.
+
+## Fixing features classes
+
+Features in the data set must have the correct class (data type) to be used in analysis, model training and prediction. By studying the features classes, we find that *Survived*, *Pclass*, *Sex*, *Cabin*, and *Embarked* should be changed to *Factor* variables instead of characters.
+
+```{r}
+allSet$Survived <- as.factor(allSet$Survived)
+allSet$Pclass <- as.factor(allSet$Pclass)
+allSet$Sex <- as.factor(allSet$Sex)
+allSet$Cabin <- as.factor(allSet$Cabin)
+allSet$Embarked <- as.factor(allSet$Embarked)
+```
+
+## Imputing missing values
+
+Missing values in data sets are usually problematic in data analysis, model training and prediction. Hence, we will replace missing values with NA's then impute them with reasonable values in necessary features.
+
+First, let's check the missing values in all variables and replace them with NA's.
+
+```{r missingValues}
+
+# replace missing values with NA across all features
+for (i in 1:allSetC){
+  allSet[,i][allSet[,i]== ""] <- NA
+}
+
+# define a function to get number of NAs in each feature
+getNA <- function(dt,NumCol){
+       varsNames <- names(dt)
+        NAs <- 0
+
+        for (i in 1:NumCol){
+          NAs <- c(NAs, sum(is.na(dt[,i])))
+        }
+
+        NAs <- NAs[-1]
+        names(NAs)<- varsNames # make a vector of variable name and count of NAs
+
+        NAs <- NAs[NAs > 0]
+        NAs 
+}
+
+getNA(allSet,allSetC)
+
+```
+
+Excluding the Survived feature, as it is the outcome feature to be predicted in the testing data set, we have 4 variables with missing values; Age, Fare, Cabin, and Embarked.
+
+Predicting *Age* feature from the features available in the data set cannot be directly predicted. Yet, we will deal with it differently in *Feature Engineering* section. Besides, missing values in *Cabin* is huge (1014 out of 1309). Hence, we will exclude this feature from our model.
+
+We are left with *Fare* and *Embarked* which both have reasonable number of missing values that we can impute from the given data.
+
+**Imputing Embarkation missing values**
+
+Looking at the data, we might be able to predict the passengers' missing embarkation ports based on their Fare and Class.
+
+```{r}
+allSet[,c("PassengerId","Pclass","Fare","Embarked")] %>% filter(is.na(Embarked))
+```
+
+Both passengers with missing embarkation ports have the same Fare and Class; $80 and 1, respectively.
+
+Using the other passengers' data for Fare and Class, we will predict the embarkation ports of these two passengers.
+
+```{r, warning=FALSE}
+
+# filter for complete embarkation records
+FareClassComp <- allSet %>% filter(!is.na(Embarked))
+
+# plot embarkation ports versus fare mapped by passenger class
+FareClassComp %>% 
+        ggplot(aes(x = Embarked, y = Fare, fill = Pclass))+
+        geom_boxplot()+
+        geom_hline(aes(yintercept = 80),
+                   colour = "red", linetype = "dashed", lwd = 2)+
+        scale_y_continuous(labels = dollar_format())+
+        theme_few()
+
+```
+
+Based on the boxplot above, we can see that passengers who embarked off Cherbourg port (C) had paid $80 fare on average and had first class aboard. Hence, we can assume with high confidence that both passengers with missing embarkation values had embarked off the same port for having the same Fare and Class values.
+
+```{r}
+# impute missing embarkation values for both passengers
+allSet$Embarked[is.na(allSet$Embarked)] <- "C"
+```
+
+**Imputing Fare missing values**
+
+Now, we have one passenger with missing Fare value.
+
+```{r}
+allSet[,c("PassengerId","Pclass","Fare","Embarked")] %>% filter(is.na(Fare))
+```
+
+As shown in the previous boxplot, we can use the median of the 3rd class passengers who had embarked off port Southampton (which is calculated to be $8.05) to predict the Fare value of passenger 1044.
+
+```{r}
+allSet$Fare[allSet$PassengerId == 1044] <-  median(allSet$Fare[allSet$Pclass == 3 & allSet$Embarked == "S"], na.rm = T)
+```
+
+# Feature Engineering
+
+*Feature Engineering* simply refers to creating new features from the existing ones to improve model performance. The following sub-sections handle multiple feature engineering tasks that would make training the model possible, easier, and more accurate in prediction.
+
+## Creating the *Title* feature
+
+By looking at the *Name* feature, we can notice that passenger titles are embedded into their names. A passenger name starts with the surname, then a comma and a space before the title that is followed by a period. E.g. (surname, Mr.). So, we can extract the title with some *Regex* manipulation as shown below.
+
+```{r}
+allSet$Title <- gsub("(.*, )|(\\..*)","",allSet$Name)
+
+# tabulate titles versus sex
+table(allSet$Sex, allSet$Title)
+```
+
+By tabulating *Title* versus *Sex* we can find that titles (Capt, Col, Don, Jonkheer, Major, Master, Mr, Rev, Sir) all refer to males. Whereas, (Dona, Lady, Miss, Mlle, Mme, Mrs, Ms, the Countess) refer to female. "Dr" refers to both.
+
+Hence, we can reduce titles to only three: Mr, Mrs, and Miss according to Sex mapping.
+
+```{r}
+MrTitles <- c("Capt", "Col", "Don", "Jonkheer", "Major", "Master", "Mr", "Rev", "Sir")
+MrsTitles <- c("Dona", "Lady", "Mme", "Mrs", "the Countess")
+MissTitles <- c("Miss", "Mlle", "Ms")
+
+allSet$Title[allSet$Title %in% MrTitles] <- "Mr"
+allSet$Title[allSet$Title %in% MrsTitles] <- "Mrs"
+allSet$Title[allSet$Title %in% MissTitles] <- "Miss"
+allSet$Title[allSet$Title == "Dr" & allSet$Sex == "female"] <- "Mrs"
+allSet$Title[allSet$Title == "Dr" & allSet$Sex == "male"] <- "Mr"
+
+allSet$Title <- as.factor(allSet$Title)
+table(allSet$Title)
+```
+
+## Creating the family size (*FamSz*) feature
+
+By knowing the siblings/spouses and parches count, we might be able to know the passenger family size. So, we will create a new feature (*FamSz*) by adding the count of siblings and parches to the passenger to know the passenger family size aboard.
+
+```{r}
+allSet$FamSz <- allSet$SibSp + allSet$Parch + 1
+```
+
+## Creating the family size categories (*FamSzCat*)
+
+Also, it might be useful to categorize family sizes for easier model training and prediction. So, we will categorize family sizes into *Singles*, *Small*, and *Large*.
+
+```{r}
+allSet$FamSzCat[allSet$FamSz == 1] <- "Singles"
+allSet$FamSzCat[allSet$FamSz > 1 & allSet$FamSz <5] <- "Small"
+allSet$FamSzCat[allSet$FamSz > 4] <- "Large"
+
+allSet$FamSzCat <- as.factor(allSet$FamSzCat)
+```
+
+## Creating the *Surname* feature
+
+Although not all features might be used in prediction, it is worthy to keep/create some features to further explore the data. And in this research it could be interesting to know statistics about families who faced this tragedy. So, we will create a new feature (*Surname*) which gives insight into families onboard Titanic.
+
+```{r}
+allSet$Surname <- sapply(allSet$Name, function(x) strsplit(x, split = "[,]")[[1]][1])
+paste(nlevels(factor(allSet$Surname)), "families were onboard Titanic")
+```
+
+We will explore their distribution in the Exploratory Data Analysis (EDA).
+
+## Creating the age stage *AgeStg* feature
+
+As mentioned earlier, predicting the exact age of passengers with missing ages is risky and commits high inaccuracy. Yet, age is believed to have high influence on prediction results of survivals. So, *Age* will be used to create the Age Stage (*AgeStg*) feature which identifies a passenger as a child or an adult. Then, missing age stages will be easier to predict using other features. Passengers below 18 years old will be assigned *Child* values. Whereas those above 18 will be *Adult*.
+
+```{r}
+allSet$AgeStg[allSet$Age < 18 & !is.na(allSet$Age)] <- "Child"
+allSet$AgeStg[allSet$Age >= 18 & !is.na(allSet$Age)] <- "Adult"
+```
+
+**Imputing missing Age Stage values**
+
+Here, we go back to Data Cleaning phase as we have a new feature with missing values. We have 263 missing Age Stage values. Which is the same number of missing *Age* values that we noticed in the Data Cleaning phase.
+
+```{r}
+length(allSet$AgeStg[is.na(allSet$AgeStg)])
+```
+
+To impute missing values in age stage, we will use one of the modeling algorithms. Since age stage has two possible outcomes (Child and Adult) we will try the *Generalized Linear Model (glm)* with *Forward Stepwise* method to predict the missing values with the best set of features as predictors.
+
+As with any Machine Learning tasks, we will combine all data having non-missing age stage values in one data set then split it into training and testing data sets to test for prediction accuracy. Then, we can predict the missing values using the model.
+
+Since some variables are obviously not taking part in deciding the age stage, we will exclude them from the model upfront. Hence, we will use the following prospect features in the model: *Pclass*, *Sex*, *SibSp*, *Parch*, *Fare*, *FamSz*, and *FamSzCat*.
+
+
+```{r}
+# create a vector with the prospect features including AgeStg and PassengerId
+varsNames <- c("PassengerId","Pclass", "Sex", "SibSp", "Parch", "Fare", "FamSz", "FamSzCat", "AgeStg")
+
+# subset the data by the selected features
+allSetAgeStg <- allSet[,varsNames]
+
+# subset into two sets: one with age stage complete, and one with age stage missing
+allSetAgeStgComp <- allSetAgeStg[!is.na(allSetAgeStg$AgeStg),]
+allSetAgeStgMiss <- allSetAgeStg[is.na(allSetAgeStg$AgeStg),]
+
+# split the data set with complete age stage into train and test data sets (75/25 ratio)
+## number of training rows
+nTrain <- 0.75 * nrow(allSetAgeStgComp)
+
+## sample row IDs
+set.seed(3030)
+sampleTrain <- sample(nrow(allSetAgeStgComp),nTrain)
+
+## create train and test data sets
+AgeStgTrain <- allSetAgeStgComp[sampleTrain,]
+AgeStgTest <- allSetAgeStgComp[-sampleTrain,]
+
+# use the glm Logistic Regression model to predict the age stage. Use Forward Stepwise algorithm to select the best predictors.
+
+# build the null model with no predictors
+set.seed(3030)
+null_model <- glm(factor(AgeStg)~1, data = AgeStgTrain, family = "binomial")
+
+# build the full model with all predictors
+set.seed(3030)
+full_model <- glm(factor(AgeStg)~Pclass+Sex+SibSp+Parch+Fare+FamSz+FamSzCat, data = AgeStgTrain, family = "binomial")
+
+# perform forward stepwise algorithm to get an economic model with best predictors
+step_model <- step(null_model, scope = list(lower= null_model,upper = full_model),direction = "forward")
+
+# estimate the stepwise age stage probability in training and testing data
+AgeStgTrain$stepProb <- predict(step_model, data = AgeStgTrain, type = "response")
+AgeStgTest$stepProb <- predict(step_model, newdata = AgeStgTest, type = "response")
+
+# create the ROC curve of the stepwise for training and testing data
+ROC_train <- roc(AgeStgTrain$AgeStg,AgeStgTrain$stepProb)
+ROC_test <- roc(AgeStgTest$AgeStg,AgeStgTest$stepProb)
+
+# Plot the ROC of the stepwise model: training and testing
+plot(ROC_train,col = "red")
+plot(ROC_test,col = "red")
+
+# calculate Area Under the Curve (AUC): training and testing
+auc(ROC_train);auc(ROC_test)
+trainAcc <- percent(auc(ROC_train));testAcc <- percent(auc(ROC_test))
+```
+
+Using the Generalized Linear Model (glm) with Forward Stepwise we get an in-sample accuracy of **`r trainAcc`** and an out-of-sample accuracy of **`r testAcc`**.
+
+Next, using the Forward Step glm model, we will predict values of age stage (*AgeStg*) in the test data set and validate its accuracy before predicting the actual missing values in the entire data set.
+
+```{r}
+# find the average number of children to set it as threshold of probability
+AvgChildCount <- mean(AgeStgTrain$AgeStg == "Child")
+
+# Predict Age Stage in testing data if its probability is greater than the average 
+AgeStgTest$AgeStgPred <- ifelse(AgeStgTest$stepProb > AvgChildCount,"Child", "Adult")
+
+# check accuracy of prediction in testing data
+acc <- percent(mean(AgeStgTest$AgeStg == AgeStgTest$AgeStgPred))
+acc
+```
+
+After applying prediction model to the testing data, accuracy of prediction turned out to be **`r acc`**.
+
+Finally, we will predict the actual missing values of age stage in the entire data set.
+
+```{r}
+# predicting missing Age Stage using the stepwise, logistic regression model
+allSetAgeStgMiss$stepProb <- predict(step_model, newdata = allSetAgeStgMiss, type = "response")
+
+allSetAgeStgMiss$AgeStg <- ifelse(allSetAgeStgMiss$stepProb > AvgChildCount,"Child", "Adult")
+
+# update missing Age Stage in the full data
+allSet <- left_join(allSet,allSetAgeStgMiss[,c("PassengerId","AgeStg")], by = "PassengerId", allSet.x = TRUE, allSet.y = FALSE)
+
+allSet$AgeStg <- ifelse(is.na(allSet$AgeStg.x),allSet$AgeStg.y,allSet$AgeStg.x)
+allSet <- allSet[,!colnames(allSet) %in% c("AgeStg.x","AgeStg.y")]   
+
+allSet$AgeStg <- as.factor(allSet$AgeStg)
+```
+
+Confirm that we have no missing values in the data set.
+
+```{r}
+getNA(allSet,length(allSet))
+```
+
+As mentioned earlier, *Survived* is the outcome feature to predict, *Age* will be replaced by *AgeStg*, and *Cabin* will not be used for huge number of missing values. Hence, we have all missing values imputed in features necessary for training and prediction.
+
+# Exploratory Data Analysis (EDA)
+
+In this section we try to explore characteristics of the Kaggle training data using descriptive statistics and plots. First, we will revert back to the original training data and split it from the testing data set.
+
+```{r}
+train <- allSet[!is.na(allSet$Survived),]
+test <- allSet[is.na(allSet$Survived),]
+```
+
+## Exploring the outcome feature (*Survived*)
+
+```{r, warning=FALSE}
+train %>% 
+ggplot(aes(x=Survived, fill = Survived))+
+        geom_histogram(stat = "count")+
+        labs(x = "Survival in the Titanic tragedy")+
+        geom_label(stat='count',aes(label=..count..))+
+        labs(fill = "Survival (0 = died, 1 = survived)")
+```
+
+```{r, warning = FALSE}
+survSumy <- summary(train$Survived)
+died <- survSumy[[1]][1];suvd <- survSumy[[2]][1];surPerc <- percent(suvd/sum(suvd,died))
+```
+
+Looking at the histogram and the summary statistics of the train data, we can see that passengers who survived the tragedy were less than those who died. The survived were **`r suvd`**, while the dead were **`r died`**. The survival rate was **`r surPerc`**.
+
+Let's have a look at how the outcome feature (*Survival*) is related to some of the important features in the train data set.
+
+```{r, warning=FALSE}
+p1 <- ggplot(train,aes(x=Survived, fill=Pclass))+
+  geom_histogram(stat = "count")+
+        labs(x = "P1: Survival vs Class")
+
+p2 <- ggplot(train,aes(x=Survived, fill=Sex))+
+  geom_histogram(stat = "count")+
+        labs(x = "P2: Survival vs Sex")
+
+p3 <- ggplot(train,aes(x= Survived, fill = AgeStg))+
+  geom_histogram(stat = "count", position = "dodge")+
+        labs(x = "P3: Survival vs Age Stage")
+
+p4 <- ggplot(train,aes(x=Survived, fill=Embarked))+
+  geom_histogram(stat = "count")+
+        labs(x = "P4: Survival vs Embarkment Port")
+
+p5 <- ggplot(train,aes(x= Survived, y = Fare))+
+  geom_boxplot()+
+        labs(x = "P5: Survival vs Fare")
+
+p6 <- ggplot(train,aes(x= Survived, fill = FamSzCat))+
+  geom_histogram(stat = "count")+
+        labs(x = "P6: Survival vs Category of Family Size")
+
+p7 <- ggplot(train, aes(x = FamSz, fill = Survived)) +
+        geom_bar(stat='count', position='dodge') +
+        scale_x_continuous(breaks=c(1:11)) +
+        labs(x = 'P7: Survival vs Family Size')
+
+grid.arrange(p1,p2,p3,p4,p5,p6,p7,ncol=2)
+
+```
+
+**Observations from the plots:**
+
+* Most deceased passengers were from the lower ticket class (class 3). While survived passengers were almost equally distributed over the three tickets classes.[*Ref. plot:p1*]
+
+* The majority of deceased passengers were males. And those survived mostly were females. This goes in line with the belief that women (and children) were given the priority to jump to the life boats. [*Ref. plot:p2*]
+
+* Adult passengers who did not make it in the tragedy were around 5 times the deceased children. And those adults survived, who probably were from upper classes, were around 3 times the survived children. Which again proves that children were given priority over adults-maybe except for some of those with higher classes! [*Ref. plot:p3*]
+
+* It is clear that most passengers (died and survived) had departed from Southampton port. Distribution of ports over both categories of passengers is almost similar which makes it difficult to be a predicting feature of survival. [*Ref. plot:p4*]
+
+* The median of deceased passengers fare was slightly smaller than that of passengers who survived. Obviously, those with higher fares could make it as they were from the fortunate higher classes. [*Ref. plot:p5*]
+
+* It seems that RMS Titanic was mostly a voyage of singletons. However, those unfortunates had lower odds to survive over the small and large families. [*Ref. plot:p6*]
+
+* In addition to singletons, families with more than 4 members had lower odds to survive than those with 4 and less family members. Maybe this was due to the time wasted by family members looking for each other and trying to get together during the time of sinking. [*Ref. plot:p7*]
+
+**A peek into Surnames**
+
+Let's have a look at passengers' surnames and see their numbers onboard the Titanic.
+
+```{r, warning= FALSE}
+surN <- train %>% 
+        group_by(Surname) %>% 
+        summarize(count = n()) %>% 
+        arrange(desc(count))
+
+countSurN <- nrow(surN)
+        
+surN[1:30,]%>% 
+ggplot(aes(x=reorder(Surname, count),y=count))+
+        geom_bar(stat = "identity")+
+        scale_y_continuous(breaks = c(1:10))+
+        labs(x = "Surnames", y = "Number of Passengers")+
+        coord_flip()
+``` 
+
+Well, the training data set shows that the **`r trainR`** passengers were grouped into **`r countSurN`** surnames. However, there was no clear skewness towards specific surnames. As shown in the bar chart above, the range of passengers having similar surnames was from 1 to 9 passengers.
+
+*Andersson* was the highest common surname with 9 persons, followed by *Sage* with 7 names, then a few groups having 6 passengers with common surnames such as *Skoog*, *Panula* and *Johnson*. The rest of passengers are groups of 5 or less members having similar surnames.
+
+This can also be noticed in the **wordcloud** figure shown below with more frequent surnames highlighted in larger and bolder text.
+ 
+```{r, warning= FALSE}
+set.seed(4040)
+Embk_source <- VectorSource(train$Surname)
+ 
+Embk_corp <- VCorpus(Embk_source)
+
+Embk_tdm <- TermDocumentMatrix(Embk_corp)
+Embk_m <- as.matrix(Embk_tdm)
+
+term_freq <- rowSums(Embk_m)
+term_freq <- sort(term_freq, decreasing = TRUE)
+word_freqs <- data.frame(term = names(term_freq), num = term_freq)
+
+wordcloud(word_freqs$term, word_freqs$num, max.words = 100, colors = "blue")
+
+```
+
+
+# Predicting Survival in the Testing Data Set
+
+Now, having all features engineered, and having done the EDA, we can start with the following features as preliminary set of predictors in our training model:
+
+* **Pclass**
+* **Sex**
+* **SibSp**
+* **Parch**
+* **Fare**
+* **Embarked**
+* **Title**
+* **FamSzCat**
+* **AgeStg**
+
+## Checking features variability
+
+It is a good practice to make sure the training data does not include predictors with no variability. I.e. predictors that have one or very few unique values relative to the number of observations. This can be detected with the *nzv* value of the *NearZeroVar* function results.
+
+```{r}
+# create a vector with the selected features
+selVarsNames <- c("Pclass", "Sex", "SibSp", "Parch", "Fare","Embarked" ,"Title", "FamSzCat", "AgeStg")
+
+nearZeroVar(train[,selVarsNames], saveMetrics = TRUE)
+```
+
+As shown above all selected predictors have **FALSE** nzv value which indicates that all of them have reasonable variability in the dataset.
+
+## Prediction Algorithms
+
+Since the outcome (*Survived*) is a binary variable our prediction model should be based on one of those algorithms which are able to model categorical rather than regression data such as Random Forest, Gradient Boosting Machine (GBM), and Support Vector Machine (SVM).
+
+To make sure we select the best model, we will use these three algorithms to train our model then make a comparison on prediction accuracy amongst them to select the best one.
+
+In order to be able to validate the trained models and get the *out-of-sample* accuracy before predicting the Kaggle test data we will split the train data set into *trainTemp* and *testTemp* data sets. Train the models on the former, and test on the latter. Then, after selecting the best model, we will predict survival in the original test set given by Kaggle.
+
+**Using the Random Forest Algorithm**
+
+First, split train data set into *trainTemp* and *testTemp* data sets.
+
+```{r}
+# split the train data set into train and test data sets (75/25 ratio).
+
+## number of training rows
+nTrain <- round(0.75 * nrow(train))
+
+## sample row IDs
+sampleTrain <- sample(nrow(train),nTrain)
+
+## create trainTemp and testTemp data sets
+trainTemp <- train[sampleTrain,]
+testTemp <- train[-sampleTrain,]
+```
+
+Next, build the training models.
+
+```{r}
+set.seed(2020)
+
+control <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+modelRF <- train(Survived~Pclass+Sex+SibSp+Parch+Fare+Embarked+Title+FamSzCat+AgeStg, data = trainTemp, method = "rf", trControl = control)
+
+print(modelRF)
+```
+
+**Using Gradient Boosting Machine (GBM) Algorithm**
+
+```{r}
+set.seed(2020)
+
+control <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+modelGBM <- train(Survived~Pclass+Sex+SibSp+Parch+Fare+Embarked+Title+FamSzCat+AgeStg, data = trainTemp, method = "gbm", trControl = control, verbose = FALSE)
+
+print(modelGBM)
+```
+
+**Using Support Vector Machine (SVM) Algorithm**
+
+```{r}
+set.seed(2020)
+
+control <- trainControl(method = "repeatedcv", number = 10, repeats = 3)
+modelSVM <- train(Survived~Pclass+Sex+SibSp+Parch+Fare+Embarked+Title+FamSzCat+AgeStg, data = trainTemp, method = "svmRadial", trControl = control)
+
+print(modelSVM)
+```
+
+## Models comparison and selection
+
+Now, we will compare the results of the three models using the *caret* package. The comparison process is built around getting an idea of the spread of the models accuracies. Since each model is evaluated using 3 repeats of 10-fold cross validation, the model will have 30 results (3 repeats of 10-fold cross validation). The objective of comparing results is to compare the accuracy distributions (30 values) between the models. Accuracy distributions will be summarized as box plots and dot plots.
+
+*Ref.* [Compare Models And Select The Best Using The Caret R Package](https://machinelearningmastery.com/compare-models-and-select-the-best-using-the-caret-r-package/)
+
+```{r}
+# collect resamples
+results <- resamples(list(RF=modelRF, GBM=modelGBM, SVM = modelSVM))
+
+# summarize the distributions
+compSummary <- summary(results)
+compSummary
+
+modelRFAcc <- percent(median(compSummary$values$`RF~Accuracy`))
+modelGBMAcc <- percent(median(compSummary$values$`GBM~Accuracy`))
+modelSVMAcc <- percent(median(compSummary$values$`SVM~Accuracy`))
+
+# boxplots of results
+bwplot(results)
+
+# dot plots of results
+dotplot(results)
+```
+
+Comparison results of accuracies amongst the three models show that they are very close in prediction performance. *Random Forest* and *SVM* are very competitive having median accuracies of **`r modelRFAcc`** and **`r modelSVMAcc`**, respectively. While *GBM* is slightly lower with median accuracy of **`r modelGBMAcc`**.
+
+**Models validation**
+
+As mentioned earlier, we will validate the models on the testing data set (*testTemp*), then select the best model to predict survival in the Kaggle test set. Here, we will use the *Confusion Matrix* for each model to decide on the highest accuracy obtained and, hence, the best model to adopt.
+
+**Prediction using the Random Forest model**
+
+```{r}
+rfPred<-predict(modelRF,testTemp)
+rfCM<-confusionMatrix(rfPred,testTemp$Survived)
+rfCM
+
+modelRFacc<-percent(as.numeric(rfCM$overall[1]))
+modelRFerr<-percent(1-(as.numeric(rfCM$overall[1])))
+
+modelRFacc;modelRFerr
+```
+
+**Prediction using the Gradient Boosting Machine (GBM) model**
+
+```{r}
+gbmPred<-predict(modelGBM,testTemp)
+gbmCM<-confusionMatrix(gbmPred,testTemp$Survived)
+gbmCM
+
+modelGBMacc<-percent(as.numeric(gbmCM$overall[1]))
+modelGBMerr<-percent(1-(as.numeric(gbmCM$overall[1])))
+
+modelGBMacc;modelGBMerr
+```
+
+**Prediction using the Support Vector Machine (SVM)**
+
+```{r}
+svmPred<-predict(modelSVM,testTemp)
+svmCM<-confusionMatrix(svmPred,testTemp$Survived)
+svmCM
+
+modelSVMacc<-percent(as.numeric(svmCM$overall[1]))
+modelSVMerr<-percent(1-(as.numeric(svmCM$overall[1])))
+
+modelSVMacc;modelSVMerr
+```
+
+**Summary of models prediction accuracies**
+
+The below table shows the final results of prediction accuracies of each model on the test data set (*testTemp*).
+
+```{r}
+tblAcc <- data.frame("Accuracy"=c(modelRFacc, modelGBMacc, modelSVMacc), "Error"= c(modelRFerr,modelGBMerr,modelSVMerr), row.names = c("RF","GBM","SVM"))
+
+tblAcc
+```
+
+The summary results show that the SVM model was the best model with **`r modelSVMacc`** accuracy. Hence, the SVM model will be used to predict survival in the Kaggle test set.
+
+## Applying the selected model on the Kaggle test set
+
+Now we have trained, validated and selected the best model, we will use it to predict survival in the Kaggle test set.
+
+```{r}
+kaggle_test <- predict(modelSVM, test)
+
+kaggle_Submit <- data.frame(PassengerId = test$PassengerId, Survived = kaggle_test)
+
+subSummary <- table(kaggle_Submit$Survived)
+subSummary
+
+survPerc <- percent(subSummary[2]/(subSummary[1]+subSummary[2]))
+```
+
+We can see that the selected SVM model predicted survival rate in the Kaggle test set to be **`r survPerc`** (**`r subSummary[2]`** passengers have been predicted to survive the tragedy compared to **`r subSummary[1]`** who could not make it).
+
+## Final submission file
+
+At last, we can create the Kaggle submission csv file based on our prediction.
+
+```{r}
+write.csv(kaggle_Submit, file = "Titanic.csv", row.names = FALSE)
+```
+
+# Conclusion
+
+Three algorithms were used to make final predictions of passengers’ survival in the Kaggle test data set. The algorithms used in survival prediction are: *Random Forest (RF)*, *Gradient Boosting Machine (GBM)*, and the *Support Vector Machine (SVM)*.
+
+Although both the RF and the SVM models were very competitive in terms of prediction accuracy, the SVM surpassed the RF with an accuracy of **`r modelSVMacc`** versus **`r modelRFacc`** for the RF.
+
+Using the SVM model, survival rate in the Kaggle test data was predicted to be **`r survPerc`** (**`r subSummary[2]`** passengers have been predicted to survive the tragedy compared to **`r subSummary[1]`** who died).

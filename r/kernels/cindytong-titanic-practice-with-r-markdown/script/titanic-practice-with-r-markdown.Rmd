@@ -1,0 +1,186 @@
+---
+title: 'Titanic practice with R markdown'
+author: 'Cindy Tong'
+date: 'Sept 2018'
+output:
+  html_document:
+    number_sections: true
+    toc: true
+    fig_width: 7
+    fig_height: 4.5
+    theme: readable
+    highlight: tango
+---
+
+```{r, message=FALSE}
+library(ggplot2) 
+library(dplyr) 
+
+train <- read.csv('../input/train.csv')
+test <- read.csv('../input/test.csv')
+# test doesn't have outcome - Survived
+
+str(train)
+
+```
+Variable Name | Description
+--------------|-------------
+Survived      | Survived (1) or died (0)
+Pclass        | Passenger's class
+Name          | Passenger's name
+Sex           | Passenger's sex
+Age           | Passenger's age
+SibSp         | Number of siblings/spouses aboard
+Parch         | Number of parents/children aboard
+Ticket        | Ticket number
+Fare          | Fare
+Cabin         | Cabin
+Embarked      | Port of embarkation
+
+Training data:
+Total number of passengers - 891
+Survival status distribution - 342/891=38.4% survived
+
+```{r}
+length(train$PassengerId)
+table(train$Survived)
+```
+# Exploratory data analysis
+The goal of this part of the analysis is to understand the data
+
+## Possible predictors  
+The following have strong impacts on Survival status:
+* Pclass - higher class cabin passengers are more likely to survive
+* Gender - female is much favored
+* Age - kids (age < 10) are more possible to survive 59% for <10, >62 low chance 20%
+* SibSp - more sibling/spouse, less chance to survive? >2.5 only 7/46 15%
+* Parch - doesn't seem to have an impact
+* People who travel alone - less chance to survive
+
+The following don't seem to have impact on Survival status:
+* Fare and Pclass are correlated, so no need to consider Fare
+* Embarked
+* Cabin - cabin number
+* Ticket - ticket number
+
+```{r}
+table(train$Pclass, train$Survived)
+ggplot(train,aes(x=Pclass,fill=factor(Survived)))+
+  geom_histogram(stat="count")
+```
+```{r}
+table(train$Sex, train$Survived)
+ggplot(train,aes(x=Sex,fill=factor(Survived)))+
+  geom_histogram(stat="count")
+```
+```{r}
+ggplot(train,aes(x=Age,fill=factor(Survived)))+
+  geom_histogram(binwidth=2)
+  
+train$kid <- ifelse (train$Age<=10, "Yes", "No")
+table(train$kid, train$Survived)
+
+train$old <- ifelse (train$Age>62, "Yes", "No")
+table(train$old, train$Survived)
+```
+```{r}
+ggplot(train,aes(x=Fare,fill=factor(Survived)))+
+  geom_histogram(binwidth=10)
+  
+library(dplyr)
+train %>% 
+group_by(Pclass) %>% 
+summarize(n=length(Fare), mean=mean(Fare), min=min(Fare), max=max(Fare))
+```
+```{r}
+ggplot(train,aes(x=SibSp,fill=factor(Survived)))+
+  geom_histogram(binwidth=1)
+  
+train$moreSibSp <- ifelse (train$SibSp>2.5, "Yes", "No")
+table(train$moreSibSp, train$Survived)
+```
+```{r}
+ggplot(train,aes(x=Parch,fill=factor(Survived)))+
+  geom_histogram(binwidth=1)
+```
+```{r}
+ggplot(train,aes(x=Embarked,fill=factor(Survived)))+
+  geom_histogram(stat="count")
+```
+
+```{r}
+train$single <- ifelse(train$SibSp==0 & train$Parch==0, "Yes", "No")
+table(train$single, train$Survived)
+```
+
+## Possible data issues
+
+* Age: 177 missing - is missing random? Missing age because not survived?
+* Gender: no missing
+* Pclass: no missing
+
+```{r}
+table(is.na(train$Age)) 
+table(is.na(train$Age), train$Survived)
+```
+Age missing seems to be random, use mean age to impute
+```{r}
+library(Hmisc)
+train$imputed_age <- with(train, impute(train$Age, mean))
+```
+# Split train/test data from train.csv
+```{r}
+library(caTools)
+set.seed(123)
+split <- sample.split(train$Survived, SplitRatio = 0.7)
+train2 <- subset(train, split==TRUE)
+test2  <- subset(train, split==FALSE)
+```
+# Predictive modelling
+## logistic regression
+```{r}
+logistic <- glm(train2$Survived ~ imputed_age + factor(Sex) + factor(Pclass) + kid + single + moreSibSp + factor(Pclass)*factor(Sex), 
+family="binomial", data=train2)
+summary(logistic)
+
+pred <- predict(logistic, type='response', newdata=test2)
+
+y_pred <- ifelse(pred>0.5, 1, 0)
+
+library(caret)
+confusionMatrix(as.factor(test2$Survived),as.factor(y_pred))
+```
+
+## random forest
+```{r}
+data_fac <- train2 %>% mutate_if(is.character, as.factor) # convert all character variables to factor
+data_fac <- na.omit(data_fac)
+
+library(randomForest)
+RF <- randomForest(Survived ~ imputed_age + Sex + Pclass + kid + single + moreSibSp, data = data_fac, ntree=50)
+varImpPlot(RF)
+plot(RF)
+
+test2 <- test2 %>% mutate_if(is.character, as.factor) # convert all character variables to factor
+test2 <- na.omit(test2)
+pred <- predict(RF, newdata=test2)
+
+y_pred <- ifelse(pred>0.5, 1, 0)
+
+library(caret)
+confusionMatrix(as.factor(test2$Survived),as.factor(y_pred))
+```
+
+## caret
+can use caret package to train models
+
+## compare models
+
+
+
+
+
+
+
+
+

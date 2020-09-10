@@ -1,0 +1,792 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> #Introduction
+> #This is my first Kaggle Script. I went through the few kernals from kaggle members
+> #before coming up with with mine. Tried few Data Explorations, Visualizations, Feature Engineering
+> #Missing Data Injection using Mice and predict survival using Random Forest Model
+> #Download titanic_random_forest_r_submission.csv from the output below
+> #and submit it through https://www.kaggle.com/c/titanic-gettingStarted/submissions/attach
+> #to enter this getting started competition!
+> 
+> #STEP1: Load Libraries and Data
+> #Loading Libraries
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(ggthemes)
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> 
+> #Load the Train and Test Data Set
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> full <- bind_rows(train,test)
+> 
+> #Check the Data Type
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> str(test)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : Factor w/ 418 levels "Abbott, Master. Eugene Joseph",..: 210 409 273 414 182 370 85 58 5 104 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : Factor w/ 77 levels "","A11","A18",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+> str(full)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> summary(full)
+  PassengerId      Survived          Pclass     
+ Min.   :   1   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000  
+ Median : 655   Median :0.0000   Median :3.000  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295  
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :1309   Max.   :1.0000   Max.   :3.000  
+                NA's   :418                     
+                               Name          Sex           Age       
+ Connolly, Miss. Kate            :   2   female:466   Min.   : 0.17  
+ Kelly, Mr. James                :   2   male  :843   1st Qu.:21.00  
+ Abbing, Mr. Anthony             :   1                Median :28.00  
+ Abbott, Mr. Rossmore Edward     :   1                Mean   :29.88  
+ Abbott, Mrs. Stanton (Rosa Hunt):   1                3rd Qu.:39.00  
+ Abelson, Mr. Samuel             :   1                Max.   :80.00  
+ (Other)                         :1301                NA's   :263    
+     SibSp            Parch            Ticket          Fare        
+ Min.   :0.0000   Min.   :0.000   CA. 2343:  11   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.000   1601    :   8   1st Qu.:  7.896  
+ Median :0.0000   Median :0.000   CA 2144 :   8   Median : 14.454  
+ Mean   :0.4989   Mean   :0.385   3101295 :   7   Mean   : 33.295  
+ 3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7   3rd Qu.: 31.275  
+ Max.   :8.0000   Max.   :9.000   347082  :   7   Max.   :512.329  
+                                  (Other) :1261   NA's   :1        
+             Cabin      Embarked
+                :1014    :  2   
+ C23 C25 C27    :   6   C:270   
+ B57 B59 B63 B66:   5   Q:123   
+ G6             :   5   S:914   
+ B96 B98        :   4           
+ C22 C26        :   4           
+ (Other)        : 271           
+> 
+> #STEP2:Feature Engineering 1
+> #Feature Engineering
+> #Convert as Factors
+> full$Survived <- as.factor((full$Survived))
+> full$Pclass <- as.factor(full$Pclass)
+> full$Embarked <- as.factor(full$Embarked)
+> 
+> #Does title of the Passengers got any influence on the survival.
+> full$title <- gsub('(.*, )|(\\..*)','',full$Name)
+> table(full$title,full$Survived)
+              
+                 0   1
+  Capt           1   0
+  Col            1   1
+  Don            1   0
+  Dona           0   0
+  Dr             4   3
+  Jonkheer       1   0
+  Lady           0   1
+  Major          1   1
+  Master        17  23
+  Miss          55 127
+  Mlle           0   2
+  Mme            0   1
+  Mr           436  81
+  Mrs           26  99
+  Ms             0   1
+  Rev            6   0
+  Sir            0   1
+  the Countess   0   1
+> table(full$Sex,full$title)
+        
+         Capt Col Don Dona  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs
+  female    0   0   0    1   1        0    1     0      0  260    2   1   0 197
+  male      1   4   1    0   7        1    0     2     61    0    0   0 757   0
+        
+          Ms Rev Sir the Countess
+  female   2   0   0            1
+  male     0   8   1            0
+> 
+> rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
++                 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+> 
+> full$title[full$title == 'Mlle']        <- 'Miss' 
+> full$title[full$title == 'Ms']          <- 'Miss'
+> full$title[full$title == 'Mme']         <- 'Mrs' 
+> full$title[full$title %in% rare_title]  <- 'Others'
+> full$title <- as.factor(full$title)
+> 
+> #Does Family Together Survived. Lets Create a family variable to analyse
+> full$Family <- full$Parch + full$SibSp + 1
+> prop.table(table(full$Family,full$Survived),1)
+    
+             0         1
+  1  0.6964618 0.3035382
+  2  0.4472050 0.5527950
+  3  0.4215686 0.5784314
+  4  0.2758621 0.7241379
+  5  0.8000000 0.2000000
+  6  0.8636364 0.1363636
+  7  0.6666667 0.3333333
+  8  1.0000000 0.0000000
+  11 1.0000000 0.0000000
+> 
+> ggplot(full[1:891,],aes(x=Family,fill=Survived)) +
++   geom_bar(stat='count', position='dodge') +
++   scale_x_continuous(breaks=c(1:11)) +
++   theme_few()
+> 
+> 
+> #Looks like family has some effect on the survival. Lets try classify the family into single, small
+> #and Large to get better understanding.
+> #Lets Create a Family Type
+> full$FType <- 'NA'
+> full$FType <- ifelse(full$Family==1,"single",ifelse(full$Family>1 & full$Family<=4,"small","Large"))
+> full$FType <- as.factor(full$FType)
+> prop.table(table(full$FType,full$Survived),1)
+        
+                 0         1
+  Large  0.8387097 0.1612903
+  single 0.6964618 0.3035382
+  small  0.4212329 0.5787671
+> 
+> ggplot(full[1:891,],aes(x=FType,fill=Survived)) +
++   geom_bar(stat='count', position='dodge') 
+> 
+> #Looks like Small family got better chance of survival
+> #Lets now analyse whether Gender got any influence on the Survival.
+> table(full$Sex,full$Survived)
+        
+           0   1
+  female  81 233
+  male   468 109
+> prop.table(table(full$Sex,full$Survived),1)
+        
+                 0         1
+  female 0.2579618 0.7420382
+  male   0.8110919 0.1889081
+> 
+> ggplot(full[1:891,],aes(x=Sex,fill=Survived)) +
++   geom_bar(stat = "count",position="dodge")
+> 
+> #Looks like Survival of Female Gender is more than male. So definitely there is an influence of Gender
+> #while predicting the survival.
+> #Does Fare got any influence on the survival. Let's check it out.
+> prop.table(table(full$Fare,full$Survived),1)
+          
+                    0          1
+  0        0.93333333 0.06666667
+  3.1708                        
+  4.0125   1.00000000 0.00000000
+  5        1.00000000 0.00000000
+  6.2375   1.00000000 0.00000000
+  6.4375   1.00000000 0.00000000
+  6.45     1.00000000 0.00000000
+  6.4958   1.00000000 0.00000000
+  6.75     1.00000000 0.00000000
+  6.8583   1.00000000 0.00000000
+  6.95     1.00000000 0.00000000
+  6.975    0.50000000 0.50000000
+  7                             
+  7.0458   1.00000000 0.00000000
+  7.05     1.00000000 0.00000000
+  7.0542   1.00000000 0.00000000
+  7.125    1.00000000 0.00000000
+  7.1417   0.00000000 1.00000000
+  7.225    0.75000000 0.25000000
+  7.2292   0.73333333 0.26666667
+  7.25     0.92307692 0.07692308
+  7.2833                        
+  7.3125   1.00000000 0.00000000
+  7.4958   0.66666667 0.33333333
+  7.5208   1.00000000 0.00000000
+  7.55     0.75000000 0.25000000
+  7.575                         
+  7.5792                        
+  7.6292   1.00000000 0.00000000
+  7.65     0.75000000 0.25000000
+  7.7208                        
+  7.725    1.00000000 0.00000000
+  7.7292   1.00000000 0.00000000
+  7.7333   0.50000000 0.50000000
+  7.7375   0.50000000 0.50000000
+  7.7417   1.00000000 0.00000000
+  7.75     0.64705882 0.35294118
+  7.775    0.81250000 0.18750000
+  7.7792                        
+  7.7875   0.00000000 1.00000000
+  7.7958   0.66666667 0.33333333
+  7.8      1.00000000 0.00000000
+  7.8208                        
+  7.8292   0.50000000 0.50000000
+  7.85                          
+  7.8542   0.76923077 0.23076923
+  7.875    1.00000000 0.00000000
+  7.8792   0.00000000 1.00000000
+  7.8875   1.00000000 0.00000000
+  7.8958   0.97368421 0.02631579
+  7.925    0.55555556 0.44444444
+  8.0292   0.00000000 1.00000000
+  8.05     0.88372093 0.11627907
+  8.1125   0.00000000 1.00000000
+  8.1375   1.00000000 0.00000000
+  8.1583   1.00000000 0.00000000
+  8.3      1.00000000 0.00000000
+  8.3625   1.00000000 0.00000000
+  8.4042   1.00000000 0.00000000
+  8.4333   1.00000000 0.00000000
+  8.4583   1.00000000 0.00000000
+  8.5167   0.00000000 1.00000000
+  8.6542   1.00000000 0.00000000
+  8.6625   0.92307692 0.07692308
+  8.6833   0.00000000 1.00000000
+  8.7125   1.00000000 0.00000000
+  8.85     1.00000000 0.00000000
+  8.9625                        
+  9        1.00000000 0.00000000
+  9.2167   1.00000000 0.00000000
+  9.225    1.00000000 0.00000000
+  9.325                         
+  9.35     0.50000000 0.50000000
+  9.475    1.00000000 0.00000000
+  9.4833   1.00000000 0.00000000
+  9.5      0.77777778 0.22222222
+  9.5875   0.50000000 0.50000000
+  9.6875                        
+  9.825    1.00000000 0.00000000
+  9.8375   1.00000000 0.00000000
+  9.8417   0.00000000 1.00000000
+  9.8458   1.00000000 0.00000000
+  10.1708  1.00000000 0.00000000
+  10.4625  1.00000000 0.00000000
+  10.5     0.62500000 0.37500000
+  10.5167  1.00000000 0.00000000
+  10.7083                       
+  11.1333  0.00000000 1.00000000
+  11.2417  0.00000000 1.00000000
+  11.5     1.00000000 0.00000000
+  12       0.00000000 1.00000000
+  12.1833                       
+  12.275   1.00000000 0.00000000
+  12.2875  0.00000000 1.00000000
+  12.35    0.33333333 0.66666667
+  12.475   0.00000000 1.00000000
+  12.525   1.00000000 0.00000000
+  12.65    0.00000000 1.00000000
+  12.7375                       
+  12.875   1.00000000 0.00000000
+  13       0.61904762 0.38095238
+  13.4167  0.00000000 1.00000000
+  13.5     0.75000000 0.25000000
+  13.775                        
+  13.7917  0.00000000 1.00000000
+  13.8583  0.00000000 1.00000000
+  13.8625  0.00000000 1.00000000
+  13.9                          
+  14       1.00000000 0.00000000
+  14.1083  1.00000000 0.00000000
+  14.4     1.00000000 0.00000000
+  14.4542  0.85714286 0.14285714
+  14.4583  1.00000000 0.00000000
+  14.5     0.71428571 0.28571429
+  15       1.00000000 0.00000000
+  15.0333                       
+  15.0458  1.00000000 0.00000000
+  15.05    1.00000000 0.00000000
+  15.1     1.00000000 0.00000000
+  15.2458  0.40000000 0.60000000
+  15.5     0.62500000 0.37500000
+  15.55    1.00000000 0.00000000
+  15.5792                       
+  15.7417  0.00000000 1.00000000
+  15.75    0.00000000 1.00000000
+  15.85    0.50000000 0.50000000
+  15.9     0.00000000 1.00000000
+  16       0.00000000 1.00000000
+  16.1     0.77777778 0.22222222
+  16.7     0.00000000 1.00000000
+  17.4     0.00000000 1.00000000
+  17.8     1.00000000 0.00000000
+  18       1.00000000 0.00000000
+  18.75    0.00000000 1.00000000
+  18.7875  0.50000000 0.50000000
+  19.2583  0.00000000 1.00000000
+  19.5     0.00000000 1.00000000
+  19.9667  1.00000000 0.00000000
+  20.2125  1.00000000 0.00000000
+  20.25    0.50000000 0.50000000
+  20.525   0.33333333 0.66666667
+  20.575   0.50000000 0.50000000
+  21       0.66666667 0.33333333
+  21.075   1.00000000 0.00000000
+  21.6792  1.00000000 0.00000000
+  22.025   0.00000000 1.00000000
+  22.3583  0.00000000 1.00000000
+  22.525   1.00000000 0.00000000
+  23       0.00000000 1.00000000
+  23.25    0.00000000 1.00000000
+  23.45    1.00000000 0.00000000
+  24       0.50000000 0.50000000
+  24.15    0.87500000 0.12500000
+  25.4667  1.00000000 0.00000000
+  25.5875  1.00000000 0.00000000
+  25.7                          
+  25.7417                       
+  25.925   1.00000000 0.00000000
+  25.9292  0.00000000 1.00000000
+  26       0.51612903 0.48387097
+  26.25    0.33333333 0.66666667
+  26.2833  0.00000000 1.00000000
+  26.2875  0.00000000 1.00000000
+  26.3875  0.00000000 1.00000000
+  26.55    0.46666667 0.53333333
+  27       0.50000000 0.50000000
+  27.4458                       
+  27.7208  0.80000000 0.20000000
+  27.75    0.50000000 0.50000000
+  27.9     1.00000000 0.00000000
+  28.5     1.00000000 0.00000000
+  28.5375                       
+  28.7125  1.00000000 0.00000000
+  29       0.00000000 1.00000000
+  29.125   1.00000000 0.00000000
+  29.7     0.66666667 0.33333333
+  30       0.16666667 0.83333333
+  30.0708  0.50000000 0.50000000
+  30.5     0.20000000 0.80000000
+  30.6958  1.00000000 0.00000000
+  31       0.33333333 0.66666667
+  31.275   1.00000000 0.00000000
+  31.3875  0.25000000 0.75000000
+  31.5                          
+  31.6792                       
+  31.6833                       
+  32.3208  1.00000000 0.00000000
+  32.5     0.00000000 1.00000000
+  33       0.33333333 0.66666667
+  33.5     1.00000000 0.00000000
+  34.0208  1.00000000 0.00000000
+  34.375   1.00000000 0.00000000
+  34.6542  1.00000000 0.00000000
+  35       1.00000000 0.00000000
+  35.5     0.25000000 0.75000000
+  36.75    0.50000000 0.50000000
+  37.0042  0.50000000 0.50000000
+  38.5     1.00000000 0.00000000
+  39       0.25000000 0.75000000
+  39.4     0.00000000 1.00000000
+  39.6     0.50000000 0.50000000
+  39.6875  1.00000000 0.00000000
+  40.125   1.00000000 0.00000000
+  41.5792  0.33333333 0.66666667
+  42.4     1.00000000 0.00000000
+  42.5                          
+  45.5                          
+  46.9     1.00000000 0.00000000
+  47.1     1.00000000 0.00000000
+  49.5     0.00000000 1.00000000
+  49.5042  0.50000000 0.50000000
+  50       1.00000000 0.00000000
+  50.4958  1.00000000 0.00000000
+  51.4792  0.00000000 1.00000000
+  51.8625  0.50000000 0.50000000
+  52       0.57142857 0.42857143
+  52.5542  0.00000000 1.00000000
+  53.1     0.40000000 0.60000000
+  55       0.00000000 1.00000000
+  55.4417  0.00000000 1.00000000
+  55.9     0.50000000 0.50000000
+  56.4958  0.28571429 0.71428571
+  56.9292  0.00000000 1.00000000
+  57       0.00000000 1.00000000
+  57.75                         
+  57.9792  0.00000000 1.00000000
+  59.4     0.00000000 1.00000000
+  60                            
+  61.175   1.00000000 0.00000000
+  61.3792  1.00000000 0.00000000
+  61.9792  1.00000000 0.00000000
+  63.3583  0.00000000 1.00000000
+  65       0.00000000 1.00000000
+  66.6     0.50000000 0.50000000
+  69.3     0.00000000 1.00000000
+  69.55    1.00000000 0.00000000
+  71       0.50000000 0.50000000
+  71.2833  0.00000000 1.00000000
+  73.5     1.00000000 0.00000000
+  75.2417                       
+  75.25    0.00000000 1.00000000
+  76.2917  0.00000000 1.00000000
+  76.7292  0.00000000 1.00000000
+  77.2875  1.00000000 0.00000000
+  77.9583  0.00000000 1.00000000
+  78.2667  0.00000000 1.00000000
+  78.85    0.50000000 0.50000000
+  79.2     0.50000000 0.50000000
+  79.65    0.33333333 0.66666667
+  80       0.00000000 1.00000000
+  81.8583  0.00000000 1.00000000
+  82.1708  0.50000000 0.50000000
+  82.2667                       
+  83.1583  0.00000000 1.00000000
+  83.475   0.50000000 0.50000000
+  86.5     0.00000000 1.00000000
+  89.1042  0.00000000 1.00000000
+  90       0.25000000 0.75000000
+  91.0792  0.00000000 1.00000000
+  93.5     0.00000000 1.00000000
+  106.425  0.50000000 0.50000000
+  108.9    0.50000000 0.50000000
+  110.8833 0.25000000 0.75000000
+  113.275  0.33333333 0.66666667
+  120      0.00000000 1.00000000
+  133.65   0.00000000 1.00000000
+  134.5    0.00000000 1.00000000
+  135.6333 0.33333333 0.66666667
+  136.7792                      
+  146.5208 0.00000000 1.00000000
+  151.55   0.50000000 0.50000000
+  153.4625 0.33333333 0.66666667
+  164.8667 0.00000000 1.00000000
+  211.3375 0.00000000 1.00000000
+  211.5    1.00000000 0.00000000
+  221.7792 1.00000000 0.00000000
+  227.525  0.25000000 0.75000000
+  247.5208 0.50000000 0.50000000
+  262.375  0.00000000 1.00000000
+  263      0.50000000 0.50000000
+  512.3292 0.00000000 1.00000000
+> 
+> ggplot(full[1:891,],aes(x=Fare,fill=Survived)) +
++   geom_density()
+> 
+> 
+> #Does Passenger Class got any influence on the survival. Let's check it out.
+> prop.table(table(full$Pclass,full$Survived),1)
+   
+            0         1
+  1 0.3703704 0.6296296
+  2 0.5271739 0.4728261
+  3 0.7576375 0.2423625
+> 
+> ggplot(full[1:891,],aes(x=Pclass,fill=Survived)) +
++   geom_bar(stat = "count",position="dodge")
+> 
+> #1st and 2nd Class got better survial chances them 3rd Class
+> 
+> # STEP 3: 
+> # Missing Value Imputation
+> # Lets now populate the missing values
+> # Here are the List of columns that are having missing values "NA"
+> # Age - 263 nos
+> # Fare - 1 nos
+> # Embarked - 2 nos
+> 
+> # Treating Embarked Columns
+> full$Embarked <- as.factor(full$Embarked)
+> prop.table(table(full$Embarked))
+
+                      C           Q           S 
+0.001527884 0.206264324 0.093964859 0.698242934 
+> 
+> ggplot(full,aes(x=Embarked,y=Fare,Fill=factor(Pclass))) +
++ geom_boxplot() +
++   geom_hline(yintercept = 80,colour='blue') +
++   theme_grey()
+Warning message:
+Removed 1 rows containing non-finite values (stat_boxplot). 
+> 
+> # Median of Embarked C closely matches the value of Null Embarked. 
+> # So we can safely assume Missing Embarked values to "C"
+> 
+> full[full$Embarked=='',]$Embarked <- 'C'
+> 
+> # Treating Fare Column
+> full_embarked_s <- full[full$Embarked=='S' & full$Pclass==3,]
+> full_embarked_s <- full_embarked_s[!is.na(full_embarked_s$Fare),]
+> 
+> ggplot(full_embarked_s,aes(x=Fare)) +
++   geom_density(fill='lightblue') +
++   geom_vline(aes(xintercept = median(Fare)),color='Red') +
++   theme_base()
+> 
+> # From this Graph we understand that most of the Passenge Embarked in in S and Class 3 got fare close 
+> # to their median of fare which is 8.05. So its reasonable to input missing Fare value for row 1044 with 
+> # median value 8.05
+> 
+> full$Fare[1044] <- median(full[full$Embarked=='S' & full$Pclass==3,]$Fare,na.rm = T)
+> 
+> 
+> # Imputing Age Column
+> # Interested in trying MICE package to impute the values.
+> set.seed(111)
+> 
+> mice_model <- mice(full[,c("Pclass","Sex","Age","SibSp","Parch","Fare","Family","title","FType","Embarked")],method='rf')
+
+ iter imp variable
+  1   1  Age
+  1   2  Age
+  1   3  Age
+  1   4  Age
+  1   5  Age
+  2   1  Age
+  2   2  Age
+  2   3  Age
+  2   4  Age
+  2   5  Age
+  3   1  Age
+  3   2  Age
+  3   3  Age
+  3   4  Age
+  3   5  Age
+  4   1  Age
+  4   2  Age
+  4   3  Age
+  4   4  Age
+  4   5  Age
+  5   1  Age
+  5   2  Age
+  5   3  Age
+  5   4  Age
+  5   5  Age
+Warning message:
+Number of logged events: 25 
+> mice_output <- complete(mice_model)
+> 
+> par(mfrow=c(1,2))
+> hist(mice_output$Age,main='Mice Output')
+> hist(full$Age,main='OriginalData Output')
+> 
+> # There is not much change in the histogram of the imputed Age vs the Age from the Original Data
+> # Hence lets goahead and replace orignal Age with the Imputed Age.
+> full$Age <- mice_output$Age
+> 
+> #Lets Verify any NA's Exist
+> summary(full)
+  PassengerId   Survived   Pclass                                Name     
+ Min.   :   1   0   :549   1:323   Connolly, Miss. Kate            :   2  
+ 1st Qu.: 328   1   :342   2:277   Kelly, Mr. James                :   2  
+ Median : 655   NA's:418   3:709   Abbing, Mr. Anthony             :   1  
+ Mean   : 655                      Abbott, Mr. Rossmore Edward     :   1  
+ 3rd Qu.: 982                      Abbott, Mrs. Stanton (Rosa Hunt):   1  
+ Max.   :1309                      Abelson, Mr. Samuel             :   1  
+                                   (Other)                         :1301  
+     Sex           Age            SibSp            Parch            Ticket    
+ female:466   Min.   : 0.17   Min.   :0.0000   Min.   :0.000   CA. 2343:  11  
+ male  :843   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000   1601    :   8  
+              Median :28.00   Median :0.0000   Median :0.000   CA 2144 :   8  
+              Mean   :29.58   Mean   :0.4989   Mean   :0.385   3101295 :   7  
+              3rd Qu.:38.00   3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7  
+              Max.   :80.00   Max.   :8.0000   Max.   :9.000   347082  :   7  
+                                                               (Other) :1261  
+      Fare                     Cabin      Embarked    title    
+ Min.   :  0.000                  :1014    :  0    Master: 61  
+ 1st Qu.:  7.896   C23 C25 C27    :   6   C:272    Miss  :264  
+ Median : 14.454   B57 B59 B63 B66:   5   Q:123    Mr    :757  
+ Mean   : 33.276   G6             :   5   S:914    Mrs   :198  
+ 3rd Qu.: 31.275   B96 B98        :   4            Others: 29  
+ Max.   :512.329   C22 C26        :   4                        
+                   (Other)        : 271                        
+     Family          FType    
+ Min.   : 1.000   Large : 82  
+ 1st Qu.: 1.000   single:790  
+ Median : 1.000   small :437  
+ Mean   : 1.884               
+ 3rd Qu.: 2.000               
+ Max.   :11.000               
+                              
+> 
+> # STEP 4: 
+> # Feature Engineering 2
+> # With now Age populated. Lets try to derive few more addtional columns from that to predict the survival.
+> # Lets classify passenger as Major and Minor based on the AGe and analyse the probability of survival
+> full$Adulch <- 'NA'
+> full$Adulch <- ifelse(full$Age>=18,"Major","Minor")
+> full$Adulch <- as.factor(full$Adulch)
+> table(full$Adulch,full$Survived)
+       
+          0   1
+  Major 483 271
+  Minor  66  71
+> prop.table(table(full$Adulch,full$Survived),1)
+       
+                0         1
+  Major 0.6405836 0.3594164
+  Minor 0.4817518 0.5182482
+> 
+> ggplot(full[1:891,],aes(x=Adulch,fill=factor(Survived))) +
++   geom_bar(stat = "count",position="dodge")
+> 
+> # Looks like Minor (Age < 18) got almost 50% probability of survival.
+> # Lets combine Gender and Major/Minor to see the survial
+> full$SexAdulCh <- 'NA'
+> full$SexAdulCh <- paste(full$Sex,full$Adulch)
+> full$SexAdulCh <- as.factor(full$SexAdulCh)
+> prop.table(table(full$SexAdulCh,full$Survived),1)
+              
+                       0         1
+  female Major 0.2304527 0.7695473
+  female Minor 0.3521127 0.6478873
+  male Major   0.8356164 0.1643836
+  male Minor   0.6212121 0.3787879
+> 
+> ggplot(full[1:891,],aes(x=SexAdulCh,fill=Survived)) +
++   geom_bar(stat = "count",position="dodge")
+> 
+> # Intersting Female Major and Female Minor Got much better chance of Survival than male.
+> # so definitely Sex and Age got lot if influence in survival.
+> 
+> 
+> # Step:5
+> # Time Build the Model using Random Forest
+> # Lets Split the Data into Training and Test set
+> 
+> train1 <- full[1:891,]
+> test1 <- full[892:1309,]
+> 
+> # Step5.1: Build the Model using Training Data Set
+> 
+> set.seed(112)
+> str(train1)
+'data.frame':	891 obs. of  17 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 40.5 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+ $ title      : Factor w/ 5 levels "Master","Miss",..: 3 4 2 4 3 3 3 1 4 4 ...
+ $ Family     : num  2 2 1 2 1 1 1 5 3 2 ...
+ $ FType      : Factor w/ 3 levels "Large","single",..: 3 3 2 3 2 2 2 1 3 3 ...
+ $ Adulch     : Factor w/ 2 levels "Major","Minor": 1 1 1 1 1 1 1 2 1 2 ...
+ $ SexAdulCh  : Factor w/ 4 levels "female Major",..: 3 1 1 1 3 3 3 4 1 2 ...
+> 
+> #Lets choose only the independent variables that are relevant and compare against the Survived Variable for prediction.
+> rf_model <- randomForest(Survived~title+SexAdulCh+Pclass+Fare+Embarked+FType,train1)
+> 
+> #Lets plot to see the Error Rate
+> plot(rf_model, ylim=c(0,0.36))
+> legend('topright', colnames(rf_model$err.rate), col=1:3, fill=1:3)
+> 
+> # Error Rate of Survival is less than 30% and Died is less than 10% 
+> # And overall Error Rate (black) is less than 20%
+> 
+> # Lets Get the importance of the independent variable in predicting the Survival.
+> importance    <- importance(rf_model)
+> varImportance <- data.frame(Variables = row.names(importance), 
++                             Importance = round(importance[ ,'MeanDecreaseGini'],2))
+> 
+> # Use ggplot2 to visualize the relative importance of variables
+> ggplot(varImportance, aes(x = reorder(Variables, Importance), 
++                            y = Importance, fill = Importance)) +
++   geom_bar(stat='identity') + 
++   labs(x = 'Variables') +
++   coord_flip() + 
++   theme_few()
+> # Sex is the most significant factor along with Fare and Age in predicting the survival
+> # Family and FType too used for prediction.
+> 
+> # STEP 6
+> # Submission of the Result
+> Survival_Predicted <- data.frame(PassengerId = test1$PassengerId)
+> Survival_Predicted$Survived <- predict(rf_model, test1)
+> getwd()
+[1] "/Users/alex/MachineLearning/TrustworthyML/KaggleCrawler/Aviral/korpus-master/notebooks/r/kernels/amuthand-a-titanic-unpredicted-disaster-predicted/script"
+> write.csv(Survival_Predicted, file = "titanic_random_forest_r_submission.csv", row.names=FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  3.685   0.252   4.107 

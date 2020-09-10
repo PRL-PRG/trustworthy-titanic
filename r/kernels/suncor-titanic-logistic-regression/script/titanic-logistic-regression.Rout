@@ -1,0 +1,130 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## load the data and check the structure of data
+> titanic<-read.csv("../input/train.csv")
+> str(titanic)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> test_data<-read.csv("../input/test.csv")
+> 
+> ## check the missing values and replace missing value in Age with median of Age column
+> sum(is.na(titanic))
+[1] 177
+> titanic$Age=ifelse(is.na(titanic$Age),median(titanic$Age,na.rm=T),titanic$Age)
+> 
+> ## apply glm
+> log_titanic<-glm(Survived~Pclass+Sex+Age+SibSp,data = titanic,family = binomial)
+> summary(log_titanic)
+
+Call:
+glm(formula = Survived ~ Pclass + Sex + Age + SibSp, family = binomial, 
+    data = titanic)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6817  -0.6029  -0.4159   0.6161   2.4327  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  5.177025   0.477338  10.846  < 2e-16 ***
+Pclass      -1.175654   0.120073  -9.791  < 2e-16 ***
+Sexmale     -2.739477   0.193984 -14.122  < 2e-16 ***
+Age         -0.039553   0.007761  -5.096 3.47e-07 ***
+SibSp       -0.354433   0.103392  -3.428 0.000608 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  791.23  on 886  degrees of freedom
+AIC: 801.23
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> ## predict probability from model
+> predict<-predict(log_titanic,type = 'response')
+> summary(predict)
+    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+0.006481 0.100029 0.264785 0.383838 0.639216 0.972557 
+> 
+> ##creation of confusion matrix
+> table(titanic$Survived,predict>0.5)
+   
+    FALSE TRUE
+  0   459   90
+  1    99  243
+> table(titanic$Survived,predict>0.7)
+   
+    FALSE TRUE
+  0   533   16
+  1   167  175
+> table(titanic$Survived,predict>0.3)
+   
+    FALSE TRUE
+  0   406  143
+  1    62  280
+> 
+> ## draw ROC curve with threshold values  
+> library(ROCR)
+Warning message:
+package ‘ROCR’ was built under R version 3.6.2 
+> pred<-prediction(predict,titanic$Survived)
+> pref<-performance(pred,"tpr","fpr")
+> plot(pref,colorize = TRUE,print.cutoffs.at = seq(0,1,0.1),text.adj= c(-0.2,1.7))
+> 
+> ## prediction with test data
+> sum(is.na(test_data$Age))
+[1] 86
+> test_data$Age=ifelse(is.na(test_data$Age),median(test_data$Age,na.rm=T),test_data$Age)
+> pred_test = predict(log_titanic, type = 'response',newdata = test_data)
+> summary(pred_test)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.0110  0.1074  0.2957  0.3984  0.6539  0.9597 
+> 
+> ## converting probability more than 0.5 in 1(survived) else 0
+> pred_num_test <- ifelse(pred_test > 0.5, 1, 0)
+> pred_fact <- factor(pred_num_test, levels=c(0, 1))
+> test_data$survived<-pred_fact
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  0.300   0.043   0.340 

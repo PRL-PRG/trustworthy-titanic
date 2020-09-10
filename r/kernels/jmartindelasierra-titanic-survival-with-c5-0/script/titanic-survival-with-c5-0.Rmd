@@ -1,0 +1,224 @@
+---
+title: "A short kernel on Titanic survival with C5.0"
+author: "Jesús Martín de la Sierra"
+output: html_document
+---
+
+# Introduction
+
+This kernel is the solution for my personal challenge of obtaining a reasonable good public score with a model based on C5.0, a decision tree algorithm not much covered among the available kernels and discussions so far.
+
+Since there are a lot of excellent EDAs in Kaggle for this competition, I'll make little or any contribution in this sense. This is my solution after a lot of tests and feature engineering. Some ideas were taken from other users (thank you all), some other were rejected since they didn't improve my model, and other insights are part of my study and contribution to the community. Finally, putting it all together I got the simplest model that achieves the 80% on the public score.
+
+After all my effort to obtain this score, I think I found the limit for the algorithm in this particular problem. However, since many users find serious trouble to achieve a score over the 80%, I can say that the performance for C5.0 is comparable to other more advanced classification algorithms.
+
+For those who don't know this decision tree algorithm it's an opportunity to discover it.
+
+# Libraries
+
+Load of the required packages. The `C50` library contains a good and friendly usability choice of C5.0.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Required packages
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(C50)
+```
+
+# Data
+
+Loading of the training and test datasets.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Training data
+train <- read.csv(file="../input/train.csv")
+
+# Test data
+test <- read.csv(file="../input/test.csv")
+```
+
+Now, I make some adjustements. First, I add the `Survived` feature to the test dataset. Its value has to be `NA` since this is the data we precisely we look for. Second, I join the two datasets. This is made to obtain the complete level space for factor features. Third, I define the class for each feature.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Add 'Survived' feature to test data
+test$Survived <- NA
+
+# Join training and test data
+all <- rbind(train, test)
+
+# Variable classes
+all$Survived <- as.factor(all$Survived)
+all$Name <- as.character(all$Name)
+all$Pclass <- as.factor(all$Pclass)
+all$Age <- as.numeric(as.character(all$Age))
+all$Ticket <- as.character(all$Ticket)
+all$Fare <- as.numeric(as.character(all$Fare))
+all$Cabin <- as.character(all$Cabin)
+all$Embarked <- as.factor(all$Embarked)
+```
+
+# Feature engineering
+
+This is core to achieve good predictions. It's even more important than the choice of the classification algorithm.
+
+Like other decision tree algorithms, I know that C5.0 underfits and overfits easily. So I needed to find a balance between granulate, general and redundant data.
+
+Among the original features, `Pclass` and `Sex` are quite determinant for the survival prediction. Other features aren't such clear and we need to find some more generalization or unveil different information from the same data.
+
+Following this idea, I rejected `Age` since the title obtained from `Name` already includes this information: Mr., Mrs., Miss..., all of them cover different ranges of ages which is good for a such large range of values and missing data. It also includes gender information but keeping `Sex` gives better performance. I suppose because of its binary nature and clear survival probability for female passengers (not so for male).
+
+`SibSp` and `Parch` are both not bad predictors, but since they give information about the family structure we can combine them in an unique feature: `Family.Size`.
+
+Another feature that talks about the companions of a passenger is the `Ticket`. Multiple passengers can have the same ticket, so a feature `Sharing.Ticket` gives the number of people that shares the tickets.
+
+Until here, I engineered three features that add generalization and two of them are about the relationships between passengers. This kind of associations play an important role for a better prediction since the probability of survival for one passenger is dependent of the number of relatives or friends he/she travels with.
+
+I calculated a last new feature which adds granularity and redundancy. It is the fare per person and it is obtained from the number of people sharing the same ticket and the fare paid. It adds individual information as `Age` does and in some sense granulates the `Pclass` feature. The fact is that the inclusion of `Fare.Person` improves the prediction. My opinion is that the fare per person strengthens or complements `Pclass` since this latter perhaps over-generalizes for some class. Maybe one could find an intermediate feature by binning `Fare.Person` gaining so in accuracy.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# 'Title' from 'Name'
+all$Title <- regmatches(all$Name, regexpr("([A-z]+\\.)", all$Name))
+all$Title <- gsub("\\.", "", all$Title)
+all <- all %>% mutate(Title=ifelse(!(Title %in% c("Master", "Miss", "Mr", "Mrs")), "Other", Title))
+all$Title <- as.factor(all$Title)
+
+# 'Family.Size' from 'SibSp' and 'Parch'. Members in family.
+all$Family.Size <- all$SibSp + all$Parch + 1
+
+# 'Sharing.Ticket' from 'Ticket'. Number of people with same ticket.
+tickets <- all %>% count(Ticket) %>% rename(Sharing.Ticket=n)
+all$Sharing.Ticket <- tickets$Sharing.Ticket[match(all$Ticket, tickets$Ticket)]
+
+# 'Fare.Person' from 'Fare' and 'Sharing.Ticket'
+all$Fare.Person <- all$Fare / all$Sharing.Ticket
+```
+
+After the feature engineering, the whole data must split again in training and test datasets.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Separate all data in two datasets
+train <- all %>% filter(!is.na(Survived))
+test <- all %>% filter(is.na(Survived))
+```
+
+# The C5.0 decision tree model
+
+Now, we can call the C5.0 algorithm to obtain our model from the choosen and defined features.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Despite the algorithm produces always the same model, a seed is set because different runs could change the order of the splits.
+set.seed(123)
+
+# Decision tree model
+tree_model <- C5.0(train[, c("Pclass", "Sex", "Family.Size", "Title", "Sharing.Ticket", "Fare.Person")], train[, "Survived"])
+```
+
+After the model is built, I want to show the feature importance, that is, the percentage of samples that fall into the terminal nodes after the split.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Feature importance by usage
+C5imp(tree_model)
+
+# Less important feature
+less_important <- data.frame(C5imp(tree_model)) %>% tail(1)
+```
+
+We see that ``r row.names(less_important)`` gets a `r less_important$Overall`%. It may look a small percentage but the fact is that this feature helps to obtain a good accuracy as we'll see.
+
+The tree also shows an interesting particularity: if we look at the importance by the percentage of splits associated with each predictor, we obtain a perfect balance of importance.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Feature importance by splits
+C5imp(tree_model, metric="splits")
+```
+
+Now, I show the tree itself.
+
+```{r warning=FALSE, fig.align="center", fig.width=15, fig.height=7}
+# Tree and plot
+as.party.C5.0(tree_model)
+plot(tree_model)
+
+#summary(C5.0(train[, c("Pclass", "Sex", "Family.Size", "Title", "Sharing.Ticket", "Fare.Person")], train[, "Survived"]))
+#0.848 training accuracy
+#0.80382 public score
+```
+
+Here above we see the two commented observations. The `Family.Size` feature is used for male passengers with Master title. For the 40 passengers satisfying this two conditions, the predictor only fails for three of them.
+
+The observation about the number of splits by feature looks obvious in the plot. Each predictor appears only once in the whole tree. So the importance is 1/6 for each one.
+
+The most important is the resulting accuracy of the model for the training set: `r 100 - as.numeric(sub("%", "", regmatches(tree_model$output, regexpr("[0-9.]+%", tree_model$output))))`%. I think it's remarkable considering the difficulty of obtaining a score beyond 80% with enough generalization. In our case, we see that the depth, that is, the length of the longest path from the root to a terminal node, is four. This is an indication that the model is likely to generalize quite well.
+
+But my model also shows its weakness. We see that for female travelling in class 3 and sharing their ticket with four or less people, the error is high. I think that there is room for improvement in there. The better result I obtained in this approach is by including the `Fare.Person` feature. 
+
+# Cross-validation
+
+Now, I'll run a cross-validation by random sub-sampling to evaluate the model in a more realistic manner and not only with the whole training dataset. 209 samples of the training set are chosen randomly in each iteration to simulate how the model will behave with unseen data. This number is not arbitrary but it's the number of observations used for obtaining the public score from the test dataset. Also note that it's only a rough estimation since the model was built from all the training samples.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Save data to a temporal variable since training set will change in each iteration
+train_data <- train
+
+# Results data frame
+accuracies <- data.frame(Iteration=integer(), Train=numeric(), Val=numeric())
+
+# Repeat the process 500 times
+for (i in 1:500) {
+
+# Train - validation split
+samples <- sample(dim(train_data)[1], 682)
+train <- train_data[samples,]
+validation <- train_data[-samples,]
+
+# Tree model
+#tree_model <- C5.0(train[, c("Pclass", "Sex", "Family.Size", "Title", "Sharing.Ticket", "Fare.Person")], train[, "Survived"])
+
+# Prediction for the training set
+train$Prediction <- predict(tree_model, train)
+
+# Confusion table and accuracy for the training set
+conf_table <- table(Expected=train$Survived, Prediction=train$Prediction)
+train_acc <- sum(diag(conf_table))/sum(conf_table)
+
+# Prediction for the validation set
+validation$Prediction <- predict(tree_model, validation)
+
+# Confusion table and accuracy for the validation set
+conf_table <- table(Expected=validation$Survived, Prediction=validation$Prediction)
+val_acc <- sum(diag(conf_table))/sum(conf_table)
+
+# Save iteration data
+accuracies <- rbind(accuracies, data.frame(Iteration=i, Train=train_acc, Val=val_acc))
+
+}
+```
+
+The following plot shows the resulting simulation with a noisy accuracy. The thick horizontal line represents the mean accuracy and the dashed lines are the outliers delimiters. We can consider that values out of this delimiters are anomalous estimations. This is how I prepare myself for unexpected differences between the training accuracy and the public score obtained.
+
+```{r warning=FALSE, fig.align="center", fig.width=9}
+# Validation accuracy plot
+ggplot(accuracies, aes(x=Iteration)) + geom_line(aes(y=Val), size=0.5, color="gold4", alpha=0.4) + geom_hline(yintercept=mean(accuracies$Val), size=1, color="gold4", alpha=0.8) + geom_hline(yintercept=quantile(accuracies$Val)[2] + 1.5*IQR(accuracies$Val), linetype="dashed", color="gold4") + geom_hline(yintercept=quantile(accuracies$Val)[4] - 1.5*IQR(accuracies$Val), linetype="dashed", color="gold4") + theme_classic() + ggtitle("Cross-validation") + ylab("Accuracy") + scale_y_continuous(breaks=seq(0.7, 1, by=0.01), limits=c(0.75, 0.95))
+```
+
+My expectation is that the public score should be 82% at least. Values under this are anomalous according with my estimation.
+
+# Prediction and submission
+
+With the C5.0 model, I finally predict whether or not the passengers in the test dataset survived. The result is then submitted.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Survival prediction on the test dataset
+test$Survived <- predict(tree_model, test)
+
+# Submission
+submission <- test %>% select(PassengerId, Survived) %>% arrange(PassengerId)
+write.csv(submission, file="submission.csv", row.names=FALSE, quote=FALSE)
+```
+
+# Conclusion
+
+The obtained public score is finally slightly over the desired 80%. That is good since I achieve my goal, but this value would be considered an anomaly according to my criteria.
+
+One could wonder why the score is so below respect to the expected value. I think it's not only in my case since it's a repeated topic in the discussions for this competition. Maybe the test dataset isn't a fair representation of the training dataset or maybe the model still overfits and little differences have a great impact on the prediction. I won't analyze this in this kernel but I think it's a good subject for future studies.

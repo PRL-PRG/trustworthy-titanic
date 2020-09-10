@@ -1,0 +1,347 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE)
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # I used the following packages for this analysis:
+> 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(GGally)
+Registered S3 method overwritten by 'GGally':
+  method from   
+  +.gg   ggplot2
+Warning message:
+package ‘GGally’ was built under R version 3.6.2 
+> library(rpart)
+> library(rpart.plot)
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> # I loaded the data:
+> 
+> test <- read.csv('../input/test.csv',stringsAsFactors = FALSE)
+> train <- read.csv('../input/train.csv', stringsAsFactors = FALSE)
+> 
+> # Creating a new data set with both the test and the train sets
+> full <- bind_rows(train,test)
+> LT=dim(train)[1]
+> # Checking the structure
+> str(full)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> # Missing values
+> colSums(is.na(full))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1           0           0 
+> colSums(full=="")
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0          NA           0           0           0          NA 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0          NA        1014           2 
+> 
+> # We have a lot of missing data in the Age feature (263/1309)
+> # Let's change the empty strings in Embarked to the first choice "C"
+> full$Embarked[full$Embarked==""]="C"
+> 
+> # Let's see how many features we can move to factors
+> apply(full,2, function(x) length(unique(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+       1309           3           3        1307           2          99 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          7           8         929         282         187           3 
+> 
+> # Let's move the features Survived, Pclass, Sex, Embarked to be factors
+> cols<-c("Survived","Pclass","Sex","Embarked")
+> for (i in cols){
++   full[,i] <- as.factor(full[,i])
++ }
+> 
+> # Now lets look on the structure of the full data set
+> str(full)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+> 
+> 
+> ## ----echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # First, let's look at the relationship between sex and survival:
+> ggplot(data=full[1:LT,],aes(x=Sex,fill=Survived))+geom_bar()
+> 
+> # Survival as a function of Embarked:
+> ggplot(data = full[1:LT,],aes(x=Embarked,fill=Survived))+geom_bar(position="fill")+ylab("Frequency")
+> 
+> t<-table(full[1:LT,]$Embarked,full[1:LT,]$Survived)
+> for (i in 1:dim(t)[1]){
++     t[i,]<-t[i,]/sum(t[i,])*100
++ }
+> t
+   
+           0        1
+  C 44.11765 55.88235
+  Q 61.03896 38.96104
+  S 66.30435 33.69565
+> #It looks that you have a better chance to survive if you Embarked in 'C' (55% compared to 33% and 38%).
+> 
+> # Survival as a function of Pclass:
+> ggplot(data = full[1:LT,],aes(x=Pclass,fill=Survived))+geom_bar(position="fill")+ylab("Frequency")
+> # It looks like you have a better chance to survive if you in lower ticket class.
+> # Now, let's devide the graph of Embarked by Pclass:
+> ggplot(data = full[1:LT,],aes(x=Embarked,fill=Survived))+geom_bar(position="fill")+facet_wrap(~Pclass)
+> 
+> # Now it's not so clear that there is a correlation between Embarked and Survival. 
+> 
+> # Survivial as a function of SibSp and Parch
+> ggplot(data = full[1:LT,],aes(x=SibSp,fill=Survived))+geom_bar()
+> ggplot(data = full[1:LT,],aes(x=Parch,fill=Survived))+geom_bar()
+> 
+> # The dymanics of SibSp and Parch are very close one each other.
+> # Let's try to look at another parameter: family size.
+> 
+> full$FamilySize <- full$SibSp + full$Parch +1;
+> full1<-full[1:LT,]
+> ggplot(data = full1[!is.na(full[1:LT,]$FamilySize),],aes(x=FamilySize,fill=Survived))+geom_histogram(binwidth =1,position="fill")+ylab("Frequency")
+Warning message:
+Removed 4 rows containing missing values (geom_bar). 
+> # That shows that families with a family size bigger or equal to 2 but less than 6 have a more than 50% to survive, in contrast to families with 1 member or more than 5 members. 
+> 
+> # Survival as a function of age:
+> 
+> ggplot(data = full1[!(is.na(full[1:LT,]$Age)),],aes(x=Age,fill=Survived))+geom_histogram(binwidth =3)
+> ggplot(data = full1[!is.na(full[1:LT,]$Age),],aes(x=Age,fill=Survived))+geom_histogram(binwidth = 3,position="fill")+ylab("Frequency")
+Warning message:
+Removed 2 rows containing missing values (geom_bar). 
+> 
+> # Children (younger than 15YO) and old people (80 and up) had a better chance to survive.
+> 
+> # Is there a correlation between Fare and Survivial?
+> ggplot(data = full[1:LT,],aes(x=Fare,fill=Survived))+geom_histogram(binwidth =20, position="fill")
+Warning message:
+Removed 28 rows containing missing values (geom_bar). 
+> full$Fare[is.na(full$Fare)] <- mean(full$Fare,na.rm=T)
+> # It seems like if your fare is bigger, than you have a better chance to survive.
+> sum(is.na(full$Age))
+[1] 263
+> # There are a lot of missing values in the Age feature, so I'll put the mean instead of the missing values.
+> full$Age[is.na(full$Age)] <- mean(full$Age,na.rm=T)
+> sum(is.na(full$Age))
+[1] 0
+> 
+> # The title of the passanger can affect his survive:
+> full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+> full$Title[full$Title == 'Mlle']<- 'Miss' 
+> full$Title[full$Title == 'Ms']<- 'Miss'
+> full$Title[full$Title == 'Mme']<- 'Mrs' 
+> full$Title[full$Title == 'Lady']<- 'Miss'
+> full$Title[full$Title == 'Dona']<- 'Miss'
+> officer<- c('Capt','Col','Don','Dr','Jonkheer','Major','Rev','Sir','the Countess')
+> full$Title[full$Title %in% officer]<-'Officer'
+> 
+> full$Title<- as.factor(full$Title)
+> 
+> ggplot(data = full[1:LT,],aes(x=Title,fill=Survived))+geom_bar(position="fill")+ylab("Frequency")
+> 
+> 
+> 
+> ## ----echo=TRUE,message=FALSE,warning=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # The train set with the important features 
+> train_im<- full[1:LT,c("Survived","Pclass","Sex","Age","Fare","SibSp","Parch","Title")]
+> ind<-sample(1:dim(train_im)[1],500) # Sample of 500 out of 891
+> train1<-train_im[ind,] # The train set of the model
+> train2<-train_im[-ind,] # The test set of the model
+> 
+> # Let's try to run a logistic regression
+> model <- glm(Survived ~.,family=binomial(link='logit'),data=train1)
+> summary(model)
+
+Call:
+glm(formula = Survived ~ ., family = binomial(link = "logit"), 
+    data = train1)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6121  -0.5126  -0.3246   0.5021   2.7786  
+
+Coefficients:
+               Estimate Std. Error z value Pr(>|z|)    
+(Intercept)   19.454945 616.528876   0.032 0.974826    
+Pclass2       -1.512288   0.446695  -3.386 0.000710 ***
+Pclass3       -2.717593   0.424477  -6.402 1.53e-10 ***
+Sexmale      -14.494835 616.528398  -0.024 0.981243    
+Age           -0.032541   0.012458  -2.612 0.008999 ** 
+Fare           0.003458   0.002913   1.187 0.235234    
+SibSp         -0.571695   0.163244  -3.502 0.000462 ***
+Parch         -0.423219   0.178093  -2.376 0.017483 *  
+TitleMiss    -15.363517 616.528747  -0.025 0.980119    
+TitleMr       -4.046340   0.753964  -5.367 8.02e-08 ***
+TitleMrs     -14.369387 616.528863  -0.023 0.981405    
+TitleOfficer  -3.708607   1.164877  -3.184 0.001454 ** 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 662.07  on 499  degrees of freedom
+Residual deviance: 384.43  on 488  degrees of freedom
+AIC: 408.43
+
+Number of Fisher Scoring iterations: 13
+
+> 
+> # We can see that SibSp, Parch and Fare are not statisticaly significant. 
+> # Let's look at the prediction of this model on the test set (train2):
+> pred.train <- predict(model,train2)
+> pred.train <- ifelse(pred.train > 0.5,1,0)
+> # Mean of the true prediction 
+> mean(pred.train==train2$Survived)
+[1] 0.8107417
+> 
+> t1<-table(pred.train,train2$Survived)
+> # Presicion and recall of the model
+> presicion<- t1[1,1]/(sum(t1[1,]))
+> recall<- t1[1,1]/(sum(t1[,1]))
+> presicion
+[1] 0.7900356
+> recall
+[1] 0.9367089
+> # F1 score
+> F1<- 2*presicion*recall/(presicion+recall)
+> F1
+[1] 0.8571429
+> # F1 score on the initial test set is 0.871. This pretty good.
+> 
+> # Let's run it on the test set:
+> 
+> test_im<-full[LT+1:1309,c("Pclass","Sex","Age","SibSp","Parch","Fare","Title")]
+> 
+> pred.test <- predict(model,test_im)[1:418]
+> pred.test <- ifelse(pred.test > 0.5,1,0)
+> res<- data.frame(test$PassengerId,pred.test)
+> names(res)<-c("PassengerId","Survived")
+> write.csv(res,file="res.csv",row.names = F)
+> 
+> 
+> ## ----echo=TRUE,warning=FALSE,message=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> model_dt<- rpart(Survived ~.,data=train1, method="class")
+> rpart.plot(model_dt)
+> 
+> pred.train.dt <- predict(model_dt,train2,type = "class")
+> mean(pred.train.dt==train2$Survived)
+[1] 0.8107417
+> t2<-table(pred.train.dt,train2$Survived)
+> 
+> presicion_dt<- t2[1,1]/(sum(t2[1,]))
+> recall_dt<- t2[1,1]/(sum(t2[,1]))
+> presicion_dt
+[1] 0.8221344
+> recall_dt
+[1] 0.8776371
+> F1_dt<- 2*presicion_dt*recall_dt/(presicion_dt+recall_dt)
+> F1_dt
+[1] 0.8489796
+> # Let's run this model on the test set:
+> pred.test.dt <- predict(model_dt,test_im,type="class")[1:418]
+> res_dt<- data.frame(test$PassengerId,pred.test.dt)
+> names(res_dt)<-c("PassengerId","Survived")
+> write.csv(res_dt,file="res_dt.csv",row.names = F)
+> 
+> # Let's try to predict survival using a random forest.
+> model_rf<-randomForest(Survived~.,data=train1)
+> # Let's look at the error
+> plot(model_rf)
+> pred.train.rf <- predict(model_rf,train2)
+> mean(pred.train.rf==train2$Survived)
+[1] 0.8209719
+> t1<-table(pred.train.rf,train2$Survived)
+> presicion<- t1[1,1]/(sum(t1[1,]))
+> recall<- t1[1,1]/(sum(t1[,1]))
+> presicion
+[1] 0.8300395
+> recall
+[1] 0.8860759
+> F1<- 2*presicion*recall/(presicion+recall)
+> F1
+[1] 0.8571429
+> # Let's run this model on the test set:
+> pred.test.rf <- predict(model_rf,test_im)[1:418]
+> res_rf<- data.frame(test$PassengerId,pred.test.rf)
+> names(res_rf)<-c("PassengerId","Survived")
+> write.csv(res_rf,file="res_rf.csv",row.names = F)
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  2.414   0.108   2.543 

@@ -1,0 +1,484 @@
+---
+title: "Titanic survival prediction"
+author: 'Juan Carlos Martínez Sánchez'
+date: '1 June 2018'
+output:
+  html_document:
+    number_sections: true
+    toc: true
+    fig_width: 7
+    fig_height: 4.5
+    theme: readable
+    highlight: tango
+---
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+
+# Introduction
+This is my first kernel in Kaggle. I'll work with the data set of Titanic survivors. I will also perform some data visualizations. I will look for a model that predicts survival on the Titanic. I do not pretend to find any new model or solution but rather practice with the Kaggle platform. Any feedback is very welcome! 
+
+
+
+# Libraries / code
+```{r}
+# data assessment/visualizations
+library(ggplot2)
+# data wrangling
+library(tidyverse)
+# model 
+library(mice)
+library('randomForest')
+
+```
+```{r}
+#Useful data quality function for missing values
+
+checkColumn = function(df,colname){
+  
+  testData = df[[colname]]
+  numMissing = max(sum(is.na(testData)|is.nan(testData)|testData==''),0)
+
+  
+  if (class(testData) == 'numeric' | class(testData) == 'Date' | class(testData) == 'difftime' | class(testData) == 'integer'){
+    list('col' = colname,'class' = class(testData), 'num' = length(testData) - numMissing, 'numMissing' = numMissing, 'numInfinite' = sum(is.infinite(testData)), 'avgVal' = mean(testData,na.rm=TRUE), 'minVal' = round(min(testData,na.rm = TRUE)), 'maxVal' = round(max(testData,na.rm = TRUE)))
+  } else{
+    list('col' = colname,'class' = class(testData), 'num' = length(testData) - numMissing, 'numMissing' = numMissing, 'numInfinite' = NA,  'avgVal' = NA, 'minVal' = NA, 'maxVal' = NA)
+  }
+  
+}
+checkAllCols = function(df){
+  resDF = data.frame()
+  for (colName in names(df)){
+    resDF = rbind(resDF,as.data.frame(checkColumn(df=df,colname=colName)))
+  }
+  resDF
+}
+
+```
+
+
+# Load and check data
+
+
+
+```{r}
+train <- read.csv("../input/train.csv",header = T, stringsAsFactors = F,
+                  comment.char = "",na.strings=c("NA","NaN", ""))
+#str(train)
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+test  <- read.csv('../input/test.csv', header = T, stringsAsFactors = F,
+                  comment.char = "",na.strings=c("NA","NaN", ""))
+#str(test)
+
+```
+I will merge the dataset in one file. I must create a column to identify test or training data.
+
+
+```{r}
+train$set <- "train"
+test$set  <- "test"
+test$Survived <- NA
+full <- rbind(train, test)
+head(full)
+```
+
+We therefore have a sample of 1309 observations with 12 variables. Of these, 891 observations will be used as a training sample and 418 as a test sample.
+
+Variable Name | Description
+--------------|-------------
+Survived      | Survived (1) or died (0)
+Pclass        | Passenger's class
+Name          | Passenger's name
+Sex           | Passenger's sex
+Age           | Passenger's age
+SibSp         | Number of siblings/spouses aboard
+Parch         | Number of parents/children aboard
+Ticket        | Ticket number
+Fare          | Fare
+Cabin         | Cabin
+Embarked      | Port of embarkation
+
+
+## Reviewing the data
+
+First we will see how the values are distributed in each variable.
+
+```{r}
+# dataset dimensions
+dim(full)
+# Unique values per column
+lapply(full, function(x) length(unique(x))) 
+head(full)
+```
+
+Let's see the distribution of Nulls in the fields.  
+
+```{r}
+missing_values <- full %>% summarize_all(funs(sum(is.na(.))/n()))
+missing_values
+```
+
+```{r}
+# pivot the rows by feature (colnames) 
+missing_values <- gather(missing_values, key="feature", value="missing_pct")
+# ploting the missing NA values percentage
+missing_values %>% 
+  ggplot(aes(x=reorder(feature,-missing_pct),y=missing_pct)) +
+  geom_bar(stat="identity",fill="red")+
+  theme_bw()+coord_flip()+
+  scale_size_area()+
+  ylab("Missing %")+xlab("Var/Cols")
+  
+```
+Besides the variable to calculate (survived) on which we do not have information for the data of test as it is logical, we will have an important set of data on which the cabin and the age are not known.
+In principle they can be good variables to identify the degree of survival. (Sex, Pclass, family (Parch, Sib), cabin and  Fare.
+
+
+
+
+## Feature engineering
+
+Let's review if we can get something more to the existing data.
+
+### Family (siblings and parents) 
+
+We form a new column with the number of family members.
+sibsp # of siblings / spouses aboard the Titanic
+parch # of parents / children aboard the Titanic
+
+```{r}
+full$FamSize <- full$SibSp + full$Parch + 1
+```
+We can try to group the members of a family using the first surname (surname) of the names. 
+ 
+
+```{r}
+full$Surname <- sapply(full$Name,  
+                      function(x) strsplit(x, split = '[,.]')[[1]][1])
+
+
+```
+
+Let's get the title of the name field.
+
+### Titles 
+
+```{r}
+full$Title <- gsub("^.*, (.*?)\\..*$", "\\1", full$Name)
+```
+
+We check the conversion and the titles of treatment Cruzandolos with sex.
+
+```{r}
+table(full$Sex,full$Title)
+```
+And if we cross them with age
+
+```{r}
+ggplot(data=full,aes(y=Age,x=Title, fill=Sex))+
+      geom_boxplot(alpha=0.7) +
+      #   geom_boxplot(outlier.colour = "red",outlier.shape = 8, outlier.size = 3)+
+        theme(axis.text.x = element_text(angle=65, vjust=0.6)) 
+```
+
+### Ticket
+
+We will identify the number of people included in the ticket.
+
+```{r}
+##Engineer features based on all the passengers with the same ticket
+ticket.unique <- rep(0, nrow(full))
+tickets <- unique(full$Ticket)
+
+for (i in 1:length(tickets)) {
+  current.ticket <- tickets[i]
+  party.indexes <- which(full$Ticket == current.ticket)
+  
+  
+  for (k in 1:length(party.indexes)) {
+    ticket.unique[party.indexes[k]] <- length(party.indexes)
+  }
+}
+
+full$ticket.unique <- ticket.unique
+
+
+full$ticket.size[full$ticket.unique == 1]   <- 'Single'
+full$ticket.size[full$ticket.unique < 5 & full$ticket.unique>= 2]   <- 'Small'
+full$ticket.size[full$ticket.unique >= 5]   <- 'Big'
+```
+Other
+
+```{r}
+full[full$Title %in% 'the Countess',]
+```
+
+
+# Missing Data
+
+### Embarked 
+
+We will see the data associated to the records that have not reported the information of embarked.
+
+```{r}
+full[full$Embarked %in% NA,]
+```
+
+We look graphically for the relationship between the point of embarkation and price, or ticket or cabin for passengers of 1st class.
+In this way we will try to identify if we can infer the shipping information.
+
+
+```{r}
+ggplot(data=full[full$Pclass %in% '1',],aes(y=Fare,x=Embarked,fill=Embarked))+
+      geom_boxplot(alpha=0.5) +
+        theme(axis.text.x = element_text(angle=65, vjust=0.6))
+```
+
+For the price it seems to be included within the embarked in Chebourg.
+Ports : C = Cherbourg, Q = Queenstown, S = Southampton :
+
+```{r}
+#temporal <- subset(full, Pclass==1 & Fare>78 & Fare <84)
+#temporal[order(temporal$Surname),]
+#temporal <- subset(full, Ticket=="12749")
+#temporal[order(temporal$Surname),]
+```
+
+Assign the embarked missed as C = Cherbourg
+```{r}
+full$Embarked <- replace(full$Embarked, which(is.na(full$Embarked)), 'C') 
+```
+
+### Fare
+We checked the records with Fare column no informed.  
+
+```{r}
+full[full$Fare %in% NA,]
+summary(full[full$Fare %in% NA,])
+```
+Let's see the distribution of fares in third class.
+
+```{r}
+ggplot(full[full$Pclass == '3' & full$Embarked == 'S' & full$ticket.size =='Single', ], 
+  aes(x = Fare)) +
+  geom_density(fill = '#99d6ff', alpha=0.4) + 
+  geom_vline(aes(xintercept=median(Fare, na.rm=T)),
+    colour='red', linetype='dashed', lwd=1) 
+```
+The average we can calculate $\alpha$-winsorized to complete missed data.
+```{r}
+mean(full[full$Pclass == '3' & full$Embarked == 'S' & full$ticket.size =='Single',]$Fare,na.rm=T,trim=0.2)
+full$Fare[1044] <- mean(full[full$Pclass == '3' & full$Embarked == 'S' & full$ticket.size =='Single',]$Fare,na.rm=T,trim=0.2)
+```
+
+###  Age 
+For this case we can make the most classical approximation using the mean or median age. In this case the mean.
+
+```{r}
+full <- full %>% mutate( Age = ifelse(is.na(Age), mean(full$Age, na.rm=TRUE), Age),
+  `Age Group` = case_when(  Age < 13 ~ "Age.0012", 
+                             Age >= 13 & Age < 18 ~ "Age.1317",
+                             Age >= 18 & Age < 60 ~ "Age.1859",
+                             Age >= 60 ~ "Age.60Ov"))
+
+
+```
+
+However, another option is to calculate the age based on a multivariate estimate based on other variables but i'm going to use mice package for complete missed data.
+
+
+```{r}
+# Set a random seed
+set.seed(1023)
+```
+
+
+```{r}
+# Perform mice imputation, excluding certain less-than-useful variables:
+mice_mod <- mice(full[, !names(full) %in% 
+                      c('PassengerId','Name','Ticket','Cabin','Family','Surname','Survived','Embarked','ticket.size')],
+                 method='rf') 
+# Save the complete output 
+mice_output <- complete(mice_mod)
+head(mice_output)
+```
+
+```{r}
+par(mfrow=c(1,1))
+# We check the age assignment in the case of the Masters and should be younger than 18
+ggplot(mice_output[mice_output$Title %in% c('Master'),], aes(Age, fill = factor(Title))) +   geom_histogram()
+```
+
+```{r}
+# Perform mice imputation, excluding certain less-than-useful variables:
+mice_mod2 <- mice(full[, c('Title','Pclass','Age')],
+                 method='rf') 
+# Save the complete output 
+mice_output2 <- complete(mice_mod2)
+head(mice_output2)
+```
+
+```{r}
+#Let’s compare the results we get with the original distribution of passenger ages to ensure that nothing has gone completely awry.
+
+# Plot age distributions
+par(mfrow=c(1,3))
+hist(full$Age, freq=F, main='Age: Original Data', 
+  col='darkgreen', ylim=c(0,0.04))
+hist(mice_output$Age, freq=F, main='Age: MICE Output', 
+  col='lightgreen', ylim=c(0,0.04))
+hist(mice_output2$Age, freq=F, main='Age2: MICE Output', 
+  col='lightgreen', ylim=c(0,0.04))
+  
+```
+
+
+```{r}
+par(mfrow=c(1,2))
+# We check the age assignment in the case of the Masters
+ggplot(mice_output[mice_output$Title %in% c('Master'),], aes(Age, fill = factor(Title))) +   geom_histogram()
+ggplot(mice_output2[mice_output2$Title %in% c('Master'),], aes(Age, fill = factor(Title))) +   geom_histogram()
+```
+
+```{r}
+# Replace Age variable from the mice model.
+full$Age <- mice_output$Age
+```
+# Model
+
+We can change the following titles to make them more representative.
+
+```{r}
+full$Title[full$Title == 'Mlle']        <- 'Miss' 
+full$Title[full$Title == 'Ms']          <- 'Miss'
+full$Title[full$Title == 'Mme']         <- 'Mrs' 
+full$Title[full$Title == 'Lady']          <- 'Miss'
+full$Title[full$Title == 'Dona']          <- 'Miss'
+full$Title[full$Title == 'Don']   <- 'Mr'
+full$Title[full$Title == 'Sir']   <- 'Mr'
+full$Title[full$Title == 'the Countess']   <- 'Mrs'
+full$Title[full$Title == 'Jonkheer']   <- 'Mr' 
+```
+
+## Prepare the datatest
+
+```{r}
+###lets prepare and keep data in the proper format
+feauter1<-full[1:891, c("Pclass", "Title","Sex","Embarked","FamSize","ticket.size")]
+response <- as.factor(train$Survived)
+feauter1$Survived=as.factor(train$Survived)
+```
+
+I extract a 20% of original train set data 
+
+```{r}
+###For Cross validation purpose will keep 20% of data aside from my orginal train set
+##This is just to check how well my data works for unseen data
+set.seed(500)
+ind=caret::createDataPartition(feauter1$Survived,times=1,p=0.8,list=FALSE)
+train_val=feauter1[ind,]
+test_val=feauter1[-ind,]
+```
+
+```{r}
+####check the proprtion of Survival rate in orginal training data, current traing and testing data
+round(prop.table(table(train$Survived)*100),digits = 1)
+
+round(prop.table(table(train_val$Survived)*100),digits = 1)
+
+round(prop.table(table(test_val$Survived)*100),digits = 1)
+
+```
+
+
+We can see in the following tables some graphs that can help to select among all the models the most appropriate.
+
+
+<center><img src="https://www.mathworks.com/help/stats/machinelearningtypes.jpg"></center>
+
+[reffer](https://www.mathworks.com/help/stats/)
+
+<center><img src="https://blogs.sas.com/content/subconsciousmusings/files/2017/04/machine-learning-cheet-sheet.png"></center>
+
+[reffer](https://www.analyticsvidhya.com/blog/2017/09/common-machine-learning-algorithms/)
+
+## Ramdom forest method
+
+We then build our model using randomForest on the training set.
+
+```{r}
+full.train <- subset(full,set=='train')
+full.test <- subset(full,set=='test')
+full.train=full.train %>% mutate_if(is.character, as.factor)
+full.test=full.test %>% mutate_if(is.character, as.factor)
+full.test$Survived <- 0
+full.test$Survived <- as.integer(full.test$Survived)
+str(full.train)
+str(full.test)
+```
+
+```{r}
+# Set a random seed
+set.seed(754)
+
+# Build the model (note: not all possible variables are used)
+rf_model <- randomForest(factor(Survived) ~ Title + Pclass + Sex + Age  + FamSize + ticket.size + Fare,
+                                            data = full.train)
+rf_model
+```
+
+```{r}
+plot(rf_model, ylim=c(0,0.36))
+legend('topright', colnames(rf_model$err.rate), col=1:3, fill=1:3)
+varImpPlot(rf_model,main='RandomForestTree')
+```
+## Variable importance
+Let’s look at relative variable importance by plotting the mean decrease in Gini calculated across all trees.
+
+```{r}
+# Get importance
+importance    <- importance(rf_model)
+varImportance <- data.frame(Variables = row.names(importance), 
+                            Importance = round(importance[ ,'MeanDecreaseGini'],2))
+# Create a rank variable based on importance
+rankImportance <- varImportance %>%
+  mutate(Rank = paste0('#',dense_rank(desc(Importance))))
+```
+
+```{r}
+# Use ggplot2 to visualize the relative importance of variables
+ggplot(rankImportance, aes(x = reorder(Variables, Importance),  
+    y = Importance, fill = Importance)) +
+  geom_bar(stat='identity') + 
+  geom_text(aes(x = Variables, y = 0.5, label = Rank),
+    hjust=0, vjust=0.55, size = 4, colour = 'red')  + 
+    theme(axis.text.x = element_text(angle=65, vjust=0.6))
+```
+
+
+# Prediction!
+The final step — making our prediction! When we finish here, we could iterate through the preceding steps making tweaks as we go or fit the data using different models or use different combinations of variables to achieve better predictions. 
+But this is a good starting (and stopping) point for me now.  
+
+To equalize factors and levels.
+
+```{r}
+common <- intersect(names(full.train), names(full.test)) 
+for (p in common) { 
+  if (class(full.train[[p]]) == "factor") { 
+    levels(full.test[[p]]) <- levels(full.train[[p]]) 
+  } 
+}
+```
+
+```{r}
+# Predict using the test set
+prediction <- predict(rf_model, full.test)
+# Save the solution to a dataframe with two columns: PassengerId and Survived (prediction)
+solution <- data.frame(PassengerID = full.test$PassengerId, Survived = prediction)
+# Write the solution to file
+write.csv(solution, file = 'rf_mod_Solution.csv', row.names = F)
+```

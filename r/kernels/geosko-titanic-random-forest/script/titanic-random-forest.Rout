@@ -1,0 +1,1134 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> testdata <- read.csv('../input/test.csv',header = TRUE, stringsAsFactors = FALSE, na.strings = c("", "NA"))
+> traindata <- read.csv('../input/train.csv',header = TRUE, stringsAsFactors = FALSE, na.strings = c("", "NA"))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> str(testdata)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : chr  "Kelly, Mr. James" "Wilkes, Mrs. James (Ellen Needs)" "Myles, Mr. Thomas Francis" "Wirz, Mr. Albert" ...
+ $ Sex        : chr  "male" "female" "male" "male" ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : chr  "330911" "363272" "240276" "315154" ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : chr  NA NA NA NA ...
+ $ Embarked   : chr  "Q" "S" "Q" "S" ...
+> str(traindata)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  NA "C85" NA "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(testdata$Pclass)/nrow(testdata)
+
+        1         2         3 
+0.2559809 0.2224880 0.5215311 
+> table(traindata$Pclass)/nrow(traindata)
+
+        1         2         3 
+0.2424242 0.2065095 0.5510662 
+> 
+> table(testdata$Sex)/nrow(testdata)
+
+   female      male 
+0.3636364 0.6363636 
+> table(traindata$Sex)/nrow(traindata)
+
+  female     male 
+0.352413 0.647587 
+> 
+> table(testdata$Embarked)/nrow(testdata)
+
+        C         Q         S 
+0.2440191 0.1100478 0.6459330 
+> table(traindata$Embarked)/nrow(traindata)
+
+         C          Q          S 
+0.18855219 0.08641975 0.72278339 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(is.na(traindata$Embarked))
+   Mode   FALSE    TRUE 
+logical     889       2 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(traindata$Embarked== "")
+   Mode   FALSE    NA's 
+logical     889       2 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> hist(testdata$Age)
+> hist(traindata$Age)
+> 
+> summary(testdata$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.17   21.00   27.00   30.27   39.00   76.00      86 
+> summary(traindata$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.42   20.12   28.00   29.70   38.00   80.00     177 
+> 
+> hist(testdata$SibSp)
+> hist(traindata$SibSp)
+> 
+> summary(testdata$SibSp)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.0000  0.0000  0.0000  0.4474  1.0000  8.0000 
+> summary(traindata$SibSp)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  0.000   0.000   0.000   0.523   1.000   8.000 
+> 
+> hist(testdata$Parch)
+> hist(traindata$Parch)
+> 
+> summary(testdata$Parch)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.0000  0.0000  0.0000  0.3923  0.0000  9.0000 
+> summary(traindata$Parch)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.0000  0.0000  0.0000  0.3816  0.0000  6.0000 
+> 
+> hist(testdata$Fare)
+> hist(traindata$Fare)
+> 
+> summary(testdata$Fare)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+  0.000   7.896  14.454  35.627  31.500 512.329       1 
+> summary(traindata$Fare)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00    7.91   14.45   32.20   31.00  512.33 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> mosaicplot(table (traindata$Pclass, traindata$Survived))
+> mosaicplot(table (traindata$Sex, traindata$Survived))
+> mosaicplot(table (traindata$Age, traindata$Survived))
+> mosaicplot(table (traindata$SibSp, traindata$Survived))
+> mosaicplot(table (traindata$Parch, traindata$Survived))
+> mosaicplot(table (traindata$Fare, traindata$Survived))
+> mosaicplot(table (traindata$Embarked, traindata$Survived))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> 
+> ggplot(traindata,aes(x=Age,group=Survived,fill=Survived))+
++   geom_histogram(position="dodge",binwidth=15)+theme_bw()
+Warning message:
+Removed 177 rows containing non-finite values (stat_bin). 
+> 
+> ggplot(traindata,aes(x=SibSp,group=Survived,fill=Survived))+
++   geom_histogram(position="dodge",binwidth=1)+theme_bw()
+> 
+> ggplot(traindata,aes(x=Parch,group=Survived,fill=Survived))+
++   geom_histogram(position="dodge",binwidth=1)+theme_bw()
+> 
+> ggplot(traindata,aes(x=Fare,group=Survived,fill=Survived))+
++   geom_histogram(position="dodge",binwidth=55)+theme_bw()
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> 
+> full <- bind_rows(traindata, testdata) 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(full$Sex, full$Title)
+        
+         Capt Col Don Dona  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs
+  female    0   0   0    1   1        0    1     0      0  260    2   1   0 197
+  male      1   4   1    0   7        1    0     2     61    0    0   0 757   0
+        
+          Ms Rev Sir the Countess
+  female   2   0   0            1
+  male     0   8   1            0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
++                 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$Title[full$Title == 'Mlle']        <- 'Miss' 
+> full$Title[full$Title == 'Ms']          <- 'Miss'
+> full$Title[full$Title == 'Mme']         <- 'Mrs' 
+> full$Title[full$Title %in% rare_title]  <- 'Rare Title'
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(full$Sex, full$Title)
+        
+         Master Miss  Mr Mrs Rare Title
+  female      0  264   0 198          4
+  male       61    0 757   0         25
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$Pclass <-as.factor(full$Pclass)
+> full$Sex <-as.factor(full$Sex)
+> full$Embarked <-as.factor(full$Embarked)
+> full$Cabin <-as.factor(full$Cabin)
+> full$Title <-as.factor(full$Title)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> sum(is.na(full$Age))
+[1] 263
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> pMiss <- function(x){sum(is.na(x))/length(x)*100}
+> apply(full,2,pMiss)
+PassengerId    Survived      Pclass        Name         Sex         Age 
+ 0.00000000 31.93277311  0.00000000  0.00000000  0.00000000 20.09167303 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+ 0.00000000  0.00000000  0.00000000  0.07639419 77.46371276  0.15278839 
+      Title 
+ 0.00000000 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fullpart<-full[-c(1, 2, 4, 9, 11)]
+> summary(fullpart)
+ Pclass      Sex           Age            SibSp            Parch      
+ 1:323   female:466   Min.   : 0.17   Min.   :0.0000   Min.   :0.000  
+ 2:277   male  :843   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000  
+ 3:709                Median :28.00   Median :0.0000   Median :0.000  
+                      Mean   :29.88   Mean   :0.4989   Mean   :0.385  
+                      3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000  
+                      Max.   :80.00   Max.   :8.0000   Max.   :9.000  
+                      NA's   :263                                     
+      Fare         Embarked          Title    
+ Min.   :  0.000   C   :270   Master    : 61  
+ 1st Qu.:  7.896   Q   :123   Miss      :264  
+ Median : 14.454   S   :914   Mr        :757  
+ Mean   : 33.295   NA's:  2   Mrs       :198  
+ 3rd Qu.: 31.275              Rare Title: 29  
+ Max.   :512.329                              
+ NA's   :1                                    
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fullpart$Pclass <-as.factor(fullpart$Pclass)
+> fullpart$Sex <-as.factor(fullpart$Sex)
+> fullpart$Embarked <-as.factor(fullpart$Embarked)
+> fullpart$Title <-as.factor(fullpart$Title)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fullIm <- mice(fullpart,m=5,maxit=50,meth='rf',seed=500)
+
+ iter imp variable
+  1   1  Age  Fare  Embarked
+  1   2  Age  Fare  Embarked
+  1   3  Age  Fare  Embarked
+  1   4  Age  Fare  Embarked
+  1   5  Age  Fare  Embarked
+  2   1  Age  Fare  Embarked
+  2   2  Age  Fare  Embarked
+  2   3  Age  Fare  Embarked
+  2   4  Age  Fare  Embarked
+  2   5  Age  Fare  Embarked
+  3   1  Age  Fare  Embarked
+  3   2  Age  Fare  Embarked
+  3   3  Age  Fare  Embarked
+  3   4  Age  Fare  Embarked
+  3   5  Age  Fare  Embarked
+  4   1  Age  Fare  Embarked
+  4   2  Age  Fare  Embarked
+  4   3  Age  Fare  Embarked
+  4   4  Age  Fare  Embarked
+  4   5  Age  Fare  Embarked
+  5   1  Age  Fare  Embarked
+  5   2  Age  Fare  Embarked
+  5   3  Age  Fare  Embarked
+  5   4  Age  Fare  Embarked
+  5   5  Age  Fare  Embarked
+  6   1  Age  Fare  Embarked
+  6   2  Age  Fare  Embarked
+  6   3  Age  Fare  Embarked
+  6   4  Age  Fare  Embarked
+  6   5  Age  Fare  Embarked
+  7   1  Age  Fare  Embarked
+  7   2  Age  Fare  Embarked
+  7   3  Age  Fare  Embarked
+  7   4  Age  Fare  Embarked
+  7   5  Age  Fare  Embarked
+  8   1  Age  Fare  Embarked
+  8   2  Age  Fare  Embarked
+  8   3  Age  Fare  Embarked
+  8   4  Age  Fare  Embarked
+  8   5  Age  Fare  Embarked
+  9   1  Age  Fare  Embarked
+  9   2  Age  Fare  Embarked
+  9   3  Age  Fare  Embarked
+  9   4  Age  Fare  Embarked
+  9   5  Age  Fare  Embarked
+  10   1  Age  Fare  Embarked
+  10   2  Age  Fare  Embarked
+  10   3  Age  Fare  Embarked
+  10   4  Age  Fare  Embarked
+  10   5  Age  Fare  Embarked
+  11   1  Age  Fare  Embarked
+  11   2  Age  Fare  Embarked
+  11   3  Age  Fare  Embarked
+  11   4  Age  Fare  Embarked
+  11   5  Age  Fare  Embarked
+  12   1  Age  Fare  Embarked
+  12   2  Age  Fare  Embarked
+  12   3  Age  Fare  Embarked
+  12   4  Age  Fare  Embarked
+  12   5  Age  Fare  Embarked
+  13   1  Age  Fare  Embarked
+  13   2  Age  Fare  Embarked
+  13   3  Age  Fare  Embarked
+  13   4  Age  Fare  Embarked
+  13   5  Age  Fare  Embarked
+  14   1  Age  Fare  Embarked
+  14   2  Age  Fare  Embarked
+  14   3  Age  Fare  Embarked
+  14   4  Age  Fare  Embarked
+  14   5  Age  Fare  Embarked
+  15   1  Age  Fare  Embarked
+  15   2  Age  Fare  Embarked
+  15   3  Age  Fare  Embarked
+  15   4  Age  Fare  Embarked
+  15   5  Age  Fare  Embarked
+  16   1  Age  Fare  Embarked
+  16   2  Age  Fare  Embarked
+  16   3  Age  Fare  Embarked
+  16   4  Age  Fare  Embarked
+  16   5  Age  Fare  Embarked
+  17   1  Age  Fare  Embarked
+  17   2  Age  Fare  Embarked
+  17   3  Age  Fare  Embarked
+  17   4  Age  Fare  Embarked
+  17   5  Age  Fare  Embarked
+  18   1  Age  Fare  Embarked
+  18   2  Age  Fare  Embarked
+  18   3  Age  Fare  Embarked
+  18   4  Age  Fare  Embarked
+  18   5  Age  Fare  Embarked
+  19   1  Age  Fare  Embarked
+  19   2  Age  Fare  Embarked
+  19   3  Age  Fare  Embarked
+  19   4  Age  Fare  Embarked
+  19   5  Age  Fare  Embarked
+  20   1  Age  Fare  Embarked
+  20   2  Age  Fare  Embarked
+  20   3  Age  Fare  Embarked
+  20   4  Age  Fare  Embarked
+  20   5  Age  Fare  Embarked
+  21   1  Age  Fare  Embarked
+  21   2  Age  Fare  Embarked
+  21   3  Age  Fare  Embarked
+  21   4  Age  Fare  Embarked
+  21   5  Age  Fare  Embarked
+  22   1  Age  Fare  Embarked
+  22   2  Age  Fare  Embarked
+  22   3  Age  Fare  Embarked
+  22   4  Age  Fare  Embarked
+  22   5  Age  Fare  Embarked
+  23   1  Age  Fare  Embarked
+  23   2  Age  Fare  Embarked
+  23   3  Age  Fare  Embarked
+  23   4  Age  Fare  Embarked
+  23   5  Age  Fare  Embarked
+  24   1  Age  Fare  Embarked
+  24   2  Age  Fare  Embarked
+  24   3  Age  Fare  Embarked
+  24   4  Age  Fare  Embarked
+  24   5  Age  Fare  Embarked
+  25   1  Age  Fare  Embarked
+  25   2  Age  Fare  Embarked
+  25   3  Age  Fare  Embarked
+  25   4  Age  Fare  Embarked
+  25   5  Age  Fare  Embarked
+  26   1  Age  Fare  Embarked
+  26   2  Age  Fare  Embarked
+  26   3  Age  Fare  Embarked
+  26   4  Age  Fare  Embarked
+  26   5  Age  Fare  Embarked
+  27   1  Age  Fare  Embarked
+  27   2  Age  Fare  Embarked
+  27   3  Age  Fare  Embarked
+  27   4  Age  Fare  Embarked
+  27   5  Age  Fare  Embarked
+  28   1  Age  Fare  Embarked
+  28   2  Age  Fare  Embarked
+  28   3  Age  Fare  Embarked
+  28   4  Age  Fare  Embarked
+  28   5  Age  Fare  Embarked
+  29   1  Age  Fare  Embarked
+  29   2  Age  Fare  Embarked
+  29   3  Age  Fare  Embarked
+  29   4  Age  Fare  Embarked
+  29   5  Age  Fare  Embarked
+  30   1  Age  Fare  Embarked
+  30   2  Age  Fare  Embarked
+  30   3  Age  Fare  Embarked
+  30   4  Age  Fare  Embarked
+  30   5  Age  Fare  Embarked
+  31   1  Age  Fare  Embarked
+  31   2  Age  Fare  Embarked
+  31   3  Age  Fare  Embarked
+  31   4  Age  Fare  Embarked
+  31   5  Age  Fare  Embarked
+  32   1  Age  Fare  Embarked
+  32   2  Age  Fare  Embarked
+  32   3  Age  Fare  Embarked
+  32   4  Age  Fare  Embarked
+  32   5  Age  Fare  Embarked
+  33   1  Age  Fare  Embarked
+  33   2  Age  Fare  Embarked
+  33   3  Age  Fare  Embarked
+  33   4  Age  Fare  Embarked
+  33   5  Age  Fare  Embarked
+  34   1  Age  Fare  Embarked
+  34   2  Age  Fare  Embarked
+  34   3  Age  Fare  Embarked
+  34   4  Age  Fare  Embarked
+  34   5  Age  Fare  Embarked
+  35   1  Age  Fare  Embarked
+  35   2  Age  Fare  Embarked
+  35   3  Age  Fare  Embarked
+  35   4  Age  Fare  Embarked
+  35   5  Age  Fare  Embarked
+  36   1  Age  Fare  Embarked
+  36   2  Age  Fare  Embarked
+  36   3  Age  Fare  Embarked
+  36   4  Age  Fare  Embarked
+  36   5  Age  Fare  Embarked
+  37   1  Age  Fare  Embarked
+  37   2  Age  Fare  Embarked
+  37   3  Age  Fare  Embarked
+  37   4  Age  Fare  Embarked
+  37   5  Age  Fare  Embarked
+  38   1  Age  Fare  Embarked
+  38   2  Age  Fare  Embarked
+  38   3  Age  Fare  Embarked
+  38   4  Age  Fare  Embarked
+  38   5  Age  Fare  Embarked
+  39   1  Age  Fare  Embarked
+  39   2  Age  Fare  Embarked
+  39   3  Age  Fare  Embarked
+  39   4  Age  Fare  Embarked
+  39   5  Age  Fare  Embarked
+  40   1  Age  Fare  Embarked
+  40   2  Age  Fare  Embarked
+  40   3  Age  Fare  Embarked
+  40   4  Age  Fare  Embarked
+  40   5  Age  Fare  Embarked
+  41   1  Age  Fare  Embarked
+  41   2  Age  Fare  Embarked
+  41   3  Age  Fare  Embarked
+  41   4  Age  Fare  Embarked
+  41   5  Age  Fare  Embarked
+  42   1  Age  Fare  Embarked
+  42   2  Age  Fare  Embarked
+  42   3  Age  Fare  Embarked
+  42   4  Age  Fare  Embarked
+  42   5  Age  Fare  Embarked
+  43   1  Age  Fare  Embarked
+  43   2  Age  Fare  Embarked
+  43   3  Age  Fare  Embarked
+  43   4  Age  Fare  Embarked
+  43   5  Age  Fare  Embarked
+  44   1  Age  Fare  Embarked
+  44   2  Age  Fare  Embarked
+  44   3  Age  Fare  Embarked
+  44   4  Age  Fare  Embarked
+  44   5  Age  Fare  Embarked
+  45   1  Age  Fare  Embarked
+  45   2  Age  Fare  Embarked
+  45   3  Age  Fare  Embarked
+  45   4  Age  Fare  Embarked
+  45   5  Age  Fare  Embarked
+  46   1  Age  Fare  Embarked
+  46   2  Age  Fare  Embarked
+  46   3  Age  Fare  Embarked
+  46   4  Age  Fare  Embarked
+  46   5  Age  Fare  Embarked
+  47   1  Age  Fare  Embarked
+  47   2  Age  Fare  Embarked
+  47   3  Age  Fare  Embarked
+  47   4  Age  Fare  Embarked
+  47   5  Age  Fare  Embarked
+  48   1  Age  Fare  Embarked
+  48   2  Age  Fare  Embarked
+  48   3  Age  Fare  Embarked
+  48   4  Age  Fare  Embarked
+  48   5  Age  Fare  Embarked
+  49   1  Age  Fare  Embarked
+  49   2  Age  Fare  Embarked
+  49   3  Age  Fare  Embarked
+  49   4  Age  Fare  Embarked
+  49   5  Age  Fare  Embarked
+  50   1  Age  Fare  Embarked
+  50   2  Age  Fare  Embarked
+  50   3  Age  Fare  Embarked
+  50   4  Age  Fare  Embarked
+  50   5  Age  Fare  Embarked
+> summary(fullIm)
+Class: mids
+Number of multiple imputations:  5 
+Imputation methods:
+  Pclass      Sex      Age    SibSp    Parch     Fare Embarked    Title 
+      ""       ""     "rf"       ""       ""     "rf"     "rf"       "" 
+PredictorMatrix:
+       Pclass Sex Age SibSp Parch Fare Embarked Title
+Pclass      0   1   1     1     1    1        1     1
+Sex         1   0   1     1     1    1        1     1
+Age         1   1   0     1     1    1        1     1
+SibSp       1   1   1     0     1    1        1     1
+Parch       1   1   1     1     0    1        1     1
+Fare        1   1   1     1     1    0        1     1
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fullcomplete <- complete(fullIm,1)
+> summary(fullcomplete)
+ Pclass      Sex           Age            SibSp            Parch      
+ 1:323   female:466   Min.   : 0.17   Min.   :0.0000   Min.   :0.000  
+ 2:277   male  :843   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000  
+ 3:709                Median :27.00   Median :0.0000   Median :0.000  
+                      Mean   :29.47   Mean   :0.4989   Mean   :0.385  
+                      3rd Qu.:38.00   3rd Qu.:1.0000   3rd Qu.:0.000  
+                      Max.   :80.00   Max.   :8.0000   Max.   :9.000  
+      Fare         Embarked        Title    
+ Min.   :  0.000   C:272    Master    : 61  
+ 1st Qu.:  7.896   Q:123    Miss      :264  
+ Median : 14.454   S:914    Mr        :757  
+ Mean   : 33.276            Mrs       :198  
+ 3rd Qu.: 31.275            Rare Title: 29  
+ Max.   :512.329                            
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> hist(full$Age, freq=F, main='Age full', 
++      col='green', ylim=c(0,0.04))
+> hist(fullcomplete$Age, freq=F, main='Age fullcomplete', 
++      col='red', ylim=c(0,0.04))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fullcomplete$Cabin <- full$Cabin
+> summary(fullcomplete)
+ Pclass      Sex           Age            SibSp            Parch      
+ 1:323   female:466   Min.   : 0.17   Min.   :0.0000   Min.   :0.000  
+ 2:277   male  :843   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000  
+ 3:709                Median :27.00   Median :0.0000   Median :0.000  
+                      Mean   :29.47   Mean   :0.4989   Mean   :0.385  
+                      3rd Qu.:38.00   3rd Qu.:1.0000   3rd Qu.:0.000  
+                      Max.   :80.00   Max.   :8.0000   Max.   :9.000  
+                                                                      
+      Fare         Embarked        Title                 Cabin     
+ Min.   :  0.000   C:272    Master    : 61   C23 C25 C27    :   6  
+ 1st Qu.:  7.896   Q:123    Miss      :264   B57 B59 B63 B66:   5  
+ Median : 14.454   S:914    Mr        :757   G6             :   5  
+ Mean   : 33.276            Mrs       :198   B96 B98        :   4  
+ 3rd Qu.: 31.275            Rare Title: 29   C22 C26        :   4  
+ Max.   :512.329                             (Other)        : 271  
+                                             NA's           :1014  
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fullcomplete$Cabin <-  substr(fullcomplete$Cabin,1,1)
+> fullcomplete$Cabin[1:45]
+ [1] NA  "C" NA  "C" NA  NA  "E" NA  NA  NA  "G" "C" NA  NA  NA  NA  NA  NA  NA 
+[20] NA  NA  "D" NA  "A" NA  NA  NA  "C" NA  NA  NA  "B" NA  NA  NA  NA  NA  NA 
+[39] NA  NA  NA  NA  NA  NA  NA 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fullcomplete$Deck <- fullcomplete$Cabin
+> fullcomplete <- fullcomplete[-c(9)]
+> summary(fullcomplete)
+ Pclass      Sex           Age            SibSp            Parch      
+ 1:323   female:466   Min.   : 0.17   Min.   :0.0000   Min.   :0.000  
+ 2:277   male  :843   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000  
+ 3:709                Median :27.00   Median :0.0000   Median :0.000  
+                      Mean   :29.47   Mean   :0.4989   Mean   :0.385  
+                      3rd Qu.:38.00   3rd Qu.:1.0000   3rd Qu.:0.000  
+                      Max.   :80.00   Max.   :8.0000   Max.   :9.000  
+      Fare         Embarked        Title         Deck          
+ Min.   :  0.000   C:272    Master    : 61   Length:1309       
+ 1st Qu.:  7.896   Q:123    Miss      :264   Class :character  
+ Median : 14.454   S:914    Mr        :757   Mode  :character  
+ Mean   : 33.276            Mrs       :198                     
+ 3rd Qu.: 31.275            Rare Title: 29                     
+ Max.   :512.329                                               
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fullcomplete$Deck <-as.factor(fullcomplete$Deck)
+> 
+> fullCompleteIm <- mice(fullcomplete,m=5,maxit=50,meth='rf',seed=500)
+
+ iter imp variable
+  1   1  Deck
+  1   2  Deck
+  1   3  Deck
+  1   4  Deck
+  1   5  Deck
+  2   1  Deck
+  2   2  Deck
+  2   3  Deck
+  2   4  Deck
+  2   5  Deck
+  3   1  Deck
+  3   2  Deck
+  3   3  Deck
+  3   4  Deck
+  3   5  Deck
+  4   1  Deck
+  4   2  Deck
+  4   3  Deck
+  4   4  Deck
+  4   5  Deck
+  5   1  Deck
+  5   2  Deck
+  5   3  Deck
+  5   4  Deck
+  5   5  Deck
+  6   1  Deck
+  6   2  Deck
+  6   3  Deck
+  6   4  Deck
+  6   5  Deck
+  7   1  Deck
+  7   2  Deck
+  7   3  Deck
+  7   4  Deck
+  7   5  Deck
+  8   1  Deck
+  8   2  Deck
+  8   3  Deck
+  8   4  Deck
+  8   5  Deck
+  9   1  Deck
+  9   2  Deck
+  9   3  Deck
+  9   4  Deck
+  9   5  Deck
+  10   1  Deck
+  10   2  Deck
+  10   3  Deck
+  10   4  Deck
+  10   5  Deck
+  11   1  Deck
+  11   2  Deck
+  11   3  Deck
+  11   4  Deck
+  11   5  Deck
+  12   1  Deck
+  12   2  Deck
+  12   3  Deck
+  12   4  Deck
+  12   5  Deck
+  13   1  Deck
+  13   2  Deck
+  13   3  Deck
+  13   4  Deck
+  13   5  Deck
+  14   1  Deck
+  14   2  Deck
+  14   3  Deck
+  14   4  Deck
+  14   5  Deck
+  15   1  Deck
+  15   2  Deck
+  15   3  Deck
+  15   4  Deck
+  15   5  Deck
+  16   1  Deck
+  16   2  Deck
+  16   3  Deck
+  16   4  Deck
+  16   5  Deck
+  17   1  Deck
+  17   2  Deck
+  17   3  Deck
+  17   4  Deck
+  17   5  Deck
+  18   1  Deck
+  18   2  Deck
+  18   3  Deck
+  18   4  Deck
+  18   5  Deck
+  19   1  Deck
+  19   2  Deck
+  19   3  Deck
+  19   4  Deck
+  19   5  Deck
+  20   1  Deck
+  20   2  Deck
+  20   3  Deck
+  20   4  Deck
+  20   5  Deck
+  21   1  Deck
+  21   2  Deck
+  21   3  Deck
+  21   4  Deck
+  21   5  Deck
+  22   1  Deck
+  22   2  Deck
+  22   3  Deck
+  22   4  Deck
+  22   5  Deck
+  23   1  Deck
+  23   2  Deck
+  23   3  Deck
+  23   4  Deck
+  23   5  Deck
+  24   1  Deck
+  24   2  Deck
+  24   3  Deck
+  24   4  Deck
+  24   5  Deck
+  25   1  Deck
+  25   2  Deck
+  25   3  Deck
+  25   4  Deck
+  25   5  Deck
+  26   1  Deck
+  26   2  Deck
+  26   3  Deck
+  26   4  Deck
+  26   5  Deck
+  27   1  Deck
+  27   2  Deck
+  27   3  Deck
+  27   4  Deck
+  27   5  Deck
+  28   1  Deck
+  28   2  Deck
+  28   3  Deck
+  28   4  Deck
+  28   5  Deck
+  29   1  Deck
+  29   2  Deck
+  29   3  Deck
+  29   4  Deck
+  29   5  Deck
+  30   1  Deck
+  30   2  Deck
+  30   3  Deck
+  30   4  Deck
+  30   5  Deck
+  31   1  Deck
+  31   2  Deck
+  31   3  Deck
+  31   4  Deck
+  31   5  Deck
+  32   1  Deck
+  32   2  Deck
+  32   3  Deck
+  32   4  Deck
+  32   5  Deck
+  33   1  Deck
+  33   2  Deck
+  33   3  Deck
+  33   4  Deck
+  33   5  Deck
+  34   1  Deck
+  34   2  Deck
+  34   3  Deck
+  34   4  Deck
+  34   5  Deck
+  35   1  Deck
+  35   2  Deck
+  35   3  Deck
+  35   4  Deck
+  35   5  Deck
+  36   1  Deck
+  36   2  Deck
+  36   3  Deck
+  36   4  Deck
+  36   5  Deck
+  37   1  Deck
+  37   2  Deck
+  37   3  Deck
+  37   4  Deck
+  37   5  Deck
+  38   1  Deck
+  38   2  Deck
+  38   3  Deck
+  38   4  Deck
+  38   5  Deck
+  39   1  Deck
+  39   2  Deck
+  39   3  Deck
+  39   4  Deck
+  39   5  Deck
+  40   1  Deck
+  40   2  Deck
+  40   3  Deck
+  40   4  Deck
+  40   5  Deck
+  41   1  Deck
+  41   2  Deck
+  41   3  Deck
+  41   4  Deck
+  41   5  Deck
+  42   1  Deck
+  42   2  Deck
+  42   3  Deck
+  42   4  Deck
+  42   5  Deck
+  43   1  Deck
+  43   2  Deck
+  43   3  Deck
+  43   4  Deck
+  43   5  Deck
+  44   1  Deck
+  44   2  Deck
+  44   3  Deck
+  44   4  Deck
+  44   5  Deck
+  45   1  Deck
+  45   2  Deck
+  45   3  Deck
+  45   4  Deck
+  45   5  Deck
+  46   1  Deck
+  46   2  Deck
+  46   3  Deck
+  46   4  Deck
+  46   5  Deck
+  47   1  Deck
+  47   2  Deck
+  47   3  Deck
+  47   4  Deck
+  47   5  Deck
+  48   1  Deck
+  48   2  Deck
+  48   3  Deck
+  48   4  Deck
+  48   5  Deck
+  49   1  Deck
+  49   2  Deck
+  49   3  Deck
+  49   4  Deck
+  49   5  Deck
+  50   1  Deck
+  50   2  Deck
+  50   3  Deck
+  50   4  Deck
+  50   5  Deck
+> fullcompletefinal <- complete(fullCompleteIm,1)
+> fullcompletefinal[1:20,]
+   Pclass    Sex Age SibSp Parch    Fare Embarked  Title Deck
+1       3   male  22     1     0  7.2500        S     Mr    F
+2       1 female  38     1     0 71.2833        C    Mrs    C
+3       3 female  26     0     0  7.9250        S   Miss    C
+4       1 female  35     1     0 53.1000        S    Mrs    C
+5       3   male  35     0     0  8.0500        S     Mr    D
+6       3   male  31     0     0  8.4583        Q     Mr    C
+7       1   male  54     0     0 51.8625        S     Mr    E
+8       3   male   2     3     1 21.0750        S Master    G
+9       3 female  27     0     2 11.1333        S    Mrs    C
+10      2 female  14     1     0 30.0708        C    Mrs    B
+11      3 female   4     1     1 16.7000        S   Miss    G
+12      1 female  58     0     0 26.5500        S   Miss    C
+13      3   male  20     0     0  8.0500        S     Mr    F
+14      3   male  39     1     5 31.2750        S     Mr    C
+15      3 female  14     0     0  7.8542        S   Miss    E
+16      2 female  55     0     0 16.0000        S    Mrs    F
+17      3   male   2     4     1 29.1250        Q Master    E
+18      2   male  42     0     0 13.0000        S     Mr    D
+19      3 female  31     1     0 18.0000        S    Mrs    C
+20      3 female  18     0     0  7.2250        C    Mrs    B
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> traindatafinal <- fullcompletefinal[1:891,]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> traindatafinal$Survived <- traindata$Survived
+> summary(traindatafinal)
+ Pclass      Sex           Age            SibSp           Parch       
+ 1:216   female:314   Min.   : 0.42   Min.   :0.000   Min.   :0.0000  
+ 2:184   male  :577   1st Qu.:20.00   1st Qu.:0.000   1st Qu.:0.0000  
+ 3:491                Median :28.00   Median :0.000   Median :0.0000  
+                      Mean   :29.29   Mean   :0.523   Mean   :0.3816  
+                      3rd Qu.:38.00   3rd Qu.:1.000   3rd Qu.:0.0000  
+                      Max.   :80.00   Max.   :8.000   Max.   :6.0000  
+                                                                      
+      Fare        Embarked        Title          Deck        Survived     
+ Min.   :  0.00   C:170    Master    : 40   F      :222   Min.   :0.0000  
+ 1st Qu.:  7.91   Q: 77    Miss      :185   C      :211   1st Qu.:0.0000  
+ Median : 14.45   S:644    Mr        :517   E      :145   Median :0.0000  
+ Mean   : 32.20            Mrs       :126   B      :127   Mean   :0.3838  
+ 3rd Qu.: 31.00            Rare Title: 23   D      :119   3rd Qu.:1.0000  
+ Max.   :512.33                             A      : 46   Max.   :1.0000  
+                                            (Other): 21                   
+> str(traindatafinal)
+'data.frame':	891 obs. of  10 variables:
+ $ Pclass  : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age     : num  22 38 26 35 35 31 54 2 27 14 ...
+ $ SibSp   : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch   : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Fare    : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked: Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+ $ Title   : Factor w/ 5 levels "Master","Miss",..: 3 4 2 4 3 3 3 1 4 4 ...
+ $ Deck    : Factor w/ 8 levels "A","B","C","D",..: 6 3 3 3 4 3 5 7 3 2 ...
+ $ Survived: int  0 1 1 1 0 0 0 0 1 1 ...
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> traindatafinal$Survived <- as.factor(traindatafinal$Survived)
+> str(traindatafinal)
+'data.frame':	891 obs. of  10 variables:
+ $ Pclass  : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age     : num  22 38 26 35 35 31 54 2 27 14 ...
+ $ SibSp   : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch   : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Fare    : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked: Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+ $ Title   : Factor w/ 5 levels "Master","Miss",..: 3 4 2 4 3 3 3 1 4 4 ...
+ $ Deck    : Factor w/ 8 levels "A","B","C","D",..: 6 3 3 3 4 3 5 7 3 2 ...
+ $ Survived: Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> testdatafinal <- fullcompletefinal[892:1309,]
+> testdatafinal$PassengerId <- testdata$PassengerId
+> #split the train data set into training and testing sub data sets
+> traindatafinaltr <- traindatafinal[1:624,]
+> traindatafinaltes <- traindatafinal[625:891,]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(652)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> rf_model <- randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch +  Fare + Embarked + Title + Deck ,data = traindatafinaltr)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> plot(rf_model, ylim=c(0,0.36))
+> legend('topright', colnames(rf_model$err.rate), col=1:3, fill=1:3)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rf_model <- randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch +  Fare + Embarked + Title + Deck , ntree=450, data = traindatafinaltr)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train.res <- tuneRF(traindatafinaltr[,-10], traindatafinaltr[,10],ntree=450, stepFactor = 1.5)
+mtry = 3  OOB error = 18.59% 
+Searching left ...
+mtry = 2 	OOB error = 18.43% 
+0.00862069 0.05 
+Searching right ...
+mtry = 4 	OOB error = 19.07% 
+-0.02586207 0.05 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> importance    <- importance(rf_model,type=2)
+> importance
+         MeanDecreaseGini
+Pclass          22.069999
+Sex             39.006831
+Age             44.838656
+SibSp           13.685631
+Parch            7.171091
+Fare            49.597816
+Embarked        10.126823
+Title           56.823127
+Deck            22.646096
+> 
+> 
+> varImportance <- data.frame(Variables = row.names(importance), 
++                             Importance = round(importance[ ,'MeanDecreaseGini'],2))
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rankImportance <- varImportance %>%
++   mutate(Rank = paste0(dense_rank(desc(Importance))))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
++                            y = Importance, fill = Importance)) +
++   geom_bar(stat='identity') + 
++   geom_text(aes(x = Variables, y = 0.2, label = Rank),
++             hjust=0, vjust=0.55, size = 7, colour = 'green') +
++   labs(x = 'Variables') +
++   coord_flip() 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> predictiont1 <- predict(rf_model, traindatafinaltes, type="prob")[,2]
+> 
+> 
+> library(pROC)
+Type 'citation("pROC")' for a citation.
+
+Attaching package: ‘pROC’
+
+The following objects are masked from ‘package:stats’:
+
+    cov, smooth, var
+
+> library(ROCR)
+Warning message:
+package ‘ROCR’ was built under R version 3.6.2 
+> library(caret)
+Loading required package: lattice
+> 
+> preds <- prediction(as.numeric(predictiont1), traindatafinaltes$Survived)
+> perf <- performance(preds,"tpr","fpr")
+> performance(preds,"auc")@y.values
+[[1]]
+[1] 0.8830105
+
+> 
+> plot(perf,col='red',lwd=3)
+> abline(a=0,b=1,lwd=2,lty=2,col="gray")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rf_model2 <- randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch +  Fare + Embarked + Title + Deck , ntree=450, mtry=2, data = traindatafinaltr)
+> predictiont2 <- predict(rf_model2, traindatafinaltes, type="prob")[,2]
+> preds2 <- prediction(as.numeric(predictiont2), traindatafinaltes$Survived)
+> perf <- performance(preds2,"tpr","fpr")
+> performance(preds2,"auc")@y.values
+[[1]]
+[1] 0.884442
+
+> 
+> plot(perf,col='red',lwd=3)
+> abline(a=0,b=1,lwd=2,lty=2,col="gray")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> predictiont2 <- predict(rf_model2, traindatafinaltes)
+> confusionMatrix(predictiont2, traindatafinaltes$Survived)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction   0   1
+         0 160  28
+         1  11  68
+                                         
+               Accuracy : 0.8539         
+                 95% CI : (0.8058, 0.894)
+    No Information Rate : 0.6404         
+    P-Value [Acc > NIR] : 5.813e-15      
+                                         
+                  Kappa : 0.67           
+                                         
+ Mcnemar's Test P-Value : 0.01041        
+                                         
+            Sensitivity : 0.9357         
+            Specificity : 0.7083         
+         Pos Pred Value : 0.8511         
+         Neg Pred Value : 0.8608         
+             Prevalence : 0.6404         
+         Detection Rate : 0.5993         
+   Detection Prevalence : 0.7041         
+      Balanced Accuracy : 0.8220         
+                                         
+       'Positive' Class : 0              
+                                         
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> prediction <- predict(rf_model2, testdatafinal)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+253.717   3.262 257.726 

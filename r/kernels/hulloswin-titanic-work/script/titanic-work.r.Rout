@@ -1,0 +1,207 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> #Set Working Directory
+> 
+> setwd("../input")
+> 
+> #Import Data
+> 
+> titanic.train <- read.csv(file = "train.csv", stringsAsFactors = FALSE, header = TRUE)
+> titanic.test <- read.csv(file = "test.csv", stringsAsFactors = FALSE, header = TRUE)
+> 
+> 
+> 
+> 
+> 
+> 
+> #Explore Various Stats About Tables
+> 
+> #median(titanic.train$Age, na.rm = TRUE)
+> #median(titanic.test$Age, na.rm = TRUE)
+> #ncol(titanic.test)
+> #ncol(titanic.train)
+> #names(titanic.test)
+> #names(titanic.train)
+> 
+> str(titanic.test)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : chr  "Kelly, Mr. James" "Wilkes, Mrs. James (Ellen Needs)" "Myles, Mr. Thomas Francis" "Wirz, Mr. Albert" ...
+ $ Sex        : chr  "male" "female" "male" "male" ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : chr  "330911" "363272" "240276" "315154" ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : chr  "" "" "" "" ...
+ $ Embarked   : chr  "Q" "S" "Q" "S" ...
+> head(titanic.test)
+  PassengerId Pclass                                         Name    Sex  Age
+1         892      3                             Kelly, Mr. James   male 34.5
+2         893      3             Wilkes, Mrs. James (Ellen Needs) female 47.0
+3         894      2                    Myles, Mr. Thomas Francis   male 62.0
+4         895      3                             Wirz, Mr. Albert   male 27.0
+5         896      3 Hirvonen, Mrs. Alexander (Helga E Lindqvist) female 22.0
+6         897      3                   Svensson, Mr. Johan Cervin   male 14.0
+  SibSp Parch  Ticket    Fare Cabin Embarked
+1     0     0  330911  7.8292              Q
+2     1     0  363272  7.0000              S
+3     0     0  240276  9.6875              Q
+4     0     0  315154  8.6625              S
+5     1     1 3101298 12.2875              S
+6     0     0    7538  9.2250              S
+> 
+> #Adding Indicator for Training Set before Unioning both datasets
+> 
+> titanic.train$IsTrainSet <- TRUE
+> titanic.test$IsTrainSet <- FALSE
+> 
+> #Adding Survived Column which is missing from test set so that I can Union
+> 
+> titanic.test$Survived <- NA
+> 
+> #UNION
+> 
+> titanic.full <- rbind(titanic.train, titanic.test)
+> 
+> #Show top of full data set
+> 
+> head(titanic.full)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked IsTrainSet
+1        A/5 21171  7.2500              S       TRUE
+2         PC 17599 71.2833   C85        C       TRUE
+3 STON/O2. 3101282  7.9250              S       TRUE
+4           113803 53.1000  C123        S       TRUE
+5           373450  8.0500              S       TRUE
+6           330877  8.4583              Q       TRUE
+> 
+> #Cleaning the Data
+> 
+> #Replacing null Embarks with "S" since that is the mode (Not Optimal)
+> 
+> titanic.full[titanic.full$Embarked=='', "Embarked"] <- 'S'
+> 
+> #Replace nulls Ages with Mean (Not Optimal)
+> age.median <- median(titanic.full$Age, na.rm = TRUE)
+> titanic.full[is.na(titanic.full$Age), "Age"] <- age.median
+> 
+> #Replace null fares with median fare (Not Optimal)
+> 
+> fare.median <- median(titanic.full$Fare, na.rm = TRUE)
+> titanic.full[is.na(titanic.full$Fare), "Fare"] <- fare.median
+>  # table(is.na(titanic.full$Fare))
+> 
+> #Casting features as factors for computations
+> 
+> titanic.full$Pclass <- as.factor(titanic.full$Pclass)
+> titanic.full$Sex <- as.factor(titanic.full$Sex)
+> titanic.full$Embarked <- as.factor(titanic.full$Embarked)
+> 
+> #Split Data back to Train and Test
+>   
+> titanic.train <- titanic.full[titanic.full$IsTrainSet==TRUE, ]
+> titanic.test <- titanic.full[titanic.full$IsTrainSet==FALSE, ]
+> tail(titanic.train)
+    PassengerId Survived Pclass                                     Name    Sex
+886         886        0      3     Rice, Mrs. William (Margaret Norton) female
+887         887        0      2                    Montvila, Rev. Juozas   male
+888         888        1      1             Graham, Miss. Margaret Edith female
+889         889        0      3 Johnston, Miss. Catherine Helen "Carrie" female
+890         890        1      1                    Behr, Mr. Karl Howell   male
+891         891        0      3                      Dooley, Mr. Patrick   male
+    Age SibSp Parch     Ticket   Fare Cabin Embarked IsTrainSet
+886  39     0     5     382652 29.125              Q       TRUE
+887  27     0     0     211536 13.000              S       TRUE
+888  19     0     0     112053 30.000   B42        S       TRUE
+889  28     1     2 W./C. 6607 23.450              S       TRUE
+890  26     0     0     111369 30.000  C148        C       TRUE
+891  32     0     0     370376  7.750              Q       TRUE
+> tail(titanic.test)
+     PassengerId Survived Pclass                           Name    Sex  Age
+1304        1304       NA      3 Henriksson, Miss. Jenny Lovisa female 28.0
+1305        1305       NA      3             Spector, Mr. Woolf   male 28.0
+1306        1306       NA      1   Oliva y Ocana, Dona. Fermina female 39.0
+1307        1307       NA      3   Saether, Mr. Simon Sivertsen   male 38.5
+1308        1308       NA      3            Ware, Mr. Frederick   male 28.0
+1309        1309       NA      3       Peter, Master. Michael J   male 28.0
+     SibSp Parch             Ticket     Fare Cabin Embarked IsTrainSet
+1304     0     0             347086   7.7750              S      FALSE
+1305     0     0          A.5. 3236   8.0500              S      FALSE
+1306     0     0           PC 17758 108.9000  C105        C      FALSE
+1307     0     0 SOTON/O.Q. 3101262   7.2500              S      FALSE
+1308     0     0             359309   8.0500              S      FALSE
+1309     1     1               2668  22.3583              C      FALSE
+> 
+> # Change Survived back to Factor
+> titanic.train$Survived <- as.factor(titanic.train$Survived)
+> 
+> #Build the Actual Model
+> 
+> survived.equation <- "Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked"
+> survived.formula <- as.formula(survived.equation)
+> 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> 
+> titanic.model <- randomForest(formula = survived.formula, data = titanic.train, ntree = 500, mtry = 3, nodesize = 0.01 * nrow(titanic.test))
+> 
+> features.equation <- "Pclass + Sex + Age + SibSp + Parch + Fare + Embarked"
+> Survived <- predict(titanic.model, newdata = titanic.test)
+> 
+> PassengerId <- titanic.test$PassengerId
+> 
+> output.df <- as.data.frame(PassengerId)
+> output.df$Survived <- Survived
+> 
+> #Look at results
+> 
+> head(output.df)
+  PassengerId Survived
+1         892        0
+2         893        0
+3         894        0
+4         895        0
+5         896        1
+6         897        0
+> 
+> #Write the File to working directory
+> 
+> #write.csv(output.df, file="kaggle-submission.csv", row.names = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  0.416   0.049   0.456 

@@ -1,0 +1,78 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> #This just implements the logistic regression with no prior data manipulation. 
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> 
+> 
+> # We use the glm package with 'binomial' for logistic. We use some of the classes with few factors.
+> logistic <- glm(Survived ~ SibSp+Parch+Sex+Pclass, data = train,family='binomial')
+> 
+> #This summary lists the variables used, and assigns them z-scores and probabilities to describe what effect they have on the decision.
+> summary(logistic)
+
+Call:
+glm(formula = Survived ~ SibSp + Parch + Sex + Pclass, family = "binomial", 
+    data = train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.2794  -0.6849  -0.4761   0.6117   2.5292  
+
+Coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  3.45961    0.31139  11.110   <2e-16 ***
+SibSp       -0.23402    0.09919  -2.359   0.0183 *  
+Parch       -0.05026    0.11041  -0.455   0.6490    
+Sexmale     -2.76236    0.19534 -14.142   <2e-16 ***
+Pclass      -0.93916    0.10653  -8.816   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  819.11  on 886  degrees of freedom
+AIC: 829.11
+
+Number of Fisher Scoring iterations: 4
+
+> 
+> #Predict Output. Predict takes in the output of glm.
+> predicted<- predict(logistic,test,type="response")
+> 
+> #This gives us probabilities. We need to make a decision based on them, so we round (over .5 survives, under .5 does not).
+> 
+> predicted<-round(predicted)
+> 
+> output<-data.frame(test$PassengerId,predicted)
+> 
+> colnames(output)<-cbind("PassengerId","Survived")
+> 
+> write.csv(output, file = 'Rushton_Solution.csv', row.names = F)
+> 
+> proc.time()
+   user  system elapsed 
+  0.148   0.031   0.175 

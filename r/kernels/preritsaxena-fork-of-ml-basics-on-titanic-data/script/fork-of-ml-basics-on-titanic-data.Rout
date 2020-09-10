@@ -1,0 +1,631 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # rm(list=ls(all=TRUE))
+> 
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(dplyr)
+> 
+> # Read data
+> 
+> train <- read.table("../input/train.csv", header = TRUE, sep=",")
+> test<- read.table("../input/test.csv", header = TRUE, sep=",")
+> 
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> summary(train)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked
+            :687    :  2   
+ B96 B98    :  4   C:168   
+ C23 C25 C27:  4   Q: 77   
+ G6         :  4   S:644   
+ C22 C26    :  3           
+ D          :  3           
+ (Other)    :186           
+> 
+> # writing to file
+> 
+> i<-1
+> write_to_file <- function(pred_vec, type)
++ {
++ submit1 <- data.frame(test2$PassengerId, pred_vec)
++ colnames(submit1)[1]<-"PassengerId"
++ submit1$Survived <- submit1$pred_vec
++ str(submit1)
++ 
++ table(submit1$Survived)
++ 
++ submit1$pred_vec <- NULL
++ 
++ str(submit1)
++ filename <- paste("submission_",type,i,".csv",sep="")
++ 
++ write.csv(submit1, filename, row.names = FALSE)
++ i<-i+1
++ }
+> 
+> # Pre-processing
+> 
+> sum(is.na(train))
+[1] 177
+> 
+> missing <- colSums(is.na(train))
+> sort(missing, decreasing=TRUE)
+        Age PassengerId    Survived      Pclass        Name         Sex 
+        177           0           0           0           0           0 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0           0           0 
+> 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> 
+> md.pattern(train)
+    PassengerId Survived Pclass Name Sex SibSp Parch Ticket Fare Cabin Embarked
+714           1        1      1    1   1     1     1      1    1     1        1
+177           1        1      1    1   1     1     1      1    1     1        1
+              0        0      0    0   0     0     0      0    0     0        0
+    Age    
+714   1   0
+177   0   1
+    177 177
+> 
+> library(VIM)
+Loading required package: colorspace
+Loading required package: grid
+VIM is ready to use.
+
+Suggestions and bug-reports can be submitted at: https://github.com/statistikat/VIM/issues
+
+Attaching package: ‘VIM’
+
+The following object is masked from ‘package:datasets’:
+
+    sleep
+
+> 
+> mice_plot <- aggr(train, col=c('navyblue','yellow'),
++                     numbers=TRUE, sortVars=TRUE,
++                     labels=names(train), cex.axis=.7,
++                     gap=3, ylab=c("Missing data","Pattern"))
+
+ Variables sorted by number of missings: 
+    Variable     Count
+         Age 0.1986532
+ PassengerId 0.0000000
+    Survived 0.0000000
+      Pclass 0.0000000
+        Name 0.0000000
+         Sex 0.0000000
+       SibSp 0.0000000
+       Parch 0.0000000
+      Ticket 0.0000000
+        Fare 0.0000000
+       Cabin 0.0000000
+    Embarked 0.0000000
+> 
+> 
+> # Less than 2% missing values
+> 
+> library(DMwR)
+Loading required package: lattice
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+
+Attaching package: ‘DMwR’
+
+The following object is masked from ‘package:VIM’:
+
+    kNN
+
+> train2<- centralImputation(train) #Central Imputation
+> 
+> # train2 <- knnImputation(train,scale=T,k=10) #KNN Imputation
+> # sum(is.na(train2))
+> 
+> sum(is.na(train2))
+[1] 0
+> 
+> # train2 <- na.omit(train)
+> # str(train2)
+> # sum(is.na(train2))
+> 
+> 
+> 
+> #Looking at data
+> 
+> str(train2)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 28 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> train3 <- train2
+> 
+> # train3$Pclass <- as.factor(train3$Pclass)
+> 
+> # str(train3)
+> 
+> train3$Survived <- as.factor(train3$Survived)
+> str(train3)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 28 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> hist(train3$Age)
+> hist(train3$SibSp)
+> hist(train3$Parch)
+> hist(train3$Fare)
+> 
+> # cor(train3$Pclass, train3$Fare)
+> 
+> train4 <- train3[,c("Pclass","Sex","Age","SibSp", "Survived", "Parch", "Fare", "Embarked")]
+> 
+> set.seed(123)
+> library(caTools)
+> spl <- sample.split(train4, 0.9)
+> train5 <- train4[spl==TRUE,]
+> valid <- train4[spl==FALSE,]
+> 
+> # Predictions on test data
+> 
+> # Removing null values
+> 
+> sum(is.na(test))
+[1] 87
+> 
+> library(DMwR)
+> test2<- centralImputation(test) #Cenral Imputation
+> 
+> test3 <- test2[,c("Pclass","Sex","Age","SibSp", "Parch", "Fare", "Embarked")]
+> 
+> # CART
+> 
+> # using data train 5
+> 
+> 
+> library(rpart)
+> model_cart <- rpart(Survived~., data=train5, method = "class", control = rpart.control(cp=0.019, minbucket = 5))
+> summary(model_cart)
+Call:
+rpart(formula = Survived ~ ., data = train5, method = "class", 
+    control = rpart.control(cp = 0.019, minbucket = 5))
+  n= 780 
+
+          CP nsplit rel error    xerror       xstd
+1 0.45819398      0 1.0000000 1.0000000 0.04541399
+2 0.03177258      1 0.5418060 0.5418060 0.03789075
+3 0.02675585      3 0.4782609 0.5016722 0.03681268
+4 0.01900000      5 0.4247492 0.4682274 0.03584557
+
+Variable importance
+     Sex     Fare   Pclass    SibSp      Age    Parch Embarked 
+      44       15       13        9        8        7        4 
+
+Node number 1: 780 observations,    complexity param=0.458194
+  predicted class=0  expected loss=0.3833333  P(node) =1
+    class counts:   481   299
+   probabilities: 0.617 0.383 
+  left son=2 (503 obs) right son=3 (277 obs)
+  Primary splits:
+      Sex      splits as  RL,           improve=113.799800, (0 missing)
+      Pclass   < 2.5      to the right, improve= 39.131780, (0 missing)
+      Fare     < 10.825   to the left,  improve= 35.013580, (0 missing)
+      Embarked splits as  RRLL,         improve= 12.900260, (0 missing)
+      Parch    < 0.5      to the left,  improve=  9.117108, (0 missing)
+  Surrogate splits:
+      Parch    < 0.5      to the left,  agree=0.679, adj=0.097, (0 split)
+      Fare     < 77.6229  to the left,  agree=0.676, adj=0.087, (0 split)
+      Age      < 15.5     to the right, agree=0.649, adj=0.011, (0 split)
+      SibSp    < 0.5      to the left,  agree=0.647, adj=0.007, (0 split)
+      Embarked splits as  RLLL,         agree=0.647, adj=0.007, (0 split)
+
+Node number 2: 503 observations,    complexity param=0.02675585
+  predicted class=0  expected loss=0.1829026  P(node) =0.6448718
+    class counts:   411    92
+   probabilities: 0.817 0.183 
+  left son=4 (470 obs) right son=5 (33 obs)
+  Primary splits:
+      Age      < 13       to the right, improve=9.284416, (0 missing)
+      Fare     < 26.26875 to the left,  improve=8.307817, (0 missing)
+      Pclass   < 1.5      to the right, improve=8.063851, (0 missing)
+      Parch    < 0.5      to the left,  improve=3.681832, (0 missing)
+      Embarked splits as  -RLL,         improve=3.377938, (0 missing)
+  Surrogate splits:
+      SibSp < 2.5      to the left,  agree=0.948, adj=0.212, (0 split)
+
+Node number 3: 277 observations,    complexity param=0.03177258
+  predicted class=1  expected loss=0.2527076  P(node) =0.3551282
+    class counts:    70   207
+   probabilities: 0.253 0.747 
+  left son=6 (125 obs) right son=7 (152 obs)
+  Primary splits:
+      Pclass   < 2.5      to the right, improve=26.967040, (0 missing)
+      SibSp    < 2.5      to the right, improve= 9.562595, (0 missing)
+      Fare     < 48.2     to the left,  improve= 8.810090, (0 missing)
+      Parch    < 3.5      to the right, improve= 5.247394, (0 missing)
+      Embarked splits as  RRLL,         improve= 3.726640, (0 missing)
+  Surrogate splits:
+      Fare     < 25.69795 to the left,  agree=0.791, adj=0.536, (0 split)
+      Age      < 28.5     to the left,  agree=0.650, adj=0.224, (0 split)
+      Embarked splits as  RRLR,         agree=0.643, adj=0.208, (0 split)
+      SibSp    < 2.5      to the right, agree=0.596, adj=0.104, (0 split)
+      Parch    < 2.5      to the right, agree=0.574, adj=0.056, (0 split)
+
+Node number 4: 470 observations
+  predicted class=0  expected loss=0.1574468  P(node) =0.6025641
+    class counts:   396    74
+   probabilities: 0.843 0.157 
+
+Node number 5: 33 observations,    complexity param=0.02675585
+  predicted class=1  expected loss=0.4545455  P(node) =0.04230769
+    class counts:    15    18
+   probabilities: 0.455 0.545 
+  left son=10 (15 obs) right son=11 (18 obs)
+  Primary splits:
+      SibSp  < 2.5      to the right, improve=12.6080800, (0 missing)
+      Pclass < 2.5      to the right, improve= 6.8181820, (0 missing)
+      Fare   < 18.76875 to the right, improve= 4.3636360, (0 missing)
+      Age    < 0.96     to the right, improve= 2.4350650, (0 missing)
+      Parch  < 1.5      to the right, improve= 0.1004785, (0 missing)
+  Surrogate splits:
+      Pclass   < 2.5      to the right, agree=0.788, adj=0.533, (0 split)
+      Fare     < 20.8     to the right, agree=0.758, adj=0.467, (0 split)
+      Embarked splits as  -RLR,         agree=0.667, adj=0.267, (0 split)
+      Age      < 1.5      to the right, agree=0.636, adj=0.200, (0 split)
+      Parch    < 1.5      to the right, agree=0.606, adj=0.133, (0 split)
+
+Node number 6: 125 observations,    complexity param=0.03177258
+  predicted class=1  expected loss=0.496  P(node) =0.1602564
+    class counts:    62    63
+   probabilities: 0.496 0.504 
+  left son=12 (25 obs) right son=13 (100 obs)
+  Primary splits:
+      Fare     < 23.35    to the right, improve=9.216000, (0 missing)
+      SibSp    < 2.5      to the right, improve=5.271229, (0 missing)
+      Embarked splits as  -RRL,         improve=4.711494, (0 missing)
+      Age      < 38.5     to the right, improve=3.548174, (0 missing)
+      Parch    < 0.5      to the right, improve=3.421711, (0 missing)
+  Surrogate splits:
+      SibSp < 2.5      to the right, agree=0.880, adj=0.40, (0 split)
+      Parch < 1.5      to the right, agree=0.880, adj=0.40, (0 split)
+      Age   < 37.5     to the right, agree=0.824, adj=0.12, (0 split)
+
+Node number 7: 152 observations
+  predicted class=1  expected loss=0.05263158  P(node) =0.1948718
+    class counts:     8   144
+   probabilities: 0.053 0.947 
+
+Node number 10: 15 observations
+  predicted class=0  expected loss=0.06666667  P(node) =0.01923077
+    class counts:    14     1
+   probabilities: 0.933 0.067 
+
+Node number 11: 18 observations
+  predicted class=1  expected loss=0.05555556  P(node) =0.02307692
+    class counts:     1    17
+   probabilities: 0.056 0.944 
+
+Node number 12: 25 observations
+  predicted class=0  expected loss=0.12  P(node) =0.03205128
+    class counts:    22     3
+   probabilities: 0.880 0.120 
+
+Node number 13: 100 observations
+  predicted class=1  expected loss=0.4  P(node) =0.1282051
+    class counts:    40    60
+   probabilities: 0.400 0.600 
+
+> 
+> library(rpart.plot)
+> prp(model_cart,varlen=10)
+> plotcp(model_cart)
+> 
+> library(caret)
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+> 
+> pred_train <- predict(model_cart, train5, type='class')
+> confusionMatrix(pred_train, train5$Survived)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction   0   1
+         0 432  78
+         1  49 221
+                                          
+               Accuracy : 0.8372          
+                 95% CI : (0.8094, 0.8624)
+    No Information Rate : 0.6167          
+    P-Value [Acc > NIR] : < 2e-16         
+                                          
+                  Kappa : 0.6492          
+                                          
+ Mcnemar's Test P-Value : 0.01297         
+                                          
+            Sensitivity : 0.8981          
+            Specificity : 0.7391          
+         Pos Pred Value : 0.8471          
+         Neg Pred Value : 0.8185          
+             Prevalence : 0.6167          
+         Detection Rate : 0.5538          
+   Detection Prevalence : 0.6538          
+      Balanced Accuracy : 0.8186          
+                                          
+       'Positive' Class : 0               
+                                          
+> 
+> pred_valid <- predict(model_cart, newdata=valid, type = 'class')
+> confusionMatrix(pred_valid, valid$Survived)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction  0  1
+         0 59 14
+         1  9 29
+                                          
+               Accuracy : 0.7928          
+                 95% CI : (0.7055, 0.8639)
+    No Information Rate : 0.6126          
+    P-Value [Acc > NIR] : 3.832e-05       
+                                          
+                  Kappa : 0.5539          
+                                          
+ Mcnemar's Test P-Value : 0.4042          
+                                          
+            Sensitivity : 0.8676          
+            Specificity : 0.6744          
+         Pos Pred Value : 0.8082          
+         Neg Pred Value : 0.7632          
+             Prevalence : 0.6126          
+         Detection Rate : 0.5315          
+   Detection Prevalence : 0.6577          
+      Balanced Accuracy : 0.7710          
+                                          
+       'Positive' Class : 0               
+                                          
+> 
+> pred_cart <- predict(model_cart, newdata=test3, type = 'class')
+> 
+> # writing to file
+> 
+> write_to_file(pred_cart, "CART_new")
+'data.frame':	418 obs. of  3 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ pred_vec   : Factor w/ 2 levels "0","1": 1 2 1 1 2 1 2 1 2 1 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 1 1 2 1 2 1 2 1 ...
+'data.frame':	418 obs. of  2 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 1 1 2 1 2 1 2 1 ...
+> 
+> # Random Forest
+> 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> model_random <- randomForest(Survived~., data = train5, importance = TRUE, ntree = 55)
+> summary(model_random)
+                Length Class  Mode     
+call               5   -none- call     
+type               1   -none- character
+predicted        780   factor numeric  
+err.rate         165   -none- numeric  
+confusion          6   -none- numeric  
+votes           1560   matrix numeric  
+oob.times        780   -none- numeric  
+classes            2   -none- character
+importance        28   -none- numeric  
+importanceSD      21   -none- numeric  
+localImportance    0   -none- NULL     
+proximity          0   -none- NULL     
+ntree              1   -none- numeric  
+mtry               1   -none- numeric  
+forest            14   -none- list     
+y                780   factor numeric  
+test               0   -none- NULL     
+inbag              0   -none- NULL     
+terms              3   terms  call     
+> plot(model_random)
+> 
+> importance(model_random)
+                 0          1 MeanDecreaseAccuracy MeanDecreaseGini
+Pclass    7.294906  7.7433039            11.285017         29.26376
+Sex      21.827608 22.4821746            26.856317         93.17673
+Age       6.582592  4.7369256             9.168128         47.45598
+SibSp     7.531244  0.6734459             7.075956         13.93214
+Parch     3.340680  2.8437020             4.565030         11.30229
+Fare      3.839955  6.2759833             9.125092         56.70577
+Embarked  4.286017  3.0858874             5.630151         10.36710
+> 
+> library(caret)
+> 
+> pred_rf <- predict(model_random, train5, type = 'class')
+> confusionMatrix(pred_rf, train5$Survived)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction   0   1
+         0 466  62
+         1  15 237
+                                          
+               Accuracy : 0.9013          
+                 95% CI : (0.8782, 0.9213)
+    No Information Rate : 0.6167          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.7848          
+                                          
+ Mcnemar's Test P-Value : 1.587e-07       
+                                          
+            Sensitivity : 0.9688          
+            Specificity : 0.7926          
+         Pos Pred Value : 0.8826          
+         Neg Pred Value : 0.9405          
+             Prevalence : 0.6167          
+         Detection Rate : 0.5974          
+   Detection Prevalence : 0.6769          
+      Balanced Accuracy : 0.8807          
+                                          
+       'Positive' Class : 0               
+                                          
+> 
+> pred_valid_rf <- predict(model_random, valid)
+> confusionMatrix(pred_valid_rf, valid$Survived)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction  0  1
+         0 62 15
+         1  6 28
+                                          
+               Accuracy : 0.8108          
+                 95% CI : (0.7255, 0.8789)
+    No Information Rate : 0.6126          
+    P-Value [Acc > NIR] : 5.669e-06       
+                                          
+                  Kappa : 0.5855          
+                                          
+ Mcnemar's Test P-Value : 0.08086         
+                                          
+            Sensitivity : 0.9118          
+            Specificity : 0.6512          
+         Pos Pred Value : 0.8052          
+         Neg Pred Value : 0.8235          
+             Prevalence : 0.6126          
+         Detection Rate : 0.5586          
+   Detection Prevalence : 0.6937          
+      Balanced Accuracy : 0.7815          
+                                          
+       'Positive' Class : 0               
+                                          
+> 
+> levels(test3$Embarked) <- levels(train5$Embarked)
+> 
+> pred_rft <- predict(model_random, test3)
+> 
+> # Writing to file
+> 
+> write_to_file(pred_rft,"RandomF")
+'data.frame':	418 obs. of  3 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ pred_vec   : Factor w/ 2 levels "0","1": 1 1 1 1 1 1 2 1 2 1 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 1 1 1 1 1 2 1 2 1 ...
+'data.frame':	418 obs. of  2 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 1 1 1 1 1 2 1 2 1 ...
+> 
+> proc.time()
+   user  system elapsed 
+  2.786   0.260   3.223 

@@ -1,0 +1,855 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----echo = TRUE, message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Load packages
+> library('ggplot2') # visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library('ggthemes') # visualization
+> library('scales') # visualization
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> library('dplyr') # data manipulation
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library('mice') # imputation
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library('randomForest') # classification algorithm
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library("rpart") # Decision tree algorith
+> library("rpart.plot") # Build plot for decision tree
+> library("RColorBrewer") # To use color palette
+> library("rattle") # Build fancy plot for decision tree. You may face issues if you try to run in your machine. You should install and library in console.
+Loading required package: tibble
+Loading required package: bitops
+Rattle: A free graphical interface for data science with R.
+Version 5.4.0 Copyright (c) 2006-2020 Togaware Pty Ltd.
+Type 'rattle()' to shake, rattle, and roll your data.
+
+Attaching package: ‘rattle’
+
+The following object is masked from ‘package:randomForest’:
+
+    importance
+
+Warning messages:
+1: package ‘rattle’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+> 
+> 
+> ## ----echo = TRUE, message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- read.csv('../input/train.csv', stringsAsFactors = F)
+> test  <- read.csv('../input/test.csv', stringsAsFactors = F)
+> 
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> str(test)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : chr  "Kelly, Mr. James" "Wilkes, Mrs. James (Ellen Needs)" "Myles, Mr. Thomas Francis" "Wirz, Mr. Albert" ...
+ $ Sex        : chr  "male" "female" "male" "male" ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : chr  "330911" "363272" "240276" "315154" ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : chr  "" "" "" "" ...
+ $ Embarked   : chr  "Q" "S" "Q" "S" ...
+> 
+> full  <- bind_rows(train, test) # bind training & test data
+> 
+> # check data
+> str(full)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> 
+> slice(full, 886:896)
+   PassengerId Survived Pclass                                         Name
+1          886        0      3         Rice, Mrs. William (Margaret Norton)
+2          887        0      2                        Montvila, Rev. Juozas
+3          888        1      1                 Graham, Miss. Margaret Edith
+4          889        0      3     Johnston, Miss. Catherine Helen "Carrie"
+5          890        1      1                        Behr, Mr. Karl Howell
+6          891        0      3                          Dooley, Mr. Patrick
+7          892       NA      3                             Kelly, Mr. James
+8          893       NA      3             Wilkes, Mrs. James (Ellen Needs)
+9          894       NA      2                    Myles, Mr. Thomas Francis
+10         895       NA      3                             Wirz, Mr. Albert
+11         896       NA      3 Hirvonen, Mrs. Alexander (Helga E Lindqvist)
+      Sex  Age SibSp Parch     Ticket    Fare Cabin Embarked
+1  female 39.0     0     5     382652 29.1250              Q
+2    male 27.0     0     0     211536 13.0000              S
+3  female 19.0     0     0     112053 30.0000   B42        S
+4  female   NA     1     2 W./C. 6607 23.4500              S
+5    male 26.0     0     0     111369 30.0000  C148        C
+6    male 32.0     0     0     370376  7.7500              Q
+7    male 34.5     0     0     330911  7.8292              Q
+8  female 47.0     1     0     363272  7.0000              S
+9    male 62.0     0     0     240276  9.6875              Q
+10   male 27.0     0     0     315154  8.6625              S
+11 female 22.0     1     1    3101298 12.2875              S
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Grab title from passenger names
+> 
+> #'(.*, ) - Ignore all till you find a "," and then space
+> # (\\..*)' - Ignore all starting from "." and everthing after it
+> 
+> full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+> 
+> # Show title counts by sex
+> table(full$Sex, full$Title)
+        
+         Capt Col Don Dona  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs
+  female    0   0   0    1   1        0    1     0      0  260    2   1   0 197
+  male      1   4   1    0   7        1    0     2     61    0    0   0 757   0
+        
+          Ms Rev Sir the Countess
+  female   2   0   0            1
+  male     0   8   1            0
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Show title counts by survived
+> table(full$Survived, full$Title)
+   
+    Capt Col Don Dona  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs  Ms
+  0    1   1   1    0   4        1    0     1     17   55    0   0 436  26   0
+  1    0   1   0    0   3        0    1     1     23  127    2   1  81  99   1
+   
+    Rev Sir the Countess
+  0   6   0            0
+  1   0   1            1
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Titles with very low cell counts to be combined to "rare" level
+> rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Don', 
++                 'Dr', 'Major',  'Sir', 'Jonkheer')
+> 
+> # Also reassign mlle, ms, and mme accordingly
+> full$Title[full$Title == 'Mlle']        <- 'Miss' 
+> full$Title[full$Title == 'Ms']          <- 'Miss'
+> full$Title[full$Title == 'Mme']         <- 'Mrs' 
+> full$Title[full$Title %in% rare_title]  <- 'Rare Title'
+> 
+> # Show title counts by sex again
+> table(full$Sex, full$Title)
+        
+         Col Master Miss  Mr Mrs Rare Title Rev
+  female   0      0  264   0 198          4   0
+  male     4     61    0 757   0         13   8
+> 
+> # Show title counts by survived again
+> table(full$Survived, full$Title)
+   
+    Col Master Miss  Mr Mrs Rare Title Rev
+  0   1     17   55 436  26          8   6
+  1   1     23  130  81 100          7   0
+> 
+> # Finally, grab surname from passenger name
+> # sapply - run the function(x) on each element of the input vector full$Name
+> # split = '[,.]' - splits each name by ',' or '.'
+> # [[1]]  - the whole name divided into multiple parts
+> # [[1]][1] - pick the first part of the dvided name
+> full$Surname <- sapply(full$Name, function(x) strsplit(x, split = '[,.]')[[1]][1])
+> 
+> 
+> ## ----results='asis'--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> cat(paste('We have <b>', nlevels(factor(full$Surname)), '</b> unique surnames. I would be interested to infer ethnicity based on surname --- another time.'))
+We have <b> 875 </b> unique surnames. I would be interested to infer ethnicity based on surname --- another time.> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Create a family size variable including the passenger themselves
+> full$Fsize <- full$SibSp + full$Parch + 1
+> 
+> # Create a family variable 
+> full$Family <- paste(full$Surname, full$Fsize, sep='_')
+> 
+> head(full)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked Title   Surname Fsize      Family
+1        A/5 21171  7.2500              S    Mr    Braund     2    Braund_2
+2         PC 17599 71.2833   C85        C   Mrs   Cumings     2   Cumings_2
+3 STON/O2. 3101282  7.9250              S  Miss Heikkinen     1 Heikkinen_1
+4           113803 53.1000  C123        S   Mrs  Futrelle     2  Futrelle_2
+5           373450  8.0500              S    Mr     Allen     1     Allen_1
+6           330877  8.4583              Q    Mr     Moran     1     Moran_1
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Use ggplot2 to visualize the relationship between family size & survival
+> ggplot(full[1:891,], aes(x = Fsize, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge') +
++   scale_x_continuous(breaks=c(1:11)) +
++   labs(x = 'Family Size') +
++   theme_few()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Discretize family size
+> full$FsizeD[full$Fsize == 1] <- 'singleton'
+> full$FsizeD[full$Fsize < 5 & full$Fsize > 1] <- 'small'
+> full$FsizeD[full$Fsize > 4] <- 'large'
+> 
+> # Show family size by survival using a mosaic plot
+> mosaicplot(table(full$FsizeD, full$Survived), main='Family Size by Survival', shade=TRUE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> sum(is.na(full$Cabin)) 
+[1] 0
+> # This variable appears to have a lot of missing values
+> 
+> full$Cabin[1:28]
+ [1] ""            "C85"         ""            "C123"        ""           
+ [6] ""            "E46"         ""            ""            ""           
+[11] "G6"          "C103"        ""            ""            ""           
+[16] ""            ""            ""            ""            ""           
+[21] ""            "D56"         ""            "A6"          ""           
+[26] ""            ""            "C23 C25 C27"
+> 
+> # The first character is the deck. For example:
+> strsplit(full$Cabin[2], NULL)[[1]]
+[1] "C" "8" "5"
+> 
+> # Create a Deck variable. Get passenger deck A - F:
+> full$Deck<-factor(sapply(full$Cabin, function(x) strsplit(x, NULL)[[1]][1]))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Use summary to find missing values/NAs and outlier
+> summary(full)
+  PassengerId      Survived          Pclass          Name          
+ Min.   :   1   Min.   :0.0000   Min.   :1.000   Length:1309       
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median : 655   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295                     
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :1309   Max.   :1.0000   Max.   :3.000                     
+                NA's   :418                                        
+     Sex                 Age            SibSp            Parch      
+ Length:1309        Min.   : 0.17   Min.   :0.0000   Min.   :0.000  
+ Class :character   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000  
+ Mode  :character   Median :28.00   Median :0.0000   Median :0.000  
+                    Mean   :29.88   Mean   :0.4989   Mean   :0.385  
+                    3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000  
+                    Max.   :80.00   Max.   :8.0000   Max.   :9.000  
+                    NA's   :263                                     
+    Ticket               Fare            Cabin             Embarked        
+ Length:1309        Min.   :  0.000   Length:1309        Length:1309       
+ Class :character   1st Qu.:  7.896   Class :character   Class :character  
+ Mode  :character   Median : 14.454   Mode  :character   Mode  :character  
+                    Mean   : 33.295                                        
+                    3rd Qu.: 31.275                                        
+                    Max.   :512.329                                        
+                    NA's   :1                                              
+    Title             Surname              Fsize           Family         
+ Length:1309        Length:1309        Min.   : 1.000   Length:1309       
+ Class :character   Class :character   1st Qu.: 1.000   Class :character  
+ Mode  :character   Mode  :character   Median : 1.000   Mode  :character  
+                                       Mean   : 1.884                     
+                                       3rd Qu.: 2.000                     
+                                       Max.   :11.000                     
+                                                                          
+    FsizeD               Deck     
+ Length:1309        C      :  94  
+ Class :character   B      :  65  
+ Mode  :character   D      :  46  
+                    E      :  41  
+                    A      :  22  
+                    (Other):  27  
+                    NA's   :1014  
+> sample_n(full, 10)
+   PassengerId Survived Pclass                                  Name    Sex Age
+1          122        0      3            Moore, Mr. Leonard Charles   male  NA
+2          898       NA      3                  Connolly, Miss. Kate female  30
+3          140        0      1                    Giglio, Mr. Victor   male  24
+4          407        0      3      Widegren, Mr. Carl/Charles Peter   male  51
+5          254        0      3              Lobb, Mr. William Arthur   male  30
+6          875        1      2 Abelson, Mrs. Samuel (Hannah Wizosky) female  28
+7         1008       NA      3                      Thomas, Mr. John   male  NA
+8          454        1      1              Goldenberg, Mr. Samuel L   male  49
+9         1048       NA      1                     Bird, Miss. Ellen female  29
+10         362        0      2             del Carlo, Mr. Sebastiano   male  29
+   SibSp Parch        Ticket     Fare Cabin Embarked Title    Surname Fsize
+1      0     0     A4. 54510   8.0500              S    Mr      Moore     1
+2      0     0        330972   7.6292              Q  Miss   Connolly     1
+3      0     0      PC 17593  79.2000   B86        C    Mr     Giglio     1
+4      0     0        347064   7.7500              S    Mr   Widegren     1
+5      1     0     A/5. 3336  16.1000              S    Mr       Lobb     2
+6      1     0     P/PP 3381  24.0000              C   Mrs    Abelson     2
+7      0     0          2681   6.4375              C    Mr     Thomas     1
+8      1     0         17453  89.1042   C92        C    Mr Goldenberg     2
+9      0     0      PC 17483 221.7792   C97        S  Miss       Bird     1
+10     1     0 SC/PARIS 2167  27.7208              C    Mr  del Carlo     2
+         Family    FsizeD Deck
+1       Moore_1 singleton <NA>
+2    Connolly_1 singleton <NA>
+3      Giglio_1 singleton    B
+4    Widegren_1 singleton <NA>
+5        Lobb_2     small <NA>
+6     Abelson_2     small <NA>
+7      Thomas_1 singleton <NA>
+8  Goldenberg_2     small    C
+9        Bird_1 singleton    C
+10  del Carlo_2     small <NA>
+> sample_n(full, 10)
+   PassengerId Survived Pclass                                  Name    Sex Age
+1          751        1      2                     Wells, Miss. Joan female   4
+2          564        0      3                     Simmons, Mr. John   male  NA
+3          299        1      1                 Saalfeld, Mr. Adolphe   male  NA
+4          314        0      3                Hendekovic, Mr. Ignjac   male  28
+5         1069       NA      1       Stengel, Mr. Charles Emil Henry   male  54
+6         1151       NA      3              Midtsjo, Mr. Karl Albert   male  21
+7          533        0      3                  Elias, Mr. Joseph Jr   male  17
+8         1130       NA      2                 Hiltunen, Miss. Marta female  18
+9          100        0      2                     Kantor, Mr. Sinai   male  34
+10         438        1      2 Richards, Mrs. Sidney (Emily Hocking) female  24
+   SibSp Parch          Ticket    Fare Cabin Embarked Title    Surname Fsize
+1      1     1           29103 23.0000              S  Miss      Wells     3
+2      0     0 SOTON/OQ 392082  8.0500              S    Mr    Simmons     1
+3      0     0           19988 30.5000  C106        S    Mr   Saalfeld     1
+4      0     0          349243  7.8958              S    Mr Hendekovic     1
+5      1     0           11778 55.4417  C116        C    Mr    Stengel     2
+6      0     0          345501  7.7750              S    Mr    Midtsjo     1
+7      1     1            2690  7.2292              C    Mr      Elias     3
+8      1     1          250650 13.0000              S  Miss   Hiltunen     3
+9      1     0          244367 26.0000              S    Mr     Kantor     2
+10     2     3           29106 18.7500              S   Mrs   Richards     6
+         Family    FsizeD Deck
+1       Wells_3     small <NA>
+2     Simmons_1 singleton <NA>
+3    Saalfeld_1 singleton    C
+4  Hendekovic_1 singleton <NA>
+5     Stengel_2     small    C
+6     Midtsjo_1 singleton <NA>
+7       Elias_3     small <NA>
+8    Hiltunen_3     small <NA>
+9      Kantor_2     small <NA>
+10   Richards_6     large <NA>
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Analyse for "" or " "
+> subset(full, full$Cabin == "" | full$Cabin == " ") %>% count()
+     n
+1 1014
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> subset(full, full$Embarked == "" | full$Embarked == " ") %>% count()
+  n
+1 2
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> subset(full, full$Deck == "" | full$Deck == " ") %>% count()
+  n
+1 0
+> subset(full, is.na(full$Deck)) %>% count()
+     n
+1 1014
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Find the exact row, where Embarked has missing value
+> subset(full, full$Embarked == "" | full$Embarked == " ")
+    PassengerId Survived Pclass                                      Name
+62           62        1      1                       Icard, Miss. Amelie
+830         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Cabin Embarked Title Surname Fsize
+62  female  38     0     0 113572   80   B28           Miss   Icard     1
+830 female  62     0     0 113572   80   B28            Mrs   Stone     1
+     Family    FsizeD Deck
+62  Icard_1 singleton    B
+830 Stone_1 singleton    B
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Passengers 62 and 830 are missing Embarkment
+> full[c(62, 830), 'Embarked']
+[1] "" ""
+> 
+> 
+> ## ----results='asis'--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> cat(paste('We will infer their values for **embarkment** based on present data that we can imagine may be relevant: **passenger class** and **fare**. We see that they paid<b> $', full[c(62, 830), 'Fare'][[1]][1], '</b>and<b> $', full[c(62, 830), 'Fare'][[1]][2], '</b>respectively and their classes are<b>', full[c(62, 830), 'Pclass'][[1]][1], '</b>and<b>', full[c(62, 830), 'Pclass'][[1]][2], '</b>. So from where did they embark?'))
+We will infer their values for **embarkment** based on present data that we can imagine may be relevant: **passenger class** and **fare**. We see that they paid<b> $ 80 </b>and<b> $ NA </b>respectively and their classes are<b> 1 </b>and<b> NA </b>. So from where did they embark?> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Are there people with same surname. They may be from same place
+> subset(full, full$Surname == "Stone" | full$Surname == "Icard")
+    PassengerId Survived Pclass                                      Name
+62           62        1      1                       Icard, Miss. Amelie
+830         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Cabin Embarked Title Surname Fsize
+62  female  38     0     0 113572   80   B28           Miss   Icard     1
+830 female  62     0     0 113572   80   B28            Mrs   Stone     1
+     Family    FsizeD Deck
+62  Icard_1 singleton    B
+830 Stone_1 singleton    B
+> 
+> # Was there a fixed fare from each emabrak city
+> subset(full, full$Fare == 80)
+    PassengerId Survived Pclass                                      Name
+62           62        1      1                       Icard, Miss. Amelie
+830         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn)
+       Sex Age SibSp Parch Ticket Fare Cabin Embarked Title Surname Fsize
+62  female  38     0     0 113572   80   B28           Miss   Icard     1
+830 female  62     0     0 113572   80   B28            Mrs   Stone     1
+     Family    FsizeD Deck
+62  Icard_1 singleton    B
+830 Stone_1 singleton    B
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Get rid of our missing passenger IDs
+> embark_fare <- full %>%
++   filter(PassengerId != 62 & PassengerId != 830)
+> 
+> 
+> 
+> # Use ggplot2 to visualize embarkment, passenger class, & median fare
+> ggplot(embark_fare, aes(x = Embarked, y = Fare, fill = factor(Pclass))) +
++   geom_boxplot() +
++   geom_hline(aes(yintercept=80), 
++     colour='red', linetype='dashed', lwd=2) +
++   scale_y_continuous(labels=dollar_format()) +
++   theme_few()
+Warning message:
+Removed 1 rows containing non-finite values (stat_boxplot). 
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Since their fare was $80 for 1st class, they most likely embarked from 'C'
+> full$Embarked[c(62, 830)] <- 'C'
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Show row 1044
+> full[1044, ]
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked Title Surname Fsize   Family    FsizeD Deck
+1044   3701   NA              S    Mr  Storey     1 Storey_1 singleton <NA>
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(full[full$Pclass == '3' & full$Embarked == 'S', ], 
++   aes(x = Fare)) +
++   geom_density(fill = '#99d6ff', alpha=0.4) + 
++   geom_vline(aes(xintercept=median(Fare, na.rm=T)),
++     colour='red', linetype='dashed', lwd=1) +
++   scale_x_continuous(labels=dollar_format()) +
++   theme_few()
+Warning message:
+Removed 1 rows containing non-finite values (stat_density). 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Replace missing fare value with median fare for class/embarkment
+> full$Fare[1044] <- median(full[full$Pclass == '3' & full$Embarked == 'S', ]$Fare, na.rm = TRUE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Show number of missing Age values
+> sum(is.na(full$Age))
+[1] 263
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Make variables factors into factors
+> factor_vars <- c('PassengerId','Pclass','Sex','Embarked',
++                  'Title','Surname','Family','FsizeD')
+> 
+> full[factor_vars] <- lapply(full[factor_vars], function(x) as.factor(x))
+> 
+> # Set a random seed
+> set.seed(129)
+> 
+> # Perform mice imputation, excluding certain less-than-useful variables:
+> # mice imputes all NA with values using method. Method used below is rf = random forest
+> mice_mod <- mice(full[, !names(full) %in% c('PassengerId','Name','Ticket','Cabin','Family','Surname','Survived')], method='rf') 
+
+ iter imp variable
+  1   1  Age  Deck
+  1   2  Age  Deck
+  1   3  Age  Deck
+  1   4  Age  Deck
+  1   5  Age  Deck
+  2   1  Age  Deck
+  2   2  Age  Deck
+  2   3  Age  Deck
+  2   4  Age  Deck
+  2   5  Age  Deck
+  3   1  Age  Deck
+  3   2  Age  Deck
+  3   3  Age  Deck
+  3   4  Age  Deck
+  3   5  Age  Deck
+  4   1  Age  Deck
+  4   2  Age  Deck
+  4   3  Age  Deck
+  4   4  Age  Deck
+  4   5  Age  Deck
+  5   1  Age  Deck
+  5   2  Age  Deck
+  5   3  Age  Deck
+  5   4  Age  Deck
+  5   5  Age  Deck
+Warning message:
+Number of logged events: 50 
+> 
+> # Save the complete output 
+> mice_output <- complete(mice_mod)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Plot age distributions
+> par(mfrow=c(1,2))
+> hist(full$Age, freq=F, main='Age: Original Data', 
++   col='darkgreen', ylim=c(0,0.04))
+> hist(mice_output$Age, freq=F, main='Age: MICE Output', 
++   col='lightgreen', ylim=c(0,0.04))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Replace Age variable from the mice model.
+> full$Age <- mice_output$Age
+> 
+> # Show new number of missing Age values
+> sum(is.na(full$Age))
+[1] 0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> #predicted_age <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + family_size,
+> #                       data=full[!is.na(full$Age),], method="anova")
+> #full$Age[is.na(full$Age)] <- predict(predicted_age, combi[is.na(full$Age),])
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # First we'll look at the relationship between age & survival
+> ggplot(full[1:891,], aes(Age, fill = factor(Survived))) + 
++   geom_histogram(position = "fill") + 
++   # I include Sex since we know (a priori) it's a significant predictor
++   facet_grid(.~Sex) + 
++   theme_few()
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+Warning message:
+Removed 16 rows containing missing values (geom_bar). 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$Child[full$Age < 6] <- 'Baby'
+> full$Child[full$Age >= 6 & full$Age < 14] <- 'Kid'
+> full$Child[full$Age >= 14 & full$Age < 18] <- 'Young'
+> full$Child[full$Age >= 18 & full$Age < 60] <- 'Adult'
+> full$Child[full$Age >= 60] <- 'Old'
+> 
+> # Show counts
+> table(full[1:891,]$Child, full[1:891,]$Survived)
+       
+          0   1
+  Adult 459 265
+  Baby   18  34
+  Kid    19  12
+  Old    20   8
+  Young  33  23
+> 
+> # Show counts in proportion
+> prop.table(table(full[1:891,]$Child, full[1:891,]$Survived), 1)
+       
+                0         1
+  Adult 0.6339779 0.3660221
+  Baby  0.3461538 0.6538462
+  Kid   0.6129032 0.3870968
+  Old   0.7142857 0.2857143
+  Young 0.5892857 0.4107143
+> 
+> # First we'll look at the relationship between age category and survival
+> ggplot(full[1:891,], aes(factor(Child), fill = factor(Survived))) + 
++   geom_histogram(stat = "count", position = "fill") + 
++   # I include Sex since we know (a priori) it's a significant predictor
++   facet_grid(.~Sex) + 
++   theme_few()
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Adding Mother variable
+> full$Mother <- 'Not Mother'
+> full$Mother[full$Sex == 'female' & full$Parch > 0 & full$Age > 18 & full$Title != 'Miss'] <- 'Mother'
+> 
+> # Show counts
+> table(full$Mother, full$Survived)
+            
+               0   1
+  Mother      16  38
+  Not Mother 533 304
+> 
+> # Finish by factorizing our two new factor variables
+> full$Child  <- factor(full$Child)
+> full$Mother <- factor(full$Mother)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> md.pattern(full)
+    PassengerId Pclass Name Sex Age SibSp Parch Ticket Fare Cabin Embarked
+204           1      1    1   1   1     1     1      1    1     1        1
+687           1      1    1   1   1     1     1      1    1     1        1
+91            1      1    1   1   1     1     1      1    1     1        1
+327           1      1    1   1   1     1     1      1    1     1        1
+              0      0    0   0   0     0     0      0    0     0        0
+    Title Surname Fsize Family FsizeD Child Mother Survived Deck     
+204     1       1     1      1      1     1      1        1    1    0
+687     1       1     1      1      1     1      1        1    0    1
+91      1       1     1      1      1     1      1        0    1    1
+327     1       1     1      1      1     1      1        0    0    2
+        0       0     0      0      0     0      0      418 1014 1432
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Split the data back into a train set and a test set
+> train <- full[1:891,]
+> test <- full[892:1309,]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Set a random seed
+> set.seed(754)
+> 
+> # Build the model (note: not all possible variables are used)
+> rf_model <- randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + 
++                                             Fare + Embarked + Title + 
++                                             FsizeD + Child + Mother,
++                                             data = train, ntree=100, importance=TRUE)
+> 
+> # Show model error
+> plot(rf_model, ylim=c(0,0.36))
+> legend('topright', colnames(rf_model$err.rate), col=1:3, fill=1:3)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> varImpPlot(rf_model)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Show counts
+> table(full[1:891,]$Title, full[1:891,]$Survived)
+            
+               0   1
+  Col          1   1
+  Master      17  23
+  Miss        55 130
+  Mr         436  81
+  Mrs         26 100
+  Rare Title   8   7
+  Rev          6   0
+> 
+> # Show counts in proportion
+> prop.table(table(full[1:891,]$Title, full[1:891,]$Survived), 1)
+            
+                     0         1
+  Col        0.5000000 0.5000000
+  Master     0.4250000 0.5750000
+  Miss       0.2972973 0.7027027
+  Mr         0.8433269 0.1566731
+  Mrs        0.2063492 0.7936508
+  Rare Title 0.5333333 0.4666667
+  Rev        1.0000000 0.0000000
+> 
+> ggplot(full[1:891,], aes(factor(Title), fill = factor(Survived))) + 
++   geom_histogram(stat = "count", position = "fill") + 
++   theme_few()
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> 
+> posn.jd <- position_jitterdodge(jitter.width = 0.4, dodge.width = 0.5)
+> 
+> ggplot(full[1:891,], aes(y = Fare, x = Sex, col = factor(Survived))) + 
++   geom_point(size = 3, alpha = 0.4, position = posn.jd) + 
++   theme_few()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(full[1:891,], aes(Age, fill = factor(Survived))) + 
++   geom_histogram(position = "fill") + 
++   # I include Sex since we know (a priori) it's a significant predictor
++   facet_grid(.~Sex) + 
++   theme_few()
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+Warning message:
+Removed 16 rows containing missing values (geom_bar). 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Show counts
+> table(full[1:891,]$Pclass, full[1:891,]$Survived)
+   
+      0   1
+  1  80 136
+  2  97  87
+  3 372 119
+> 
+> # Show counts in proportion
+> prop.table(table(full[1:891,]$Pclass, full[1:891,]$Survived), 1)
+   
+            0         1
+  1 0.3703704 0.6296296
+  2 0.5271739 0.4728261
+  3 0.7576375 0.2423625
+> 
+> ggplot(full[1:891,], aes(factor(Pclass), fill = factor(Survived))) + 
++   geom_histogram(stat = "count", position = "fill") + 
++   theme_few()
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Predict using the test set
+> prediction <- predict(rf_model, test)
+> 
+> # Save the solution to a dataframe with two columns: PassengerId and Survived (prediction)
+> solution <- data.frame(PassengerID = test$PassengerId, Survived = prediction)
+> 
+> # Write the solution to file
+> write.csv(solution, file = 'rf_mod_Solution.csv', row.names = F)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Set a random seed
+> set.seed(754)
+> 
+> tree_model <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + 
++                                             Fare + Embarked + Title + 
++                                             FsizeD + Child + Mother , data = train, method = "class", control=rpart.control(cp=0.0001))
+> 
+> # Plot the tree
+> plot(tree_model)
+> text(tree_model)
+> 
+> prp(tree_model, type = 4, extra = 100)
+> 
+> # Time to plot fancy tree
+> fancyRpartPlot(tree_model)
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Make predictions on the test set
+> my_prediction <- predict(tree_model, newdata = test, type = "class")
+> 
+> # Finish the data.frame() call
+> my_solution <- data.frame(PassengerId = test$PassengerId, Survived = my_prediction)
+> 
+> # Finish the write.csv() call
+> write.csv(my_solution, file = "tree_mod_Solution.csv", row.names = FALSE)
+> 
+> 
+> ## ----eval = FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ## library(knitr)
+> ## purl("Titanic_ForkedFromMeganScript.Rmd")
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 26.915   0.461  27.551 

@@ -1,0 +1,118 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> 
+> # Massaging the code
+> 
+> 
+> #Putting in the variables that cause the least problems
+> train<-train[, c("Survived","Fare","SibSp", "Parch", "Sex")]
+> 
+> test<-test[, c("Fare","SibSp","PassengerId", "Parch", "Sex")]
+> 
+> test$Fare<-as.numeric(test$Fare)
+> 
+> train$Fare<-as.numeric(train$Fare)
+> 
+> summary(train)
+    Survived           Fare            SibSp           Parch       
+ Min.   :0.0000   Min.   :  0.00   Min.   :0.000   Min.   :0.0000  
+ 1st Qu.:0.0000   1st Qu.:  7.91   1st Qu.:0.000   1st Qu.:0.0000  
+ Median :0.0000   Median : 14.45   Median :0.000   Median :0.0000  
+ Mean   :0.3838   Mean   : 32.20   Mean   :0.523   Mean   :0.3816  
+ 3rd Qu.:1.0000   3rd Qu.: 31.00   3rd Qu.:1.000   3rd Qu.:0.0000  
+ Max.   :1.0000   Max.   :512.33   Max.   :8.000   Max.   :6.0000  
+     Sex     
+ female:314  
+ male  :577  
+             
+             
+             
+             
+> summary(test)
+      Fare             SibSp         PassengerId         Parch       
+ Min.   :  0.000   Min.   :0.0000   Min.   : 892.0   Min.   :0.0000  
+ 1st Qu.:  7.896   1st Qu.:0.0000   1st Qu.: 996.2   1st Qu.:0.0000  
+ Median : 14.454   Median :0.0000   Median :1100.5   Median :0.0000  
+ Mean   : 35.627   Mean   :0.4474   Mean   :1100.5   Mean   :0.3923  
+ 3rd Qu.: 31.500   3rd Qu.:1.0000   3rd Qu.:1204.8   3rd Qu.:0.0000  
+ Max.   :512.329   Max.   :8.0000   Max.   :1309.0   Max.   :9.0000  
+ NA's   :1                                                           
+     Sex     
+ female:152  
+ male  :266  
+             
+             
+             
+             
+             
+> 
+> #Need the Survived column to be a factor
+> 
+> train$Survived<-as.factor(train$Survived)
+> 
+> test[is.na(test)]<-0
+> train[is.na(train)]<-0
+> 
+> #Create the random forest
+> 
+> train.rf<-randomForest(Survived ~ Fare+SibSp+Parch+Sex, data=train, type = "response")
+> 
+> #Run the prediction
+> 
+> train.prediction<-predict(train.rf, test)
+> 
+> train.prediction<-as.numeric(levels(train.prediction))[train.prediction]
+> 
+> train.prediction[is.na(train.prediction)]<-0
+> 
+> #Bugshooting stuff
+> 
+> typeof(train.prediction)
+[1] "double"
+> 
+> summary(train.prediction)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.0000  0.0000  0.0000  0.3612  1.0000  1.0000 
+> 
+> str(train.prediction)
+ num [1:418] 0 1 0 0 1 0 1 0 1 0 ...
+> 
+> #Putting the output in the correct form
+> 
+> output<-data.frame(test$PassengerId,train.prediction)
+> 
+> colnames(output)<-cbind("PassengerId","Survived")
+> 
+> write.csv(output, file = 'Rushton_Solution.csv', row.names = F)
+> 
+> proc.time()
+   user  system elapsed 
+  0.405   0.056   0.454 

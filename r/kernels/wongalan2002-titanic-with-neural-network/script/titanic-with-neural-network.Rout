@@ -1,0 +1,164 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> library(readr)
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> 
+> train_temp <- train
+> train$Survived <- NULL
+> 
+> all_data <-rbind(train, test)
+> 
+> # Passenger on row 62 and 830 do not have a value for embarkment. 
+> # Since many passengers embarked at Southampton, we give them the value S.
+> all_data$Embarked[c(62, 830)] <- "S"
+> 
+> # Factorize embarkment codes.
+> all_data$Embarked <- factor(all_data$Embarked)
+> 
+> # Passenger on row 1044 has an NA Fare value. Let's replace it with the median fare value.
+> all_data$Fare[1044] <- median(all_data$Fare, na.rm = TRUE)
+> 
+> # Filter out the title
+> all_data$Title <- sapply(all_data$Name, FUN=function(x) {strsplit(toString(x), split='[,.]')[[1]][2]})
+> all_data$Title <- as.factor(all_data$Title)
+> #all_data$FamilySize <- all_data$SibSp + all_data$Parch + 1
+> 
+> # How to fill in missing Age values?
+> # We make a prediction of a passengers Age using the other variables and a decision tree model. 
+> # This time you give method = "anova" since you are predicting a continuous variable.
+> library(rpart)
+> predicted_age <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title,
++                        data = all_data[!is.na(all_data$Age),], method = "anova")
+> all_data$Age[is.na(all_data$Age)] <- predict(predicted_age, all_data[is.na(all_data$Age),])
+> 
+> # Split the data back into a train set and a test set
+> train <- all_data[1:891,]
+> test <- all_data[892:1309,]
+> 
+> train$Survived <- train_temp$Survived
+> #trainlabel <- train_temp$Survived
+> 
+> library(nnet)
+> model_final <- nnet(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked +Title , data = train,size=35, maxit=10000)
+# weights:  946
+initial  value 819.611370 
+iter  10 value 512.524377
+iter  20 value 432.698453
+iter  30 value 392.038366
+iter  40 value 355.467848
+iter  50 value 337.437533
+iter  60 value 317.827798
+iter  70 value 297.694882
+iter  80 value 282.111037
+iter  90 value 257.566633
+iter 100 value 251.700534
+iter 110 value 249.638282
+iter 120 value 245.781904
+iter 130 value 239.285368
+iter 140 value 223.745248
+iter 150 value 211.378611
+iter 160 value 197.689881
+iter 170 value 188.803454
+iter 180 value 181.037982
+iter 190 value 175.006200
+iter 200 value 171.934003
+iter 210 value 167.728268
+iter 220 value 165.550834
+iter 230 value 164.673982
+iter 240 value 163.790216
+iter 250 value 163.291694
+iter 260 value 162.763739
+iter 270 value 162.277858
+iter 280 value 162.205524
+iter 290 value 161.699008
+iter 300 value 160.740376
+iter 310 value 160.365559
+iter 320 value 160.207689
+iter 330 value 160.087329
+iter 340 value 159.997155
+iter 350 value 159.993460
+iter 360 value 159.983331
+iter 370 value 159.908558
+iter 380 value 159.831098
+iter 390 value 159.695679
+iter 400 value 159.599433
+iter 410 value 159.426385
+iter 420 value 159.341800
+iter 430 value 159.323940
+iter 440 value 159.312517
+iter 450 value 159.297400
+iter 460 value 159.272693
+iter 470 value 159.252397
+iter 480 value 159.179502
+iter 490 value 159.138817
+iter 500 value 159.055240
+iter 510 value 158.650446
+iter 520 value 157.747425
+iter 530 value 156.712304
+iter 540 value 155.510400
+iter 550 value 155.131191
+iter 560 value 154.880362
+iter 570 value 154.605173
+iter 580 value 154.492515
+iter 590 value 154.467044
+iter 600 value 154.346634
+iter 610 value 154.108174
+iter 620 value 153.881579
+iter 630 value 153.641527
+iter 640 value 153.364276
+iter 650 value 153.302215
+iter 660 value 153.251171
+iter 670 value 153.159200
+iter 680 value 153.024236
+iter 690 value 152.985979
+iter 700 value 152.958320
+iter 710 value 152.946632
+iter 720 value 152.928647
+iter 730 value 152.910090
+iter 740 value 152.896268
+iter 750 value 152.879770
+iter 760 value 152.852593
+final  value 152.840932 
+converged
+> #Calculating Final Accuracies
+> my_prediction <- predict(model_final,test,type = "class")
+> 
+> # Create a data frame with two columns: PassengerId & Survived. Survived contains your predictions
+> my_solution <- data.frame(PassengerId = test$PassengerId, Survived = my_prediction)
+> 
+> 
+> # Write your solution away to a csv file with the name my_solution.csv
+> write.csv(my_solution, file = "my_solution.csv", row.names = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  5.957   0.088   6.063 

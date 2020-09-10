@@ -1,0 +1,364 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ---- warning = F----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> require(tidyverse)
+Loading required package: tidyverse
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> require(reshape2)
+Loading required package: reshape2
+
+Attaching package: ‘reshape2’
+
+The following object is masked from ‘package:tidyr’:
+
+    smiths
+
+Warning message:
+package ‘reshape2’ was built under R version 3.6.2 
+> require(caret)
+Loading required package: caret
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+> require(kknn)
+Loading required package: kknn
+
+Attaching package: ‘kknn’
+
+The following object is masked from ‘package:caret’:
+
+    contr.dummy
+
+> require(randomForest)
+Loading required package: randomForest
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- read.csv("../input/train.csv", stringsAsFactors = F)
+> test <- read.csv("../input/test.csv", stringsAsFactors = F)
+> test$Survived <- NA
+> 
+> train$dataSet <- "train"
+> test$dataSet <- "test"
+> 
+> dt <- bind_rows(train, test)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dt <- dt %>% 
++   separate(Name, "[,.]", into = c("Surename", "Title", "Name"), extra = "drop") %>% 
++   mutate(Title = str_trim(Title, side = "left"))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(dt$Title) %>% melt %>% arrange(desc(value))
+           Var1 value
+1            Mr   757
+2          Miss   260
+3           Mrs   197
+4        Master    61
+5            Dr     8
+6           Rev     8
+7           Col     4
+8         Major     2
+9          Mlle     2
+10           Ms     2
+11         Capt     1
+12          Don     1
+13         Dona     1
+14     Jonkheer     1
+15         Lady     1
+16          Mme     1
+17          Sir     1
+18 the Countess     1
+> 
+> 
+> ## ---- echo = T-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dt %>% 
++   group_by(Title, Survived) %>% 
++   summarise(freq = n()) %>% 
++   ungroup() %>% 
++   group_by(Title) %>% 
++   mutate(total = sum(freq),
++          prop = freq/total) %>% 
++   arrange(total) %>% 
++   ggplot(aes(x = reorder(Title, total),  y = prop, group = Survived)) +
++   geom_col(aes(fill = factor(Survived))) +
++   geom_text(aes(label = freq), position = position_fill(0.5)) +
++   guides(fill = guide_legend(title = "Survived"), color = guide_legend(title = "n-observations")) +
++   xlab("Titel") +
++   ylab("proportion") +
++   theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+`summarise()` regrouping output by 'Title' (override with `.groups` argument)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> newTitles <- data.frame(Mr = dt$Title %in% c("Don", "Capt", "Jonkheer", "Sir", "Major", "Col"),
++                         Mrs = dt$Title %in% c("Dona", "Lady", "Mme", "the Countess"),
++                         Ms = dt$Title == "Mlle")
+> 
+> dt$Title[newTitles$Mr] <- "Mr"
+> dt$Title[newTitles$Ms] <- "Ms"
+> dt$Title[newTitles$Mrs] <- "Mrs"
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dt <- dt %>% 
++   mutate(famSize = Parch + SibSp + 1)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dt %>% 
++   #filter(!is.na(Survived)) %>% 
++   group_by(famSize, Survived) %>% 
++   summarise(freq = n()) %>% 
++   ungroup() %>% 
++   group_by(famSize) %>% 
++   mutate(total = sum(freq),
++          prop = freq/total) %>% 
++   ggplot(aes(x = famSize, y = prop, group = Survived))+
++   geom_col(aes(fill = factor(Survived))) +
++   geom_text(aes(label = freq), color = "white", cex = 4, position = position_fill(0.5)) +
++   geom_text(label = "Total:",x = 0,  y = 1.1) +
++   geom_text(aes(label = total, y = 1.1)) +
++   guides(fill = guide_legend(title = "Survived"), color = guide_legend(title = "n-observations")) +
++   scale_x_continuous(breaks = 1:11, lim = c(0,11.5)) 
+`summarise()` regrouping output by 'famSize' (override with `.groups` argument)
+> 
+> dt %>% 
++   filter(!is.na(Survived)) %>% 
++   group_by(famSize, Survived) %>% 
++   summarise(freq = n()) %>% 
++   ungroup() %>% 
++   group_by(famSize) %>% 
++   mutate(total = sum(freq),
++          prop = freq/total) %>% 
++   ggplot(aes(x = famSize, y = prop, group = Survived))+
++   geom_col(aes(fill = factor(Survived)), width = 1, color = "white") +
++   geom_text(aes(label = freq), color = "white", cex = 4, position = position_fill(0.5)) +
++   guides(fill = guide_legend(title = "Survived")) +
++   scale_x_continuous(breaks = 1:11) +
++   geom_vline(xintercept = 1.5)+
++   geom_vline(xintercept = 4.5)+
++   geom_vline(xintercept = 7.5)
+`summarise()` regrouping output by 'famSize' (override with `.groups` argument)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dt <- dt %>% 
++   mutate(famSize = ifelse(famSize == 1,
++                           "alone",
++                           ifelse(famSize %in% 2:4, 
++                                  "small",
++                                  ifelse(famSize %in% 5:7,
++                                         "medium",
++                                         "big"))))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dt %>%
++   filter(!is.na(Survived)) %>% 
++   ggplot() +
++   geom_bar(aes(x = reorder(famSize, Survived), fill = factor(Survived)), position = "fill") +
++   guides(fill = guide_legend(title = "Survived")) +
++   ylab("Proportion") +
++   xlab("Family Size") 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dt <- dt %>%
++   mutate_if(is.character, factor) %>% 
++   mutate(Survived = factor(Survived))
+> 
+> 
+> ## ---- echo = F-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # function from my custom library "somtomlib" to plot missing values
+> ggplot_missing_col <- function(x){
++   require(reshape2)
++   require(ggplot2)
++   require(dplyr)
++   require(purrr)
++ 
++   if (is.vector(x)) { x <- data.frame(vector = x)}
++ 
++   classes <- x %>% map(class) %>% melt %>% rename(Var = L1, Class = value)
++   col.order <- x %>%
++     map(function(s) sum(is.na(s))) %>%
++     melt %>%
++     arrange(desc(value)) %>%
++     select(L1) %>%
++     unlist
++ 
++   x %>%
++     is.na %>%
++     melt %>%
++     rename(Observation = Var1, Var = Var2) %>%
++     mutate(Var = as.character(Var)) %>%
++     left_join(classes, by = "Var") %>% mutate(Var = factor(Var, levels = col.order)) %>%
++     mutate(Class = ifelse(value == TRUE, NA, as.character(Class))) %>%
++     ggplot(data = .,
++            aes(x = Var)) +
++     geom_raster(aes(y = Observation, fill = Class)) +
++     scale_fill_discrete(name = "", na.value = "black") + 
++     theme_minimal() +
++     theme(axis.text.x  = element_text(angle = 90, vjust = 0.5)) +
++     labs(x = "Variables in Dataset",
++          y = "Rows / observations")
++ }
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dt$Cabin <- ifelse(dt$Cabin == "", NA, dt$Cabin)
+> 
+> 
+> ## ---- fig.align='center'---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot_missing_col(dt)
+> 
+> 
+> ## ---- warnings = F---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dt %>% 
++   map_df(~sum(is.na(.))) %>%
++   melt(id.vars = NULL) %>% 
++   filter(value > 0) %>% 
++   arrange(desc(value))
+  variable value
+1    Cabin  1014
+2 Survived   418
+3      Age   263
+4     Fare     1
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dt[is.na(dt$Fare),]
+     PassengerId Survived Pclass Surename Title    Name  Sex  Age SibSp Parch
+1044        1044     <NA>      3   Storey    Mr  Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked dataSet famSize
+1044   3701   NA    NA        S    test   alone
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dt[is.na(dt$Fare),]$Fare <- median(subset(dt$Fare, dt$Pclass == 3 & dt$Age > 50), na.rm = T)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> tmp <- dt %>% 
++   filter(!is.na(Age)) %>%
++   select(-Cabin, -Survived, - PassengerId, -Surename, -Name, -dataSet, -Ticket)
+> 
+> 
+> set.seed(231)
+> cv <- caret::train(Age ~. ,data = tmp, tuneGrid = expand.grid(kmax = 5:20,
++                                                                distance = 2,
++                                                                kernel = "optimal"),
++                    trControl = trainControl(method = "cv", number = 10), method = "kknn")
+>  
+> plot(cv)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> kAge <- kknn(Age~., train = tmp, test = dt %>% filter(is.na(Age)), k = 15)
+> dt[is.na(dt$Age),]$Age <- kAge$fitted.values
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dt <- dt %>% select(-Cabin)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dt <- dt %>% select(-Ticket, -Name, -Surename)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- dt %>% filter(dataSet == "train") %>% select(- dataSet, - PassengerId)
+> test <- dt %>% filter(dataSet == "test") %>% select(- dataSet)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rf.grid <- expand.grid(mtry = 2:9)
+> 
+> 
+> set.seed(234)
+> rf.cv <- caret::train(Survived ~., data = train, tuneGrid = rf.grid,
++                       method = "rf")
+> plot(rf.cv)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> confusionMatrix.train(rf.cv)
+Bootstrapped (25 reps) Confusion Matrix 
+
+(entries are percentual average cell counts across resamples)
+ 
+          Reference
+Prediction    0    1
+         0 54.8 10.7
+         1  6.3 28.2
+                            
+ Accuracy (average) : 0.8301
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(848)
+> rf.fit <- randomForest(Survived ~., data = train, mtry = 9, ntree = 500)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> submission <- data.frame(PassengerId = test$PassengerId,
++                          Survived = predict(rf.fit, test))
+> write.csv(submission, "./submission.csv", row.names = F)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+104.435   2.835 107.588 

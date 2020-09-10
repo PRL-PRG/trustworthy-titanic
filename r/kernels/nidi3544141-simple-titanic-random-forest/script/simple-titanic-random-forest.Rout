@@ -1,0 +1,125 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> 
+> 
+> # Any results you write to the current directory are saved as output.
+> # package
+> library("randomForest")
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> library("rpart")
+> 
+> 
+> 
+> # loading the dataset
+> train_Titanic<- read.csv("../input/train.csv")
+> test_Titanic <- read.csv("../input/test.csv")
+> survived <- train_Titanic[,2]
+> all_titanic <- rbind(train_Titanic[,-2], test_Titanic)
+> 
+> # exploring data
+> 
+> str(all_titanic)
+'data.frame':	1309 obs. of  11 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> class(all_titanic)
+[1] "data.frame"
+> dim(all_titanic)
+[1] 1309   11
+> str(all_titanic)
+'data.frame':	1309 obs. of  11 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> #na 
+> any(is.na(all_titanic))
+[1] TRUE
+> table(is.na(all_titanic))
+
+FALSE  TRUE 
+14135   264 
+> sapply(all_titanic, function(x) {sum(is.na(x))})
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+          0           0           0           0         263           0 
+      Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           1           0           0 
+> 
+> 
+> #creating new features
+> all_titanic$family_size <- all_titanic$SibSp + all_titanic$Parch + 1
+> 
+> 
+> 
+> # Factorize and numerize features
+> all_titanic$Embarked <- factor(all_titanic$Embarked)
+> all_titanic$Name <- as.numeric(all_titanic$Name)
+> all_titanic$Ticket <- as.numeric(all_titanic$Ticket)
+> all_titanic$Cabin <- as.numeric(all_titanic$Cabin)
+> # Passenger on row 1044 has an NA Fare value. Let's replace it with the median fare value.
+> all_titanic$Fare[1044] <- median(all_titanic$Fare, na.rm = TRUE)
+> 
+> # Dealing with NA missing values (Age)
+> 
+> predicted_age_titanic <- rpart(Age ~ ., data = all_titanic[!is.na(all_titanic$Age),], method = "anova")
+> all_titanic$Age[is.na(all_titanic$Age)] <- predict(predicted_age_titanic, all_titanic[is.na(all_titanic$Age),])
+> 
+> # Spliting the data back into a train set and a test set
+> train_Titanic <- all_titanic[1:891,]
+> test_Titanic <- all_titanic[892:1309,]
+> 
+> # Set seed for reproducibility
+> set.seed(111)
+> 
+> # Applying the Random Forest Algorithm
+> my_forest <- randomForest(as.factor(survived) ~ .,
++                           data = train_Titanic, importance = TRUE, ntree = 1000)
+> 
+> # Making prediction 
+> my_prediction <- predict(my_forest, test_Titanic)
+> 
+> 
+> #submission
+> submission <- data.frame(PassengerId = test_Titanic$PassengerId, survived= my_prediction)
+> write.csv(submission, file='submission_titanicrandomforest.csv', row.names=FALSE, quote=FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  1.817   0.063   1.878 

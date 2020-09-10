@@ -1,0 +1,1578 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> ## Importing packages
+> 
+> # This R environment comes with all of CRAN and many other helpful packages preinstalled.
+> # You can see which packages are installed by checking out the kaggle/rstats docker image: 
+> # https://github.com/kaggle/docker-rstats
+> 
+> library(tidyverse) # metapackage with lots of helpful functions
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> 
+> ## Running code
+> 
+> # In a notebook, you can run a single code cell by clicking in the cell and then hitting 
+> # the blue arrow to the left, or by clicking in the cell and pressing Shift+Enter. In a script, 
+> # you can run code by highlighting the code you want to run and then clicking the blue arrow
+> # at the bottom of this window.
+> 
+> ## Reading in files
+> 
+> # You can access files from datasets you've added to this kernel in the "../input/" directory.
+> # You can see the files added to this kernel by running the code below. 
+> 
+> list.files(path = "../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> 
+> ## Saving data
+> 
+> # If you save any files or images, these will be put in the "output" directory. You 
+> # can see the output directory by committing and running your kernel (using the 
+> # Commit & Run button) and then checking out the compiled version of your kernel.
+> 
+> 
+> library(readr)
+> titdata=read_csv("../input/train.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> nrow(titdata)
+[1] 891
+> 
+> target=factor(titdata$Survived,labels=c("died","survived"))
+> titdata$Survived=target
+> 
+> titdata$Age[is.na(titdata$Age)]=median(titdata$Age,na.rm=TRUE)
+> 
+> cab=as.character(titdata$Cabin)
+> empty=c(1:length(cab))
+> 
+> for (i in 1:length(cab)){
++   if (is.na(cab[i])=="TRUE") {
++   empty[i]="Cabin Unknown"
++   }
++   else {
++   empty[i]=substr(cab[i],1,1)
++   }
++ }
+> 
+> empty[1:10]
+ [1] "Cabin Unknown" "C"             "Cabin Unknown" "C"            
+ [5] "Cabin Unknown" "Cabin Unknown" "E"             "Cabin Unknown"
+ [9] "Cabin Unknown" "Cabin Unknown"
+> titdata$cabinfloor=as.factor(empty)
+> class(titdata$cabinfloor)
+[1] "factor"
+> levels(titdata$cabinfloor)
+[1] "A"             "B"             "C"             "Cabin Unknown"
+[5] "D"             "E"             "F"             "G"            
+[9] "T"            
+> 
+> titdata$Sex=as.factor(titdata$Sex)
+> titdata$Embarked=as.factor(titdata$Embarked)
+> titdata=titdata[-c(62,830),]
+> nrow(titdata)
+[1] 889
+> 
+> library(ggplot2)
+> library(lattice)
+> 
+> barchart(titdata$Sex,titdata$Survived,xlab="Number Of Survivers")
+Warning message:
+In barchart.table(table(x), data, ...) :
+  explicit 'data' specification ignored
+> 
+> barchart(titdata$cabinfloor,titdata$Survived,xlab="Number Of Survivers")
+Warning message:
+In barchart.table(table(x), data, ...) :
+  explicit 'data' specification ignored
+> 
+> ggplot(aes(Survived,Parch), data=titdata)+
++ geom_boxplot()
+> 
+> ggplot(aes(Survived,Age), data=titdata)+
++ geom_boxplot()
+> 
+> ggplot(aes(Survived,Fare), data=titdata)+
++   geom_boxplot()
+> 
+> 
+> ggplot(aes(Survived,SibSp), data=titdata)+
++   geom_boxplot()
+> 
+> set.seed(333)
+> sampsize=floor(0.75*nrow(titdata))
+> sample=sample(1:nrow(titdata),size=sampsize)
+> traintit=titdata[sample,]
+> testtit=titdata[-sample,]
+> 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> 
+> mod = randomForest(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+cabinfloor+Embarked,data = traintit, ntree =1000,mtry=3,importance = TRUE)
+> mod
+
+Call:
+ randomForest(formula = Survived ~ Pclass + Sex + Age + SibSp +      Parch + Fare + cabinfloor + Embarked, data = traintit, ntree = 1000,      mtry = 3, importance = TRUE) 
+               Type of random forest: classification
+                     Number of trees: 1000
+No. of variables tried at each split: 3
+
+        OOB estimate of  error rate: 16.52%
+Confusion matrix:
+         died survived class.error
+died      378       40  0.09569378
+survived   70      178  0.28225806
+> mod$importance
+                  died     survived MeanDecreaseAccuracy MeanDecreaseGini
+Pclass     0.026822553  0.086075367          0.048717277        24.083670
+Sex        0.105292415  0.196759969          0.139105738        79.369270
+Age        0.024119298  0.028229271          0.025717965        52.859098
+SibSp      0.018683481 -0.001854505          0.011061988        10.820404
+Parch      0.010612435  0.005801989          0.008810461         9.475768
+Fare       0.022347506  0.071005800          0.040381350        55.090487
+cabinfloor 0.027453559  0.014798411          0.022533614        24.732133
+Embarked   0.005068582  0.020896316          0.010998187         9.892737
+> 
+> library(caret)
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+> 
+> #tuning mtry parameter with grid seacrh method and cross-validation                  
+> control=trainControl(method="repeatedcv", number=10, repeats=3, search="grid")
+> set.seed(222)
+> tunegrid=expand.grid(.mtry=c(1:9))
+> rf_gridsearch=train(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+cabinfloor,data=traintit,method="rf",metric="Accuracy",tuneGrid=tunegrid,trControl=control)
+> print(rf_gridsearch)
+Random Forest 
+
+666 samples
+  8 predictor
+  2 classes: 'died', 'survived' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold, repeated 3 times) 
+Summary of sample sizes: 600, 599, 600, 599, 599, 599, ... 
+Resampling results across tuning parameters:
+
+  mtry  Accuracy   Kappa    
+  1     0.7241660  0.3226346
+  2     0.8036952  0.5530868
+  3     0.8253306  0.6075691
+  4     0.8318135  0.6239813
+  5     0.8303436  0.6237017
+  6     0.8318286  0.6284938
+  7     0.8278643  0.6206263
+  8     0.8243436  0.6157720
+  9     0.8188481  0.6050525
+
+Accuracy was used to select the optimal model using the largest value.
+The final value used for the model was mtry = 6.
+> plot(rf_gridsearch)
+> 
+> newmod=randomForest(Survived~Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+cabinfloor,data = traintit, ntree =1000,mtry=4,importance = TRUE)
+> 
+> test=predict(newmod,testtit)
+> #making predictions on new data/test data with model
+> actual=testtit$Survived
+> res=test==actual
+> x=res[res=="TRUE"]
+> accuracy=length(x)/length(res)
+> accuracy
+[1] 0.793722
+> 
+> testdata=read_csv("../input/test.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> head(testdata)
+[90m# A tibble: 6 x 11[39m
+  PassengerId Pclass Name    Sex     Age SibSp Parch Ticket  Fare Cabin Embarked
+        [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m   [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m   
+[90m1[39m         892      3 Kelly,… male   34.5     0     0 330911  7.83 [31mNA[39m    Q       
+[90m2[39m         893      3 Wilkes… fema…  47       1     0 363272  7    [31mNA[39m    S       
+[90m3[39m         894      2 Myles,… male   62       0     0 240276  9.69 [31mNA[39m    Q       
+[90m4[39m         895      3 Wirz, … male   27       0     0 315154  8.66 [31mNA[39m    S       
+[90m5[39m         896      3 Hirvon… fema…  22       1     1 31012… 12.3  [31mNA[39m    S       
+[90m6[39m         897      3 Svenss… male   14       0     0 7538    9.22 [31mNA[39m    S       
+> 
+> testdata$Age[is.na(testdata$Age)]=median(testdata$Age,na.rm=TRUE)
+> testdata$Sex=as.factor(testdata$Sex)
+> testdata$Embarked=as.factor(testdata$Embarked)
+> testdata$Fare[is.na(testdata$Fare)]=median(testdata$Fare,na.rm=TRUE)
+> 
+> cab2=as.character(testdata$Cabin)
+> empty2=c(1:length(cab2))
+> 
+> for (i in 1:length(cab2)){
++   if (is.na(cab2[i])=="TRUE") {
++   empty2[i]="Cabin Unknown"
++   }
++   else {
++   empty2[i]=substr(cab2[i],1,1)
++   }
++ }
+> 
+> empty2[1:10]
+ [1] "Cabin Unknown" "Cabin Unknown" "Cabin Unknown" "Cabin Unknown"
+ [5] "Cabin Unknown" "Cabin Unknown" "Cabin Unknown" "Cabin Unknown"
+ [9] "Cabin Unknown" "Cabin Unknown"
+> testdata$cabinfloor=as.factor(empty2)
+> 
+> levels(testdata$Embarked)=levels(titdata$Embarked)
+> levels(testdata$Sex)=levels(titdata$Sex)
+> levels(testdata$cabinfloor)=levels(titdata$cabinfloor)
+> 
+> prediction=predict(newmod,testdata)
+> submission=data.frame(PassengerId=testdata$PassengerId,Survived=prediction)
+> submission
+    PassengerId Survived
+1           892     died
+2           893     died
+3           894     died
+4           895 survived
+5           896     died
+6           897     died
+7           898     died
+8           899     died
+9           900 survived
+10          901     died
+11          902     died
+12          903     died
+13          904 survived
+14          905     died
+15          906 survived
+16          907 survived
+17          908     died
+18          909     died
+19          910     died
+20          911     died
+21          912     died
+22          913     died
+23          914 survived
+24          915     died
+25          916 survived
+26          917     died
+27          918 survived
+28          919     died
+29          920 survived
+30          921     died
+31          922     died
+32          923     died
+33          924 survived
+34          925     died
+35          926     died
+36          927     died
+37          928     died
+38          929     died
+39          930     died
+40          931 survived
+41          932     died
+42          933 survived
+43          934     died
+44          935 survived
+45          936 survived
+46          937     died
+47          938 survived
+48          939     died
+49          940 survived
+50          941 survived
+51          942     died
+52          943     died
+53          944 survived
+54          945 survived
+55          946     died
+56          947     died
+57          948     died
+58          949     died
+59          950     died
+60          951 survived
+61          952     died
+62          953     died
+63          954     died
+64          955 survived
+65          956 survived
+66          957 survived
+67          958 survived
+68          959     died
+69          960     died
+70          961 survived
+71          962 survived
+72          963     died
+73          964     died
+74          965 survived
+75          966 survived
+76          967     died
+77          968     died
+78          969 survived
+79          970     died
+80          971 survived
+81          972 survived
+82          973     died
+83          974     died
+84          975     died
+85          976     died
+86          977     died
+87          978 survived
+88          979     died
+89          980 survived
+90          981 survived
+91          982     died
+92          983     died
+93          984 survived
+94          985     died
+95          986     died
+96          987     died
+97          988 survived
+98          989     died
+99          990     died
+100         991     died
+101         992 survived
+102         993     died
+103         994     died
+104         995     died
+105         996 survived
+106         997     died
+107         998     died
+108         999     died
+109        1000     died
+110        1001     died
+111        1002     died
+112        1003 survived
+113        1004 survived
+114        1005 survived
+115        1006 survived
+116        1007     died
+117        1008     died
+118        1009 survived
+119        1010     died
+120        1011 survived
+121        1012 survived
+122        1013     died
+123        1014 survived
+124        1015     died
+125        1016     died
+126        1017     died
+127        1018     died
+128        1019 survived
+129        1020     died
+130        1021     died
+131        1022     died
+132        1023     died
+133        1024     died
+134        1025     died
+135        1026     died
+136        1027     died
+137        1028     died
+138        1029     died
+139        1030     died
+140        1031     died
+141        1032     died
+142        1033 survived
+143        1034 survived
+144        1035     died
+145        1036     died
+146        1037     died
+147        1038 survived
+148        1039     died
+149        1040 survived
+150        1041     died
+151        1042 survived
+152        1043     died
+153        1044     died
+154        1045 survived
+155        1046     died
+156        1047     died
+157        1048 survived
+158        1049     died
+159        1050 survived
+160        1051 survived
+161        1052 survived
+162        1053 survived
+163        1054 survived
+164        1055     died
+165        1056     died
+166        1057     died
+167        1058     died
+168        1059     died
+169        1060 survived
+170        1061     died
+171        1062     died
+172        1063     died
+173        1064     died
+174        1065     died
+175        1066     died
+176        1067 survived
+177        1068 survived
+178        1069     died
+179        1070 survived
+180        1071 survived
+181        1072     died
+182        1073 survived
+183        1074 survived
+184        1075     died
+185        1076 survived
+186        1077     died
+187        1078 survived
+188        1079     died
+189        1080     died
+190        1081     died
+191        1082     died
+192        1083     died
+193        1084     died
+194        1085     died
+195        1086 survived
+196        1087     died
+197        1088 survived
+198        1089     died
+199        1090     died
+200        1091     died
+201        1092 survived
+202        1093 survived
+203        1094     died
+204        1095 survived
+205        1096     died
+206        1097     died
+207        1098     died
+208        1099     died
+209        1100 survived
+210        1101     died
+211        1102     died
+212        1103     died
+213        1104     died
+214        1105 survived
+215        1106     died
+216        1107     died
+217        1108 survived
+218        1109     died
+219        1110 survived
+220        1111     died
+221        1112 survived
+222        1113     died
+223        1114 survived
+224        1115     died
+225        1116 survived
+226        1117     died
+227        1118     died
+228        1119 survived
+229        1120     died
+230        1121     died
+231        1122     died
+232        1123 survived
+233        1124     died
+234        1125     died
+235        1126     died
+236        1127     died
+237        1128 survived
+238        1129 survived
+239        1130 survived
+240        1131 survived
+241        1132 survived
+242        1133 survived
+243        1134     died
+244        1135     died
+245        1136     died
+246        1137 survived
+247        1138 survived
+248        1139     died
+249        1140 survived
+250        1141     died
+251        1142 survived
+252        1143     died
+253        1144     died
+254        1145     died
+255        1146     died
+256        1147     died
+257        1148     died
+258        1149     died
+259        1150 survived
+260        1151     died
+261        1152     died
+262        1153     died
+263        1154 survived
+264        1155 survived
+265        1156     died
+266        1157     died
+267        1158     died
+268        1159     died
+269        1160     died
+270        1161     died
+271        1162     died
+272        1163     died
+273        1164 survived
+274        1165 survived
+275        1166     died
+276        1167 survived
+277        1168     died
+278        1169     died
+279        1170     died
+280        1171     died
+281        1172     died
+282        1173 survived
+283        1174 survived
+284        1175     died
+285        1176 survived
+286        1177     died
+287        1178     died
+288        1179     died
+289        1180     died
+290        1181     died
+291        1182     died
+292        1183     died
+293        1184     died
+294        1185     died
+295        1186     died
+296        1187     died
+297        1188 survived
+298        1189     died
+299        1190     died
+300        1191     died
+301        1192     died
+302        1193 survived
+303        1194     died
+304        1195     died
+305        1196 survived
+306        1197 survived
+307        1198     died
+308        1199 survived
+309        1200     died
+310        1201     died
+311        1202     died
+312        1203     died
+313        1204     died
+314        1205     died
+315        1206 survived
+316        1207 survived
+317        1208 survived
+318        1209     died
+319        1210     died
+320        1211     died
+321        1212     died
+322        1213     died
+323        1214     died
+324        1215 survived
+325        1216 survived
+326        1217     died
+327        1218 survived
+328        1219     died
+329        1220     died
+330        1221     died
+331        1222 survived
+332        1223 survived
+333        1224     died
+334        1225     died
+335        1226     died
+336        1227     died
+337        1228     died
+338        1229     died
+339        1230     died
+340        1231     died
+341        1232     died
+342        1233     died
+343        1234     died
+344        1235 survived
+345        1236     died
+346        1237 survived
+347        1238     died
+348        1239     died
+349        1240     died
+350        1241 survived
+351        1242 survived
+352        1243     died
+353        1244     died
+354        1245     died
+355        1246 survived
+356        1247 survived
+357        1248 survived
+358        1249     died
+359        1250     died
+360        1251 survived
+361        1252     died
+362        1253 survived
+363        1254 survived
+364        1255 survived
+365        1256 survived
+366        1257     died
+367        1258     died
+368        1259     died
+369        1260 survived
+370        1261     died
+371        1262     died
+372        1263 survived
+373        1264     died
+374        1265     died
+375        1266 survived
+376        1267 survived
+377        1268     died
+378        1269     died
+379        1270     died
+380        1271     died
+381        1272     died
+382        1273     died
+383        1274     died
+384        1275     died
+385        1276     died
+386        1277 survived
+387        1278     died
+388        1279     died
+389        1280     died
+390        1281     died
+391        1282     died
+392        1283 survived
+393        1284     died
+394        1285     died
+395        1286     died
+396        1287 survived
+397        1288     died
+398        1289 survived
+399        1290     died
+400        1291     died
+401        1292 survived
+402        1293     died
+403        1294 survived
+404        1295     died
+405        1296 survived
+406        1297 survived
+407        1298     died
+408        1299     died
+409        1300 survived
+410        1301 survived
+411        1302 survived
+412        1303 survived
+413        1304     died
+414        1305     died
+415        1306 survived
+416        1307     died
+417        1308     died
+418        1309 survived
+> submission$Survived=as.integer(submission$Survived)
+> submission
+    PassengerId Survived
+1           892        1
+2           893        1
+3           894        1
+4           895        2
+5           896        1
+6           897        1
+7           898        1
+8           899        1
+9           900        2
+10          901        1
+11          902        1
+12          903        1
+13          904        2
+14          905        1
+15          906        2
+16          907        2
+17          908        1
+18          909        1
+19          910        1
+20          911        1
+21          912        1
+22          913        1
+23          914        2
+24          915        1
+25          916        2
+26          917        1
+27          918        2
+28          919        1
+29          920        2
+30          921        1
+31          922        1
+32          923        1
+33          924        2
+34          925        1
+35          926        1
+36          927        1
+37          928        1
+38          929        1
+39          930        1
+40          931        2
+41          932        1
+42          933        2
+43          934        1
+44          935        2
+45          936        2
+46          937        1
+47          938        2
+48          939        1
+49          940        2
+50          941        2
+51          942        1
+52          943        1
+53          944        2
+54          945        2
+55          946        1
+56          947        1
+57          948        1
+58          949        1
+59          950        1
+60          951        2
+61          952        1
+62          953        1
+63          954        1
+64          955        2
+65          956        2
+66          957        2
+67          958        2
+68          959        1
+69          960        1
+70          961        2
+71          962        2
+72          963        1
+73          964        1
+74          965        2
+75          966        2
+76          967        1
+77          968        1
+78          969        2
+79          970        1
+80          971        2
+81          972        2
+82          973        1
+83          974        1
+84          975        1
+85          976        1
+86          977        1
+87          978        2
+88          979        1
+89          980        2
+90          981        2
+91          982        1
+92          983        1
+93          984        2
+94          985        1
+95          986        1
+96          987        1
+97          988        2
+98          989        1
+99          990        1
+100         991        1
+101         992        2
+102         993        1
+103         994        1
+104         995        1
+105         996        2
+106         997        1
+107         998        1
+108         999        1
+109        1000        1
+110        1001        1
+111        1002        1
+112        1003        2
+113        1004        2
+114        1005        2
+115        1006        2
+116        1007        1
+117        1008        1
+118        1009        2
+119        1010        1
+120        1011        2
+121        1012        2
+122        1013        1
+123        1014        2
+124        1015        1
+125        1016        1
+126        1017        1
+127        1018        1
+128        1019        2
+129        1020        1
+130        1021        1
+131        1022        1
+132        1023        1
+133        1024        1
+134        1025        1
+135        1026        1
+136        1027        1
+137        1028        1
+138        1029        1
+139        1030        1
+140        1031        1
+141        1032        1
+142        1033        2
+143        1034        2
+144        1035        1
+145        1036        1
+146        1037        1
+147        1038        2
+148        1039        1
+149        1040        2
+150        1041        1
+151        1042        2
+152        1043        1
+153        1044        1
+154        1045        2
+155        1046        1
+156        1047        1
+157        1048        2
+158        1049        1
+159        1050        2
+160        1051        2
+161        1052        2
+162        1053        2
+163        1054        2
+164        1055        1
+165        1056        1
+166        1057        1
+167        1058        1
+168        1059        1
+169        1060        2
+170        1061        1
+171        1062        1
+172        1063        1
+173        1064        1
+174        1065        1
+175        1066        1
+176        1067        2
+177        1068        2
+178        1069        1
+179        1070        2
+180        1071        2
+181        1072        1
+182        1073        2
+183        1074        2
+184        1075        1
+185        1076        2
+186        1077        1
+187        1078        2
+188        1079        1
+189        1080        1
+190        1081        1
+191        1082        1
+192        1083        1
+193        1084        1
+194        1085        1
+195        1086        2
+196        1087        1
+197        1088        2
+198        1089        1
+199        1090        1
+200        1091        1
+201        1092        2
+202        1093        2
+203        1094        1
+204        1095        2
+205        1096        1
+206        1097        1
+207        1098        1
+208        1099        1
+209        1100        2
+210        1101        1
+211        1102        1
+212        1103        1
+213        1104        1
+214        1105        2
+215        1106        1
+216        1107        1
+217        1108        2
+218        1109        1
+219        1110        2
+220        1111        1
+221        1112        2
+222        1113        1
+223        1114        2
+224        1115        1
+225        1116        2
+226        1117        1
+227        1118        1
+228        1119        2
+229        1120        1
+230        1121        1
+231        1122        1
+232        1123        2
+233        1124        1
+234        1125        1
+235        1126        1
+236        1127        1
+237        1128        2
+238        1129        2
+239        1130        2
+240        1131        2
+241        1132        2
+242        1133        2
+243        1134        1
+244        1135        1
+245        1136        1
+246        1137        2
+247        1138        2
+248        1139        1
+249        1140        2
+250        1141        1
+251        1142        2
+252        1143        1
+253        1144        1
+254        1145        1
+255        1146        1
+256        1147        1
+257        1148        1
+258        1149        1
+259        1150        2
+260        1151        1
+261        1152        1
+262        1153        1
+263        1154        2
+264        1155        2
+265        1156        1
+266        1157        1
+267        1158        1
+268        1159        1
+269        1160        1
+270        1161        1
+271        1162        1
+272        1163        1
+273        1164        2
+274        1165        2
+275        1166        1
+276        1167        2
+277        1168        1
+278        1169        1
+279        1170        1
+280        1171        1
+281        1172        1
+282        1173        2
+283        1174        2
+284        1175        1
+285        1176        2
+286        1177        1
+287        1178        1
+288        1179        1
+289        1180        1
+290        1181        1
+291        1182        1
+292        1183        1
+293        1184        1
+294        1185        1
+295        1186        1
+296        1187        1
+297        1188        2
+298        1189        1
+299        1190        1
+300        1191        1
+301        1192        1
+302        1193        2
+303        1194        1
+304        1195        1
+305        1196        2
+306        1197        2
+307        1198        1
+308        1199        2
+309        1200        1
+310        1201        1
+311        1202        1
+312        1203        1
+313        1204        1
+314        1205        1
+315        1206        2
+316        1207        2
+317        1208        2
+318        1209        1
+319        1210        1
+320        1211        1
+321        1212        1
+322        1213        1
+323        1214        1
+324        1215        2
+325        1216        2
+326        1217        1
+327        1218        2
+328        1219        1
+329        1220        1
+330        1221        1
+331        1222        2
+332        1223        2
+333        1224        1
+334        1225        1
+335        1226        1
+336        1227        1
+337        1228        1
+338        1229        1
+339        1230        1
+340        1231        1
+341        1232        1
+342        1233        1
+343        1234        1
+344        1235        2
+345        1236        1
+346        1237        2
+347        1238        1
+348        1239        1
+349        1240        1
+350        1241        2
+351        1242        2
+352        1243        1
+353        1244        1
+354        1245        1
+355        1246        2
+356        1247        2
+357        1248        2
+358        1249        1
+359        1250        1
+360        1251        2
+361        1252        1
+362        1253        2
+363        1254        2
+364        1255        2
+365        1256        2
+366        1257        1
+367        1258        1
+368        1259        1
+369        1260        2
+370        1261        1
+371        1262        1
+372        1263        2
+373        1264        1
+374        1265        1
+375        1266        2
+376        1267        2
+377        1268        1
+378        1269        1
+379        1270        1
+380        1271        1
+381        1272        1
+382        1273        1
+383        1274        1
+384        1275        1
+385        1276        1
+386        1277        2
+387        1278        1
+388        1279        1
+389        1280        1
+390        1281        1
+391        1282        1
+392        1283        2
+393        1284        1
+394        1285        1
+395        1286        1
+396        1287        2
+397        1288        1
+398        1289        2
+399        1290        1
+400        1291        1
+401        1292        2
+402        1293        1
+403        1294        2
+404        1295        1
+405        1296        2
+406        1297        2
+407        1298        1
+408        1299        1
+409        1300        2
+410        1301        2
+411        1302        2
+412        1303        2
+413        1304        1
+414        1305        1
+415        1306        2
+416        1307        1
+417        1308        1
+418        1309        2
+> 
+> for (i in 1:length(submission$Survived)) {
++     if (submission$Survived[i]==1){
++         submission$Survived[i]=0
++         }
++     else {
++         submission$Survived[i]=1
++     }
++     }
+>     
+> submission
+    PassengerId Survived
+1           892        0
+2           893        0
+3           894        0
+4           895        1
+5           896        0
+6           897        0
+7           898        0
+8           899        0
+9           900        1
+10          901        0
+11          902        0
+12          903        0
+13          904        1
+14          905        0
+15          906        1
+16          907        1
+17          908        0
+18          909        0
+19          910        0
+20          911        0
+21          912        0
+22          913        0
+23          914        1
+24          915        0
+25          916        1
+26          917        0
+27          918        1
+28          919        0
+29          920        1
+30          921        0
+31          922        0
+32          923        0
+33          924        1
+34          925        0
+35          926        0
+36          927        0
+37          928        0
+38          929        0
+39          930        0
+40          931        1
+41          932        0
+42          933        1
+43          934        0
+44          935        1
+45          936        1
+46          937        0
+47          938        1
+48          939        0
+49          940        1
+50          941        1
+51          942        0
+52          943        0
+53          944        1
+54          945        1
+55          946        0
+56          947        0
+57          948        0
+58          949        0
+59          950        0
+60          951        1
+61          952        0
+62          953        0
+63          954        0
+64          955        1
+65          956        1
+66          957        1
+67          958        1
+68          959        0
+69          960        0
+70          961        1
+71          962        1
+72          963        0
+73          964        0
+74          965        1
+75          966        1
+76          967        0
+77          968        0
+78          969        1
+79          970        0
+80          971        1
+81          972        1
+82          973        0
+83          974        0
+84          975        0
+85          976        0
+86          977        0
+87          978        1
+88          979        0
+89          980        1
+90          981        1
+91          982        0
+92          983        0
+93          984        1
+94          985        0
+95          986        0
+96          987        0
+97          988        1
+98          989        0
+99          990        0
+100         991        0
+101         992        1
+102         993        0
+103         994        0
+104         995        0
+105         996        1
+106         997        0
+107         998        0
+108         999        0
+109        1000        0
+110        1001        0
+111        1002        0
+112        1003        1
+113        1004        1
+114        1005        1
+115        1006        1
+116        1007        0
+117        1008        0
+118        1009        1
+119        1010        0
+120        1011        1
+121        1012        1
+122        1013        0
+123        1014        1
+124        1015        0
+125        1016        0
+126        1017        0
+127        1018        0
+128        1019        1
+129        1020        0
+130        1021        0
+131        1022        0
+132        1023        0
+133        1024        0
+134        1025        0
+135        1026        0
+136        1027        0
+137        1028        0
+138        1029        0
+139        1030        0
+140        1031        0
+141        1032        0
+142        1033        1
+143        1034        1
+144        1035        0
+145        1036        0
+146        1037        0
+147        1038        1
+148        1039        0
+149        1040        1
+150        1041        0
+151        1042        1
+152        1043        0
+153        1044        0
+154        1045        1
+155        1046        0
+156        1047        0
+157        1048        1
+158        1049        0
+159        1050        1
+160        1051        1
+161        1052        1
+162        1053        1
+163        1054        1
+164        1055        0
+165        1056        0
+166        1057        0
+167        1058        0
+168        1059        0
+169        1060        1
+170        1061        0
+171        1062        0
+172        1063        0
+173        1064        0
+174        1065        0
+175        1066        0
+176        1067        1
+177        1068        1
+178        1069        0
+179        1070        1
+180        1071        1
+181        1072        0
+182        1073        1
+183        1074        1
+184        1075        0
+185        1076        1
+186        1077        0
+187        1078        1
+188        1079        0
+189        1080        0
+190        1081        0
+191        1082        0
+192        1083        0
+193        1084        0
+194        1085        0
+195        1086        1
+196        1087        0
+197        1088        1
+198        1089        0
+199        1090        0
+200        1091        0
+201        1092        1
+202        1093        1
+203        1094        0
+204        1095        1
+205        1096        0
+206        1097        0
+207        1098        0
+208        1099        0
+209        1100        1
+210        1101        0
+211        1102        0
+212        1103        0
+213        1104        0
+214        1105        1
+215        1106        0
+216        1107        0
+217        1108        1
+218        1109        0
+219        1110        1
+220        1111        0
+221        1112        1
+222        1113        0
+223        1114        1
+224        1115        0
+225        1116        1
+226        1117        0
+227        1118        0
+228        1119        1
+229        1120        0
+230        1121        0
+231        1122        0
+232        1123        1
+233        1124        0
+234        1125        0
+235        1126        0
+236        1127        0
+237        1128        1
+238        1129        1
+239        1130        1
+240        1131        1
+241        1132        1
+242        1133        1
+243        1134        0
+244        1135        0
+245        1136        0
+246        1137        1
+247        1138        1
+248        1139        0
+249        1140        1
+250        1141        0
+251        1142        1
+252        1143        0
+253        1144        0
+254        1145        0
+255        1146        0
+256        1147        0
+257        1148        0
+258        1149        0
+259        1150        1
+260        1151        0
+261        1152        0
+262        1153        0
+263        1154        1
+264        1155        1
+265        1156        0
+266        1157        0
+267        1158        0
+268        1159        0
+269        1160        0
+270        1161        0
+271        1162        0
+272        1163        0
+273        1164        1
+274        1165        1
+275        1166        0
+276        1167        1
+277        1168        0
+278        1169        0
+279        1170        0
+280        1171        0
+281        1172        0
+282        1173        1
+283        1174        1
+284        1175        0
+285        1176        1
+286        1177        0
+287        1178        0
+288        1179        0
+289        1180        0
+290        1181        0
+291        1182        0
+292        1183        0
+293        1184        0
+294        1185        0
+295        1186        0
+296        1187        0
+297        1188        1
+298        1189        0
+299        1190        0
+300        1191        0
+301        1192        0
+302        1193        1
+303        1194        0
+304        1195        0
+305        1196        1
+306        1197        1
+307        1198        0
+308        1199        1
+309        1200        0
+310        1201        0
+311        1202        0
+312        1203        0
+313        1204        0
+314        1205        0
+315        1206        1
+316        1207        1
+317        1208        1
+318        1209        0
+319        1210        0
+320        1211        0
+321        1212        0
+322        1213        0
+323        1214        0
+324        1215        1
+325        1216        1
+326        1217        0
+327        1218        1
+328        1219        0
+329        1220        0
+330        1221        0
+331        1222        1
+332        1223        1
+333        1224        0
+334        1225        0
+335        1226        0
+336        1227        0
+337        1228        0
+338        1229        0
+339        1230        0
+340        1231        0
+341        1232        0
+342        1233        0
+343        1234        0
+344        1235        1
+345        1236        0
+346        1237        1
+347        1238        0
+348        1239        0
+349        1240        0
+350        1241        1
+351        1242        1
+352        1243        0
+353        1244        0
+354        1245        0
+355        1246        1
+356        1247        1
+357        1248        1
+358        1249        0
+359        1250        0
+360        1251        1
+361        1252        0
+362        1253        1
+363        1254        1
+364        1255        1
+365        1256        1
+366        1257        0
+367        1258        0
+368        1259        0
+369        1260        1
+370        1261        0
+371        1262        0
+372        1263        1
+373        1264        0
+374        1265        0
+375        1266        1
+376        1267        1
+377        1268        0
+378        1269        0
+379        1270        0
+380        1271        0
+381        1272        0
+382        1273        0
+383        1274        0
+384        1275        0
+385        1276        0
+386        1277        1
+387        1278        0
+388        1279        0
+389        1280        0
+390        1281        0
+391        1282        0
+392        1283        1
+393        1284        0
+394        1285        0
+395        1286        0
+396        1287        1
+397        1288        0
+398        1289        1
+399        1290        0
+400        1291        0
+401        1292        1
+402        1293        0
+403        1294        1
+404        1295        0
+405        1296        1
+406        1297        1
+407        1298        0
+408        1299        0
+409        1300        1
+410        1301        1
+411        1302        1
+412        1303        1
+413        1304        0
+414        1305        0
+415        1306        1
+416        1307        0
+417        1308        0
+418        1309        1
+> 
+> titfile=write.csv(submission,"titanicsubmission.csv")
+> 
+> proc.time()
+   user  system elapsed 
+ 83.132   2.810  88.012 

@@ -1,0 +1,250 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> set.seed(300)
+> library(data.table)
+> library(rpart)
+> 
+> # The train and test data is stored in the ../input directory
+> train <- fread("../input/train.csv", na.strings = c("NA",""))
+> test  <- fread("../input/test.csv", na.strings = c("NA",""))
+> 
+> #Overview of data
+> str(train)
+Classes ‘data.table’ and 'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  NA "C85" NA "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+ - attr(*, ".internal.selfref")=<externalptr> 
+> str(test)
+Classes ‘data.table’ and 'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : chr  "Kelly, Mr. James" "Wilkes, Mrs. James (Ellen Needs)" "Myles, Mr. Thomas Francis" "Wirz, Mr. Albert" ...
+ $ Sex        : chr  "male" "female" "male" "male" ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : chr  "330911" "363272" "240276" "315154" ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : chr  NA NA NA NA ...
+ $ Embarked   : chr  "Q" "S" "Q" "S" ...
+ - attr(*, ".internal.selfref")=<externalptr> 
+> 
+> #Bind together the data tables for cleaning
+> all<-rbind(train,test[,Survived:=0])
+> apply(all,2,function(x) sum(is.na(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1        1014           2 
+> 
+> #Cleaning
+> all[is.na(Embarked),Embarked:="S"]
+> all[is.na(Fare),Fare := median(all[,Fare],na.rm=TRUE)]
+> 
+> all[,FamSize := SibSp + Parch]
+> #all[,Title := gsub(" ","",strsplit(Name, split = '[,.]')[[1]][2]),by=PassengerId]
+> #all[Title %in% c('Mme', 'Mlle'), Title := 'Mlle']
+> #all[Title %in% c('Capt', 'Don', 'Major', 'Sir'), Title := 'Sir']
+> #all[Title %in% c('Dona', 'Lady', 'the Countess', 'Jonkheer'), Title := 'Lady']
+> #all[,Title:= as.factor(Title)]
+> all[,Embarked:= as.factor(Embarked)]
+> all[,Sex:= as.factor(Sex)]
+> 
+> predicted_age <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + FamSize,
++                        data = all[!is.na(Age),], method = "anova")
+> all[is.na(Age),Age := predict(predicted_age, all[is.na(Age),])] 
+> 
+> apply(all,2,function(x) sum(is.na(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0           0 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0        1014           0 
+    FamSize 
+          0 
+> 
+> #Prepare data for neural net
+> 
+> all[,Sex := as.factor(Sex)]
+> #all[,Title := as.factor(Title)]
+> all[,Embarked := as.factor(Embarked)]
+> all[,Cabin:=NULL]
+> 
+> train<-all[1:891,]
+> test<-all[892:1309,]
+> 
+> model <- glm(Survived ~ Pclass+Age+Sex,family=binomial(link='logit'),data=train)
+> #model <- glm(Survived ~ Pclass+Age+Sex,family=binomial,data=train)
+> summary(model)
+
+Call:
+glm(formula = Survived ~ Pclass + Age + Sex, family = binomial(link = "logit"), 
+    data = train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6510  -0.6637  -0.4310   0.6340   2.4277  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  4.751259   0.464943  10.219  < 2e-16 ***
+Pclass      -1.203542   0.123682  -9.731  < 2e-16 ***
+Age         -0.032073   0.007402  -4.333 1.47e-05 ***
+Sexmale     -2.590372   0.186193 -13.912  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  807.43  on 887  degrees of freedom
+AIC: 815.43
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> fitted.results <- predict(model,newdata=test[,.(Pclass,Age,Sex)],type='response')
+> test[,Survived := ifelse(fitted.results > 0.5,1,0)]
+> 
+> my_solution <- test[,.(PassengerId,Survived)]
+> write.csv(my_solution, row.names = FALSE, file = "my_solution.csv")
+> 
+> 
+> #Overview of data
+> str(train)
+Classes ‘data.table’ and 'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : num  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+ $ FamSize    : int  1 1 0 1 0 0 0 4 2 1 ...
+ - attr(*, ".internal.selfref")=<externalptr> 
+> str(test)
+Classes ‘data.table’ and 'data.frame':	418 obs. of  12 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Survived   : num  0 0 0 0 1 0 1 0 1 0 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : chr  "Kelly, Mr. James" "Wilkes, Mrs. James (Ellen Needs)" "Myles, Mr. Thomas Francis" "Wirz, Mr. Albert" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : chr  "330911" "363272" "240276" "315154" ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+ $ FamSize    : int  0 1 0 0 2 0 0 2 0 2 ...
+ - attr(*, ".internal.selfref")=<externalptr> 
+> 
+> #Bind together the data tables for cleaning
+> all<-rbind(train,test[,Survived:=0])
+> apply(all,2,function(x) sum(is.na(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0           0 
+      SibSp       Parch      Ticket        Fare    Embarked     FamSize 
+          0           0           0           0           0           0 
+> 
+> #Cleaning
+> all[is.na(Embarked),Embarked:="S"]
+> all[is.na(Fare),Fare := median(all[,Fare],na.rm=TRUE)]
+> 
+> all[,FamSize := SibSp + Parch]
+> 
+> all[,Title := gsub(" ","",strsplit(Name, split = '[,.]')[[1]][2]),by=PassengerId]
+> all[Title %in% c('Mme', 'Mlle'), Title := 'Mlle']
+> all[Title %in% c('Capt', 'Don', 'Major', 'Sir'), Title := 'Sir']
+> all[Title %in% c('Dona', 'Lady', 'the Countess', 'Jonkheer'), Title := 'Lady']
+> all[,Title:= as.factor(Title)]
+> all[,Embarked:= as.factor(Embarked)]
+> all[,Sex:= as.factor(Sex)]
+> 
+> predicted_age <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + FamSize,
++                        data = all[!is.na(Age),], method = "anova")
+> all[is.na(Age),Age := predict(predicted_age, all[is.na(Age),])] 
+> 
+> apply(all,2,function(x) sum(is.na(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0           0 
+      SibSp       Parch      Ticket        Fare    Embarked     FamSize 
+          0           0           0           0           0           0 
+      Title 
+          0 
+>   
+> #Prepare data for neural net
+> 
+> all[,Sex := as.numeric(factor(Sex))]
+> all[,Title := as.numeric(factor(Title))]
+> all[,Embarked := as.numeric(factor(Embarked))]
+> 
+> model <- glm(Survived ~ Pclass + Age + Sex,family=binomial(link='logit'),data=train)
+> summary(model)
+
+Call:
+glm(formula = Survived ~ Pclass + Age + Sex, family = binomial(link = "logit"), 
+    data = train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6510  -0.6637  -0.4310   0.6340   2.4277  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  4.751259   0.464943  10.219  < 2e-16 ***
+Pclass      -1.203542   0.123682  -9.731  < 2e-16 ***
+Age         -0.032073   0.007402  -4.333 1.47e-05 ***
+Sexmale     -2.590372   0.186193 -13.912  < 2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  807.43  on 887  degrees of freedom
+AIC: 815.43
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> fitted.results <- predict(model,newdata=test[,.(Pclass,Age,Sex)],type='response')
+> test[,Survived := ifelse(fitted.results > 0.5,1,0)]
+> 
+> my_solution <- test[,.(PassengerId,Survived)]
+> write.csv(my_solution, row.names = FALSE, file = "my_solution.csv")
+> 
+> proc.time()
+   user  system elapsed 
+  1.787   0.069   0.570 

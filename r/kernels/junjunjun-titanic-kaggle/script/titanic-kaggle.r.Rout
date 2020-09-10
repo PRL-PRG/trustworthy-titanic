@@ -1,0 +1,98 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> # 色々パッケージがあるみたいなので読み込みます。
+> library('ggplot2')
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library('ggthemes')
+> library('scales')
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> library('dplyr')
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library('mice')
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library('randomForest')
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library('xgboost')
+
+Attaching package: ‘xgboost’
+
+The following object is masked from ‘package:dplyr’:
+
+    slice
+
+Warning message:
+package ‘xgboost’ was built under R version 3.6.2 
+> library('caret')
+Loading required package: lattice
+> library('glmnet')
+Loading required package: Matrix
+Loaded glmnet 4.0-2
+Warning message:
+package ‘glmnet’ was built under R version 3.6.2 
+> library('kernlab')
+
+Attaching package: ‘kernlab’
+
+The following object is masked from ‘package:scales’:
+
+    alpha
+
+The following object is masked from ‘package:ggplot2’:
+
+    alpha
+
+> library('C50')
+Error in library("C50") : there is no package called ‘C50’
+Execution halted

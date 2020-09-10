@@ -1,0 +1,291 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE)
+> 
+> 
+> ## ----message=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(caret)
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+> 
+> 
+> gender <- read_csv('../input/gender_submission.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m
+)
+> training <- read_csv('../input/train.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> # convert factor variables
+> training$Survived <- factor(training$Survived)
+> training$Pclass <- factor(training$Pclass)
+> training$Embarked <- factor(training$Embarked)
+> training$Sex <- factor(training$Sex)
+> # since PassengerId cannot be a factor in survival, we will drop that column
+> # for easier analysis
+> 
+> training$PassengerId <- NULL
+> 
+> head(training)
+[90m# A tibble: 6 x 11[39m
+  Survived Pclass Name       Sex     Age SibSp Parch Ticket  Fare Cabin Embarked
+  [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m  [3m[90m<chr>[39m[23m      [3m[90m<fct>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<fct>[39m[23m   
+[90m1[39m 0        3      Braund, M… male     22     1     0 A/5 2…  7.25 [31mNA[39m    S       
+[90m2[39m 1        1      Cumings, … fema…    38     1     0 PC 17… 71.3  C85   C       
+[90m3[39m 1        3      Heikkinen… fema…    26     0     0 STON/…  7.92 [31mNA[39m    S       
+[90m4[39m 1        1      Futrelle,… fema…    35     1     0 113803 53.1  C123  S       
+[90m5[39m 0        3      Allen, Mr… male     35     0     0 373450  8.05 [31mNA[39m    S       
+[90m6[39m 0        3      Moran, Mr… male     [31mNA[39m     0     0 330877  8.46 [31mNA[39m    Q       
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # starting with logistic regression
+> logit <- glm(Survived ~ . , data = training, family = 'binomial')
+Warning message:
+glm.fit: algorithm did not converge 
+> 
+> # generates warning message
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # finding the columns with most NA's  as percentage of total observations
+> colSums(is.na(training))*100/nrow(training)
+  Survived     Pclass       Name        Sex        Age      SibSp      Parch 
+ 0.0000000  0.0000000  0.0000000  0.0000000 19.8653199  0.0000000  0.0000000 
+    Ticket       Fare      Cabin   Embarked 
+ 0.0000000  0.0000000 77.1043771  0.2244669 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # splitting into training and testing sets
+> set.seed(42)
+> inTrain <- createDataPartition(y=training$Survived,
++                                p=0.80, list=FALSE)
+> modeltrainset <- training[inTrain, ]
+Warning message:
+The `i` argument of ``[`()` can't be a matrix as of tibble 3.0.0.
+Convert to a vector.
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+> modeltestset <- training[-inTrain, ]
+> 
+> # removing Cabin from the model
+> logit2 <- glm(Survived ~ Pclass + Sex + Age + Embarked, data = modeltrainset, family = 'binomial')
+> summary(logit2)
+
+Call:
+glm(formula = Survived ~ Pclass + Sex + Age + Embarked, family = "binomial", 
+    data = modeltrainset)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6368  -0.6896  -0.3947   0.6782   2.4694  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  3.948404   0.468459   8.428  < 2e-16 ***
+Pclass2     -1.153523   0.320351  -3.601 0.000317 ***
+Pclass3     -2.426556   0.318147  -7.627 2.40e-14 ***
+Sexmale     -2.407575   0.227438 -10.586  < 2e-16 ***
+Age         -0.037472   0.008502  -4.407 1.05e-05 ***
+EmbarkedQ   -0.756838   0.612416  -1.236 0.216524    
+EmbarkedS   -0.428382   0.298774  -1.434 0.151629    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 775.39  on 571  degrees of freedom
+Residual deviance: 525.59  on 565  degrees of freedom
+  (142 observations deleted due to missingness)
+AIC: 539.59
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> pred <- predict(logit2, modeltestset, type = 'response')
+> pred[pred > 0.5 ] <- 1
+> pred[pred < 0.5 | is.na(pred) ] <- 0
+> pred <- as.factor(pred)
+> confusionMatrix(pred,modeltestset$Survived)$overall[1]
+ Accuracy 
+0.7683616 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> logit3 <- glm(Survived ~ Pclass + Sex + Age + Embarked + Fare, data = modeltrainset, family = 'binomial')
+> summary(logit3)
+
+Call:
+glm(formula = Survived ~ Pclass + Sex + Age + Embarked + Fare, 
+    family = "binomial", data = modeltrainset)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6166  -0.6881  -0.3938   0.6678   2.4731  
+
+Coefficients:
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  4.0561546  0.5591714   7.254 4.05e-13 ***
+Pclass2     -1.2105545  0.3582084  -3.379 0.000726 ***
+Pclass3     -2.4945845  0.3712610  -6.719 1.83e-11 ***
+Sexmale     -2.4181414  0.2295245 -10.535  < 2e-16 ***
+Age         -0.0378535  0.0085754  -4.414 1.01e-05 ***
+EmbarkedQ   -0.7714813  0.6146667  -1.255 0.209435    
+EmbarkedS   -0.4421193  0.3010938  -1.468 0.142002    
+Fare        -0.0009782  0.0027345  -0.358 0.720551    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 775.39  on 571  degrees of freedom
+Residual deviance: 525.47  on 564  degrees of freedom
+  (142 observations deleted due to missingness)
+AIC: 541.47
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> logit4 <- glm(Survived ~ Pclass + Sex + Age + Embarked + Fare  + SibSp, data = modeltrainset, family = 'binomial')
+> summary(logit4)
+
+Call:
+glm(formula = Survived ~ Pclass + Sex + Age + Embarked + Fare + 
+    SibSp, family = "binomial", data = modeltrainset)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.7207  -0.6480  -0.3809   0.6633   2.4609  
+
+Coefficients:
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  4.4081661  0.5884835   7.491 6.85e-14 ***
+Pclass2     -1.2283328  0.3664339  -3.352 0.000802 ***
+Pclass3     -2.4801129  0.3792783  -6.539 6.19e-11 ***
+Sexmale     -2.5356661  0.2396011 -10.583  < 2e-16 ***
+Age         -0.0448830  0.0091354  -4.913 8.97e-07 ***
+EmbarkedQ   -0.7402932  0.6498374  -1.139 0.254621    
+EmbarkedS   -0.3562195  0.3055096  -1.166 0.243621    
+Fare         0.0006469  0.0029702   0.218 0.827600    
+SibSp       -0.3840908  0.1361525  -2.821 0.004787 ** 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 775.39  on 571  degrees of freedom
+Residual deviance: 516.76  on 563  degrees of freedom
+  (142 observations deleted due to missingness)
+AIC: 534.76
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> pred2 <- predict(logit4, modeltestset, type='response')
+> pred2[pred2 > 0.5 ] <- 1
+> pred2[pred2 < 0.5 | is.na(pred2) ] <- 0
+> pred2 <- as.factor(pred2)
+> confusionMatrix(pred2,modeltestset$Survived)$overall[1]
+ Accuracy 
+0.7627119 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> testing <- read_csv('../input/test.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> # convert factor variables
+> testing$Pclass <- factor(testing$Pclass)
+> testing$Embarked <- factor(testing$Embarked)
+> testing$Sex <- factor(testing$Sex)
+> # since PassengerId cannot be a factor in survival, we will drop that column
+> # for easier analysis
+> 
+> pred_final <- predict(logit4, testing, type='response')
+> pred_final[pred_final > 0.5 ] <- 1
+> pred_final[pred_final < 0.5 | is.na(pred_final) ] <- 0
+> 
+> submission_df <- data.frame(PassengerId = testing$PassengerId, Survived = as.numeric(pred_final))
+> 
+> write.csv(submission_df, file = 'submission.csv', row.names = FALSE)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  2.659   0.176   2.846 

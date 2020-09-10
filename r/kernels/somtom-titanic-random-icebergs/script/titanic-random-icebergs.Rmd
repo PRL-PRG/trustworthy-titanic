@@ -1,0 +1,405 @@
+---
+title: "Titanic"
+output: 
+  html_document:
+    number_sections: yes
+    theme: yeti
+    toc: yes
+    toc_float: true
+---
+
+<center>
+![](https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/RMS_Titanic_3.jpg/800px-RMS_Titanic_3.jpg)
+</center>
+
+# Introduction
+
+This is my second Kernel on kaggle. I created it on order to improve my skills in data science and machine learning.
+My aim was to recap some parts I learned in the past. I am really looking forward to comments and tips from the community.
+This kernel is work in progress - so some changes might be added.
+
+
+The Titanic dataset includes passenger informations starting with names, age and sex up to their ticket number.
+A lot of people died at the day the titanic sank mainly because there where not enough lifeboats on board.
+Our aim in this analysis is to take a closer look and try to explain the factors of surviving the titanic disaster.
+
+In a first approach we will clean the data, generate some new features and make prediction using random forest.
+At a later version of the kernel my aim is to include some data analysis which might get us some extra insights and improve our
+prediction performance.
+
+
+# Prepare environment and load data
+
+First we load the required packages for our analysis:
+```{r, warning = F}
+require(tidyverse)
+require(reshape2)
+require(caret)
+require(kknn)
+require(randomForest)
+```  
+
+After that we load the data and combine train and test set for data cleaning and feature engineering.
+
+
+```{r}
+train <- read.csv("../input/train.csv", stringsAsFactors = F)
+test <- read.csv("../input/test.csv", stringsAsFactors = F)
+test$Survived <- NA
+
+train$dataSet <- "train"
+test$dataSet <- "test"
+
+dt <- bind_rows(train, test)
+```
+
+
+# First look at the data
+The data set has `r ncol(dt) - 3` predictor variables with `r nrow(dt)` observations, of which
+`r round(nrow(test)/nrow(dt), digits = 2)`% belong to the test set an do not 
+have any information about whether the passenger survived or not.
+
+# Feature engeneering
+
+## Title and Surename
+```{r}
+dt <- dt %>% 
+  separate(Name, "[,.]", into = c("Surename", "Title", "Name"), extra = "drop") %>% 
+  mutate(Title = str_trim(Title, side = "left"))
+```
+
+Let's look at our new generated `Title` variable:
+```{r}
+table(dt$Title) %>% melt %>% arrange(desc(value))
+```
+
+Since I am not a native English speaker I had to look up some titles and found the following 
+descriptions for a subset of titles:
+
+* `Miss`: *A girl or young woman* (Hornby 2005)
+* `Mrs`: *A title that comes beofre a **married** woman's family name or before her first and 
+family names together* [^1] 
+* `Master`: *A title used when speaking to or about a boy who is too young to be called Mr* (Hornby 2005) 
+* `Ms`: *A title that comes before a woman's family name or before her first and family names
+together, and that can be used when you do not want to state __whether she is married or not__* (Hornby 2005)  
+* `Rev`: *A title of respect used before the name of a minister in the Christian church* (LDoceOnline)  
+* `Col`: *An officer of high rank in the army, the Marines, or the US Air Force* (Hornby 2005)
+* `Major`: *An officer of fairly high rank in the army or the US Air Force* (Hornby 2005)
+* `Capt`: In this case **not** the captain of the ship
+* `Don`: *a teacher at a university, especially Oxford or Cambridge*
+* `Jonkheer`: nobility title 
+* `Mlle`: Mademoiselle 
+* `Mme`: Madame (-> married Mademoiselle)
+
+
+We will have a look at the proportion of survived passengers by title. Further we will ad a count 
+for each group to the plot in order to see whether we need to drop some titles there are too less
+observations in the title class.
+
+<center>
+
+```{r, echo = T}
+dt %>% 
+  group_by(Title, Survived) %>% 
+  summarise(freq = n()) %>% 
+  ungroup() %>% 
+  group_by(Title) %>% 
+  mutate(total = sum(freq),
+         prop = freq/total) %>% 
+  arrange(total) %>% 
+  ggplot(aes(x = reorder(Title, total),  y = prop, group = Survived)) +
+  geom_col(aes(fill = factor(Survived))) +
+  geom_text(aes(label = freq), position = position_fill(0.5)) +
+  guides(fill = guide_legend(title = "Survived"), color = guide_legend(title = "n-observations")) +
+  xlab("Titel") +
+  ylab("proportion") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+</center>
+
+The plot shows that some titles seem to be good indicators of survival. 
+However, most of the title classes have too less observations and we need to correct that. 
+`Dona` for example is only present in the test set (-> only 1 *NA* observation for survival).
+
+We will try to assign the titles with few observations to a similar class with more observations.
+
+* `Don`, `Capt`, `Jonkheer`, `Sir`, `Major` and `Col` will be assigned the class `Mr`  
+* `Dona`, `Lady`, `Mme` and `The Countress` will be assigned the class `Mrs`  
+* `Mlle` will be assigned the title `Ms`
+
+```{r}
+newTitles <- data.frame(Mr = dt$Title %in% c("Don", "Capt", "Jonkheer", "Sir", "Major", "Col"),
+                        Mrs = dt$Title %in% c("Dona", "Lady", "Mme", "the Countess"),
+                        Ms = dt$Title == "Mlle")
+
+dt$Title[newTitles$Mr] <- "Mr"
+dt$Title[newTitles$Ms] <- "Ms"
+dt$Title[newTitles$Mrs] <- "Mrs"
+```
+
+
+## Family size and traveling alone
+
+```{r}
+dt <- dt %>% 
+  mutate(famSize = Parch + SibSp + 1)
+```
+
+```{r}
+dt %>% 
+  #filter(!is.na(Survived)) %>% 
+  group_by(famSize, Survived) %>% 
+  summarise(freq = n()) %>% 
+  ungroup() %>% 
+  group_by(famSize) %>% 
+  mutate(total = sum(freq),
+         prop = freq/total) %>% 
+  ggplot(aes(x = famSize, y = prop, group = Survived))+
+  geom_col(aes(fill = factor(Survived))) +
+  geom_text(aes(label = freq), color = "white", cex = 4, position = position_fill(0.5)) +
+  geom_text(label = "Total:",x = 0,  y = 1.1) +
+  geom_text(aes(label = total, y = 1.1)) +
+  guides(fill = guide_legend(title = "Survived"), color = guide_legend(title = "n-observations")) +
+  scale_x_continuous(breaks = 1:11, lim = c(0,11.5)) 
+
+dt %>% 
+  filter(!is.na(Survived)) %>% 
+  group_by(famSize, Survived) %>% 
+  summarise(freq = n()) %>% 
+  ungroup() %>% 
+  group_by(famSize) %>% 
+  mutate(total = sum(freq),
+         prop = freq/total) %>% 
+  ggplot(aes(x = famSize, y = prop, group = Survived))+
+  geom_col(aes(fill = factor(Survived)), width = 1, color = "white") +
+  geom_text(aes(label = freq), color = "white", cex = 4, position = position_fill(0.5)) +
+  guides(fill = guide_legend(title = "Survived")) +
+  scale_x_continuous(breaks = 1:11) +
+  geom_vline(xintercept = 1.5)+
+  geom_vline(xintercept = 4.5)+
+  geom_vline(xintercept = 7.5)
+```
+
+By looking at the plot I would suggest 4 familySize groups taken into account their survival rate 
+in the training set:  
+
+* People traveling alone
+* Small families (2 - 4 people) 
+* Medium families (5 - 7 people)  
+* Big families (>7 people)
+
+We will create a new variable for those groups:
+
+```{r}
+dt <- dt %>% 
+  mutate(famSize = ifelse(famSize == 1,
+                          "alone",
+                          ifelse(famSize %in% 2:4, 
+                                 "small",
+                                 ifelse(famSize %in% 5:7,
+                                        "medium",
+                                        "big"))))
+```
+
+
+```{r}
+dt %>%
+  filter(!is.na(Survived)) %>% 
+  ggplot() +
+  geom_bar(aes(x = reorder(famSize, Survived), fill = factor(Survived)), position = "fill") +
+  guides(fill = guide_legend(title = "Survived")) +
+  ylab("Proportion") +
+  xlab("Family Size") 
+```
+
+# Correct Classes
+
+```{r}
+dt <- dt %>%
+  mutate_if(is.character, factor) %>% 
+  mutate(Survived = factor(Survived))
+```
+
+
+
+
+# Missing values
+To get a good overview of missing values we will plot the data using a custom made plot:
+
+```{r, echo = F}
+# function from my custom library "somtomlib" to plot missing values
+ggplot_missing_col <- function(x){
+  require(reshape2)
+  require(ggplot2)
+  require(dplyr)
+  require(purrr)
+
+  if (is.vector(x)) { x <- data.frame(vector = x)}
+
+  classes <- x %>% map(class) %>% melt %>% rename(Var = L1, Class = value)
+  col.order <- x %>%
+    map(function(s) sum(is.na(s))) %>%
+    melt %>%
+    arrange(desc(value)) %>%
+    select(L1) %>%
+    unlist
+
+  x %>%
+    is.na %>%
+    melt %>%
+    rename(Observation = Var1, Var = Var2) %>%
+    mutate(Var = as.character(Var)) %>%
+    left_join(classes, by = "Var") %>% mutate(Var = factor(Var, levels = col.order)) %>%
+    mutate(Class = ifelse(value == TRUE, NA, as.character(Class))) %>%
+    ggplot(data = .,
+           aes(x = Var)) +
+    geom_raster(aes(y = Observation, fill = Class)) +
+    scale_fill_discrete(name = "", na.value = "black") + 
+    theme_minimal() +
+    theme(axis.text.x  = element_text(angle = 90, vjust = 0.5)) +
+    labs(x = "Variables in Dataset",
+         y = "Rows / observations")
+}
+```
+
+Before plotting we need to assign *NA* to `Cabin` observations which are "".
+
+```{r}
+dt$Cabin <- ifelse(dt$Cabin == "", NA, dt$Cabin)
+```
+
+
+
+<center>
+```{r, fig.align='center'}
+ggplot_missing_col(dt)
+```
+</center>
+
+
+```{r, warnings = F}
+dt %>% 
+  map_df(~sum(is.na(.))) %>%
+  melt(id.vars = NULL) %>% 
+  filter(value > 0) %>% 
+  arrange(desc(value))
+```
+
+There are only missing for the variables `Cabin`, `Age` and `Fare` 
+(*NA*s in `Survived are test observations).
+
+## Fare
+
+For `Fare` we only have one missing observation:
+
+```{r}
+dt[is.na(dt$Fare),]
+```
+
+We assign the median Fare for `Pclass == 3` and `Age > 50` 
+
+```{r}
+dt[is.na(dt$Fare),]$Fare <- median(subset(dt$Fare, dt$Pclass == 3 & dt$Age > 50), na.rm = T)
+```
+
+
+## Age
+
+To impute the Age variable we will use k-nearest-neighbor regression. At first we will need to 
+choose a appropriate k by using cross validation:
+
+```{r}
+tmp <- dt %>% 
+  filter(!is.na(Age)) %>%
+  select(-Cabin, -Survived, - PassengerId, -Surename, -Name, -dataSet, -Ticket)
+
+
+set.seed(231)
+cv <- caret::train(Age ~. ,data = tmp, tuneGrid = expand.grid(kmax = 5:20,
+                                                               distance = 2,
+                                                               kernel = "optimal"),
+                   trControl = trainControl(method = "cv", number = 10), method = "kknn")
+ 
+plot(cv)
+```
+
+15 seems to be a good choice for k. We will use `k = 15` to impute the missing Age observations:
+
+```{r}
+kAge <- kknn(Age~., train = tmp, test = dt %>% filter(is.na(Age)), k = 15)
+dt[is.na(dt$Age),]$Age <- kAge$fitted.values
+```
+
+
+## Cabin
+
+We will drop the cabin variable for now
+
+```{r}
+dt <- dt %>% select(-Cabin)
+```
+
+# Dropping unneeded variables
+
+```{r}
+dt <- dt %>% select(-Ticket, -Name, -Surename)
+```
+
+
+
+# Classification Models
+
+Before we start with running classification models we will split
+our data set back into training and test data set:
+
+```{r}
+train <- dt %>% filter(dataSet == "train") %>% select(- dataSet, - PassengerId)
+test <- dt %>% filter(dataSet == "test") %>% select(- dataSet)
+```
+
+
+## Random Icebergs (Random Forest)
+
+In this Kernel we will try a Random Forest model for classification. 
+This will lead to a decision tree ensemble where every tree votes for the classification outcome.
+
+```{r}
+rf.grid <- expand.grid(mtry = 2:9)
+
+
+set.seed(234)
+rf.cv <- caret::train(Survived ~., data = train, tuneGrid = rf.grid,
+                      method = "rf")
+plot(rf.cv)
+```
+Let's have a look at the average confusion matrix:
+```{r}
+confusionMatrix.train(rf.cv)
+```
+
+
+Since `mtry = 9` shows the best accuracy performance we will use this value for training the model
+on the full training data
+
+```{r}
+set.seed(848)
+rf.fit <- randomForest(Survived ~., data = train, mtry = 9, ntree = 500)
+```
+
+
+Finally we will submit our prediction for the test-set:
+
+```{r}
+submission <- data.frame(PassengerId = test$PassengerId,
+                         Survived = predict(rf.fit, test))
+write.csv(submission, "./submission.csv", row.names = F)
+```
+
+
+
+# References
+
+*A S Hornby (2005) - Advanced Learner's Dictionary of Current Englisch Oxford Dictionary*  
+
+*[LDoceOnline English Dictionary](https://www.ldoceonline.com) (definition) (online ed.). Longman. Retrieved 03 Februrary 2018.* 
+

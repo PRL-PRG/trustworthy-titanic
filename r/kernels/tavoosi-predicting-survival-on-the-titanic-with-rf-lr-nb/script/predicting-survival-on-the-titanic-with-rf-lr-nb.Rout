@@ -1,0 +1,560 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ----setup, include = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(
++        message = FALSE,
++        warning = FALSE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(tidyverse) # Loads multiple packages 
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(ggthemes) # Data visualizations themes
+> library(corrplot) # Correlation visualizations
+corrplot 0.84 loaded
+> library(VIM) # Visualizing missing values
+Loading required package: colorspace
+Loading required package: grid
+VIM is ready to use.
+
+Suggestions and bug-reports can be submitted at: https://github.com/statistikat/VIM/issues
+
+Attaching package: ‘VIM’
+
+The following object is masked from ‘package:datasets’:
+
+    sleep
+
+> library(caret) # Machine learning
+Loading required package: lattice
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:purrr’:
+
+    lift
+
+> library(RANN)  # For knnInpute 
+> library(reshape2) # Data transformation
+
+Attaching package: ‘reshape2’
+
+The following object is masked from ‘package:tidyr’:
+
+    smiths
+
+Warning message:
+package ‘reshape2’ was built under R version 3.6.2 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train_data = read.csv('../input/train.csv', na.strings = "")
+> test_data = read.csv('../input/test.csv', na.strings = "")
+> 
+> full_data  <- bind_rows(train_data, test_data)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> head(full_data)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500  <NA>        S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250  <NA>        S
+4           113803 53.1000  C123        S
+5           373450  8.0500  <NA>        S
+6           330877  8.4583  <NA>        Q
+> 
+> 
+> ## ----out.width=c('33%', '34%', '33%'), fig.show='hold', echo=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Survival
+> ggplot(full_data[1:891,], aes(x = factor(Survived), fill=factor(Survived))) +
++        geom_bar(position = 'dodge') +
++        scale_x_discrete() +
++        labs(title = 'Survival on the Titanic', x = 'Outcome', y = 'Count') + 
++        scale_fill_discrete(name = 'Outcome', labels = c('Died', 'Survived')) + 
++        theme(legend.position = 'right') +
++        theme_classic()
+> 
+> # Sex
+> ggplot(full_data[1:891,], aes(x = factor(Sex), fill=factor(Survived))) +
++        geom_bar(position = 'dodge') +
++        scale_x_discrete() +
++        labs(title = 'Survival by Gender', x = 'Gender', y = 'Rate') + 
++        scale_fill_discrete(name = 'Outcome', labels = c('Died', 'Survived')) + 
++        theme(legend.position = 'right') +
++        theme_classic()
+> 
+> # Pclass 
+> ggplot(full_data[1:891,], aes(x = factor(Pclass), fill=factor(Survived))) +
++        geom_bar(position = 'dodge') +
++        scale_x_discrete() +
++        labs(title = 'Survival by Passenger Class', x = 'Passenger Class', y =
++        'Count') + 
++        scale_fill_discrete(name = 'Outcome', labels = c('Died', 'Survived')) + 
++        theme(legend.position = 'right') +
++        theme_classic()
+> 
+> # Embarkment
+> ggplot(full_data[1:891,], aes(x = factor(Embarked), fill=factor(Survived))) +
++        geom_bar(position = 'dodge') +
++        scale_x_discrete() +
++        labs(title = 'Survival by Embarkment', x = 'Embarkment', y = 'Count') + 
++        scale_fill_discrete(name = 'Outcome', labels = c('Died', 'Survived')) + 
++        theme(legend.position = 'right') +
++        theme_classic()
+> 
+> # Age
+> ggplot(full_data[1:891,]) + 
++        geom_freqpoly(aes(x = Age, color = factor(Survived)), binwidth = 1) +
++        theme_classic() +
++        theme(legend.position = "none") +
++        labs(title = 'Survival by Age', x = 'Age', y = 'Count')
+Warning message:
+Removed 177 rows containing non-finite values (stat_bin). 
+> 
+> # Fare
+> ggplot(full_data[1:891,]) + 
++        geom_freqpoly(aes(x = Fare, color = factor(Survived)), binwidth = 0.05) +
++        scale_x_log10() +
++        theme_classic() +
++        theme(legend.position = "none") +
++        labs(title = 'Survival by Fare (log10)', x = 'Fare (log10)', y = 'Count')
+Warning messages:
+1: Transformation introduced infinite values in continuous x-axis 
+2: Removed 15 rows containing non-finite values (stat_bin). 
+> 
+> 
+> ## ----fig.height=4, fig.width=5, fig.align = 'center', echo=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Turn into numeric
+> full_data$Sex <- as.numeric(full_data$Sex)
+> 
+> # Create correlation plot
+> corrplot.mixed(corr = cor(full_data[c('Survived', 'Fare', 'Sex', 'Pclass', 'Age')], use = 'complete.obs'), tl.col = "black", upper = "ellipse") 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data$family_size = full_data$SibSp + full_data$Parch + 1
+> 
+> 
+> ## ---- echo=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(full_data[1:891,], aes(x = factor(family_size), fill=factor(Survived))) +
++        geom_bar(position = 'dodge') +
++        scale_x_discrete() +
++        labs(title = 'Survival by Family Size on Board', 
++             x = 'Number of family members on board', y = 'Count') + 
++        scale_fill_discrete(name = 'Outcome', labels = c('Died', 'Survived')) + 
++        theme(legend.position = 'right') +
++        theme_classic()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Create categories for family size: 1, 2-4, 5+
+> full_data$family_size_range = cut(full_data$family_size, c(0, 1, 4, 15), include.lowest = TRUE)
+> 
+> # Next, fix the names of the variables. 
+> levels(full_data$family_size_range) = c('1', '2-4', '5+')
+> 
+> 
+> ## ---- echo=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(full_data[1:891,], aes(x = factor(family_size_range), 
++                               fill=factor(Survived))) +
++        geom_bar(position = 'dodge') +
++        scale_x_discrete() +
++        labs(title = 'Survival by Family Size on Board', 
++             x = 'Family size', y = 'Count') + 
++        scale_fill_discrete(name = 'Outcome', labels = c('Died', 'Survived')) + 
++        theme(legend.position = 'right') +
++        theme_classic()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data$Title <- gsub('(.*, )|(\\..*)', '', full_data$Name)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(full_data$Title)
+
+        Capt          Col          Don         Dona           Dr     Jonkheer 
+           1            4            1            1            8            1 
+        Lady        Major       Master         Miss         Mlle          Mme 
+           1            2           61          260            2            1 
+          Mr          Mrs           Ms          Rev          Sir the Countess 
+         757          197            2            8            1            1 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rare_title = c('Capt', 'Col', 'Don', 'Jonkheer', 'Lady', 'Major', 'Rev', 'Sir', 
++                'the Countess', 'Dr')
+> 
+> full_data$Title[full_data$Title %in% rare_title] <- 'Rare title'
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data$Title[full_data$Title=='Mlle'] <- 'Miss'
+> full_data$Title[full_data$Title=='Ms'] <- 'Miss'
+> full_data$Title[full_data$Title=='Dona'] <- 'Miss'
+> full_data$Title[full_data$Title=='Mme'] <- 'Mrs'
+> 
+> 
+> ## ---- echo=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(full_data[1:891,], aes(x = Title, fill=factor(Survived))) +
++        geom_bar(position = 'dodge') +
++        scale_x_discrete() +
++        labs(title = 'Survival by Title', x = 'Title', y = 'Count') + 
++        scale_fill_discrete(name = 'Outcome', labels = c('Died', 'Survived')) + 
++        theme(legend.position = 'right') +
++        theme_classic()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data$Cabin_letter <- gsub('[0-9].*', '', full_data$Cabin)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data$Cabin_letter[full_data$Cabin_letter=='E'] <- 'EFGT'
+> full_data$Cabin_letter[full_data$Cabin_letter=='F'] <- 'EFGT'
+> full_data$Cabin_letter[full_data$Cabin_letter=='F E'] <- 'EFGT'
+> full_data$Cabin_letter[full_data$Cabin_letter=='F G'] <- 'EFGT'
+> full_data$Cabin_letter[full_data$Cabin_letter=='G'] <- 'EFGT'
+> full_data$Cabin_letter[full_data$Cabin_letter=='T'] <- 'EFGT'
+> 
+> full_data$Cabin_letter[is.na(full_data$Cabin_letter)] <- 'Blank'
+> 
+> 
+> ## ---- echo=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(full_data[1:891,], aes(x = factor(Cabin_letter), fill=factor(Survived))) +
++        geom_bar(position = 'dodge') +
++        scale_x_discrete() +
++        labs(title = 'Survival by Cabin', x = 'Cabin', y = 'Count') + 
++        scale_fill_discrete(name = 'Outcome', labels = c('Died', 'Survived')) + 
++        theme_classic() 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data$cabin_presence[full_data$Cabin_letter=='Blank'] <- 'No cabin'
+> full_data$cabin_presence[is.na(full_data$cabin_presence)] <- 'Cabin'
+> 
+> 
+> ## ----echo=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(full_data[1:891,], aes(x = factor(cabin_presence), fill=factor(Survived))) +
++        geom_bar(position = 'dodge') +
++        scale_x_discrete() +
++        labs(title = 'Survival by Cabin', x = 'Cabin', y = 'Count') + 
++        scale_fill_discrete(name = 'Outcome', labels = c('Died', 'Survived')) + 
++        theme(legend.position = 'right') +
++        theme_classic()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data$Ticket_number <- gsub('[^0-9]', '', full_data$Ticket)
+> 
+> 
+> ## ----results='hold'--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(full_data$Ticket_number=="")
+
+FALSE  TRUE 
+ 1305     4 
+> 
+> full_data$Ticket_number[full_data$Ticket_number==""] <- 0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data$Ticket_number <- as.integer(full_data$Ticket_number)
+> 
+> ggplot(full_data[1:891,]) + 
++        geom_freqpoly(aes(x = Ticket_number, color = factor(Survived)), binwidth=0.1) +
++        scale_x_log10() +
++        scale_color_discrete(name = 'Outcome', labels = c('Died', 'Survived')) +
++        theme_classic() +
++        labs(title = 'Survival by Ticket number', x = 'Ticket number', y = 'Count')
+Warning messages:
+1: Transformation introduced infinite values in continuous x-axis 
+2: Removed 4 rows containing non-finite values (stat_bin). 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> cor(full_data$Ticket_number, as.numeric(full_data$Survived), use = 'complete.obs')
+[1] -0.01561505
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data_relevant <- subset(full_data, select = c(Survived, Pclass, Sex, Age, Fare, 
++                                    Title, cabin_presence, family_size_range
++                                  # Ticket_number, Embarked
++                                    ))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data_relevant$Survived <- as.factor(full_data_relevant$Survived)
+> full_data_relevant$Pclass <- factor(full_data_relevant$Pclass, ordered = TRUE)
+> full_data_relevant$Survived <- as.factor(full_data_relevant$Survived)
+> full_data_relevant$Title <- as.factor(full_data_relevant$Title)
+> full_data_relevant$cabin_presence <- as.factor(full_data_relevant$cabin_presence)
+> 
+> 
+> ## ----fig.height=5, fig.width=8---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> aggr(full_data_relevant, sortVars = TRUE, prop = FALSE, cex.axis = .6, numbers = TRUE)
+
+ Variables sorted by number of missings: 
+          Variable Count
+          Survived   418
+               Age   263
+              Fare     1
+            Pclass     0
+               Sex     0
+             Title     0
+    cabin_presence     0
+ family_size_range     0
+> 
+> 
+> ## ----results='hold'--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> md_prediction <- preProcess(full_data_relevant[c(2:8)], method = c('knnImpute', 'center', 'scale'))
+> print(md_prediction)
+Created from 1045 samples and 7 variables
+
+Pre-processing:
+  - centered (3)
+  - ignored (4)
+  - 5 nearest neighbor imputation (3)
+  - scaled (3)
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data_complete <- predict(md_prediction, newdata = full_data_relevant[c(2:8)])
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data_final <- data.frame(full_data_complete, full_data$Survived)
+> full_data_final <- cbind(full_data$PassengerId, full_data_final)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data_final <- rename(full_data_final, Survived = full_data.Survived,
++                           PassengerId = `full_data$PassengerId`)
+> 
+> full_data_final$Survived <- as.factor(full_data_final$Survived)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- full_data_final[1:891,]
+> test <- full_data_final[892:1309,]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(222) # Set a random seed
+> 
+> rf_model <- train(Survived ~ .,
++                   method = 'rf',
++                   data = train); print(rf_model)
+Random Forest 
+
+891 samples
+  8 predictor
+  2 classes: '0', '1' 
+
+No pre-processing
+Resampling: Bootstrapped (25 reps) 
+Summary of sample sizes: 891, 891, 891, 891, 891, 891, ... 
+Resampling results across tuning parameters:
+
+  mtry  Accuracy   Kappa    
+   2    0.8289915  0.6307177
+   7    0.8217978  0.6163333
+  13    0.8080451  0.5866530
+
+Accuracy was used to select the optimal model using the largest value.
+The final value used for the model was mtry = 2.
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> confusionMatrix(rf_model)
+Bootstrapped (25 reps) Confusion Matrix 
+
+(entries are percentual average cell counts across resamples)
+ 
+          Reference
+Prediction    0    1
+         0 55.1 10.5
+         1  6.6 27.8
+                            
+ Accuracy (average) : 0.8288
+
+> 
+> 
+> ## ----fig.height=4, fig.width=8---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Create data frame of error rate
+> rf_err_model <- as.data.frame(rf_model[["finalModel"]][["err.rate"]])
+> rf_err_model$sequence <- seq(1:500)
+> 
+> # Rename 0's to Died and 1's to Survived
+> rf_err_model <- rename(rf_err_model, Died = '0', Survived = '1')
+> 
+> # Convert data frame into long format
+> rf_err_model <- melt(rf_err_model, id = 'sequence')
+> 
+> # Plot error rate
+> ggplot(rf_err_model, aes(x = sequence, y = value, color = variable)) + 
++        geom_line() +
++        scale_colour_manual(values=c('black', 'red2', 'forestgreen')) +
++        theme_classic() +
++        labs(title = 'Error rate in prediction', x = 'Sequence', y = 'Error rate')
+> 
+> 
+> ## ----fig.height=5, fig.width=8---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rf_importance <- varImp(rf_model)
+>  
+> ggplot(rf_importance, aes(x = reorder(variable, importance), y = importance)) +
++        geom_bar(stat='identity') + 
++        labs(title = 'Importance of predictors', x = 'Predictors', y = 'Importance') +
++        theme_light()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> prediction_rf <- predict(rf_model, test)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> solution_rf <- data.frame(PassengerID = test$PassengerId, Survived = prediction_rf)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> write.csv(solution_rf, file = 'rf_Titanic_Solution.csv', row.names = F)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fitControl <- trainControl(method = "cv", number = 10, savePredictions = TRUE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(222) # Set random seed
+> 
+> lr_model <- train(factor(Survived) ~ .,
++                      data = train,
++                      method = 'glm', 
++                      family = binomial(),
++                      trControl = fitControl); print(lr_model)
+Generalized Linear Model 
+
+891 samples
+  8 predictor
+  2 classes: '0', '1' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 802, 801, 802, 802, 802, 802, ... 
+Resampling results:
+
+  Accuracy   Kappa    
+  0.8271411  0.6290895
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> confusionMatrix(lr_model)
+Cross-Validated (10 fold) Confusion Matrix 
+
+(entries are percentual average cell counts across resamples)
+ 
+          Reference
+Prediction    0    1
+         0 54.2  9.9
+         1  7.4 28.5
+                            
+ Accuracy (average) : 0.8272
+
+> 
+> 
+> ## ----fig.height=5, fig.width=8---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> lr_importance <- varImp(lr_model)
+>  
+> ggplot(lr_importance, aes(x = reorder(variable, importance), y = importance)) +
++        geom_bar(stat='identity') + 
++        labs(title = 'Importance of predictors', x = 'Predictors', y = 'Importance') +
++        theme_light()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> prediction_lr <- predict(lr_model, test)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> solution_lr <- data.frame(PassengerID = test$PassengerId, Survived = prediction_lr)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> write.csv(solution_lr, file = 'lr_Titanic_Solution.csv', row.names = F)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train_features <- full_data_final[1:891,-13]
+> train_response <- full_data_final[1:891, 13]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fitControl <- trainControl(method = "cv", number = 10, savePredictions = TRUE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(222) # Set random seed
+> 
+> nb_model <- train(Survived ~ ., 
++                   data = train,
++                   method = "nb", # Specify navie bayes model
++                   trControl = fitControl); print(nb_model)
+Something is wrong; all the Accuracy metric values are missing:
+    Accuracy       Kappa    
+ Min.   : NA   Min.   : NA  
+ 1st Qu.: NA   1st Qu.: NA  
+ Median : NA   Median : NA  
+ Mean   :NaN   Mean   :NaN  
+ 3rd Qu.: NA   3rd Qu.: NA  
+ Max.   : NA   Max.   : NA  
+ NA's   :2     NA's   :2    
+Error: Stopping
+In addition: There were 21 warnings (use warnings() to see them)
+Execution halted

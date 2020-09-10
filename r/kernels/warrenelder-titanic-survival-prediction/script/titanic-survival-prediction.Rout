@@ -1,0 +1,108 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ----setup, include=TRUE, echo=TRUE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo=TRUE, error=FALSE)
+> 
+> 
+> ## ----message=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # general visualisation
+> library('ggplot2')
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library('scales')
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> library('grid')
+> library('ggthemes')
+> library('gridExtra')
+> library('RColorBrewer')
+> library('corrplot')
+corrplot 0.84 loaded
+> library('rpart.plot')
+Loading required package: rpart
+> 
+> # general data manipulation
+> library('mice')
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library('dplyr')
+
+Attaching package: ‘dplyr’
+
+The following object is masked from ‘package:gridExtra’:
+
+    combine
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library('readr')
+
+Attaching package: ‘readr’
+
+The following object is masked from ‘package:scales’:
+
+    col_factor
+
+> library('data.table')
+
+Attaching package: ‘data.table’
+
+The following objects are masked from ‘package:dplyr’:
+
+    between, first, last
+
+> library('tibble')
+Warning message:
+package ‘tibble’ was built under R version 3.6.2 
+> library('tidyr')
+Warning message:
+package ‘tidyr’ was built under R version 3.6.2 
+> library('stringr')
+> library('forcats')
+> library('rlang')
+
+Attaching package: ‘rlang’
+
+The following object is masked from ‘package:data.table’:
+
+    :=
+
+Warning message:
+package ‘rlang’ was built under R version 3.6.2 
+> library('caret')
+Loading required package: lattice
+> library('ade4')
+Error in library("ade4") : there is no package called ‘ade4’
+Execution halted

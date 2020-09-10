@@ -1,0 +1,447 @@
+---
+output:
+  html_document:
+    toc: true
+    number_sections: true
+    theme: readable
+title: "Predicting Survival on the Titanic"
+author: "Zachary Gallegos"
+---
+
+
+```{r preliminaries}
+
+library(caret)
+library(party)
+library(ggplot2)
+library(mice)
+library(knitr)
+
+# setwd("E:\\kaggle\\titanic")
+# setwd("/volumes/hp c350b/kaggle/titanic")
+
+read_titanic <- function(x, ...) 
+{
+	d <- read.csv(x, na.strings = "", ...)
+	names(d) <- tolower(names(d))
+
+	d[["pclass"]] <- factor(d[["pclass"]], levels = c("3", "2", "1"), ordered = TRUE)
+	d[["sex"]] <- factor(d[["sex"]])
+	if(sum(grepl(pattern = "^surv", names(d))) > 0) {
+        d[["survived"]] <- factor(d[["survived"]], 
+                                    levels = c("0", "1"), 
+                                    labels = c("Died", "Survived"))
+        }
+	d
+}
+
+tr <- read_titanic("../input/train.csv")
+tst <- read_titanic("../input/test.csv")
+
+#tr <- read_titanic("train.csv")
+#tst <- read_titanic("test.csv")
+
+all <- rbind(cbind(dataset = "training", tr), 
+                cbind(dataset = "testing", survived = NA, tst))
+
+# count missing values
+
+miss <- function(x) unlist(lapply(x, function(k) sum(is.na(k))))
+
+miss(tr)
+miss(tst)
+
+# age has many and that's probably an important predictor, will need to fix those
+# the testing dataset has a missing fare and the training set has a couple missing embark locations
+
+mosaicplot(tr$pclass ~ tr$survived, col = c("red", "green"))
+
+```
+
+```{r}
+
+mosaicplot(tr$sex ~ tr$survived, col = c("red", "green"))
+
+```
+
+# Clean/Feature
+
+```{r, fig.width = 7, fig.height = 7}
+
+extract_text <- function(x, type = c("lastname", "title"))
+{
+    type <- match.arg(type)
+    if(type == "lastname") {
+        m <- regexpr(pattern = "^[^,]+", text = x)
+    } else if(type == "title") {
+        m <- regexpr(pattern = "(?<=,\\s)[^\\.]+", text = x, perl = TRUE)
+    }
+    substr(x, start = m, stop = m + attr(m, "match.length") - 1)
+}
+
+all$lastname <- vapply(all[["name"]], function(k) extract_text(k, type = "lastname"), character(1))
+all$title <- vapply(all[["name"]], function(k) extract_text(k, type = "title"), character(1))
+
+kable(data.frame(table(all$title)))
+
+# I have to know if the captain went down with the ship...
+
+DOWN_WITH_SHIP <- all[all$title == "Capt", "survived"] == "Died"
+DOWN_WITH_SHIP # HARDMAN
+
+# let's recode some of these titles
+
+title_recodes <- list(list(old = c("Mlle", "Mme", "Ms"), new = "Miss"),
+                      list(old = c("Dona"), new = "Mrs"),
+                      list(old = c("Don"), new = "Mr"),
+                      list(old = c("Capt", "Major", "Col"), new = "Mil"),
+                      list(old = c("Dr", "Rev", "Sir"), new = "Hon"),
+                      list(old = c("Jonkheer", "Lady", "the Countess"), new = "HonF"))
+
+recode_titles <- function(recodes, df)
+{   
+    stopifnot(is.list(recodes))
+    for(j in seq(length(recodes))) {
+        df[df[["title"]] %in% recodes[[j]][["old"]], "title"] <- recodes[[j]][["new"]]
+        }
+    df
+}
+
+all <- recode_titles(title_recodes, all)
+all$title <- factor(all$title)
+
+kable(data.frame(table(all$title))) # these should work better for classification
+
+# what titles do the children get?
+
+table(all[all$sex == "male" & all$age <= 16, "title"])
+table(all[all$sex == "female" & all$age <= 16, "title"]) # there are two married 16 year olds...
+
+# now we need to find some way of imputing the missing age values
+
+prop.table(table(tr[,"survived"]))
+prop.table(table(tr[is.na(tr$age), "survived"]))
+
+# the proportions of survival between those with missing age values
+# and the whole population are fairly different, so the values
+# are probably not missing at random
+
+# what are the titles of the passengers with missing age values?
+
+table(all[is.na(all$age), "title"]) 
+
+# that's uninformative, I was hoping a big chunk would be from some obvious age group
+# let's just impute them then
+
+```
+
+```{r}
+
+# remove the factor variables and survival in the imputation call
+pmms <- mice(all[, c("age", "sex", "sibsp", "parch", "fare")], 
+                    method = "pmm", printFlag = F)
+
+out <- complete(pmms)
+
+# validate the results of the imputation
+summary(all$age)
+summary(out$age) # imputation didn't change the age distribution significantly
+
+plot_data <- rbind(data.frame(dataset = "original", age = all[!is.na(all$age), "age"]),
+                    data.frame(dataset = "imputed", age = out[["age"]]))
+
+g <- ggplot(data = plot_data, aes(x = age))
+g <- g + geom_histogram(aes(y = ..density..), binwidth = 5)
+g <- g + facet_grid(. ~ dataset)
+g # looks fine
+
+all$age <- out$age
+
+tr <- all[all$dataset == "training",]
+
+```
+
+```{r}
+
+## let's also fix the missing "embarks" while we're at it
+
+all[is.na(all$embarked),]
+
+# they're first class and they paid $80
+
+with(all[all$pclass == 1,], tapply(fare, embarked, summary))
+
+# every first class passenger from "Q" paid $90, so it's not there
+# > 50% of the passengers paid less than $80 from C, compared to
+# about 20% in S. seems C is most likely. boxplot it
+
+with(all[all$pclass == 1,], 
+        boxplot(fare ~ embarked, 
+                    main = "First-Class Fares by Embark Point"))
+abline(h = unique(all[is.na(all$embarked), "fare"]), col = "red")
+# they're right at the median for C, so that's most likely
+# we'll go with that
+
+all[is.na(all$embarked), "embarked"] <- "C"
+
+# in the testing set, there's a missing fare
+# where did they come from?
+
+all[is.na(all$fare),] # 3rd class passenger embarking from "S"
+
+boxplot(all[all$pclass == 3 & all$embarked == "S", "fare"]) # fairly well concentrated, we'll use the median
+
+all[is.na(all$fare), "fare"] <- median(all[all$pclass == 3 & all$embarked == "S", "fare"], na.rm = TRUE)
+
+
+```
+
+```{r}
+
+# in 1912, being 16 was a big deal and life expectancy was 50-55
+
+categorize_age <- function(x, baby_age, child_age, adult_age) 
+{
+    if(x <= baby_age) {
+        "Baby"
+    } else if(x <= child_age) {
+        "Child"
+    } else if(x <= adult_age) {
+        "Adult"
+    } else {
+        "Elderly"
+    }
+}
+
+tr$age_cat <- factor(vapply(tr$age, function(j) categorize_age(j, 4, 16, 55), character(1)))
+
+# how informative is that on its own?
+prop.table(table(tr$age_cat, tr$survived), margin = 1) # somewhat
+
+# can we set more informative breakpoints for the age categories?
+# suppose we want to pick the three values in the function above that make the most
+# heterogenous groups in the above table call
+# that is, we want to maximize absolute distance in each row
+# so dig it
+
+hetero_measure <- function(ages)
+{
+    stopifnot(length(ages) == 3)
+    baby <- ages[1]
+    chld <- ages[2]
+    adlt <- ages[3]
+
+    if(baby < 1) return(NA)
+
+    cats <- factor(vapply(tr$age, function(j) 
+                    categorize_age(j, baby, chld, adlt), character(1)))
+    
+    tbl <- prop.table(table(cats, tr$survived), margin = 1)
+    -sum(abs(tbl[,1] - tbl[,2]))
+}
+
+best_ages <- optim(par = c(4, 16, 55), fn = hetero_measure)$par
+best_ages # optim thinks we're better off with these
+
+# let's see
+
+best_ages <- round(best_ages)
+
+tr$age_cat <- factor(vapply(tr$age, function(j) 
+                        categorize_age(j, best_ages[1], best_ages[2], best_ages[3]), character(1)))
+
+prop.table(table(tr$age_cat, tr$survived), margin = 1) # old people basically getting pushed into the water 
+
+# those ages spread out the child and adult numbers substantially
+# that could be a bit of an overfit, but let's stick with those
+
+all$age_cat <- factor(vapply(all$age, function(j) 
+                        categorize_age(j, best_ages[1], best_ages[2], best_ages[3]), character(1)))
+
+
+```
+
+
+```{r}
+
+# so let's create some more informative family features
+# but first, let's explore how important family really is
+
+# how much does having a surviving child affect your likelihood to survive?
+
+surv_child <- function(nm, age, par_embrk, prch, titl, dta, no_surv_check = FALSE)
+{
+
+    if(age <= 16 || prch == 0 || titl %in% c("Miss")) return(0)
+
+    flt <- dta[dta[["lastname"]] == nm &
+                dta[["embarked"]] == par_embrk &
+                dta[["parch"]] > 0 &
+                dta[["age_cat"]] %in% c("Baby", "Child"),]
+
+    if(nrow(flt) == 0) {
+        0
+    } else {
+        if(no_surv_check) return(1)
+        if(any(flt[["survived"]] == "Survived")) {
+            2
+        } else {
+            1
+        }
+    }
+
+}
+
+tr$child_survived <- unlist(Map(f = function(a, b, c, d, e) 
+                                    surv_child(a, b, c, d, e, dta = tr),
+                                         tr$lastname,
+                                         tr$age,
+                                         tr$embarked,
+                                         tr$parch,
+                                         tr$title))
+
+tr$child_survived <- factor(tr$child_survived, levels = c(0, 1, 2),
+                                labels = c("No Children Aboard",
+                                            "Children Died",
+                                            "Children Survived"))
+
+mosaicplot(tr$child_survived ~ tr$survived)
+
+# information! people with no children died with about same proportion as whole population
+# but people whose children died disproportionately also died
+# and vice versa
+
+# is it different for mothers and fathers?
+
+tbl <- table(tr$child_survived, tr$survived, tr$sex)
+tbl
+
+# mothers overwhelmingly die or survive with their children
+# being a father doesn't seem to help you
+# let's flag mothers then. I'm going to use the stricter criteria for determining
+# a mother that's set forth in my function, as opposed to using the parch variable
+
+all$mother <- factor(unlist(Map(f = function(a, b, c, d, e) 
+                                    surv_child(a, b, c, d, e, dta = all, no_surv_check = TRUE),
+                                         all$lastname,
+                                         all$age,
+                                         all$embarked,
+                                         all$parch,
+                                         all$title)))
+
+```
+
+```{r}
+
+# how bout if you had a surviving spouse?
+
+surv_spouse <- function(nm, age, sps_embrk, sbsp, sx, titl, dta)
+{
+    if(age <= 16 || sbsp == 0 || titl %in% c("Miss")) return(0)
+
+    mtch.sex <- ifelse(sx == "male", "female", "male")
+
+        flt <- dta[dta[["lastname"]] == nm &
+                dta[["embarked"]] == sps_embrk &
+                dta[["sibsp"]] > 0 &
+                dta[["sex"]] == mtch.sex &
+                !(dta[["age_cat"]] %in% c("Baby", "Child")),]
+
+    if(nrow(flt) == 0) {
+        0
+    } else {
+        if(any(flt[["survived"]] == "Survived")) {
+            2 # hopefully that "any" isn't necessary but who knows
+        } else {
+            1
+        }
+    }
+
+}
+
+tr$spouse_survived <- unlist(Map(f = function(a, b, c, d, e, f) 
+                                    surv_spouse(a, b, c, d, e, f, dta = tr),
+                                         tr$lastname,
+                                         tr$age,
+                                         tr$embarked,
+                                         tr$sibsp,
+                                         tr$sex,
+                                         tr$title))
+
+tr$spouse_survived <- factor(tr$spouse_survived, levels = c(0, 1, 2),
+                                labels = c("No Spouse Aboard",
+                                            "Spouse Died",
+                                            "Spouse Survived"))
+
+mosaicplot(tr$spouse_survived ~ tr$survived)
+# this one looks less helpful
+# jack did die even though rose lived
+
+with(tr[tr$sex == "female",], prop.table(table(tr$spouse_survived, tr$survived), margin = 1))
+with(tr[tr$sex == "male",], prop.table(table(tr$spouse_survived, tr$survived), margin = 1))
+
+# yeah, not doing us much good. we'll leave it off
+
+
+```
+
+```{r}
+
+# lastly let's see if we can squeeze anything out of this cabin business
+# it looks like the first letter corresponds to some part of the ship
+# that might be important
+# we'll treat the missing values as a factor level, since we don't have info to impute them
+
+all$ship_part <- substr(all$cabin, start = 1, stop = 1)
+
+table(all$pclass, all$ship_part, useNA = "ifany") 
+
+# it looks like this is only filled out for 1st class passengers?
+# so this is going to carry lots of the same information as the pclass variable
+
+all[is.na(all$ship_part) | all$ship_part %in% c("T"), "ship_part"] <- "Unknown"
+
+all$ship_part <- factor(all$ship_part)
+
+```
+
+# fit
+
+
+```{r}
+
+keep_vars <- setdiff(names(all), c("dataset", "ticket", "cabin", "name", "lastname"))
+
+testing <- all[all$dataset == "testing", keep_vars]
+training <- all[all$dataset == "training", setdiff(keep_vars, "passengerid")]
+
+```
+
+```{r}
+
+# fit <- train(survived ~ ., data = training, method = "rf")
+
+# plot(fit$finalModel)
+
+# varImpPlot(fit$finalModel)
+
+# testing$survived <- ifelse(predict(fit, testing) == "Survived", 1, 0)
+
+# submission <- testing[, c("passengerid", "survived")]
+
+#write.csv(submission, file = "submission.csv", row.names = FALSE)
+
+
+```
+
+```{r}
+
+fit <- cforest(survived ~ ., data = training, controls = cforest_unbiased(ntree = 2000, mtry = 3))
+
+testing$survived <- ifelse(predict(fit, testing, OOB = TRUE, type = "response") == "Survived", 1, 0)
+
+submission <- testing[, c("passengerid", "survived")]
+
+write.csv(submission, file = "submission.csv", row.names = FALSE)
+
+```

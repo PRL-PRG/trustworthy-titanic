@@ -1,0 +1,553 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ---- include = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(MASS) # lda / qda
+
+Attaching package: ‘MASS’
+
+The following object is masked from ‘package:dplyr’:
+
+    select
+
+> library(class) # knn
+> library(grid)
+> library(gridExtra)
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> library(stringr)
+> 
+> knitr::opts_chunk$set(
++   message = FALSE,
++   warning = FALSE,
++   fig.width = 6,
++   fig.asp = 0.618,
++   out.width = "80%",
++   fig.align = "center"
++ )
+> 
+> 
+> ## ---- echo = FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainFile <- '../input/train.csv'
+> testFile <- '../input/test.csv'
+> titanicTrainingDataset <- read_csv(trainFile)
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> knitr::kable(titanicTrainingDataset[1:10, ], caption = 'Titanic training dataset overview')
+
+
+| PassengerId| Survived| Pclass|Name                                                |Sex    | Age| SibSp| Parch|Ticket           |    Fare|Cabin |Embarked |
+|-----------:|--------:|------:|:---------------------------------------------------|:------|---:|-----:|-----:|:----------------|-------:|:-----|:--------|
+|           1|        0|      3|Braund, Mr. Owen Harris                             |male   |  22|     1|     0|A/5 21171        |  7.2500|NA    |S        |
+|           2|        1|      1|Cumings, Mrs. John Bradley (Florence Briggs Thayer) |female |  38|     1|     0|PC 17599         | 71.2833|C85   |C        |
+|           3|        1|      3|Heikkinen, Miss. Laina                              |female |  26|     0|     0|STON/O2. 3101282 |  7.9250|NA    |S        |
+|           4|        1|      1|Futrelle, Mrs. Jacques Heath (Lily May Peel)        |female |  35|     1|     0|113803           | 53.1000|C123  |S        |
+|           5|        0|      3|Allen, Mr. William Henry                            |male   |  35|     0|     0|373450           |  8.0500|NA    |S        |
+|           6|        0|      3|Moran, Mr. James                                    |male   |  NA|     0|     0|330877           |  8.4583|NA    |Q        |
+|           7|        0|      1|McCarthy, Mr. Timothy J                             |male   |  54|     0|     0|17463            | 51.8625|E46   |S        |
+|           8|        0|      3|Palsson, Master. Gosta Leonard                      |male   |   2|     3|     1|349909           | 21.0750|NA    |S        |
+|           9|        1|      3|Johnson, Mrs. Oscar W (Elisabeth Vilhelmina Berg)   |female |  27|     0|     2|347742           | 11.1333|NA    |S        |
+|          10|        1|      2|Nasser, Mrs. Nicholas (Adele Achem)                 |female |  14|     1|     0|237736           | 30.0708|NA    |C        |
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> map_dbl(titanicTrainingDataset, function(x) mean(is.na(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+0.000000000 0.000000000 0.000000000 0.000000000 0.000000000 0.198653199 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+0.000000000 0.000000000 0.000000000 0.000000000 0.771043771 0.002244669 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanicTrainingDataset <- read_csv(
++   trainFile, 
++   col_types = cols(
++     Survived = col_factor(0:1), 
++     Pclass = col_factor(1:3), 
++     Sex = col_factor(c("male", "female")), 
++     Embarked = col_factor(c("C", "Q", "S"))
++   )
++ ) %>%
++   filter(!is.na(Embarked)) %>%
++   mutate(Age = ifelse(is.na(Age), median(Age, na.rm = T), Age)) 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanicTrainingDataset <- titanicTrainingDataset %>%
++   mutate(Title = as.factor(str_extract(Name, regex("([a-z]+\\.)", ignore_case = T))))
+> 
+> levels(titanicTrainingDataset$Title)
+ [1] "Capt."     "Col."      "Countess." "Don."      "Dr."       "Jonkheer."
+ [7] "Lady."     "Major."    "Master."   "Miss."     "Mlle."     "Mme."     
+[13] "Mr."       "Mrs."      "Ms."       "Rev."      "Sir."     
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(titanicTrainingDataset)
+  PassengerId  Survived Pclass      Name               Sex           Age       
+ Min.   :  1   0:549    1:214   Length:889         male  :577   Min.   : 0.42  
+ 1st Qu.:224   1:340    2:184   Class :character   female:312   1st Qu.:22.00  
+ Median :446            3:491   Mode  :character                Median :28.00  
+ Mean   :446                                                    Mean   :29.32  
+ 3rd Qu.:668                                                    3rd Qu.:35.00  
+ Max.   :891                                                    Max.   :80.00  
+                                                                               
+     SibSp            Parch           Ticket               Fare        
+ Min.   :0.0000   Min.   :0.0000   Length:889         Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.0000   Class :character   1st Qu.:  7.896  
+ Median :0.0000   Median :0.0000   Mode  :character   Median : 14.454  
+ Mean   :0.5242   Mean   :0.3825                      Mean   : 32.097  
+ 3rd Qu.:1.0000   3rd Qu.:0.0000                      3rd Qu.: 31.000  
+ Max.   :8.0000   Max.   :6.0000                      Max.   :512.329  
+                                                                       
+    Cabin           Embarked     Title    
+ Length:889         C:168    Mr.    :517  
+ Class :character   Q: 77    Miss.  :181  
+ Mode  :character   S:644    Mrs.   :124  
+                             Master.: 40  
+                             Dr.    :  7  
+                             Rev.   :  6  
+                             (Other): 14  
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanicTrainingDataset %>%
++   ggplot(aes(x = Survived)) +
++   geom_bar()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> analysePredictorResponse <- function(data, predictor, response) {
++   if (is.factor(data[[predictor]])) {
++       ggplot(mapping = aes(data[[predictor]], fill = data[[response]])) +
++         geom_bar() +
++         labs(title = paste(predictor, "vs", response), x = predictor, fill = response) 
++   } else {
++     chart1 <- ggplot(mapping = aes(data[[response]], data[[predictor]])) +
++       geom_boxplot() +
++       labs(title = paste(predictor, "vs", response), x = response, y = predictor)
++     
++     chart2 <- ggplot(mapping = aes(x = data[[predictor]], , y = ..density.., colour = data[[response]])) +
++       geom_freqpoly(position = "dodge") +
++       labs(title = paste(predictor, "vs", response), colour = response, x = predictor)
++     
++     grid.arrange(chart1, chart2)
++   }
++ }
+> 
+> 
+> ## ---- fig.asp = 1.2--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> analysePredictorResponse(titanicTrainingDataset, 'Age', 'Survived')
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> 
+> ## ---- fig.asp = 1.2--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> analysePredictorResponse(titanicTrainingDataset, 'Sex', 'Survived')
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanicTrainingDataset %>% 
++   group_by(Sex) %>%
++   summarize(SurvivedRatio = mean(Survived == 1))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 2 x 2[39m
+  Sex    SurvivedRatio
+  [3m[90m<fct>[39m[23m          [3m[90m<dbl>[39m[23m
+[90m1[39m male           0.189
+[90m2[39m female         0.740
+> 
+> 
+> ## ---- fig.asp = 1.2--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> analysePredictorResponse(titanicTrainingDataset, 'Pclass', 'Survived')
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanicTrainingDataset %>% 
++   group_by(Pclass) %>%
++   summarize(SurvivedRatio = mean(Survived == 1))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 3 x 2[39m
+  Pclass SurvivedRatio
+  [3m[90m<fct>[39m[23m          [3m[90m<dbl>[39m[23m
+[90m1[39m 1              0.626
+[90m2[39m 2              0.473
+[90m3[39m 3              0.242
+> 
+> 
+> ## ---- fig.asp = 1.2--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> analysePredictorResponse(titanicTrainingDataset, 'SibSp', 'Survived')
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> 
+> ## ---- fig.asp = 1.2--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> analysePredictorResponse(titanicTrainingDataset, 'Parch', 'Survived')
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> 
+> ## ---- fig.asp = 1.2--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> analysePredictorResponse(titanicTrainingDataset, 'Fare', 'Survived')
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> 
+> ## ---- fig.asp = 1.2--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> analysePredictorResponse(titanicTrainingDataset, 'Embarked', 'Survived')
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanicTrainingDataset %>% 
++   group_by(Embarked) %>%
++   summarize(SurvivedRatio = mean(Survived == 1))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 3 x 2[39m
+  Embarked SurvivedRatio
+  [3m[90m<fct>[39m[23m            [3m[90m<dbl>[39m[23m
+[90m1[39m C                0.554
+[90m2[39m Q                0.390
+[90m3[39m S                0.337
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanicTrainingDataset %>%
++   ggplot(mapping = aes(Pclass, Fare)) +
++   geom_boxplot()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanicTrainingDataset %>%  
++   ggplot(mapping = aes(Embarked, fill = Pclass)) +
++   geom_bar()
+> 
+> 
+> ## ---- fig.asp = 1.2--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanicTrainingDataset %>%
++   group_by(Title) %>%
++   summarize(SurvivedRatio = mean(Survived == 1)) %>%
++   arrange(SurvivedRatio) %>%
++   mutate(Title = factor(Title, levels = Title)) %>%
++   ggplot(aes(x = Title, y = SurvivedRatio)) +
++   geom_col() +
++   coord_flip()
+`summarise()` ungrouping output (override with `.groups` argument)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanicTrainingDataset <- titanicTrainingDataset %>% mutate(
++   RefinedTitle = factor(ifelse(Title %in% c('Capt.', 'Don', 'Jonkheer.', 'Rev.', 'Mr.'), 1, 
++     ifelse(Title %in% c('Col.', 'Dr.', 'Major.', 'Master.'), 2, 3
++     )
++   ))
++ )
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> model <- glm(Survived ~ RefinedTitle + Pclass + SibSp + Embarked + Age + Sex + Parch, data = titanicTrainingDataset %>% filter(!is.na(Age)), family = binomial)
+> summary(model)
+
+Call:
+glm(formula = Survived ~ RefinedTitle + Pclass + SibSp + Embarked + 
+    Age + Sex + Parch, family = binomial, data = titanicTrainingDataset %>% 
+    filter(!is.na(Age)))
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.3632  -0.5951  -0.3917   0.5812   2.5346  
+
+Coefficients:
+               Estimate Std. Error z value Pr(>|z|)    
+(Intercept)    0.930213   0.393458   2.364 0.018069 *  
+RefinedTitle2  2.556167   0.426595   5.992 2.07e-09 ***
+RefinedTitle3  0.473372   1.439032   0.329 0.742192    
+Pclass2       -1.032744   0.282392  -3.657 0.000255 ***
+Pclass3       -2.163955   0.262944  -8.230  < 2e-16 ***
+SibSp         -0.452722   0.114388  -3.958 7.56e-05 ***
+EmbarkedQ     -0.274539   0.392170  -0.700 0.483895    
+EmbarkedS     -0.484066   0.244469  -1.980 0.047696 *  
+Age           -0.027045   0.008209  -3.294 0.000986 ***
+Sexfemale      2.672175   1.448318   1.845 0.065035 .  
+Parch         -0.189686   0.122467  -1.549 0.121413    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1182.8  on 888  degrees of freedom
+Residual deviance:  745.7  on 878  degrees of freedom
+AIC: 767.7
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> model <- glm(Survived ~ RefinedTitle + Pclass + SibSp + Age, data = titanicTrainingDataset, family = binomial)
+> summary(model)
+
+Call:
+glm(formula = Survived ~ RefinedTitle + Pclass + SibSp + Age, 
+    family = binomial, data = titanicTrainingDataset)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.5200  -0.5798  -0.3934   0.5919   2.6299  
+
+Coefficients:
+               Estimate Std. Error z value Pr(>|z|)    
+(Intercept)    0.646841   0.368287   1.756 0.079029 .  
+RefinedTitle2  2.484859   0.415967   5.974 2.32e-09 ***
+RefinedTitle3  3.066697   0.207374  14.788  < 2e-16 ***
+Pclass2       -1.153534   0.271979  -4.241 2.22e-05 ***
+Pclass3       -2.227890   0.250689  -8.887  < 2e-16 ***
+SibSp         -0.524237   0.110349  -4.751 2.03e-06 ***
+Age           -0.028450   0.008128  -3.500 0.000465 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1182.82  on 888  degrees of freedom
+Residual deviance:  754.59  on 882  degrees of freedom
+AIC: 768.59
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> for (j in seq(.1, .9, .1)) {
++   predictions <- rep(0, nrow(titanicTrainingDataset))
++   for (i in 1:nrow(titanicTrainingDataset)) {
++     model <- glm(Survived ~ RefinedTitle + Pclass + SibSp + Age, data = titanicTrainingDataset, family = binomial, subset = -i)
++     predictions[i] <- predict(model, titanicTrainingDataset[i,], type = "response") > j
++   }
++   
++   print(paste("Decision boundary value :", j))
++   print(table(predictions, titanicTrainingDataset$Survived))
++   print(mean(predictions != titanicTrainingDataset$Survived))
++ }
+[1] "Decision boundary value : 0.1"
+           
+predictions   0   1
+          0 250  33
+          1 299 307
+[1] 0.3734533
+[1] "Decision boundary value : 0.2"
+           
+predictions   0   1
+          0 346  44
+          1 203 296
+[1] 0.2778403
+[1] "Decision boundary value : 0.3"
+           
+predictions   0   1
+          0 423  57
+          1 126 283
+[1] 0.2058493
+[1] "Decision boundary value : 0.4"
+           
+predictions   0   1
+          0 443  68
+          1 106 272
+[1] 0.1957255
+[1] "Decision boundary value : 0.5"
+           
+predictions   0   1
+          0 482  92
+          1  67 248
+[1] 0.1788526
+[1] "Decision boundary value : 0.6"
+           
+predictions   0   1
+          0 501 110
+          1  48 230
+[1] 0.1777278
+[1] "Decision boundary value : 0.7"
+           
+predictions   0   1
+          0 523 152
+          1  26 188
+[1] 0.200225
+[1] "Decision boundary value : 0.8"
+           
+predictions   0   1
+          0 538 198
+          1  11 142
+[1] 0.2350956
+[1] "Decision boundary value : 0.9"
+           
+predictions   0   1
+          0 544 276
+          1   5  64
+[1] 0.3160855
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> model <- glm(Survived ~ RefinedTitle + Pclass + SibSp + Age, data = titanicTrainingDataset, family = binomial)
+> 
+> titanicTestDataset <- read_csv(
++   testFile,
++   col_types = cols(
++     Pclass = col_factor(1:3), 
++     Sex = col_factor(c("male", "female")), 
++     Embarked = col_factor(c("C", "Q", "S"))
++   )
++ ) %>%
++   mutate(Title = as.factor(str_extract(Name, regex("([a-z]+\\.)", ignore_case = T)))) %>% 
++   mutate(
++     RefinedTitle = factor(ifelse(Title %in% c('Capt.', 'Don', 'Jonkheer.', 'Rev.', 'Mr.'), 1, 
++       ifelse(Title %in% c('Col.', 'Dr.', 'Major.', 'Master.'), 2, 3
++       )
++     ))
++   ) %>%
++   mutate(Age = ifelse(is.na(Age), median(Age, na.rm = T), Age))
+> 
+> predictions <- predict(model, titanicTestDataset, type = "response") > .6
+> 
+> tibble(PassengerId = titanicTestDataset$PassengerId, Survived = as.integer(predictions)) %>%
++   write_csv('predictions-logistic-regression.csv')
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> model <- qda(Survived ~ RefinedTitle + Pclass + SibSp + Age, data = titanicTrainingDataset, family = binomial)
+> model
+Call:
+qda(Survived ~ RefinedTitle + Pclass + SibSp + Age, data = titanicTrainingDataset, 
+    family = binomial)
+
+Prior probabilities of groups:
+        0         1 
+0.6175478 0.3824522 
+
+Group means:
+  RefinedTitle2 RefinedTitle3   Pclass2   Pclass3     SibSp      Age
+0    0.04189435     0.1493625 0.1766849 0.6775956 0.5537341 30.02823
+1    0.08235294     0.6794118 0.2558824 0.3500000 0.4764706 28.16374
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> predictions <- factor(rep(0, nrow(titanicTrainingDataset)), levels = 0:1)
+> for (i in 1:nrow(titanicTrainingDataset)) {
++   model <- qda(Survived ~ RefinedTitle + Pclass + SibSp + Age, data = titanicTrainingDataset, subset = -i)
++   predictions[i] <- predict(model, titanicTrainingDataset[i,])$class
++ }
+> 
+> table(predictions, titanicTrainingDataset$Survived)
+           
+predictions   0   1
+          0 451  78
+          1  98 262
+> mean(predictions != titanicTrainingDataset$Survived)
+[1] 0.1979753
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> model <- qda(Survived ~ RefinedTitle + Pclass + SibSp + Age, data = titanicTrainingDataset)
+> predictions <- predict(model, titanicTestDataset)$class
+> 
+> tibble(PassengerId = titanicTestDataset$PassengerId, Survived = predictions) %>%
++   write_csv('predictions-qda.csv')
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(1)
+> titanicTrainingDatasetKnn <- titanicTrainingDataset
+> titanicTrainingDatasetKnn$RefinedTitle = as.integer(titanicTrainingDatasetKnn$RefinedTitle)
+> titanicTrainingDatasetKnn$Pclass = as.integer(titanicTrainingDatasetKnn$Pclass)
+> 
+> testSampleSize <- 150
+> isTest <- sample(nrow(titanicTrainingDataset), testSampleSize)
+> 
+> knnTrainDataset <- titanicTrainingDatasetKnn[-isTest,] %>%
++   subset(select = c(RefinedTitle, Pclass, SibSp, Age)) %>%
++   scale()
+> 
+> knnTestDataset <- titanicTrainingDatasetKnn[isTest,] %>%
++   subset(select = c(RefinedTitle, Pclass, SibSp, Age)) %>%
++   scale()
+> 
+> cl <- titanicTrainingDatasetKnn[-isTest,]$Survived
+> 
+> errorsRate <- rep(0, testSampleSize)
+> for (k in 1:testSampleSize) {
++   predictions <- knn(knnTrainDataset, knnTestDataset, cl, k)
++   errorsRate[k] = mean(predictions != titanicTrainingDatasetKnn[isTest,]$Survived)
++ }
+> 
+> tibble(k = 1:testSampleSize, errorsRate = errorsRate) %>%
++   ggplot(aes(x = k, y = errorsRate)) +
++   geom_path()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanicTestDatasetKnn <- titanicTestDataset %>%
++   mutate(RefinedTitle = as.integer(RefinedTitle)) %>%
++   mutate(Pclass = as.integer(Pclass))
+> 
+> knnTrainDataset <- titanicTrainingDatasetKnn %>%
++   subset(select = c(RefinedTitle, Pclass, SibSp, Age)) %>%
++   scale()
+> 
+> knnTestDataset <- titanicTestDatasetKnn %>%
++   subset(select = c(RefinedTitle, Pclass, SibSp, Age)) %>%
++   scale()
+> 
+> cl <- titanicTrainingDatasetKnn$Survived
+> 
+> predictions <- knn(knnTrainDataset, knnTestDataset, cl, 35)
+> 
+> tibble(PassengerId = titanicTestDataset$PassengerId, Survived = predictions) %>%
++   write_csv('predictions-knn.csv')
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 38.760   2.653  41.495 

@@ -1,0 +1,248 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # nothing for now
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> bddTrain <- read.table("../input/train.csv", header = TRUE, 
++   sep = ",", stringsAsFactors = FALSE)
+> bddTest <- read.table("../input/test.csv", header = TRUE, 
++   sep = ",", stringsAsFactors = FALSE)
+> str(bddTrain)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> str(bddTest)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : chr  "Kelly, Mr. James" "Wilkes, Mrs. James (Ellen Needs)" "Myles, Mr. Thomas Francis" "Wirz, Mr. Albert" ...
+ $ Sex        : chr  "male" "female" "male" "male" ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : chr  "330911" "363272" "240276" "315154" ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : chr  "" "" "" "" ...
+ $ Embarked   : chr  "Q" "S" "Q" "S" ...
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # train
+> bddTrain$PassengerId <- as.character(bddTrain$PassengerId)
+> bddTrain$Survived <- as.logical(bddTrain$Survived)
+> bddTrain$Pclass <- as.factor(bddTrain$Pclass)
+> bddTrain$Sex <- as.factor(bddTrain$Sex)
+> bddTrain$Age <- as.integer(bddTrain$Age)
+> bddTrain$Embarked <- as.factor(bddTrain$Embarked)
+> str(bddTrain)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: chr  "1" "2" "3" "4" ...
+ $ Survived   : logi  FALSE TRUE TRUE TRUE FALSE FALSE ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : int  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> # test
+> bddTest$PassengerId <- as.character(bddTest$PassengerId)
+> bddTest$Pclass <- as.factor(bddTest$Pclass)
+> bddTest$Sex <- as.factor(bddTest$Sex)
+> bddTest$Age <- as.integer(bddTest$Age)
+> bddTest$Embarked <- as.factor(bddTest$Embarked)
+> str(bddTest)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: chr  "892" "893" "894" "895" ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : chr  "Kelly, Mr. James" "Wilkes, Mrs. James (Ellen Needs)" "Myles, Mr. Thomas Francis" "Wirz, Mr. Albert" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : int  34 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : chr  "330911" "363272" "240276" "315154" ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : chr  "" "" "" "" ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # train
+> bddTrain$Cabin[bddTrain$Cabin == ""] <- NA
+> tmp <- as.character(bddTrain$Embarked)
+> tmp[tmp == ""] <- NA
+> bddTrain$Embarked <- as.factor(tmp)
+> rm(tmp)
+> 
+> # test
+> bddTest$Cabin[bddTest$Cabin == ""] <- NA
+> tmp <- as.character(bddTest$Embarked)
+> tmp[tmp == ""] <- NA
+> bddTest$Embarked <- as.factor(tmp)
+> rm(tmp)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> getVarBarplot <- function(myVar, doSort = TRUE){
++   meanS <- tapply(bddTrain$Survived, INDEX = bddTrain[myVar], 
++     FUN = mean, na.rm = TRUE)
++   if(doSort == TRUE){
++     nS <- table(bddTrain[myVar])[order(meanS, decreasing = TRUE)]
++     meanS <- meanS[order(meanS, decreasing = TRUE)]
++   } else {
++     nS <- table(bddTrain[myVar])
++   }
++   bplot <- barplot(meanS, xlab = myVar, ylab = "Mean survival rate")
++   text(x = bplot, y = meanS, labels = nS, pos = 1)
++ }
+> getVarBarplot(myVar = "Pclass")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # this code is copied with small modifications from: 
+> # https://www.kaggle.com/mrisdal/exploring-survival-on-the-titanic
+> bddTrain$Title <- gsub('(.*, )|(\\..*)', '', bddTrain$Name)
+> bddTest$Title <- gsub('(.*, )|(\\..*)', '', bddTest$Name)
+> rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
++                 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+> # train
+> bddTrain$Title[bddTrain$Title == 'Mlle']        <- 'Miss' 
+> bddTrain$Title[bddTrain$Title == 'Ms']          <- 'Miss'
+> bddTrain$Title[bddTrain$Title == 'Mme']         <- 'Mrs' 
+> bddTrain$Title[bddTrain$Title %in% rare_title]  <- 'Rare Title'
+> table(bddTrain$Title)
+
+    Master       Miss         Mr        Mrs Rare Title 
+        40        185        517        126         23 
+> 
+> # test
+> bddTest$Title[bddTest$Title == 'Mlle']        <- 'Miss' 
+> bddTest$Title[bddTest$Title == 'Ms']          <- 'Miss'
+> bddTest$Title[bddTest$Title == 'Mme']         <- 'Mrs' 
+> bddTest$Title[bddTest$Title %in% rare_title]  <- 'Rare Title'
+> table(bddTest$Title)
+
+    Master       Miss         Mr        Mrs Rare Title 
+        21         79        240         72          6 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> getVarBarplot(myVar = "Title")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> getVarBarplot(myVar = "Sex")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> getVarBarplot(myVar = "Age", doSort = FALSE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> bddTrain$Fsize <- bddTrain$SibSp + bddTrain$Parch
+> bddTest$Fsize <- bddTest$SibSp + bddTest$Parch
+> getVarBarplot(myVar = "Fsize", doSort = FALSE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> cat(paste0("There are ", length(bddTrain$Ticket), " passengers and ", 
++   length(unique(bddTrain$Ticket)), " tickets numbers."))
+There are 891 passengers and 681 tickets numbers.> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> getVarBarplot(myVar = "Fare", doSort = FALSE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> bddTrain$FareGp <- cut(bddTrain$Fare, c(0, 20, 50, 100, 300, 600))
+> bddTest$FareGp <- cut(bddTest$Fare, c(0, 20, 50, 100, 300, 600))
+> getVarBarplot(myVar = "FareGp", doSort = FALSE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> bddTrain$CabLetter <- substr(bddTrain$Cabin, start = 1, stop = 1)
+> bddTest$CabLetter <- substr(bddTest$Cabin, start = 1, stop = 1)
+> getVarBarplot(myVar = "CabLetter")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> bplot <- barplot(c(mean(bddTrain$Survived[is.na(bddTrain$CabLetter)]), 
++   mean(bddTrain$Survived[!is.na(bddTrain$CabLetter)])), names.arg = 
++     c("NA", "Cabin"))
+> text(x = bplot, y = c(mean(bddTrain$Survived[is.na(bddTrain$CabLetter)]), 
++   mean(bddTrain$Survived[!is.na(bddTrain$CabLetter)])), labels = 
++   c(length(bddTrain$Survived[is.na(bddTrain$CabLetter)]), 
++     length(bddTrain$Survived[!is.na(bddTrain$CabLetter)])), pos = 1)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> bddTrain$CabLetterTF <- !is.na(bddTrain$CabLetter)
+> bddTest$CabLetterTF <- !is.na(bddTest$CabLetter)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> sum(is.na(bddTrain$Embarked))
+[1] 2
+> getVarBarplot(myVar = "Embarked")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> str(bddTrain)
+'data.frame':	891 obs. of  17 variables:
+ $ PassengerId: chr  "1" "2" "3" "4" ...
+ $ Survived   : logi  FALSE TRUE TRUE TRUE FALSE FALSE ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : int  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  NA "C85" NA "C123" ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+ $ Title      : chr  "Mr" "Mrs" "Miss" "Mrs" ...
+ $ Fsize      : int  1 1 0 1 0 0 0 4 2 1 ...
+ $ FareGp     : Factor w/ 5 levels "(0,20]","(20,50]",..: 1 3 1 3 1 1 3 2 1 2 ...
+ $ CabLetter  : chr  NA "C" NA "C" ...
+ $ CabLetterTF: logi  FALSE TRUE FALSE TRUE FALSE FALSE ...
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  0.229   0.037   0.262 

@@ -1,0 +1,121 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> #library(randomForest)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(neuralnet)
+
+Attaching package: ‘neuralnet’
+
+The following object is masked from ‘package:dplyr’:
+
+    compute
+
+> 
+> train <- read.csv("../input/train.csv", stringsAsFactors=FALSE)
+> test  <- read.csv("../input/test.csv",  stringsAsFactors=FALSE)
+> train  <- bind_rows(train, test)
+> 
+> #Tittle 
+> train$Title <- gsub('(.*, )|(\\..*)', '', train$Name)
+> rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+> train$Title[train$Title == 'Mlle']        <- 'Miss' 
+> train$Title[train$Title == 'Ms']          <- 'Miss'
+> train$Title[train$Title == 'Mme']         <- 'Mrs' 
+> train$Title[train$Title %in% rare_title]  <- 'RareTitle'
+> 
+> #family
+> train$family <- train$SibSp + train$Parch + 1
+> 
+> #Missing Values Imputation 
+> train$Fare[is.na(train$Fare)] <- median(train$Fare, na.rm=TRUE)
+> train$Age[is.na(train$Age)] <- median(train$Age, na.rm=TRUE)
+> train$Parch[is.na(train$Parch)] <- median(train$Parch, na.rm=TRUE)
+> train$SibSp[is.na(train$SibSp)] <- median(train$SibSp, na.rm=TRUE)
+> train$Embarked[is.na(train$Embarked)] <- 'S'
+> 
+> train$Title <- as.factor(train$Title)
+> train$family <- as.factor(train$family)
+> train$Sex <- as.factor(train$Sex)
+> train$Embarked <- as.factor(train$Embarked)
+> train$Parch <- as.factor(train$Parch)
+> train$SibSp <- as.factor(train$SibSp)
+> train$Survived <- as.factor(train$Survived)
+> 
+> #scaling
+> scale_fare <- scale(train$Fare, center = TRUE,  scale =TRUE)
+> train$Fare <- scale_fare[,1]
+> 
+> test <- train[892:1309,]
+> train <- train[1:891,]
+> 
+> #Design matrix for train
+> m_train <- model.matrix( ~ Survived + family + Sex + Age + Fare + Title , data = train )
+> #write.csv(m, file = 'designmatrix.csv', row.names = F)
+> 
+> #building ann
+> nn <- neuralnet( Survived1 ~
++ 
++ family2+
++ 
++ family3+
++ 
++ family4+
++ 
++ family5+
++ 
++ family6+
++ 
++ family7+
++ 
++ family8+
++ 
++ family11+
++ 
++ Sexmale+
++ 
++ Age+
++ 
++ Fare+
++ 
++ TitleMiss+
++ 
++ TitleMr+
++ 
++ TitleMrs+
++ 
++ TitleRareTitle, data=m_train , hidden=c(4,2), linear.output=FALSE, stepmax=1e6)

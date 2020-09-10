@@ -1,0 +1,237 @@
+
+## Title: "Titanic Survival Prediction via RF"
+#### Author: Rahima Karimova (Inspired by David Langer's Titanic 
+#### Data Analysis video https://www.youtube.com/watch?v=32o0DnuRjfg 
+#### and kaggler-Megan Risdal)
+#### Date: 29.11.2016
+
+### Necessary packages 
+#### library(tidyverse) 
+#### library(ggthemes)
+#### library(stringr)
+#### library(scales)
+#### library(mice)
+#### library(ranger)
+### library(ranger)
+```{r include=FALSE}
+library(tidyverse) #Cleaning, visualization...
+library(ggthemes) # visualisation
+library(stringr)
+library(scales)
+library.path <- cat(.libPaths())
+library("mice", lib.loc = library.path)
+library(mice) # NA replacement
+library(ranger)
+library(caret)
+library(randomForest) # forecast
+```
+# Reading your data
+```{r}
+train <- read.csv('../input/train.csv', stringsAsFactors = F)
+test  <- read.csv('../input/test.csv', stringsAsFactors = F)
+```
+
+
+## Preparing train and test for binding
+```{r}
+test.survived<-data.frame(Survived= rep("None", nrow(test)), test[,])
+head(test.survived)
+ntest.survived<-test.survived[,c(2,1,3,4,5,6,7,8,9,10,11,12)]
+head(ntest.survived)
+names(train)
+names(ntest.survived)
+```
+
+## Binding data sets
+```{r}
+data.combined<-rbind(train,ntest.survived)
+glimpse(data.combined)
+
+data.combined$Survived<-as.factor(data.combined$Survived)
+data.combined$Pclass<-as.factor(data.combined$Pclass)
+glimpse(data.combined)
+```
+## Visualisation part 1
+
+
+# Feature extraction
+
+### Any valuable information in the Title (Mrs, Miss, Mr, Master)?
+
+```{r}
+misses<-data.combined[which(str_detect(data.combined$Name,"Miss.")),]
+head(misses)
+mrses<-data.combined[which(str_detect(data.combined$Name,"Mrs.")),]
+mrses[1:5,]
+masters<-data.combined[which(str_detect(data.combined$Name,"Master")),]
+masters[1:5,]
+mr<-data.combined[which(str_detect(data.combined$Name,"Mr.")),]
+mr[1:5,]
+```
+## Adding new variable - Title
+```{r}
+extractTitle<-function(Name){
+  Name<-as.character(Name)
+  if(length(grep("Miss.",Name))>0){
+    return("Miss.")
+  } else if (length(grep("Master.",Name))>0){
+    return("Master.")
+  } else if(length(grep("Mrs.",Name))>0){
+    return("Mrs.")
+  } else if(length(grep("Mr.", Name))>0){
+    return("Mr.")
+  } else {
+    return("Other")
+  }
+}
+titles<-NULL
+for (i in 1:nrow(data.combined)){
+  titles<-c(titles,extractTitle(data.combined[i,"Name"]))
+}
+```
+### Ok. Lets factorise our new feature
+```{r}
+data.combined$Title<-as.factor(titles)
+```
+
+### Factoring Sibsp variable to further continue with histogram plotting
+```{r}
+data.combined$SibSp<-as.factor(data.combined$SibSp)
+```
+## Visualization of the survival rate by Sibsp, Title and Pclass
+```{r,echo=T}
+g2.5<-ggplot(data.combined[1:891,],aes(x=SibSp, fill=Survived))+geom_bar(width=0.5)+
+facet_wrap(~Pclass+Title)+
+  ggtitle("Pclass,Title")+
+  xlab("Sibsp")+
+  ylab("Total Count")+
+  ylim(0,300)+
+  labs(fill="Survived")
+
+g2.5
+```
+
+### Factoring Parch variable
+```{r}
+data.combined$Parch<-as.factor(data.combined$Parch)
+```
+## Visualization of the Survival rate by Parch, Title and Pclass
+``` {r,echo=T}
+g2.6<-ggplot(data.combined[1:891,],aes(x=Parch, fill=Survived))+geom_bar(width=1)+
+   facet_wrap(~Pclass+Title)+
+   ggtitle("Pclass,Title")+
+   xlab("Parch")+
+   ylab("Total Count")+
+   ylim(0,300)+
+   labs(fill="Survived")
+  
+g2.6
+``` 
+## Creating the Family Size feature
+```{r}
+  temp.sibsp<-c(train$SibSp,test$SibSp)
+  temp.parch<-c(train$Parch,test$Parch)
+  data.combined$Family.Size<-as.factor(temp.sibsp+temp.parch+1)
+```
+```{r,echo=T}
+g2.7<-ggplot(data.combined[1:891,],aes(x=Family.Size, fill=Survived))+geom_bar(width=1)+
+    facet_wrap(~Pclass+Title)+
+    ggtitle("Pclass,Title")+
+    xlab("Family.Size")+
+    ylab("Total Count")+
+    ylim(0,300)+
+    labs(fill="Survived")
+  
+  g2.7
+```
+# Working on NAs.
+##Constructing subgroups
+```{r}
+subsmr<-subset(data.combined[1:891,], is.na(Age) & Title=="Mr.")
+summary(subsmr)
+```
+```{r,echo=T}
+g3.1<-ggplot(subsmr,aes(x=Pclass,fill=Survived))+geom_bar(width=0.5)+facet_wrap(~Family.Size)
+g3.1
+```   
+```{r}  
+
+```
+### Here we see the age range is wide so we need futher classification
+  
+  
+## Substituting NAs with means
+```{r} 
+   data.combined2<-data.combined
+   
+   data.combined2$Embarked[c(62,830)]
+   data.combined2$Embarked[c(62,830)]<-"C"
+   data.combined2[1044,]
+```   
+### Replacement of missing fare value with median fare for class/embarkment
+```{r}
+   data.combined2$Fare[1044]<-median(data.combined2[data.combined2$Pclass==3 & data.combined2$Embarked=="S",]$Fare,na.rm=T)
+   #Make variables factors into factors
+   factor_vars <- c('PassengerId','Pclass','Sex','Embarked',
+                    'Title','Family.Size')
+   
+   data.combined2[factor_vars] <- lapply(data.combined2[factor_vars], function(x) as.factor(x))
+```
+```{r}
+   ### Setting a random seed
+   set.seed(129)
+```
+### Performing mice imputation, excluding certain less-than-useful variables:
+```{r}
+mice_mod <- mice(data.combined2[, !names(data.combined2) %in% c('PassengerId','Name','Ticket','Cabin','Survived')], method='rf') 
+### complete output saving
+```{r}
+   mice_output <- complete(mice_mod)
+```  
+   ## Ploting age distributions
+```{r}
+par(mfrow=c(1,2))
+   hist(data.combined2$Age, freq=F, main='Age: Original Data', 
+        col='darkgreen', ylim=c(0,0.04))
+   hist(mice_output$Age, freq=F, main='Age: MICE Output', 
+        col='lightgreen', ylim=c(0,0.04))
+```
+   
+### Replacement of Age variable from the mice model.
+```{r}
+data.combined2$Age <- mice_output$Age
+```
+
+### Replacement of Deck variable from the mice model.
+  ```{r}
+data.combined2$Deck <- mice_output$Deck
+summary(data.combined2)
+```
+# Prediction
+
+## Splitting the data back into a train set and a test set
+```{r}
+   train <- data.combined2[1:891,]
+   test <- data.combined2[892:1309,]
+```   
+### Set a random seed
+```{r}
+   set.seed(754)
+```
+   
+   ## Building the model (note: not all possible variables are used)
+   ```{r}
+   rf_model <- train(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + 
+                              Fare + Embarked + Title,data=train,
+                              method="ranger",
+                              trControl = trainControl(method = "cv", number = 5, verboseIter = TRUE
+))
+   
+   ```
+  rf_model
+  plot(model)
+  ## Model Evaluation 
+  max(rf_model[["results"]])
+   #Prediction
+   
+   

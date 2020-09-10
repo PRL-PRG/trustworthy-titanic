@@ -1,0 +1,703 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> options(width = 100)
+> 
+> 
+> ## ----echo=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(gridExtra)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following object is masked from ‘package:gridExtra’:
+
+    combine
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(forcats)
+> library(Hmisc)
+Loading required package: lattice
+Loading required package: survival
+Loading required package: Formula
+
+Attaching package: ‘Hmisc’
+
+The following objects are masked from ‘package:dplyr’:
+
+    src, summarize
+
+The following objects are masked from ‘package:base’:
+
+    format.pval, units
+
+Warning message:
+package ‘survival’ was built under R version 3.6.2 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:gridExtra’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library(caret)
+
+Attaching package: ‘caret’
+
+The following object is masked from ‘package:survival’:
+
+    cluster
+
+> library(corrplot)
+corrplot 0.84 loaded
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- read.csv("../input/train.csv", stringsAsFactors = FALSE, na.strings = c("NA", ""))
+> test <- read.csv("../input/test.csv", stringsAsFactors = FALSE, na.strings = c("NA", ""))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dim(train)
+[1] 891  12
+> head(train)
+  PassengerId Survived Pclass                                                Name    Sex Age SibSp
+1           1        0      3                             Braund, Mr. Owen Harris   male  22     1
+2           2        1      1 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1
+3           3        1      3                              Heikkinen, Miss. Laina female  26     0
+4           4        1      1        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1
+5           5        0      3                            Allen, Mr. William Henry   male  35     0
+6           6        0      3                                    Moran, Mr. James   male  NA     0
+  Parch           Ticket    Fare Cabin Embarked
+1     0        A/5 21171  7.2500  <NA>        S
+2     0         PC 17599 71.2833   C85        C
+3     0 STON/O2. 3101282  7.9250  <NA>        S
+4     0           113803 53.1000  C123        S
+5     0           373450  8.0500  <NA>        S
+6     0           330877  8.4583  <NA>        Q
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> dim(test)
+[1] 418  11
+> head(test)
+  PassengerId Pclass                                         Name    Sex  Age SibSp Parch  Ticket
+1         892      3                             Kelly, Mr. James   male 34.5     0     0  330911
+2         893      3             Wilkes, Mrs. James (Ellen Needs) female 47.0     1     0  363272
+3         894      2                    Myles, Mr. Thomas Francis   male 62.0     0     0  240276
+4         895      3                             Wirz, Mr. Albert   male 27.0     0     0  315154
+5         896      3 Hirvonen, Mrs. Alexander (Helga E Lindqvist) female 22.0     1     1 3101298
+6         897      3                   Svensson, Mr. Johan Cervin   male 14.0     0     0    7538
+     Fare Cabin Embarked
+1  7.8292  <NA>        Q
+2  7.0000  <NA>        S
+3  9.6875  <NA>        Q
+4  8.6625  <NA>        S
+5 12.2875  <NA>        S
+6  9.2250  <NA>        S
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> test$Survived <- NA
+> all <- rbind(train, test)
+> dim(all)
+[1] 1309   12
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> sort(colSums(is.na(all)), decreasing = TRUE)
+      Cabin    Survived         Age    Embarked        Fare PassengerId      Pclass        Name 
+       1014         418         263           2           1           0           0           0 
+        Sex       SibSp       Parch      Ticket 
+          0           0           0           0 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all$Survived <- as.factor(all$Survived)
+> all$Pclass <- as.ordered(all$Pclass) #Pclass has ordered values, so converting it into ordinal factor
+> all$Sex <- as.factor(all$Sex)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all$Embarked[is.na(all$Embarked)] <- 'S'
+> all$Embarked <- as.factor(all$Embarked)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all$Fare[is.na(all$Fare)] <- 8.0500
+> 
+> 
+> ## ----fig.align="center"----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(data=all[!is.na(all$Survived),], aes(x=Survived)) + 
++   geom_bar(stat='count', aes(fill=Survived)) +
++   geom_label(stat='count', aes(label=..count..)) + 
++   labs(x="not survived and survived in train data") + 
++   theme_grey(base_size = 15)
+> 
+> 
+> ## ----fig.align="center", fig.width=10--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> p1 <- ggplot(data=all, aes(x=Sex)) + 
++         geom_bar(stat='count', aes(fill=Sex)) + 
++         geom_label(stat='count', aes(label=..count..)) + 
++         labs(x="Gender ratio (total data)")
+> 
+> p2 <- ggplot(data=all[!is.na(all$Survived),], aes(x=Sex, group=Survived)) + 
++         geom_bar(stat='count', aes(fill=Survived), position = "dodge") + 
++         geom_label(stat='count', aes(label=..count..), size = 3, position = position_dodge(0.9)) + 
++         labs(x="Survived ratio by Gender") 
+> 
+> p3 <- ggplot(data=all[!is.na(all$Survived),], aes(x=Sex, fill=Survived)) + 
++         geom_bar(stat='count', position = "fill") + 
++         labs(x="Survived ratio by Gender", y="percent")
+> 
+> grid.arrange(p1, p2, p3, ncol=3)
+> 
+> 
+> ## ----fig.width=10, fig.align="center"--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> p4 <- ggplot(data=all, aes(x=Pclass)) + 
++         geom_bar(stat='count', aes(fill=Pclass), position="dodge") + 
++         geom_label(stat="count", aes(label=..count..)) + 
++         labs(x="Passenger class ratio (total data)")
+> 
+> p5 <- ggplot(data=all[!is.na(all$Survived),], aes(x=Pclass, group = Survived)) + 
++         geom_bar(stat = "count", aes(fill=Survived), position="dodge") + 
++         geom_label(stat = "count", aes(label=..count..), size=3, position = position_dodge(0.9)) + 
++         labs(x="Survived ratio by Pclass")
+> 
+> p6 <- ggplot(data=all[!is.na(all$Survived),], aes(x=Pclass, fill=Survived)) + 
++         geom_bar(stat="count", position="fill") + 
++         labs(x="Survived ratio by Pclass", y="percent")
+> 
+> grid.arrange(p4, p5, p6, ncol=3)
+> 
+> p7 <- ggplot(data=all[!is.na(all$Survived),], aes(x=Pclass, group = Survived)) + 
++         geom_bar(stat = "count", aes(fill=Survived), position="dodge") + 
++         geom_label(stat = "count", aes(label=..count..), size=3, position = position_dodge(0.9)) + 
++         labs(x="Survived ratio by Pclass and Gender") + 
++         facet_grid(.~Sex)
+> 
+> p8 <- ggplot(data=all[!is.na(all$Survived),], aes(x=Pclass, fill=Survived)) + 
++         geom_bar(stat = "count", position="fill") + 
++         labs(x="Survived ratio by Pclass and Gender", y="Percent") + 
++         facet_grid(.~Sex)
+> 
+> grid.arrange(p7, p8, ncol=2)
+> 
+> 
+> ## ----fig.align="center", fig.width=10--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> p9 <- ggplot(data=all[!is.na(all$Survived),], aes(x=fct_infreq(Embarked))) + 
++         geom_bar(stat='count', aes(fill=Embarked)) + 
++         geom_label(stat='count', aes(label=..count..)) + 
++         labs(x="Passengers by Embarked")
+> 
+> p10 <- ggplot(data=all[!is.na(all$Survived),], aes(x=fct_infreq(Embarked), group=Survived)) + 
++         geom_bar(stat='count', aes(fill=Survived), position="dodge") + 
++         geom_label(stat='count', aes(label=..count..), position = position_dodge(0.9)) + 
++        labs(x="Survived ratio by Embarked")
+> 
+> grid.arrange(p9, p10, ncol=2)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all$GenderClass <- paste0(all$Sex, "P", all$Pclass)
+> all$GenderClass <- as.factor(all$GenderClass)
+> 
+> 
+> ## ----fig.align="center", fig.width=10--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> p9 <- ggplot(data = all[!is.na(all$Survived),], aes(x=GenderClass, group=Survived)) + 
++   geom_bar(stat='count', aes(fill=Survived), position = "dodge") + 
++   geom_label(stat='count', aes(label=..count..), size=3, position = position_dodge(0.9)) + 
++   labs(x="Survived ratio by GenderClass")  
+> 
+> p10 <- ggplot(data = all[!is.na(all$Survived), ], aes(x=GenderClass)) + 
++   geom_bar(stat = 'count', aes(fill=Survived), position = "fill") + 
++   labs(x="Survived ratio by GenderClass", y="percent")
+> 
+> grid.arrange(p9, p10, ncol=2)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #760 "Rothes, Mrs. Norman Leslie (Lucy Noel Martha Dyer-Edwards)"
+> #711 "Mayne, Mlle. Berthe Antonine"
+> #797 "Leader, Dr. Alice (Farnham)"
+> 
+> all$Title <- sapply(all$Name, function(x){trimws(unlist(strsplit(x, split = '[,.]'))[2])})
+> table(all$Sex, all$Title)
+        
+         Capt Col Don Dona  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs  Ms Rev Sir
+  female    0   0   0    1   1        0    1     0      0  260    2   1   0 197   2   0   0
+  male      1   4   1    0   7        1    0     2     61    0    0   0 757   0   0   8   1
+        
+         the Countess
+  female            1
+  male              0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all$Title[all$Title %in% c("Don", "Sir", "Jonkheer", "Rev", "Major", "Col", "Capt")] <- "Mr"
+> all$Title[all$Title %in% c("Lady", "the Countess")] <- "Mrs"
+> all$Title[all$Title %in% c("Ms", "Dona", "Mlle", "Mme")] <- "Miss"
+> all$Title[all$Title == 'Dr' & all$Sex == 'male'] <- "Mr"
+> all$Title[all$Title == 'Dr' & all$Sex == 'female'] <- "Mrs"
+> 
+> table(all$Sex, all$Title)
+        
+         Master Miss  Mr Mrs
+  female      0  266   0 200
+  male       61    0 782   0
+> 
+> 
+> ## ----fig.align="center", fig.width=10, fig.height=10-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> p11 <- ggplot(data=all[!is.na(all$Survived),], aes(x=Pclass, group=Survived)) + 
++         geom_bar(stat='count', aes(fill=Survived), position="dodge") + 
++         geom_label(stat='count', aes(label=..count..), size=3, position = position_dodge(0.9)) + 
++         labs(x="Survived ratio by Pclass and Title") + 
++         facet_grid(.~Title)
+> 
+> p12 <- ggplot(data=all[!is.na(all$Survived),], aes(x=Pclass)) + 
++         geom_bar(stat='count', aes(fill=Survived), position="fill") + 
++         labs(x="Survived ratio by Pclass and Title", y="percent") + 
++         facet_grid(.~Title)
+> 
+> grid.arrange(p11, p12, nrow=2)
+> 
+> 
+> ## ----fig.align="center", fig.width=10--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all$TitleClass <- paste0(all$Title, "P", all$Pclass)
+> all$TitleClass <- as.factor(all$TitleClass)
+> 
+> p13 <-ggplot(data=all[!is.na(all$Survived),], aes(x=TitleClass)) + 
++         geom_bar(stat='count', aes(fill=Survived), position="fill") + 
++         labs(x="Survived ratio by TitleClass", y="percent")
+> 
+> grid.arrange(p13)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all$TicketPrefix <- sapply(all$Ticket, function(x){trimws(unlist(strsplit(x, split=' '))[1])})
+> HasTicketPrefix <- sapply(all$Ticket, function(x){grepl("\\D", x)})
+> all$TicketPrefix[!HasTicketPrefix] <- "No Prefix"
+> all$TicketPrefix[all$TicketPrefix %in% c("PC")] <- "PC"
+> all$TicketPrefix[!all$TicketPrefix %in% c("PC")] <- "Other"
+> rm(HasTicketPrefix)
+> 
+> 
+> ## ----fig.width=10, fig.align="center"--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> p14 <- ggplot(data=all[!is.na(all$Survived),], aes(x=TicketPrefix, group=Survived)) + 
++   geom_bar(stat='count', aes(fill=Survived), position = 'dodge') + 
++   geom_label(stat='count', aes(label=..count..), position = position_dodge(0.9)) + 
++   facet_grid(.~Sex)
+> 
+> p15 <- ggplot(data=all[!is.na(all$Survived),], aes(x=TicketPrefix)) + 
++   geom_bar(stat='count', aes(fill=Survived), position = 'fill') + 
++   labs(y="percent")
+> 
+> grid.arrange(p14, p15, ncol=2)
+> 
+> 
+> ## ----fig.align="center", fig.width=10, fig.height=10-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all$FSize <- all$SibSp + all$Parch + 1
+> 
+> p16 <- ggplot(data=all[!is.na(all$Survived),], aes(x=factor(FSize), group=Survived)) + 
++           geom_bar(stat='count', aes(fill=Survived), position="dodge") +
++           geom_label(stat='count', aes(label=..count..), position = position_dodge(0.9)) + 
++           labs(x="Survived ratio by Family Size") 
+> 
+> p17 <- ggplot(data=all[!is.na(all$Survived),], aes(x=factor(FSize))) + 
++           geom_bar(stat='count', aes(fill=Survived), position="fill") + 
++           labs(x="Survived ratio by Family Size", y="percent") 
+> 
+> grid.arrange(p16, p17, nrow=2)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> GroupFunction <- function(x){
++   if(x==1){
++     return("Solo")
++   }else if(x==2){
++     return("Duo")
++   }else if(x>=3 & x<=4){
++     return("SmallFamily")
++   }else{
++     return("LargeFamily")
++   }
++ }
+> 
+> all$FSizeGroup <- sapply(all$FSize, GroupFunction)
+> rm(GroupFunction)
+> 
+> 
+> ## ----fig.align="center", fig.width=10--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> p18 <- ggplot(data=all[!is.na(all$Survived),], aes(x=FSizeGroup, group=Survived)) + 
++           geom_bar(stat='count', aes(fill=Survived), position = "dodge") + 
++           geom_label(stat='count', aes(label=..count..), position = position_dodge(0.9)) + 
++           labs(x="Survived ratio by Family Group")
+> 
+> p19 <- ggplot(data=all[!is.na(all$Survived),], aes(x=FSizeGroup)) + 
++           geom_bar(stat='count', aes(fill=Survived), position = "fill") + 
++           labs(x="Survived ratio by Family Group", y="percent")
+> 
+> grid.arrange(p18, p19, ncol=2)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> PPTicket <- all %>% group_by(Ticket=all$Ticket) %>% summarise(PPTicket=n())
+`summarise()` ungrouping output (override with `.groups` argument)
+> all$PPTicket <- PPTicket$PPTicket[match(all$Ticket, PPTicket$Ticket)]
+> rm(PPTicket)
+> 
+> all$TicketShared <- sapply(all$PPTicket, function(x){ifelse(x==1, "Not Shared", "Shared")})
+> 
+> 
+> ## ----fig.align="center", fig.width=10, fig.height=10-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> p20 <- ggplot(data=all[!is.na(all$Survived),], aes(x=factor(PPTicket), group=Survived)) + 
++           geom_bar(stat='count', aes(fill=Survived), position = "dodge") + 
++           geom_label(stat='count', aes(label=..count..), position = position_dodge(0.9)) + 
++           labs(x="Survived ratio by Passengers per Ticket")
+> 
+> p21 <- ggplot(data=all[!is.na(all$Survived),], aes(x=factor(PPTicket))) + 
++           geom_bar(stat='count', aes(fill=Survived), position = "fill") + 
++           labs(x="Survived ratio by Passengers per Ticket", y="percent") 
+> 
+> grid.arrange(p20, p21, nrow=2)
+> 
+> 
+> ## ----fig.align="center", fig.width=10--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> p22 <- ggplot(data=all[!is.na(all$Survived),], aes(x=TicketShared, group=Survived)) + 
++           geom_bar(stat='count', aes(fill=Survived), position = "dodge") + 
++           geom_label(stat='count', aes(label=..count..), position = position_dodge(0.9)) + 
++           labs(x="Survived ratio by Sharing Ticket")
+> 
+> p23 <- ggplot(data=all[!is.na(all$Survived),], aes(x=TicketShared)) + 
++           geom_bar(stat='count', aes(fill=Survived), position = "fill") + 
++           labs(x="Survived ratio by Sharing Ticket", y="percent") 
+> 
+> grid.arrange(p22, p23, ncol=2)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all$PGroupSize <- mapply(function(a, b){max(a, b)}, all$FSize, all$PPTicket)
+> all$PGroupSize <- as.numeric(all$PGroupSize)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> GroupFunction <- function(x){
++   if(x==1){
++     return("Single")
++   }else if(x==2){
++     return("Duo")
++   }else if(x>=3 & x<=4){
++     return("Group")
++   }else{
++     return("Large Group")
++   }
++ }
+> 
+> all$PGroup <- sapply(all$PGroupSize, GroupFunction)
+> rm(GroupFunction)
+> 
+> 
+> ## ----fig.align="center", fig.width=10--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> p24 <- ggplot(data=all[!is.na(all$Survived),], aes(x=factor(PGroup), group=Survived)) + 
++           geom_bar(stat='count', aes(fill=Survived), position = "dodge") + 
++           geom_label(stat='count', aes(label=..count..), position = position_dodge(0.9)) + 
++           labs(x="Survived ratio by Passenger Group")
+> 
+> p25 <- ggplot(data=all[!is.na(all$Survived),], aes(x=factor(PGroup))) + 
++           geom_bar(stat='count', aes(fill=Survived), position = "fill") + 
++           labs(x="Survived ratio by Passenger Group", y="percent")
+> 
+> grid.arrange(p24, p25, ncol=2)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> CabinDetails <- all[!is.na(all$Cabin), c("Ticket", "Cabin")]
+> all$CabinModified <- CabinDetails$Cabin[match(all$Ticket, CabinDetails$Ticket)]
+> all$CabinModified[is.na(all$CabinModified)] <- "N"
+> all$CabinPrefix <- substr(all$CabinModified, 1, 1)
+> 
+> all$CabinModified <- NULL
+> rm(CabinDetails)
+> 
+> 
+> ## ----fig.align="center", fig.width=10, fig.height=10-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> p26 <- ggplot(data=all[!is.na(all$Survived),], aes(x=CabinPrefix, group=Survived)) + 
++           geom_bar(stat='count', aes(fill=Survived), position = "dodge") + 
++           geom_label(stat='count', aes(label=..count..), position = position_dodge(0.9)) + 
++           labs(x="Survived ration by Cabin Class")
+> 
+> p27 <- ggplot(data=all[!is.na(all$Survived),], aes(x=CabinPrefix)) + 
++           geom_bar(stat='count', aes(fill=Survived), position = "fill") + 
++           labs(x="Survived ration by Cabin Class", y="percent") 
+> grid.arrange(p26, p27, nrow=2)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all$FarePP <- all$Fare/all$PPTicket
+> 
+> 
+> ## ----fig.width=10, fig.align=10--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(data=all[all$CabinPrefix!="N",], aes(x=CabinPrefix, group=Pclass)) + 
++           geom_bar(stat='count', aes(fill=Pclass), position = "dodge") + 
++           geom_label(stat='count', aes(label=..count..), position = position_dodge(0.9))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(data=all, aes(x=FarePP)) + 
++           geom_histogram(binwidth = 5, fill='blue', boundary=0) + 
++           scale_x_continuous(breaks = seq(0, 150, by=5))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all$FareBins <- cut2(all$FarePP, g=5)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(data=all[!is.na(all$Survived) & !is.na(all$Age),], aes(x=Age, group=Survived)) + 
++   geom_density(alpha=0.5, aes(fill=Survived)) + 
++   scale_x_continuous(breaks = scales::pretty_breaks(n=10))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> AgeLM <- lm(Age ~ Pclass + Title + SibSp + Parch, data=all[!is.na(all$Age),])
+> summary(AgeLM)
+
+Call:
+lm(formula = Age ~ Pclass + Title + SibSp + Parch, data = all[!is.na(all$Age), 
+    ])
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-27.239  -7.898  -1.183   6.367  44.640 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  12.0583     1.8079   6.670 4.16e-11 ***
+Pclass.L     -8.9972     0.5936 -15.157  < 2e-16 ***
+Pclass.Q      2.5221     0.6545   3.853 0.000124 ***
+TitleMiss    11.6018     1.8307   6.337 3.48e-10 ***
+TitleMr      22.6339     1.7903  12.643  < 2e-16 ***
+TitleMrs     25.3227     1.8557  13.646  < 2e-16 ***
+SibSp        -1.3641     0.4317  -3.160 0.001626 ** 
+Parch        -0.2244     0.4617  -0.486 0.627033    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 11.08 on 1038 degrees of freedom
+Multiple R-squared:  0.4133,	Adjusted R-squared:  0.4094 
+F-statistic: 104.5 on 7 and 1038 DF,  p-value: < 2.2e-16
+
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all$AgeLM <- predict(AgeLM, newdata = all)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all$Title <- as.factor(all$Title)
+> all$TicketPrefix <- as.factor(all$TicketPrefix)
+> all$FSizeGroup <- as.factor(all$FSizeGroup)
+> all$TicketShared <- as.factor(all$TicketShared)
+> all$PGroup <- as.factor(all$PGroup)
+> all$CabinPrefix <- as.factor(all$CabinPrefix)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #quick_RF <- randomForest(x=all[!is.na(all$Survived),-c(1, 2, 4, 6, 9, 11)], y=all[!is.na(all$Survived),2], ntree=100, importance = TRUE)
+> #quick_RF <- randomForest(Survived ~ ., data=all[!is.na(all$Survived),-c(1, 4, 6, 9, 11)], ntree=1000, importance = TRUE)
+> #varImpPlot(quick_RF, main = "Variable Importance")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainClean <- all[!is.na(all$Survived), c("Survived", "TitleClass", "FarePP", "PGroupSize")]
+> testClean <- all[is.na(all$Survived), c("Survived", "TitleClass", "FarePP", "PGroupSize")]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(2018)
+> model_RF <- train(x=trainClean[,-1], y=trainClean$Survived, data=trainClean, method='rf', trControl=trainControl(method = 'cv', number=10))
+note: only 2 unique complexity parameters in default grid. Truncating the grid to 2 .
+
+> model_RF
+Random Forest 
+
+891 samples
+  3 predictor
+  2 classes: '0', '1' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 802, 802, 802, 802, 802, 802, ... 
+Resampling results across tuning parameters:
+
+  mtry  Accuracy   Kappa    
+  2     0.8417478  0.6607066
+  3     0.8339076  0.6445805
+
+Accuracy was used to select the optimal model using the largest value.
+The final value used for the model was mtry = 2.
+> model_RF$results
+  mtry  Accuracy     Kappa AccuracySD    KappaSD
+1    2 0.8417478 0.6607066 0.01347945 0.02882129
+2    3 0.8339076 0.6445805 0.01953383 0.04004058
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> varImpPlot(model_RF$finalModel)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> prediction_RF <- predict(model_RF, testClean)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(2018)
+> model_SVM <- train(Survived ~ TitleClass + FarePP + PGroupSize, data=trainClean, method='svmRadial', preProcess= c('center', 'scale'), trControl=trainControl(method="cv", number=10))
+> model_SVM
+Support Vector Machines with Radial Basis Function Kernel 
+
+891 samples
+  3 predictor
+  2 classes: '0', '1' 
+
+Pre-processing: centered (13), scaled (13) 
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 802, 802, 802, 802, 802, 802, ... 
+Resampling results across tuning parameters:
+
+  C     Accuracy   Kappa    
+  0.25  0.8316355  0.6389338
+  0.50  0.8316355  0.6388638
+  1.00  0.8293883  0.6355204
+
+Tuning parameter 'sigma' was held constant at a value of 1.614296
+Accuracy was used to select the optimal model using the largest value.
+The final values used for the model were sigma = 1.614296 and C = 0.25.
+> model_SVM$results
+     sigma    C  Accuracy     Kappa AccuracySD    KappaSD
+1 1.614296 0.25 0.8316355 0.6389338 0.03004037 0.06428111
+2 1.614296 0.50 0.8316355 0.6388638 0.02909148 0.06262491
+3 1.614296 1.00 0.8293883 0.6355204 0.03042598 0.06308260
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> prediction_SVM <- predict(model_SVM, testClean)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(2018)
+> model_GBM <- train(Survived~ TitleClass + FarePP + PGroupSize, data=trainClean, method='gbm', preProcess= c('center', 'scale'), trControl=trainControl(method="cv", number=10), verbose=FALSE)
+> model_GBM
+Stochastic Gradient Boosting 
+
+891 samples
+  3 predictor
+  2 classes: '0', '1' 
+
+Pre-processing: centered (13), scaled (13) 
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 802, 802, 802, 802, 802, 802, ... 
+Resampling results across tuning parameters:
+
+  interaction.depth  n.trees  Accuracy   Kappa    
+  1                   50      0.7766667  0.4881987
+  1                  100      0.8182022  0.6055565
+  1                  150      0.8136829  0.5974828
+  2                   50      0.8148190  0.5995701
+  2                  100      0.8260300  0.6266674
+  2                  150      0.8237953  0.6187861
+  3                   50      0.8204370  0.6126612
+  3                  100      0.8294007  0.6332860
+  3                  150      0.8293883  0.6323216
+
+Tuning parameter 'shrinkage' was held constant at a value of 0.1
+Tuning parameter
+ 'n.minobsinnode' was held constant at a value of 10
+Accuracy was used to select the optimal model using the largest value.
+The final values used for the model were n.trees = 100, interaction.depth = 3, shrinkage = 0.1
+ and n.minobsinnode = 10.
+> model_GBM$results
+  shrinkage interaction.depth n.minobsinnode n.trees  Accuracy     Kappa AccuracySD    KappaSD
+1       0.1                 1             10      50 0.7766667 0.4881987 0.03482052 0.07806496
+4       0.1                 2             10      50 0.8148190 0.5995701 0.02437141 0.05183071
+7       0.1                 3             10      50 0.8204370 0.6126612 0.03506513 0.07267992
+2       0.1                 1             10     100 0.8182022 0.6055565 0.03198160 0.07006730
+5       0.1                 2             10     100 0.8260300 0.6266674 0.03012402 0.06408558
+8       0.1                 3             10     100 0.8294007 0.6332860 0.03385148 0.07296300
+3       0.1                 1             10     150 0.8136829 0.5974828 0.03147890 0.06595846
+6       0.1                 2             10     150 0.8237953 0.6187861 0.02752791 0.06051365
+9       0.1                 3             10     150 0.8293883 0.6323216 0.02996140 0.06810314
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> prediction_GBM <- predict(model_GBM, testClean)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> testClean$RF <- as.numeric(prediction_RF)-1
+> testClean$SVM <- as.numeric(prediction_SVM)-1
+> testClean$GBM <- as.numeric(prediction_GBM)-1
+> 
+> 
+> corrplot.mixed(cor(testClean[, c('RF', 'SVM', 'GBM')]), order="hclust", tl.col="black")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> testClean$Sum <- testClean$RF + testClean$SVM + testClean$GBM
+> testClean$Majority <- ifelse(testClean$Sum<=1, 0, 1)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> submission_select <- data.frame(PassengerId = test$PassengerId, Survived = testClean$Majority)
+> write.csv(submission_select, file='Titanic_Submission.csv', row.names = FALSE)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 17.047   0.676  17.905 

@@ -1,0 +1,136 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # Trying to use the logistic regression!
+> # The result is little worse than in random forrest (datacamp tutorial), but I'm looking forward to improve the model.
+> #
+> #
+> #
+> 
+> library("dplyr")
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> 
+> options(stringsAsFactors=FALSE)
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> 
+> train$Age[is.na(train$Age)]<-mean(na.omit(train$Age))
+> train$Fare[is.na(train$Fare)]<-mean(na.omit(train$Fare))
+> train$Embarked[is.na(train$Embarked)]<-"S"
+> train$SibSp[is.na(train$SibSp)]<-0
+> train$Parch[is.na(train$Parch)]<-0
+> 
+> test$Age[is.na(test$Age)]<-mean(na.omit(test$Age))
+> test$Fare[is.na(test$Fare)]<-mean(na.omit(test$Fare))
+> test$Embarked[is.na(test$Embarked)]<-"S"
+> test$SibSp[is.na(test$SibSp)]<-0
+> test$Parch[is.na(test$Parch)]<-0
+> 
+> train$Age<-(train$Age-mean(train$Age))/sd(train$Age)
+> test$Age<-(test$Age-mean(test$Age))/sd(test$Age)
+> 
+> train<-mutate(train,Sex=as.factor(Sex),Pclass=as.factor(Pclass),Survived=as.factor(Survived),Embarked=as.factor(Embarked),Family=SibSp+Parch)
+> test<-mutate(test,Sex=as.factor(Sex),Pclass=as.factor(Pclass),Embarked=as.factor(Embarked),Family=SibSp+Parch)
+> 
+> # The best one I've found atm.
+> m_logit <- glm(data=train, Survived ~ Pclass*Fare+Sex*Age*Family+Sex*I(Age^2)+I(Family^2),
++                family=binomial(link="logit"),x=TRUE)
+> summary(m_logit)
+
+Call:
+glm(formula = Survived ~ Pclass * Fare + Sex * Age * Family + 
+    Sex * I(Age^2) + I(Family^2), family = binomial(link = "logit"), 
+    data = train, x = TRUE)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.4429  -0.5985  -0.3782   0.6208   2.5616  
+
+Coefficients:
+                    Estimate Std. Error z value Pr(>|z|)    
+(Intercept)         2.692571   0.372696   7.225 5.03e-13 ***
+Pclass2            -1.233511   0.438483  -2.813  0.00491 ** 
+Pclass3            -2.468466   0.381617  -6.468 9.90e-11 ***
+Fare                0.002558   0.002398   1.067  0.28592    
+Sexmale            -3.047658   0.273249 -11.153  < 2e-16 ***
+Age                -0.171600   0.241250  -0.711  0.47690    
+Family              0.132726   0.226454   0.586  0.55780    
+I(Age^2)            0.077031   0.122456   0.629  0.52931    
+I(Family^2)        -0.117236   0.044380  -2.642  0.00825 ** 
+Pclass2:Fare        0.002509   0.013829   0.181  0.85601    
+Pclass3:Fare        0.028056   0.015750   1.781  0.07485 .  
+Sexmale:Age        -0.651220   0.299212  -2.176  0.02952 *  
+Sexmale:Family      0.016352   0.186631   0.088  0.93018    
+Age:Family          0.032329   0.103409   0.313  0.75456    
+Sexmale:I(Age^2)    0.141700   0.145504   0.974  0.33013    
+Sexmale:Age:Family -0.071453   0.148172  -0.482  0.62964    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  752.01  on 875  degrees of freedom
+AIC: 784.01
+
+Number of Fisher Scoring iterations: 6
+
+> 
+> ## This model is much more clear imo, but have worse accuracy :(
+> #m_logit <- glm(data=train, as.factor(Survived) ~ Pclass+Sex*Age+I(Age^2)+I(Family^2),
+> #               family=binomial(link="logit"),x=TRUE) 
+> 
+> pr_logit <- predict(m_logit,test)
+> 
+> pr_test<-pr_logit
+> 
+> sigmoid <- function(x){
++   result <- 1.0 / (1.0 + exp(-x))
++   return(result)
++ }
+> 
+> pr_test[sigmoid(pr_test)>=0.6]=1
+> pr_test[sigmoid(pr_test)<0.6]=0
+> 
+> my_logit <- data.frame(PassengerId=test$PassengerId, Survived=pr_test)
+> 
+> 
+> write.csv(my_logit, file = "my_solution_logit.csv", row.names = FALSE) 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  0.433   0.056   0.484 

@@ -1,0 +1,303 @@
+---
+title: "Titanic"
+author: "Effy Lin"
+date: "March 19, 2017"
+output: html_document
+---
+
+Reference: https://www.kaggle.com/mrisdal/exploring-survival-on-the-titanic/code
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1 Load data and data processing
+
+First, let's load the training set and test set.Then I transfrom the `Survived`,`Pclass`,`Sex`,`Embarked` predictors from character to factor.
+
+```{r message=FALSE}
+library('dplyr')
+library('knitr')
+library('ggplot2')
+library('randomForest')
+
+# Load the data
+titanic.train<-read.csv("../input/train.csv", stringsAsFactors = F, na.strings=c(""," ","NA"))
+titanic.test<-read.csv("../input/test.csv", stringsAsFactors = F,na.strings=c(""," ","NA"))
+Survived<-rep(0,nrow(titanic.test))
+titanic.test<-cbind(titanic.test[1],Survived,titanic.test[,2:11])
+titanic.data<-rbind(titanic.train,titanic.test)
+```
+## 1.1 Display the training data structure
+
+Below we display the structure of the training set. We can see that there are `r ncol(titanic.train)` predictors and `r nrow(titanic.train)` observations in the training dataset;and there are `r nrow(titanic.test)`
+
+```{r}
+str(titanic.train)
+```
+
+To easily understand what each predictors mean, I've listed a table to do the description.
+
+Variable    |  Description
+------------|---------------------------------------------------------------------
+Survived    |  Whether the customer survived; survived (1) not survived (0)
+Pclass      |  Passenger's class
+Name        |  Passenger's name
+Sex         |  Passenger's gender
+Age         |  Passenger's age
+SibSp       |  Number of sibling/ spouse aboard
+Parch       |  Number of parents/children aboard
+Ticket      |  Ticket number
+Fare        |  Passenger fare
+Cabin       |  Cabin number
+Embarked    |  Port of Embarkation. C = Cherbourg, Q = Queenstown, S = Southampton
+
+## 1.2 Deal With Data Missing
+
+So first let's explore if there is any missing in each column. 
+
+```{r}
+colnames(titanic.data[colSums(is.na(titanic.data))>0])
+```
+
+Variable    |  Number of Missing
+------------|---------------------------------------------------------------------
+Pclass      |  `r sum(is.na(titanic.data$Pclass))`
+Name        |  `r sum(is.na(titanic.data$Name))`
+Sex         |  `r sum(is.na(titanic.data$Sex))`
+Age         |  `r sum(is.na(titanic.data$Age))`
+SibSp       |  `r sum(is.na(titanic.data$SibSp))`
+Parch       |  `r sum(is.na(titanic.data$Parch))`
+Ticket      |  `r sum(is.na(titanic.data$Ticket))`
+Fare        |  `r sum(is.na(titanic.data$Fare))`
+Cabin       |  `r sum(is.na(titanic.data$Cabin))`
+Embarked    |  `r sum(is.na(titanic.data$Embarked))`
+
+From the above table, we can know that missing exists in `Age`,`Fare`,`Cabin` and `Embarked`. And the missing number are `r sum(is.na(titanic.data$Age))`, `r sum(is.na(titanic.data$Fare))`, 
+`r sum(titanic.data$Cabin=='')` and `r sum(titanic.data$Embarked=='')` seperately.
+
+### 1.2.1 Fare Missing
+
+There is only `1` missing value for `Fare`. The price of tickets are usually assocaition with travel distance and class. Therefore, we could deduct fare from `Pclass` and `Embarked`. So first, let's draw a plot to see the relationship fare with these two predictors.
+
+```{r}
+embark.miss.index<-which(is.na(titanic.data$Embarked))
+data1<-titanic.data[-embark.miss.index,]
+fare.miss.index<-which(is.na(data1$Fare))
+data1<-data1[-fare.miss.index,]
+ggplot(data = data1, mapping = aes(x = Embarked, y = Fare, fill = factor(Pclass))) + geom_boxplot()
+```
+
+```{r}
+fare.miss.index<-which(is.na(titanic.data$Fare))
+# Embarked place for missing
+fare.miss.embark<-titanic.data$Embarked[fare.miss.index]
+fare.miss.class<-titanic.data$Pclass[fare.miss.index]
+```
+
+The `Embarked` value for missing fare row is `r fare.miss.embark`; and the `class` value for missing fare row is `r fare.miss.class`. Since the standard deviation for fare at this level is pretty small. Therefore, we can plug the fare mean to the missing cell.
+
+```{r}
+titanic.data$Fare[fare.miss.index]<-mean(titanic.data$Fare[which(titanic.data$Pclass=='3' & titanic.data$Embarked == 'S')], na.rm = TRUE)
+```
+
+
+### 1.2.2 Cabin Missing
+
+There is a lot if missing value for Cabin column, and it seems hard to find what association between Cabin number and other predictors. In addition, this predictors seems to not have strong relationship with survival rate, so I leave it just as it is.
+
+### 1.2.3 Embarked Missing
+
+There are only `2` missing embarked value. We can deduct the `Embarked` value from `Fare`
+
+```{r}
+fare1<-titanic.data$Fare[which(is.na(titanic.data$Embarked))[1]]
+fare2<-titanic.data$Fare[which(is.na(titanic.data$Embarked))[2]]
+class1<-titanic.data$Pclass[which(is.na(titanic.data$Embarked))[1]]
+class2<-titanic.data$Pclass[which(is.na(titanic.data$Embarked))[2]]
+embark.index<-which(is.na(titanic.data$Embarked))
+```
+
+The `fare` and `class` for the missing value for the two `Embarked` is `80` and `first class`. According to the plot above, the median fare value embarked at `C` is around `80`. So I will assign `C` to the missing cell.
+
+```{r}
+titanic.data$Embarked[embark.index[1]]<-'C'
+titanic.data$Embarked[embark.index[2]]<-'C'                      
+```
+## 1.3 Feature Engineer
+
+### 1.3.1 Title Consideration
+
+We may notice that different titles are included in passengers' names. So we can extract the title as a seperate feature.
+Below is the table displaying the title of the passenger. We can see that besides commonly used title `Mr.`,`Mrs.`,`Miss`,`Master`, there are some rare titles like `Dona`,`the Countess` etc. Below I list the description for each title.
+
+Title        |  Description
+-------------|--------------------------------------------------------------------
+Capt         |  Millitary title: Captain
+Col          |  Millitary title: Colonel
+Don          |  Spanish title for male
+Dona         |  Spanish title for female
+Dr           |  Doctor
+Jonkheer     |  Dutch title for male
+Lady         |  title for woman with superior social status
+Major        |  Millitary title: high rank officer
+Master       |  title for unmarried male
+Miss         |  title for unmarried female
+Mlle         |  Mademoiselle. title for unmarried French-speaking woman
+Mme          |  Title for French-speaking woman
+Mr           |  Title for married male
+Mrs          |  Title for married female
+Ms           |  Title for female regardless marital status
+Rev          |  Reverend
+Sir          |  Title for high status male
+the Countess |  Title for high status female
+
+The current distribution of title looks like this:
+
+```{r}
+# Extract the title
+titanic.data$Title<-sapply(titanic.data$Name, function(x){trimws(strsplit(x,split = '[,.]')[[1]][2])})
+table(titanic.data$Title, titanic.data$Sex)
+```
+I attibute rare title to a new title named `Noble`. And assign the `Mlle`,`Mme`,`Ms` to `Mrs` or `Miss`. Now, the title distribution looks like this:
+
+```{r}
+# Assign the french speaking title and "Ms." to according groups
+rare.status<-c('Capt','Col','Don','Dona','Dr','Jonkheer','Lady','Major','Rev','Sir','the Countess')
+titanic.data$Title[titanic.data$Title=='Mlle']<-'Miss'
+titanic.data$Title[titanic.data$Title=='Mme']<-'Mrs'
+titanic.data$Title[titanic.data$Title=='Ms']<-'Miss'
+titanic.data$Title[titanic.data$Title %in% rare.status]<-"Noble"
+table(titanic.data$Title, titanic.data$Sex)
+```
+
+We can draw a histogram to see the association between survival and title. From the graph,  The title that associated with female have more than `2/3` survival rate. For title associated with male, which are `Mr` and `Master`. It's easy to noticed that for title `Mr`, the majority is not survived.And the survival rate for people having title as `Master` has almost half chance survived.For people with rare title, there is no significant difference between the survived and non-survived.Therefore, we may say the social status doesn't influence much on survival rate. All of these facts follows the saving female and childer first principle.
+
+```{r}
+ggplot(data = titanic.data[1:891,], mapping = aes (x = Title, fill = factor(Survived)))+
+  geom_bar(position = 'stack')
+```
+
+### Dealing with Missing Value Again
+
+The age value may have strong coorealtion with the title. To prove this, first I will draw a plot showing the relationship between the age and the title.
+
+```{r}
+mean.age.group<-aggregate(Age ~ Title, titanic.data, median)
+ggplot(data = titanic.data, mapping = aes(x = Title, y = Age, fill = Title)) + geom_boxplot()+
+  stat_summary(fun.y=median, colour="darkred", geom="point", shape=18, size=3,show_guide = FALSE) + 
+  geom_text(data = mean.age.group, aes(label = Age, y = Age + 4))
+```
+
+From the plot, we learn that the age varies with the title. So I will check the title of the records which has the missing age data and assign the median age wihin that title.
+
+```{r}
+titanic.data$Age[which(titanic.data$Title=='Master')]<-4
+titanic.data$Age[which(titanic.data$Title=='Miss')]<-22
+titanic.data$Age[which(titanic.data$Title=='Mr')]<-29
+titanic.data$Age[which(titanic.data$Title=='Mrs')]<-35
+titanic.data$Age[which(titanic.data$Title=='Noble')]<-47.5
+```
+
+### 1.3.2 Family Size Consideration
+
+Next I consider whether the family size will influence the suvival rate. At present, we have data about number of sibling and number of parents each individual have. Therefore, we can get the family size easily.
+First, I will extract the family name for each person.
+
+```{r}
+titanic.data$surname<-sapply(titanic.data$Name, function(x){trimws(strsplit(x,split = '[,.]')[[1]][1])})
+titanic.data$size<-titanic.data$SibSp+titanic.data$Parch+1
+titanic.data$faminfo<-paste(titanic.data$size,titanic.data$surname, sep="_")
+```
+
+Next, we'd love to see if family size have strong assocaition with the survival rate. We use bar graph to display it in a more clear way.
+From the plot, we noticed that high survival rate are more likely to occur when family size is between 2-4.When family size is relative large, bigger than 8, all the family members are not survived.
+
+```{r}
+ggplot(data = titanic.data[1:891,], mapping = aes(x = size, fill = factor(Survived)))+
+  scale_x_continuous(breaks=c(1:11))+
+  geom_bar(position = 'stack')
+```
+
+From the plot, it seems that the person whose family size between 2-4 is more likely to survive. 
+
+```{r}
+titanic.data$sizeD[titanic.data$size == 1]<-'small'
+titanic.data$sizeD[titanic.data$size > 1 & titanic.data$size < 5]<-'medium'
+titanic.data$sizeD[titanic.data$size > 4]<-'large'
+mosaicplot(table(titanic.data[1:891,]$sizeD, titanic.data[1:891,]$Survived), main='Family Size by Survival', shade=TRUE)
+```
+
+1.3.3 Children Consideration
+
+As we all know, the children in titanic have more chance to survive. So I will create a new column to define whether the the passenger is a child.The differentiation principle is whether is the age is under 18.
+
+```{r}
+titanic.data$child[titanic.data$Age < 18]<-1
+titanic.data$child[titanic.data$Age >= 18]<-0
+titanic.data$child<-as.factor(titanic.data$child)
+```
+
+# 2. Build the Model
+
+Since this dataset is quite small, so I will choose less complex model which will decrease the probablity of overfitting.
+The considerations are as follows:
+
+Model's name        | Consideration
+--------------------|------------------------------------------------------------------------------
+Naive Bayes         | Can not learn the interation between the features,so it may ignore the combination effect of the `sex` and `age`
+KNN                 | Non-parametric, therefore is not intepretable. Also, KNN can not deal with missing value
+                    
+
+
+```{r}
+set.seed(1)
+
+titanic.data<-transform(titanic.data, Survived = as.factor(Survived),
+                                        Sex = as.factor(Sex),
+                                        Embarked = as.factor(Embarked),
+                                        Title = as.factor(Title),
+                                        sizeD = as.factor(sizeD))
+titanic.train<-titanic.data[1:891,]
+titanic.test<-titanic.data[892:nrow(titanic.data),]
+rf.model<-randomForest(Survived ~ Pclass+Sex+Age+SibSp+Parch+Fare+Embarked+Title+sizeD+child,data = titanic.train)
+```
+
+### comment: 
+### 1. need to change char type to factor type before fitting the model.
+### 2. change the type of the response variable to factor, the model will automatically use the classification model.
+
+```{r}
+plot(rf.model)
+legend('topright', colnames(rf.model$err.rate), col=1:3, fill=1:3)
+```
+We can see from the plot above, the OOB error is quite stable and is around `0.17`.
+
+# 3. Figure out the importance of each variable
+
+The importance of each variable is measured by how much the Gini is decreased for each variable.
+Therefore, I use the variable importance plot to show.
+
+```{r}
+varImpPlot(rf.model)
+```
+
+To show in detail, I create a relative importance plot for each variable.
+
+```{r}
+importance <- importance(rf.model)
+varImportance<-data.frame(Variable = rownames(importance),Importance = round(importance[,'MeanDecreaseGini'], digits = 2))
+ggplot(varImportance, aes(x = reorder(Variable, Importance), 
+    y = Importance, fill = Importance)) +
+  geom_bar(stat='identity') + 
+  labs(x = 'Variables') +
+  coord_flip() 
+```
+The relative importance importance plot shows that, the top 3 most important variable are `Title`, `Fare`, `Sex`.
+
+# 4. Conduct the prediction
+
+```{r}
+titanic.predit<-predict(rf.model,titanic.test)
+result<-data.frame(PassengerId = titanic.test$PassengerId, Survived = titanic.predit, row.names = titanic.test$PassengerId)
+```

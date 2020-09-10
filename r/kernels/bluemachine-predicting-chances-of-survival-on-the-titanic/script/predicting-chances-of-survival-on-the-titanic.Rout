@@ -1,0 +1,1748 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> #Intro
+> "After studying data science and R for almost a year, I thought its time for me to make my first submission. 
++ To begin with, I picked up this competition. Comments and suggestions are most welcome."
+[1] "After studying data science and R for almost a year, I thought its time for me to make my first submission. \nTo begin with, I picked up this competition. Comments and suggestions are most welcome."
+> 
+> "Packages used:
++ For this submission, I have used the following packages:
++ ggplot2
++ ggthemes
++ dplyr
++ randomForest
++ sqldf
++ stringr
++ 
++ Since I have some PL/SQL development experience too, I have used **sqldf** package in this submission.
++ It made my work easy and really helped to get some logical information. I however, strongly believe that to learn R, its important to leave the comfort zone and thus I have shared the codes using both sqldf and other functions.
++ 
++ Finally, I too have used random forest classification method at the end to derive the probability of survival of the passengers on the Titanic. 
++ 
++ 
++ 1. Loading the packages
++ "
+[1] "Packages used:\nFor this submission, I have used the following packages:\nggplot2\nggthemes\ndplyr\nrandomForest\nsqldf\nstringr\n\nSince I have some PL/SQL development experience too, I have used **sqldf** package in this submission.\nIt made my work easy and really helped to get some logical information. I however, strongly believe that to learn R, its important to leave the comfort zone and thus I have shared the codes using both sqldf and other functions.\n\nFinally, I too have used random forest classification method at the end to derive the probability of survival of the passengers on the Titanic. \n\n\n1. Loading the packages\n"
+>     # Load packages
+>     library('ggplot2') # visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+>     library('ggthemes') # visualization
+>     library('dplyr') # data manipulation
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+>     library('randomForest') # classification algorithm
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+>     library('sqldf') # tsql querying
+Loading required package: gsubfn
+Loading required package: proto
+Loading required package: RSQLite
+>     library('stringr') # Extracting strings
+> 
+> 
+> "2. Merging data into single data frame
++ Assuming that both test and train CSVs need work in terms of treating missing values, transformation, etc; 
++ we will merge them into one dataframe first so that these operations need to be performed only once. Before we can merge these data frames, we will have to add survived column to the test data frame.
++ "
+[1] "2. Merging data into single data frame\nAssuming that both test and train CSVs need work in terms of treating missing values, transformation, etc; \nwe will merge them into one dataframe first so that these operations need to be performed only once. Before we can merge these data frames, we will have to add survived column to the test data frame.\n"
+>     #read the data
+>     train <- read.csv('../input/train.csv', stringsAsFactors = F)
+>     test  <- read.csv('../input/train.csv', stringsAsFactors = F)
+>     
+>     #add survived column into test first
+>     test$Survived<-0
+>     
+>     #merge the dataframes
+>     merged_data<- rbind(train, test) 
+>     
+>     #Check the structure of columns
+>     str(merged_data)
+'data.frame':	1782 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : num  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> "
++ 3. Data munging
++ The next step that I decided to take is to check the structure of the data frame and vectors using different ways and try to find out if there are:
++ 	1) any missing values like NULLs and empty strings
++ 	2) any columns that need some modifications to make more sense
++ 
++ #Using unique function we will see which data needs cleansing/transformation or if there are any missing values.
++ "
+[1] "\n3. Data munging\nThe next step that I decided to take is to check the structure of the data frame and vectors using different ways and try to find out if there are:\n\t1) any missing values like NULLs and empty strings\n\t2) any columns that need some modifications to make more sense\n\n#Using unique function we will see which data needs cleansing/transformation or if there are any missing values.\n"
+>     unique(merged_data$Pclass) #Looks OK
+[1] 3 1 2
+>     unique(merged_data$Name) #Titles,names and surnames are mixed up. May need some cleansing
+  [1] "Braund, Mr. Owen Harris"                                                           
+  [2] "Cumings, Mrs. John Bradley (Florence Briggs Thayer)"                               
+  [3] "Heikkinen, Miss. Laina"                                                            
+  [4] "Futrelle, Mrs. Jacques Heath (Lily May Peel)"                                      
+  [5] "Allen, Mr. William Henry"                                                          
+  [6] "Moran, Mr. James"                                                                  
+  [7] "McCarthy, Mr. Timothy J"                                                           
+  [8] "Palsson, Master. Gosta Leonard"                                                    
+  [9] "Johnson, Mrs. Oscar W (Elisabeth Vilhelmina Berg)"                                 
+ [10] "Nasser, Mrs. Nicholas (Adele Achem)"                                               
+ [11] "Sandstrom, Miss. Marguerite Rut"                                                   
+ [12] "Bonnell, Miss. Elizabeth"                                                          
+ [13] "Saundercock, Mr. William Henry"                                                    
+ [14] "Andersson, Mr. Anders Johan"                                                       
+ [15] "Vestrom, Miss. Hulda Amanda Adolfina"                                              
+ [16] "Hewlett, Mrs. (Mary D Kingcome) "                                                  
+ [17] "Rice, Master. Eugene"                                                              
+ [18] "Williams, Mr. Charles Eugene"                                                      
+ [19] "Vander Planke, Mrs. Julius (Emelia Maria Vandemoortele)"                           
+ [20] "Masselmani, Mrs. Fatima"                                                           
+ [21] "Fynney, Mr. Joseph J"                                                              
+ [22] "Beesley, Mr. Lawrence"                                                             
+ [23] "McGowan, Miss. Anna \"Annie\""                                                     
+ [24] "Sloper, Mr. William Thompson"                                                      
+ [25] "Palsson, Miss. Torborg Danira"                                                     
+ [26] "Asplund, Mrs. Carl Oscar (Selma Augusta Emilia Johansson)"                         
+ [27] "Emir, Mr. Farred Chehab"                                                           
+ [28] "Fortune, Mr. Charles Alexander"                                                    
+ [29] "O'Dwyer, Miss. Ellen \"Nellie\""                                                   
+ [30] "Todoroff, Mr. Lalio"                                                               
+ [31] "Uruchurtu, Don. Manuel E"                                                          
+ [32] "Spencer, Mrs. William Augustus (Marie Eugenie)"                                    
+ [33] "Glynn, Miss. Mary Agatha"                                                          
+ [34] "Wheadon, Mr. Edward H"                                                             
+ [35] "Meyer, Mr. Edgar Joseph"                                                           
+ [36] "Holverson, Mr. Alexander Oskar"                                                    
+ [37] "Mamee, Mr. Hanna"                                                                  
+ [38] "Cann, Mr. Ernest Charles"                                                          
+ [39] "Vander Planke, Miss. Augusta Maria"                                                
+ [40] "Nicola-Yarred, Miss. Jamila"                                                       
+ [41] "Ahlin, Mrs. Johan (Johanna Persdotter Larsson)"                                    
+ [42] "Turpin, Mrs. William John Robert (Dorothy Ann Wonnacott)"                          
+ [43] "Kraeff, Mr. Theodor"                                                               
+ [44] "Laroche, Miss. Simonne Marie Anne Andree"                                          
+ [45] "Devaney, Miss. Margaret Delia"                                                     
+ [46] "Rogers, Mr. William John"                                                          
+ [47] "Lennon, Mr. Denis"                                                                 
+ [48] "O'Driscoll, Miss. Bridget"                                                         
+ [49] "Samaan, Mr. Youssef"                                                               
+ [50] "Arnold-Franchi, Mrs. Josef (Josefine Franchi)"                                     
+ [51] "Panula, Master. Juha Niilo"                                                        
+ [52] "Nosworthy, Mr. Richard Cater"                                                      
+ [53] "Harper, Mrs. Henry Sleeper (Myna Haxtun)"                                          
+ [54] "Faunthorpe, Mrs. Lizzie (Elizabeth Anne Wilkinson)"                                
+ [55] "Ostby, Mr. Engelhart Cornelius"                                                    
+ [56] "Woolner, Mr. Hugh"                                                                 
+ [57] "Rugg, Miss. Emily"                                                                 
+ [58] "Novel, Mr. Mansouer"                                                               
+ [59] "West, Miss. Constance Mirium"                                                      
+ [60] "Goodwin, Master. William Frederick"                                                
+ [61] "Sirayanian, Mr. Orsen"                                                             
+ [62] "Icard, Miss. Amelie"                                                               
+ [63] "Harris, Mr. Henry Birkhardt"                                                       
+ [64] "Skoog, Master. Harald"                                                             
+ [65] "Stewart, Mr. Albert A"                                                             
+ [66] "Moubarek, Master. Gerios"                                                          
+ [67] "Nye, Mrs. (Elizabeth Ramell)"                                                      
+ [68] "Crease, Mr. Ernest James"                                                          
+ [69] "Andersson, Miss. Erna Alexandra"                                                   
+ [70] "Kink, Mr. Vincenz"                                                                 
+ [71] "Jenkin, Mr. Stephen Curnow"                                                        
+ [72] "Goodwin, Miss. Lillian Amy"                                                        
+ [73] "Hood, Mr. Ambrose Jr"                                                              
+ [74] "Chronopoulos, Mr. Apostolos"                                                       
+ [75] "Bing, Mr. Lee"                                                                     
+ [76] "Moen, Mr. Sigurd Hansen"                                                           
+ [77] "Staneff, Mr. Ivan"                                                                 
+ [78] "Moutal, Mr. Rahamin Haim"                                                          
+ [79] "Caldwell, Master. Alden Gates"                                                     
+ [80] "Dowdell, Miss. Elizabeth"                                                          
+ [81] "Waelens, Mr. Achille"                                                              
+ [82] "Sheerlinck, Mr. Jan Baptist"                                                       
+ [83] "McDermott, Miss. Brigdet Delia"                                                    
+ [84] "Carrau, Mr. Francisco M"                                                           
+ [85] "Ilett, Miss. Bertha"                                                               
+ [86] "Backstrom, Mrs. Karl Alfred (Maria Mathilda Gustafsson)"                           
+ [87] "Ford, Mr. William Neal"                                                            
+ [88] "Slocovski, Mr. Selman Francis"                                                     
+ [89] "Fortune, Miss. Mabel Helen"                                                        
+ [90] "Celotti, Mr. Francesco"                                                            
+ [91] "Christmann, Mr. Emil"                                                              
+ [92] "Andreasson, Mr. Paul Edvin"                                                        
+ [93] "Chaffee, Mr. Herbert Fuller"                                                       
+ [94] "Dean, Mr. Bertram Frank"                                                           
+ [95] "Coxon, Mr. Daniel"                                                                 
+ [96] "Shorney, Mr. Charles Joseph"                                                       
+ [97] "Goldschmidt, Mr. George B"                                                         
+ [98] "Greenfield, Mr. William Bertram"                                                   
+ [99] "Doling, Mrs. John T (Ada Julia Bone)"                                              
+[100] "Kantor, Mr. Sinai"                                                                 
+[101] "Petranec, Miss. Matilda"                                                           
+[102] "Petroff, Mr. Pastcho (\"Pentcho\")"                                                
+[103] "White, Mr. Richard Frasar"                                                         
+[104] "Johansson, Mr. Gustaf Joel"                                                        
+[105] "Gustafsson, Mr. Anders Vilhelm"                                                    
+[106] "Mionoff, Mr. Stoytcho"                                                             
+[107] "Salkjelsvik, Miss. Anna Kristine"                                                  
+[108] "Moss, Mr. Albert Johan"                                                            
+[109] "Rekic, Mr. Tido"                                                                   
+[110] "Moran, Miss. Bertha"                                                               
+[111] "Porter, Mr. Walter Chamberlain"                                                    
+[112] "Zabour, Miss. Hileni"                                                              
+[113] "Barton, Mr. David John"                                                            
+[114] "Jussila, Miss. Katriina"                                                           
+[115] "Attalah, Miss. Malake"                                                             
+[116] "Pekoniemi, Mr. Edvard"                                                             
+[117] "Connors, Mr. Patrick"                                                              
+[118] "Turpin, Mr. William John Robert"                                                   
+[119] "Baxter, Mr. Quigg Edmond"                                                          
+[120] "Andersson, Miss. Ellis Anna Maria"                                                 
+[121] "Hickman, Mr. Stanley George"                                                       
+[122] "Moore, Mr. Leonard Charles"                                                        
+[123] "Nasser, Mr. Nicholas"                                                              
+[124] "Webber, Miss. Susan"                                                               
+[125] "White, Mr. Percival Wayland"                                                       
+[126] "Nicola-Yarred, Master. Elias"                                                      
+[127] "McMahon, Mr. Martin"                                                               
+[128] "Madsen, Mr. Fridtjof Arne"                                                         
+[129] "Peter, Miss. Anna"                                                                 
+[130] "Ekstrom, Mr. Johan"                                                                
+[131] "Drazenoic, Mr. Jozef"                                                              
+[132] "Coelho, Mr. Domingos Fernandeo"                                                    
+[133] "Robins, Mrs. Alexander A (Grace Charity Laury)"                                    
+[134] "Weisz, Mrs. Leopold (Mathilde Francoise Pede)"                                     
+[135] "Sobey, Mr. Samuel James Hayden"                                                    
+[136] "Richard, Mr. Emile"                                                                
+[137] "Newsom, Miss. Helen Monypeny"                                                      
+[138] "Futrelle, Mr. Jacques Heath"                                                       
+[139] "Osen, Mr. Olaf Elon"                                                               
+[140] "Giglio, Mr. Victor"                                                                
+[141] "Boulos, Mrs. Joseph (Sultana)"                                                     
+[142] "Nysten, Miss. Anna Sofia"                                                          
+[143] "Hakkarainen, Mrs. Pekka Pietari (Elin Matilda Dolck)"                              
+[144] "Burke, Mr. Jeremiah"                                                               
+[145] "Andrew, Mr. Edgardo Samuel"                                                        
+[146] "Nicholls, Mr. Joseph Charles"                                                      
+[147] "Andersson, Mr. August Edvard (\"Wennerstrom\")"                                    
+[148] "Ford, Miss. Robina Maggie \"Ruby\""                                                
+[149] "Navratil, Mr. Michel (\"Louis M Hoffman\")"                                        
+[150] "Byles, Rev. Thomas Roussel Davids"                                                 
+[151] "Bateman, Rev. Robert James"                                                        
+[152] "Pears, Mrs. Thomas (Edith Wearne)"                                                 
+[153] "Meo, Mr. Alfonzo"                                                                  
+[154] "van Billiard, Mr. Austin Blyler"                                                   
+[155] "Olsen, Mr. Ole Martin"                                                             
+[156] "Williams, Mr. Charles Duane"                                                       
+[157] "Gilnagh, Miss. Katherine \"Katie\""                                                
+[158] "Corn, Mr. Harry"                                                                   
+[159] "Smiljanic, Mr. Mile"                                                               
+[160] "Sage, Master. Thomas Henry"                                                        
+[161] "Cribb, Mr. John Hatfield"                                                          
+[162] "Watt, Mrs. James (Elizabeth \"Bessie\" Inglis Milne)"                              
+[163] "Bengtsson, Mr. John Viktor"                                                        
+[164] "Calic, Mr. Jovo"                                                                   
+[165] "Panula, Master. Eino Viljami"                                                      
+[166] "Goldsmith, Master. Frank John William \"Frankie\""                                 
+[167] "Chibnall, Mrs. (Edith Martha Bowerman)"                                            
+[168] "Skoog, Mrs. William (Anna Bernhardina Karlsson)"                                   
+[169] "Baumann, Mr. John D"                                                               
+[170] "Ling, Mr. Lee"                                                                     
+[171] "Van der hoef, Mr. Wyckoff"                                                         
+[172] "Rice, Master. Arthur"                                                              
+[173] "Johnson, Miss. Eleanor Ileen"                                                      
+[174] "Sivola, Mr. Antti Wilhelm"                                                         
+[175] "Smith, Mr. James Clinch"                                                           
+[176] "Klasen, Mr. Klas Albin"                                                            
+[177] "Lefebre, Master. Henry Forbes"                                                     
+[178] "Isham, Miss. Ann Elizabeth"                                                        
+[179] "Hale, Mr. Reginald"                                                                
+[180] "Leonard, Mr. Lionel"                                                               
+[181] "Sage, Miss. Constance Gladys"                                                      
+[182] "Pernot, Mr. Rene"                                                                  
+[183] "Asplund, Master. Clarence Gustaf Hugo"                                             
+[184] "Becker, Master. Richard F"                                                         
+[185] "Kink-Heilmann, Miss. Luise Gretchen"                                               
+[186] "Rood, Mr. Hugh Roscoe"                                                             
+[187] "O'Brien, Mrs. Thomas (Johanna \"Hannah\" Godfrey)"                                 
+[188] "Romaine, Mr. Charles Hallace (\"Mr C Rolmane\")"                                   
+[189] "Bourke, Mr. John"                                                                  
+[190] "Turcin, Mr. Stjepan"                                                               
+[191] "Pinsky, Mrs. (Rosa)"                                                               
+[192] "Carbines, Mr. William"                                                             
+[193] "Andersen-Jensen, Miss. Carla Christine Nielsine"                                   
+[194] "Navratil, Master. Michel M"                                                        
+[195] "Brown, Mrs. James Joseph (Margaret Tobin)"                                         
+[196] "Lurette, Miss. Elise"                                                              
+[197] "Mernagh, Mr. Robert"                                                               
+[198] "Olsen, Mr. Karl Siegwart Andreas"                                                  
+[199] "Madigan, Miss. Margaret \"Maggie\""                                                
+[200] "Yrois, Miss. Henriette (\"Mrs Harbeck\")"                                          
+[201] "Vande Walle, Mr. Nestor Cyriel"                                                    
+[202] "Sage, Mr. Frederick"                                                               
+[203] "Johanson, Mr. Jakob Alfred"                                                        
+[204] "Youseff, Mr. Gerious"                                                              
+[205] "Cohen, Mr. Gurshon \"Gus\""                                                        
+[206] "Strom, Miss. Telma Matilda"                                                        
+[207] "Backstrom, Mr. Karl Alfred"                                                        
+[208] "Albimona, Mr. Nassef Cassem"                                                       
+[209] "Carr, Miss. Helen \"Ellen\""                                                       
+[210] "Blank, Mr. Henry"                                                                  
+[211] "Ali, Mr. Ahmed"                                                                    
+[212] "Cameron, Miss. Clear Annie"                                                        
+[213] "Perkin, Mr. John Henry"                                                            
+[214] "Givard, Mr. Hans Kristensen"                                                       
+[215] "Kiernan, Mr. Philip"                                                               
+[216] "Newell, Miss. Madeleine"                                                           
+[217] "Honkanen, Miss. Eliina"                                                            
+[218] "Jacobsohn, Mr. Sidney Samuel"                                                      
+[219] "Bazzani, Miss. Albina"                                                             
+[220] "Harris, Mr. Walter"                                                                
+[221] "Sunderland, Mr. Victor Francis"                                                    
+[222] "Bracken, Mr. James H"                                                              
+[223] "Green, Mr. George Henry"                                                           
+[224] "Nenkoff, Mr. Christo"                                                              
+[225] "Hoyt, Mr. Frederick Maxfield"                                                      
+[226] "Berglund, Mr. Karl Ivar Sven"                                                      
+[227] "Mellors, Mr. William John"                                                         
+[228] "Lovell, Mr. John Hall (\"Henry\")"                                                 
+[229] "Fahlstrom, Mr. Arne Jonas"                                                         
+[230] "Lefebre, Miss. Mathilde"                                                           
+[231] "Harris, Mrs. Henry Birkhardt (Irene Wallach)"                                      
+[232] "Larsson, Mr. Bengt Edvin"                                                          
+[233] "Sjostedt, Mr. Ernst Adolf"                                                         
+[234] "Asplund, Miss. Lillian Gertrud"                                                    
+[235] "Leyson, Mr. Robert William Norman"                                                 
+[236] "Harknett, Miss. Alice Phoebe"                                                      
+[237] "Hold, Mr. Stephen"                                                                 
+[238] "Collyer, Miss. Marjorie \"Lottie\""                                                
+[239] "Pengelly, Mr. Frederick William"                                                   
+[240] "Hunt, Mr. George Henry"                                                            
+[241] "Zabour, Miss. Thamine"                                                             
+[242] "Murphy, Miss. Katherine \"Kate\""                                                  
+[243] "Coleridge, Mr. Reginald Charles"                                                   
+[244] "Maenpaa, Mr. Matti Alexanteri"                                                     
+[245] "Attalah, Mr. Sleiman"                                                              
+[246] "Minahan, Dr. William Edward"                                                       
+[247] "Lindahl, Miss. Agda Thorilda Viktoria"                                             
+[248] "Hamalainen, Mrs. William (Anna)"                                                   
+[249] "Beckwith, Mr. Richard Leonard"                                                     
+[250] "Carter, Rev. Ernest Courtenay"                                                     
+[251] "Reed, Mr. James George"                                                            
+[252] "Strom, Mrs. Wilhelm (Elna Matilda Persson)"                                        
+[253] "Stead, Mr. William Thomas"                                                         
+[254] "Lobb, Mr. William Arthur"                                                          
+[255] "Rosblom, Mrs. Viktor (Helena Wilhelmina)"                                          
+[256] "Touma, Mrs. Darwis (Hanne Youssef Razi)"                                           
+[257] "Thorne, Mrs. Gertrude Maybelle"                                                    
+[258] "Cherry, Miss. Gladys"                                                              
+[259] "Ward, Miss. Anna"                                                                  
+[260] "Parrish, Mrs. (Lutie Davis)"                                                       
+[261] "Smith, Mr. Thomas"                                                                 
+[262] "Asplund, Master. Edvin Rojj Felix"                                                 
+[263] "Taussig, Mr. Emil"                                                                 
+[264] "Harrison, Mr. William"                                                             
+[265] "Henry, Miss. Delia"                                                                
+[266] "Reeves, Mr. David"                                                                 
+[267] "Panula, Mr. Ernesti Arvid"                                                         
+[268] "Persson, Mr. Ernst Ulrik"                                                          
+[269] "Graham, Mrs. William Thompson (Edith Junkins)"                                     
+[270] "Bissette, Miss. Amelia"                                                            
+[271] "Cairns, Mr. Alexander"                                                             
+[272] "Tornquist, Mr. William Henry"                                                      
+[273] "Mellinger, Mrs. (Elizabeth Anne Maidment)"                                         
+[274] "Natsch, Mr. Charles H"                                                             
+[275] "Healy, Miss. Hanora \"Nora\""                                                      
+[276] "Andrews, Miss. Kornelia Theodosia"                                                 
+[277] "Lindblom, Miss. Augusta Charlotta"                                                 
+[278] "Parkes, Mr. Francis \"Frank\""                                                     
+[279] "Rice, Master. Eric"                                                                
+[280] "Abbott, Mrs. Stanton (Rosa Hunt)"                                                  
+[281] "Duane, Mr. Frank"                                                                  
+[282] "Olsson, Mr. Nils Johan Goransson"                                                  
+[283] "de Pelsmaeker, Mr. Alfons"                                                         
+[284] "Dorking, Mr. Edward Arthur"                                                        
+[285] "Smith, Mr. Richard William"                                                        
+[286] "Stankovic, Mr. Ivan"                                                               
+[287] "de Mulder, Mr. Theodore"                                                           
+[288] "Naidenoff, Mr. Penko"                                                              
+[289] "Hosono, Mr. Masabumi"                                                              
+[290] "Connolly, Miss. Kate"                                                              
+[291] "Barber, Miss. Ellen \"Nellie\""                                                    
+[292] "Bishop, Mrs. Dickinson H (Helen Walton)"                                           
+[293] "Levy, Mr. Rene Jacques"                                                            
+[294] "Haas, Miss. Aloisia"                                                               
+[295] "Mineff, Mr. Ivan"                                                                  
+[296] "Lewy, Mr. Ervin G"                                                                 
+[297] "Hanna, Mr. Mansour"                                                                
+[298] "Allison, Miss. Helen Loraine"                                                      
+[299] "Saalfeld, Mr. Adolphe"                                                             
+[300] "Baxter, Mrs. James (Helene DeLaudeniere Chaput)"                                   
+[301] "Kelly, Miss. Anna Katherine \"Annie Kate\""                                        
+[302] "McCoy, Mr. Bernard"                                                                
+[303] "Johnson, Mr. William Cahoone Jr"                                                   
+[304] "Keane, Miss. Nora A"                                                               
+[305] "Williams, Mr. Howard Hugh \"Harry\""                                               
+[306] "Allison, Master. Hudson Trevor"                                                    
+[307] "Fleming, Miss. Margaret"                                                           
+[308] "Penasco y Castellana, Mrs. Victor de Satode (Maria Josefa Perez de Soto y Vallejo)"
+[309] "Abelson, Mr. Samuel"                                                               
+[310] "Francatelli, Miss. Laura Mabel"                                                    
+[311] "Hays, Miss. Margaret Bechstein"                                                    
+[312] "Ryerson, Miss. Emily Borie"                                                        
+[313] "Lahtinen, Mrs. William (Anna Sylfven)"                                             
+[314] "Hendekovic, Mr. Ignjac"                                                            
+[315] "Hart, Mr. Benjamin"                                                                
+[316] "Nilsson, Miss. Helmina Josefina"                                                   
+[317] "Kantor, Mrs. Sinai (Miriam Sternin)"                                               
+[318] "Moraweck, Dr. Ernest"                                                              
+[319] "Wick, Miss. Mary Natalie"                                                          
+[320] "Spedden, Mrs. Frederic Oakley (Margaretta Corning Stone)"                          
+[321] "Dennis, Mr. Samuel"                                                                
+[322] "Danoff, Mr. Yoto"                                                                  
+[323] "Slayter, Miss. Hilda Mary"                                                         
+[324] "Caldwell, Mrs. Albert Francis (Sylvia Mae Harbaugh)"                               
+[325] "Sage, Mr. George John Jr"                                                          
+[326] "Young, Miss. Marie Grice"                                                          
+[327] "Nysveen, Mr. Johan Hansen"                                                         
+[328] "Ball, Mrs. (Ada E Hall)"                                                           
+[329] "Goldsmith, Mrs. Frank John (Emily Alice Brown)"                                    
+[330] "Hippach, Miss. Jean Gertrude"                                                      
+[331] "McCoy, Miss. Agnes"                                                                
+[332] "Partner, Mr. Austen"                                                               
+[333] "Graham, Mr. George Edward"                                                         
+[334] "Vander Planke, Mr. Leo Edmondus"                                                   
+[335] "Frauenthal, Mrs. Henry William (Clara Heinsheimer)"                                
+[336] "Denkoff, Mr. Mitto"                                                                
+[337] "Pears, Mr. Thomas Clinton"                                                         
+[338] "Burns, Miss. Elizabeth Margaret"                                                   
+[339] "Dahl, Mr. Karl Edwart"                                                             
+[340] "Blackwell, Mr. Stephen Weart"                                                      
+[341] "Navratil, Master. Edmond Roger"                                                    
+[342] "Fortune, Miss. Alice Elizabeth"                                                    
+[343] "Collander, Mr. Erik Gustaf"                                                        
+[344] "Sedgwick, Mr. Charles Frederick Waddington"                                        
+[345] "Fox, Mr. Stanley Hubert"                                                           
+[346] "Brown, Miss. Amelia \"Mildred\""                                                   
+[347] "Smith, Miss. Marion Elsie"                                                         
+[348] "Davison, Mrs. Thomas Henry (Mary E Finck)"                                         
+[349] "Coutts, Master. William Loch \"William\""                                          
+[350] "Dimic, Mr. Jovan"                                                                  
+[351] "Odahl, Mr. Nils Martin"                                                            
+[352] "Williams-Lambert, Mr. Fletcher Fellows"                                            
+[353] "Elias, Mr. Tannous"                                                                
+[354] "Arnold-Franchi, Mr. Josef"                                                         
+[355] "Yousif, Mr. Wazli"                                                                 
+[356] "Vanden Steen, Mr. Leo Peter"                                                       
+[357] "Bowerman, Miss. Elsie Edith"                                                       
+[358] "Funk, Miss. Annie Clemmer"                                                         
+[359] "McGovern, Miss. Mary"                                                              
+[360] "Mockler, Miss. Helen Mary \"Ellie\""                                               
+[361] "Skoog, Mr. Wilhelm"                                                                
+[362] "del Carlo, Mr. Sebastiano"                                                         
+[363] "Barbara, Mrs. (Catherine David)"                                                   
+[364] "Asim, Mr. Adola"                                                                   
+[365] "O'Brien, Mr. Thomas"                                                               
+[366] "Adahl, Mr. Mauritz Nils Martin"                                                    
+[367] "Warren, Mrs. Frank Manley (Anna Sophia Atkinson)"                                  
+[368] "Moussa, Mrs. (Mantoura Boulos)"                                                    
+[369] "Jermyn, Miss. Annie"                                                               
+[370] "Aubart, Mme. Leontine Pauline"                                                     
+[371] "Harder, Mr. George Achilles"                                                       
+[372] "Wiklund, Mr. Jakob Alfred"                                                         
+[373] "Beavan, Mr. William Thomas"                                                        
+[374] "Ringhini, Mr. Sante"                                                               
+[375] "Palsson, Miss. Stina Viola"                                                        
+[376] "Meyer, Mrs. Edgar Joseph (Leila Saks)"                                             
+[377] "Landergren, Miss. Aurora Adelia"                                                   
+[378] "Widener, Mr. Harry Elkins"                                                         
+[379] "Betros, Mr. Tannous"                                                               
+[380] "Gustafsson, Mr. Karl Gideon"                                                       
+[381] "Bidois, Miss. Rosalie"                                                             
+[382] "Nakid, Miss. Maria (\"Mary\")"                                                     
+[383] "Tikkanen, Mr. Juho"                                                                
+[384] "Holverson, Mrs. Alexander Oskar (Mary Aline Towner)"                               
+[385] "Plotcharsky, Mr. Vasil"                                                            
+[386] "Davies, Mr. Charles Henry"                                                         
+[387] "Goodwin, Master. Sidney Leonard"                                                   
+[388] "Buss, Miss. Kate"                                                                  
+[389] "Sadlier, Mr. Matthew"                                                              
+[390] "Lehmann, Miss. Bertha"                                                             
+[391] "Carter, Mr. William Ernest"                                                        
+[392] "Jansson, Mr. Carl Olof"                                                            
+[393] "Gustafsson, Mr. Johan Birger"                                                      
+[394] "Newell, Miss. Marjorie"                                                            
+[395] "Sandstrom, Mrs. Hjalmar (Agnes Charlotta Bengtsson)"                               
+[396] "Johansson, Mr. Erik"                                                               
+[397] "Olsson, Miss. Elina"                                                               
+[398] "McKane, Mr. Peter David"                                                           
+[399] "Pain, Dr. Alfred"                                                                  
+[400] "Trout, Mrs. William H (Jessie L)"                                                  
+[401] "Niskanen, Mr. Juha"                                                                
+[402] "Adams, Mr. John"                                                                   
+[403] "Jussila, Miss. Mari Aina"                                                          
+[404] "Hakkarainen, Mr. Pekka Pietari"                                                    
+[405] "Oreskovic, Miss. Marija"                                                           
+[406] "Gale, Mr. Shadrach"                                                                
+[407] "Widegren, Mr. Carl/Charles Peter"                                                  
+[408] "Richards, Master. William Rowe"                                                    
+[409] "Birkeland, Mr. Hans Martin Monsen"                                                 
+[410] "Lefebre, Miss. Ida"                                                                
+[411] "Sdycoff, Mr. Todor"                                                                
+[412] "Hart, Mr. Henry"                                                                   
+[413] "Minahan, Miss. Daisy E"                                                            
+[414] "Cunningham, Mr. Alfred Fleming"                                                    
+[415] "Sundman, Mr. Johan Julian"                                                         
+[416] "Meek, Mrs. Thomas (Annie Louise Rowley)"                                           
+[417] "Drew, Mrs. James Vivian (Lulu Thorne Christian)"                                   
+[418] "Silven, Miss. Lyyli Karoliina"                                                     
+[419] "Matthews, Mr. William John"                                                        
+[420] "Van Impe, Miss. Catharina"                                                         
+[421] "Gheorgheff, Mr. Stanio"                                                            
+[422] "Charters, Mr. David"                                                               
+[423] "Zimmerman, Mr. Leo"                                                                
+[424] "Danbom, Mrs. Ernst Gilbert (Anna Sigrid Maria Brogren)"                            
+[425] "Rosblom, Mr. Viktor Richard"                                                       
+[426] "Wiseman, Mr. Phillippe"                                                            
+[427] "Clarke, Mrs. Charles V (Ada Maria Winfield)"                                       
+[428] "Phillips, Miss. Kate Florence (\"Mrs Kate Louise Phillips Marshall\")"             
+[429] "Flynn, Mr. James"                                                                  
+[430] "Pickard, Mr. Berk (Berk Trembisky)"                                                
+[431] "Bjornstrom-Steffansson, Mr. Mauritz Hakan"                                         
+[432] "Thorneycroft, Mrs. Percival (Florence Kate White)"                                 
+[433] "Louch, Mrs. Charles Alexander (Alice Adelaide Slow)"                               
+[434] "Kallio, Mr. Nikolai Erland"                                                        
+[435] "Silvey, Mr. William Baird"                                                         
+[436] "Carter, Miss. Lucile Polk"                                                         
+[437] "Ford, Miss. Doolina Margaret \"Daisy\""                                            
+[438] "Richards, Mrs. Sidney (Emily Hocking)"                                             
+[439] "Fortune, Mr. Mark"                                                                 
+[440] "Kvillner, Mr. Johan Henrik Johannesson"                                            
+[441] "Hart, Mrs. Benjamin (Esther Ada Bloomfield)"                                       
+[442] "Hampe, Mr. Leon"                                                                   
+[443] "Petterson, Mr. Johan Emil"                                                         
+[444] "Reynaldo, Ms. Encarnacion"                                                         
+[445] "Johannesen-Bratthammer, Mr. Bernt"                                                 
+[446] "Dodge, Master. Washington"                                                         
+[447] "Mellinger, Miss. Madeleine Violet"                                                 
+[448] "Seward, Mr. Frederic Kimber"                                                       
+[449] "Baclini, Miss. Marie Catherine"                                                    
+[450] "Peuchen, Major. Arthur Godfrey"                                                    
+[451] "West, Mr. Edwy Arthur"                                                             
+[452] "Hagland, Mr. Ingvald Olai Olsen"                                                   
+[453] "Foreman, Mr. Benjamin Laventall"                                                   
+[454] "Goldenberg, Mr. Samuel L"                                                          
+[455] "Peduzzi, Mr. Joseph"                                                               
+[456] "Jalsevac, Mr. Ivan"                                                                
+[457] "Millet, Mr. Francis Davis"                                                         
+[458] "Kenyon, Mrs. Frederick R (Marion)"                                                 
+[459] "Toomey, Miss. Ellen"                                                               
+[460] "O'Connor, Mr. Maurice"                                                             
+[461] "Anderson, Mr. Harry"                                                               
+[462] "Morley, Mr. William"                                                               
+[463] "Gee, Mr. Arthur H"                                                                 
+[464] "Milling, Mr. Jacob Christian"                                                      
+[465] "Maisner, Mr. Simon"                                                                
+[466] "Goncalves, Mr. Manuel Estanslas"                                                   
+[467] "Campbell, Mr. William"                                                             
+[468] "Smart, Mr. John Montgomery"                                                        
+[469] "Scanlan, Mr. James"                                                                
+[470] "Baclini, Miss. Helene Barbara"                                                     
+[471] "Keefe, Mr. Arthur"                                                                 
+[472] "Cacic, Mr. Luka"                                                                   
+[473] "West, Mrs. Edwy Arthur (Ada Mary Worth)"                                           
+[474] "Jerwan, Mrs. Amin S (Marie Marthe Thuillard)"                                      
+[475] "Strandberg, Miss. Ida Sofia"                                                       
+[476] "Clifford, Mr. George Quincy"                                                       
+[477] "Renouf, Mr. Peter Henry"                                                           
+[478] "Braund, Mr. Lewis Richard"                                                         
+[479] "Karlsson, Mr. Nils August"                                                         
+[480] "Hirvonen, Miss. Hildur E"                                                          
+[481] "Goodwin, Master. Harold Victor"                                                    
+[482] "Frost, Mr. Anthony Wood \"Archie\""                                                
+[483] "Rouse, Mr. Richard Henry"                                                          
+[484] "Turkula, Mrs. (Hedwig)"                                                            
+[485] "Bishop, Mr. Dickinson H"                                                           
+[486] "Lefebre, Miss. Jeannie"                                                            
+[487] "Hoyt, Mrs. Frederick Maxfield (Jane Anne Forby)"                                   
+[488] "Kent, Mr. Edward Austin"                                                           
+[489] "Somerton, Mr. Francis William"                                                     
+[490] "Coutts, Master. Eden Leslie \"Neville\""                                           
+[491] "Hagland, Mr. Konrad Mathias Reiersen"                                              
+[492] "Windelov, Mr. Einar"                                                               
+[493] "Molson, Mr. Harry Markland"                                                        
+[494] "Artagaveytia, Mr. Ramon"                                                           
+[495] "Stanley, Mr. Edward Roland"                                                        
+[496] "Yousseff, Mr. Gerious"                                                             
+[497] "Eustis, Miss. Elizabeth Mussey"                                                    
+[498] "Shellard, Mr. Frederick William"                                                   
+[499] "Allison, Mrs. Hudson J C (Bessie Waldo Daniels)"                                   
+[500] "Svensson, Mr. Olof"                                                                
+[501] "Calic, Mr. Petar"                                                                  
+[502] "Canavan, Miss. Mary"                                                               
+[503] "O'Sullivan, Miss. Bridget Mary"                                                    
+[504] "Laitinen, Miss. Kristina Sofia"                                                    
+[505] "Maioni, Miss. Roberta"                                                             
+[506] "Penasco y Castellana, Mr. Victor de Satode"                                        
+[507] "Quick, Mrs. Frederick Charles (Jane Richards)"                                     
+[508] "Bradley, Mr. George (\"George Arthur Brayton\")"                                   
+[509] "Olsen, Mr. Henry Margido"                                                          
+[510] "Lang, Mr. Fang"                                                                    
+[511] "Daly, Mr. Eugene Patrick"                                                          
+[512] "Webber, Mr. James"                                                                 
+[513] "McGough, Mr. James Robert"                                                         
+[514] "Rothschild, Mrs. Martin (Elizabeth L. Barrett)"                                    
+[515] "Coleff, Mr. Satio"                                                                 
+[516] "Walker, Mr. William Anderson"                                                      
+[517] "Lemore, Mrs. (Amelia Milley)"                                                      
+[518] "Ryan, Mr. Patrick"                                                                 
+[519] "Angle, Mrs. William A (Florence \"Mary\" Agnes Hughes)"                            
+[520] "Pavlovic, Mr. Stefo"                                                               
+[521] "Perreault, Miss. Anne"                                                             
+[522] "Vovk, Mr. Janko"                                                                   
+[523] "Lahoud, Mr. Sarkis"                                                                
+[524] "Hippach, Mrs. Louis Albert (Ida Sophia Fischer)"                                   
+[525] "Kassem, Mr. Fared"                                                                 
+[526] "Farrell, Mr. James"                                                                
+[527] "Ridsdale, Miss. Lucy"                                                              
+[528] "Farthing, Mr. John"                                                                
+[529] "Salonen, Mr. Johan Werner"                                                         
+[530] "Hocking, Mr. Richard George"                                                       
+[531] "Quick, Miss. Phyllis May"                                                          
+[532] "Toufik, Mr. Nakli"                                                                 
+[533] "Elias, Mr. Joseph Jr"                                                              
+[534] "Peter, Mrs. Catherine (Catherine Rizk)"                                            
+[535] "Cacic, Miss. Marija"                                                               
+[536] "Hart, Miss. Eva Miriam"                                                            
+[537] "Butt, Major. Archibald Willingham"                                                 
+[538] "LeRoy, Miss. Bertha"                                                               
+[539] "Risien, Mr. Samuel Beard"                                                          
+[540] "Frolicher, Miss. Hedwig Margaritha"                                                
+[541] "Crosby, Miss. Harriet R"                                                           
+[542] "Andersson, Miss. Ingeborg Constanzia"                                              
+[543] "Andersson, Miss. Sigrid Elisabeth"                                                 
+[544] "Beane, Mr. Edward"                                                                 
+[545] "Douglas, Mr. Walter Donald"                                                        
+[546] "Nicholson, Mr. Arthur Ernest"                                                      
+[547] "Beane, Mrs. Edward (Ethel Clarke)"                                                 
+[548] "Padro y Manent, Mr. Julian"                                                        
+[549] "Goldsmith, Mr. Frank John"                                                         
+[550] "Davies, Master. John Morgan Jr"                                                    
+[551] "Thayer, Mr. John Borland Jr"                                                       
+[552] "Sharp, Mr. Percival James R"                                                       
+[553] "O'Brien, Mr. Timothy"                                                              
+[554] "Leeni, Mr. Fahim (\"Philip Zenni\")"                                               
+[555] "Ohman, Miss. Velin"                                                                
+[556] "Wright, Mr. George"                                                                
+[557] "Duff Gordon, Lady. (Lucille Christiana Sutherland) (\"Mrs Morgan\")"               
+[558] "Robbins, Mr. Victor"                                                               
+[559] "Taussig, Mrs. Emil (Tillie Mandelbaum)"                                            
+[560] "de Messemaeker, Mrs. Guillaume Joseph (Emma)"                                      
+[561] "Morrow, Mr. Thomas Rowan"                                                          
+[562] "Sivic, Mr. Husein"                                                                 
+[563] "Norman, Mr. Robert Douglas"                                                        
+[564] "Simmons, Mr. John"                                                                 
+[565] "Meanwell, Miss. (Marion Ogden)"                                                    
+[566] "Davies, Mr. Alfred J"                                                              
+[567] "Stoytcheff, Mr. Ilia"                                                              
+[568] "Palsson, Mrs. Nils (Alma Cornelia Berglund)"                                       
+[569] "Doharr, Mr. Tannous"                                                               
+[570] "Jonsson, Mr. Carl"                                                                 
+[571] "Harris, Mr. George"                                                                
+[572] "Appleton, Mrs. Edward Dale (Charlotte Lamson)"                                     
+[573] "Flynn, Mr. John Irwin (\"Irving\")"                                                
+[574] "Kelly, Miss. Mary"                                                                 
+[575] "Rush, Mr. Alfred George John"                                                      
+[576] "Patchett, Mr. George"                                                              
+[577] "Garside, Miss. Ethel"                                                              
+[578] "Silvey, Mrs. William Baird (Alice Munger)"                                         
+[579] "Caram, Mrs. Joseph (Maria Elias)"                                                  
+[580] "Jussila, Mr. Eiriik"                                                               
+[581] "Christy, Miss. Julie Rachel"                                                       
+[582] "Thayer, Mrs. John Borland (Marian Longstreth Morris)"                              
+[583] "Downton, Mr. William James"                                                        
+[584] "Ross, Mr. John Hugo"                                                               
+[585] "Paulner, Mr. Uscher"                                                               
+[586] "Taussig, Miss. Ruth"                                                               
+[587] "Jarvis, Mr. John Denzil"                                                           
+[588] "Frolicher-Stehli, Mr. Maxmillian"                                                  
+[589] "Gilinski, Mr. Eliezer"                                                             
+[590] "Murdlin, Mr. Joseph"                                                               
+[591] "Rintamaki, Mr. Matti"                                                              
+[592] "Stephenson, Mrs. Walter Bertram (Martha Eustis)"                                   
+[593] "Elsbury, Mr. William James"                                                        
+[594] "Bourke, Miss. Mary"                                                                
+[595] "Chapman, Mr. John Henry"                                                           
+[596] "Van Impe, Mr. Jean Baptiste"                                                       
+[597] "Leitch, Miss. Jessie Wills"                                                        
+[598] "Johnson, Mr. Alfred"                                                               
+[599] "Boulos, Mr. Hanna"                                                                 
+[600] "Duff Gordon, Sir. Cosmo Edmund (\"Mr Morgan\")"                                    
+[601] "Jacobsohn, Mrs. Sidney Samuel (Amy Frances Christy)"                               
+[602] "Slabenoff, Mr. Petco"                                                              
+[603] "Harrington, Mr. Charles H"                                                         
+[604] "Torber, Mr. Ernst William"                                                         
+[605] "Homer, Mr. Harry (\"Mr E Haven\")"                                                 
+[606] "Lindell, Mr. Edvard Bengtsson"                                                     
+[607] "Karaic, Mr. Milan"                                                                 
+[608] "Daniel, Mr. Robert Williams"                                                       
+[609] "Laroche, Mrs. Joseph (Juliette Marie Louise Lafargue)"                             
+[610] "Shutes, Miss. Elizabeth W"                                                         
+[611] "Andersson, Mrs. Anders Johan (Alfrida Konstantia Brogren)"                         
+[612] "Jardin, Mr. Jose Neto"                                                             
+[613] "Murphy, Miss. Margaret Jane"                                                       
+[614] "Horgan, Mr. John"                                                                  
+[615] "Brocklebank, Mr. William Alfred"                                                   
+[616] "Herman, Miss. Alice"                                                               
+[617] "Danbom, Mr. Ernst Gilbert"                                                         
+[618] "Lobb, Mrs. William Arthur (Cordelia K Stanlick)"                                   
+[619] "Becker, Miss. Marion Louise"                                                       
+[620] "Gavey, Mr. Lawrence"                                                               
+[621] "Yasbeck, Mr. Antoni"                                                               
+[622] "Kimball, Mr. Edwin Nelson Jr"                                                      
+[623] "Nakid, Mr. Sahid"                                                                  
+[624] "Hansen, Mr. Henry Damsgaard"                                                       
+[625] "Bowen, Mr. David John \"Dai\""                                                     
+[626] "Sutton, Mr. Frederick"                                                             
+[627] "Kirkland, Rev. Charles Leonard"                                                    
+[628] "Longley, Miss. Gretchen Fiske"                                                     
+[629] "Bostandyeff, Mr. Guentcho"                                                         
+[630] "O'Connell, Mr. Patrick D"                                                          
+[631] "Barkworth, Mr. Algernon Henry Wilson"                                              
+[632] "Lundahl, Mr. Johan Svensson"                                                       
+[633] "Stahelin-Maeglin, Dr. Max"                                                         
+[634] "Parr, Mr. William Henry Marsh"                                                     
+[635] "Skoog, Miss. Mabel"                                                                
+[636] "Davis, Miss. Mary"                                                                 
+[637] "Leinonen, Mr. Antti Gustaf"                                                        
+[638] "Collyer, Mr. Harvey"                                                               
+[639] "Panula, Mrs. Juha (Maria Emilia Ojala)"                                            
+[640] "Thorneycroft, Mr. Percival"                                                        
+[641] "Jensen, Mr. Hans Peder"                                                            
+[642] "Sagesser, Mlle. Emma"                                                              
+[643] "Skoog, Miss. Margit Elizabeth"                                                     
+[644] "Foo, Mr. Choong"                                                                   
+[645] "Baclini, Miss. Eugenie"                                                            
+[646] "Harper, Mr. Henry Sleeper"                                                         
+[647] "Cor, Mr. Liudevit"                                                                 
+[648] "Simonius-Blumer, Col. Oberst Alfons"                                               
+[649] "Willey, Mr. Edward"                                                                
+[650] "Stanley, Miss. Amy Zillah Elsie"                                                   
+[651] "Mitkoff, Mr. Mito"                                                                 
+[652] "Doling, Miss. Elsie"                                                               
+[653] "Kalvik, Mr. Johannes Halvorsen"                                                    
+[654] "O'Leary, Miss. Hanora \"Norah\""                                                   
+[655] "Hegarty, Miss. Hanora \"Nora\""                                                    
+[656] "Hickman, Mr. Leonard Mark"                                                         
+[657] "Radeff, Mr. Alexander"                                                             
+[658] "Bourke, Mrs. John (Catherine)"                                                     
+[659] "Eitemiller, Mr. George Floyd"                                                      
+[660] "Newell, Mr. Arthur Webster"                                                        
+[661] "Frauenthal, Dr. Henry William"                                                     
+[662] "Badt, Mr. Mohamed"                                                                 
+[663] "Colley, Mr. Edward Pomeroy"                                                        
+[664] "Coleff, Mr. Peju"                                                                  
+[665] "Lindqvist, Mr. Eino William"                                                       
+[666] "Hickman, Mr. Lewis"                                                                
+[667] "Butler, Mr. Reginald Fenton"                                                       
+[668] "Rommetvedt, Mr. Knud Paust"                                                        
+[669] "Cook, Mr. Jacob"                                                                   
+[670] "Taylor, Mrs. Elmer Zebley (Juliet Cummins Wright)"                                 
+[671] "Brown, Mrs. Thomas William Solomon (Elizabeth Catherine Ford)"                     
+[672] "Davidson, Mr. Thornton"                                                            
+[673] "Mitchell, Mr. Henry Michael"                                                       
+[674] "Wilhelms, Mr. Charles"                                                             
+[675] "Watson, Mr. Ennis Hastings"                                                        
+[676] "Edvardsson, Mr. Gustaf Hjalmar"                                                    
+[677] "Sawyer, Mr. Frederick Charles"                                                     
+[678] "Turja, Miss. Anna Sofia"                                                           
+[679] "Goodwin, Mrs. Frederick (Augusta Tyler)"                                           
+[680] "Cardeza, Mr. Thomas Drake Martinez"                                                
+[681] "Peters, Miss. Katie"                                                               
+[682] "Hassab, Mr. Hammad"                                                                
+[683] "Olsvigen, Mr. Thor Anderson"                                                       
+[684] "Goodwin, Mr. Charles Edward"                                                       
+[685] "Brown, Mr. Thomas William Solomon"                                                 
+[686] "Laroche, Mr. Joseph Philippe Lemercier"                                            
+[687] "Panula, Mr. Jaako Arnold"                                                          
+[688] "Dakic, Mr. Branko"                                                                 
+[689] "Fischer, Mr. Eberhard Thelander"                                                   
+[690] "Madill, Miss. Georgette Alexandra"                                                 
+[691] "Dick, Mr. Albert Adrian"                                                           
+[692] "Karun, Miss. Manca"                                                                
+[693] "Lam, Mr. Ali"                                                                      
+[694] "Saad, Mr. Khalil"                                                                  
+[695] "Weir, Col. John"                                                                   
+[696] "Chapman, Mr. Charles Henry"                                                        
+[697] "Kelly, Mr. James"                                                                  
+[698] "Mullens, Miss. Katherine \"Katie\""                                                
+[699] "Thayer, Mr. John Borland"                                                          
+[700] "Humblen, Mr. Adolf Mathias Nicolai Olsen"                                          
+[701] "Astor, Mrs. John Jacob (Madeleine Talmadge Force)"                                 
+[702] "Silverthorne, Mr. Spencer Victor"                                                  
+[703] "Barbara, Miss. Saiide"                                                             
+[704] "Gallagher, Mr. Martin"                                                             
+[705] "Hansen, Mr. Henrik Juul"                                                           
+[706] "Morley, Mr. Henry Samuel (\"Mr Henry Marshall\")"                                  
+[707] "Kelly, Mrs. Florence \"Fannie\""                                                   
+[708] "Calderhead, Mr. Edward Pennington"                                                 
+[709] "Cleaver, Miss. Alice"                                                              
+[710] "Moubarek, Master. Halim Gonios (\"William George\")"                               
+[711] "Mayne, Mlle. Berthe Antonine (\"Mrs de Villiers\")"                                
+[712] "Klaber, Mr. Herman"                                                                
+[713] "Taylor, Mr. Elmer Zebley"                                                          
+[714] "Larsson, Mr. August Viktor"                                                        
+[715] "Greenberg, Mr. Samuel"                                                             
+[716] "Soholt, Mr. Peter Andreas Lauritz Andersen"                                        
+[717] "Endres, Miss. Caroline Louise"                                                     
+[718] "Troutt, Miss. Edwina Celia \"Winnie\""                                             
+[719] "McEvoy, Mr. Michael"                                                               
+[720] "Johnson, Mr. Malkolm Joackim"                                                      
+[721] "Harper, Miss. Annie Jessie \"Nina\""                                               
+[722] "Jensen, Mr. Svend Lauritz"                                                         
+[723] "Gillespie, Mr. William Henry"                                                      
+[724] "Hodges, Mr. Henry Price"                                                           
+[725] "Chambers, Mr. Norman Campbell"                                                     
+[726] "Oreskovic, Mr. Luka"                                                               
+[727] "Renouf, Mrs. Peter Henry (Lillian Jefferys)"                                       
+[728] "Mannion, Miss. Margareth"                                                          
+[729] "Bryhl, Mr. Kurt Arnold Gottfrid"                                                   
+[730] "Ilmakangas, Miss. Pieta Sofia"                                                     
+[731] "Allen, Miss. Elisabeth Walton"                                                     
+[732] "Hassan, Mr. Houssein G N"                                                          
+[733] "Knight, Mr. Robert J"                                                              
+[734] "Berriman, Mr. William John"                                                        
+[735] "Troupiansky, Mr. Moses Aaron"                                                      
+[736] "Williams, Mr. Leslie"                                                              
+[737] "Ford, Mrs. Edward (Margaret Ann Watson)"                                           
+[738] "Lesurer, Mr. Gustave J"                                                            
+[739] "Ivanoff, Mr. Kanio"                                                                
+[740] "Nankoff, Mr. Minko"                                                                
+[741] "Hawksford, Mr. Walter James"                                                       
+[742] "Cavendish, Mr. Tyrell William"                                                     
+[743] "Ryerson, Miss. Susan Parker \"Suzette\""                                           
+[744] "McNamee, Mr. Neal"                                                                 
+[745] "Stranden, Mr. Juho"                                                                
+[746] "Crosby, Capt. Edward Gifford"                                                      
+[747] "Abbott, Mr. Rossmore Edward"                                                       
+[748] "Sinkkonen, Miss. Anna"                                                             
+[749] "Marvin, Mr. Daniel Warner"                                                         
+[750] "Connaghton, Mr. Michael"                                                           
+[751] "Wells, Miss. Joan"                                                                 
+[752] "Moor, Master. Meier"                                                               
+[753] "Vande Velde, Mr. Johannes Joseph"                                                  
+[754] "Jonkoff, Mr. Lalio"                                                                
+[755] "Herman, Mrs. Samuel (Jane Laver)"                                                  
+[756] "Hamalainen, Master. Viljo"                                                         
+[757] "Carlsson, Mr. August Sigfrid"                                                      
+[758] "Bailey, Mr. Percy Andrew"                                                          
+[759] "Theobald, Mr. Thomas Leonard"                                                      
+[760] "Rothes, the Countess. of (Lucy Noel Martha Dyer-Edwards)"                          
+[761] "Garfirth, Mr. John"                                                                
+[762] "Nirva, Mr. Iisakki Antino Aijo"                                                    
+[763] "Barah, Mr. Hanna Assi"                                                             
+[764] "Carter, Mrs. William Ernest (Lucile Polk)"                                         
+[765] "Eklund, Mr. Hans Linus"                                                            
+[766] "Hogeboom, Mrs. John C (Anna Andrews)"                                              
+[767] "Brewe, Dr. Arthur Jackson"                                                         
+[768] "Mangan, Miss. Mary"                                                                
+[769] "Moran, Mr. Daniel J"                                                               
+[770] "Gronnestad, Mr. Daniel Danielsen"                                                  
+[771] "Lievens, Mr. Rene Aime"                                                            
+[772] "Jensen, Mr. Niels Peder"                                                           
+[773] "Mack, Mrs. (Mary)"                                                                 
+[774] "Elias, Mr. Dibo"                                                                   
+[775] "Hocking, Mrs. Elizabeth (Eliza Needs)"                                             
+[776] "Myhrman, Mr. Pehr Fabian Oliver Malkolm"                                           
+[777] "Tobin, Mr. Roger"                                                                  
+[778] "Emanuel, Miss. Virginia Ethel"                                                     
+[779] "Kilgannon, Mr. Thomas J"                                                           
+[780] "Robert, Mrs. Edward Scott (Elisabeth Walton McMillan)"                             
+[781] "Ayoub, Miss. Banoura"                                                              
+[782] "Dick, Mrs. Albert Adrian (Vera Gillespie)"                                         
+[783] "Long, Mr. Milton Clyde"                                                            
+[784] "Johnston, Mr. Andrew G"                                                            
+[785] "Ali, Mr. William"                                                                  
+[786] "Harmer, Mr. Abraham (David Lishin)"                                                
+[787] "Sjoblom, Miss. Anna Sofia"                                                         
+[788] "Rice, Master. George Hugh"                                                         
+[789] "Dean, Master. Bertram Vere"                                                        
+[790] "Guggenheim, Mr. Benjamin"                                                          
+[791] "Keane, Mr. Andrew \"Andy\""                                                        
+[792] "Gaskell, Mr. Alfred"                                                               
+[793] "Sage, Miss. Stella Anna"                                                           
+[794] "Hoyt, Mr. William Fisher"                                                          
+[795] "Dantcheff, Mr. Ristiu"                                                             
+[796] "Otter, Mr. Richard"                                                                
+[797] "Leader, Dr. Alice (Farnham)"                                                       
+[798] "Osman, Mrs. Mara"                                                                  
+[799] "Ibrahim Shawah, Mr. Yousseff"                                                      
+[800] "Van Impe, Mrs. Jean Baptiste (Rosalie Paula Govaert)"                              
+[801] "Ponesell, Mr. Martin"                                                              
+[802] "Collyer, Mrs. Harvey (Charlotte Annie Tate)"                                       
+[803] "Carter, Master. William Thornton II"                                               
+[804] "Thomas, Master. Assad Alexander"                                                   
+[805] "Hedman, Mr. Oskar Arvid"                                                           
+[806] "Johansson, Mr. Karl Johan"                                                         
+[807] "Andrews, Mr. Thomas Jr"                                                            
+[808] "Pettersson, Miss. Ellen Natalia"                                                   
+[809] "Meyer, Mr. August"                                                                 
+[810] "Chambers, Mrs. Norman Campbell (Bertha Griggs)"                                    
+[811] "Alexander, Mr. William"                                                            
+[812] "Lester, Mr. James"                                                                 
+[813] "Slemen, Mr. Richard James"                                                         
+[814] "Andersson, Miss. Ebba Iris Alfrida"                                                
+[815] "Tomlin, Mr. Ernest Portage"                                                        
+[816] "Fry, Mr. Richard"                                                                  
+[817] "Heininen, Miss. Wendla Maria"                                                      
+[818] "Mallet, Mr. Albert"                                                                
+[819] "Holm, Mr. John Fredrik Alexander"                                                  
+[820] "Skoog, Master. Karl Thorsten"                                                      
+[821] "Hays, Mrs. Charles Melville (Clara Jennings Gregg)"                                
+[822] "Lulic, Mr. Nikola"                                                                 
+[823] "Reuchlin, Jonkheer. John George"                                                   
+[824] "Moor, Mrs. (Beila)"                                                                
+[825] "Panula, Master. Urho Abraham"                                                      
+[826] "Flynn, Mr. John"                                                                   
+[827] "Lam, Mr. Len"                                                                      
+[828] "Mallet, Master. Andre"                                                             
+[829] "McCormack, Mr. Thomas Joseph"                                                      
+[830] "Stone, Mrs. George Nelson (Martha Evelyn)"                                         
+[831] "Yasbeck, Mrs. Antoni (Selini Alexander)"                                           
+[832] "Richards, Master. George Sibley"                                                   
+[833] "Saad, Mr. Amin"                                                                    
+[834] "Augustsson, Mr. Albert"                                                            
+[835] "Allum, Mr. Owen George"                                                            
+[836] "Compton, Miss. Sara Rebecca"                                                       
+[837] "Pasic, Mr. Jakob"                                                                  
+[838] "Sirota, Mr. Maurice"                                                               
+[839] "Chip, Mr. Chang"                                                                   
+[840] "Marechal, Mr. Pierre"                                                              
+[841] "Alhomaki, Mr. Ilmari Rudolf"                                                       
+[842] "Mudd, Mr. Thomas Charles"                                                          
+[843] "Serepeca, Miss. Augusta"                                                           
+[844] "Lemberopolous, Mr. Peter L"                                                        
+[845] "Culumovic, Mr. Jeso"                                                               
+[846] "Abbing, Mr. Anthony"                                                               
+[847] "Sage, Mr. Douglas Bullen"                                                          
+[848] "Markoff, Mr. Marin"                                                                
+[849] "Harper, Rev. John"                                                                 
+[850] "Goldenberg, Mrs. Samuel L (Edwiga Grabowska)"                                      
+[851] "Andersson, Master. Sigvard Harald Elias"                                           
+[852] "Svensson, Mr. Johan"                                                               
+[853] "Boulos, Miss. Nourelain"                                                           
+[854] "Lines, Miss. Mary Conover"                                                         
+[855] "Carter, Mrs. Ernest Courtenay (Lilian Hughes)"                                     
+[856] "Aks, Mrs. Sam (Leah Rosen)"                                                        
+[857] "Wick, Mrs. George Dennick (Mary Hitchcock)"                                        
+[858] "Daly, Mr. Peter Denis "                                                            
+[859] "Baclini, Mrs. Solomon (Latifa Qurban)"                                             
+[860] "Razi, Mr. Raihed"                                                                  
+[861] "Hansen, Mr. Claus Peter"                                                           
+[862] "Giles, Mr. Frederick Edward"                                                       
+[863] "Swift, Mrs. Frederick Joel (Margaret Welles Barron)"                               
+[864] "Sage, Miss. Dorothy Edith \"Dolly\""                                               
+[865] "Gill, Mr. John William"                                                            
+[866] "Bystrom, Mrs. (Karolina)"                                                          
+[867] "Duran y More, Miss. Asuncion"                                                      
+[868] "Roebling, Mr. Washington Augustus II"                                              
+[869] "van Melkebeke, Mr. Philemon"                                                       
+[870] "Johnson, Master. Harold Theodor"                                                   
+[871] "Balkic, Mr. Cerin"                                                                 
+[872] "Beckwith, Mrs. Richard Leonard (Sallie Monypeny)"                                  
+[873] "Carlsson, Mr. Frans Olof"                                                          
+[874] "Vander Cruyssen, Mr. Victor"                                                       
+[875] "Abelson, Mrs. Samuel (Hannah Wizosky)"                                             
+[876] "Najib, Miss. Adele Kiamie \"Jane\""                                                
+[877] "Gustafsson, Mr. Alfred Ossian"                                                     
+[878] "Petroff, Mr. Nedelio"                                                              
+[879] "Laleff, Mr. Kristo"                                                                
+[880] "Potter, Mrs. Thomas Jr (Lily Alexenia Wilson)"                                     
+[881] "Shelley, Mrs. William (Imanita Parrish Hall)"                                      
+[882] "Markun, Mr. Johann"                                                                
+[883] "Dahlberg, Miss. Gerda Ulrika"                                                      
+[884] "Banfield, Mr. Frederick James"                                                     
+[885] "Sutehall, Mr. Henry Jr"                                                            
+[886] "Rice, Mrs. William (Margaret Norton)"                                              
+[887] "Montvila, Rev. Juozas"                                                             
+[888] "Graham, Miss. Margaret Edith"                                                      
+[889] "Johnston, Miss. Catherine Helen \"Carrie\""                                        
+[890] "Behr, Mr. Karl Howell"                                                             
+[891] "Dooley, Mr. Patrick"                                                               
+>     unique(merged_data$Sex)# Looks OK
+[1] "male"   "female"
+>     unique(merged_data$Age) # missing values
+ [1] 22.00 38.00 26.00 35.00    NA 54.00  2.00 27.00 14.00  4.00 58.00 20.00
+[13] 39.00 55.00 31.00 34.00 15.00 28.00  8.00 19.00 40.00 66.00 42.00 21.00
+[25] 18.00  3.00  7.00 49.00 29.00 65.00 28.50  5.00 11.00 45.00 17.00 32.00
+[37] 16.00 25.00  0.83 30.00 33.00 23.00 24.00 46.00 59.00 71.00 37.00 47.00
+[49] 14.50 70.50 32.50 12.00  9.00 36.50 51.00 55.50 40.50 44.00  1.00 61.00
+[61] 56.00 50.00 36.00 45.50 20.50 62.00 41.00 52.00 63.00 23.50  0.92 43.00
+[73] 60.00 10.00 64.00 13.00 48.00  0.75 53.00 57.00 80.00 70.00 24.50  6.00
+[85]  0.67 30.50  0.42 34.50 74.00
+>     unique(merged_data$SibSp)#Looks OK
+[1] 1 0 3 4 2 5 8
+>     unique(merged_data$Parch)# Looks OK
+[1] 0 1 2 5 3 4 6
+>     unique(merged_data$Ticket)#May need cleansing
+  [1] "A/5 21171"          "PC 17599"           "STON/O2. 3101282"  
+  [4] "113803"             "373450"             "330877"            
+  [7] "17463"              "349909"             "347742"            
+ [10] "237736"             "PP 9549"            "113783"            
+ [13] "A/5. 2151"          "347082"             "350406"            
+ [16] "248706"             "382652"             "244373"            
+ [19] "345763"             "2649"               "239865"            
+ [22] "248698"             "330923"             "113788"            
+ [25] "347077"             "2631"               "19950"             
+ [28] "330959"             "349216"             "PC 17601"          
+ [31] "PC 17569"           "335677"             "C.A. 24579"        
+ [34] "PC 17604"           "113789"             "2677"              
+ [37] "A./5. 2152"         "345764"             "2651"              
+ [40] "7546"               "11668"              "349253"            
+ [43] "SC/Paris 2123"      "330958"             "S.C./A.4. 23567"   
+ [46] "370371"             "14311"              "2662"              
+ [49] "349237"             "3101295"            "A/4. 39886"        
+ [52] "PC 17572"           "2926"               "113509"            
+ [55] "19947"              "C.A. 31026"         "2697"              
+ [58] "C.A. 34651"         "CA 2144"            "2669"              
+ [61] "113572"             "36973"              "347088"            
+ [64] "PC 17605"           "2661"               "C.A. 29395"        
+ [67] "S.P. 3464"          "3101281"            "315151"            
+ [70] "C.A. 33111"         "S.O.C. 14879"       "2680"              
+ [73] "1601"               "348123"             "349208"            
+ [76] "374746"             "248738"             "364516"            
+ [79] "345767"             "345779"             "330932"            
+ [82] "113059"             "SO/C 14885"         "3101278"           
+ [85] "W./C. 6608"         "SOTON/OQ 392086"    "343275"            
+ [88] "343276"             "347466"             "W.E.P. 5734"       
+ [91] "C.A. 2315"          "364500"             "374910"            
+ [94] "PC 17754"           "PC 17759"           "231919"            
+ [97] "244367"             "349245"             "349215"            
+[100] "35281"              "7540"               "3101276"           
+[103] "349207"             "343120"             "312991"            
+[106] "349249"             "371110"             "110465"            
+[109] "2665"               "324669"             "4136"              
+[112] "2627"               "STON/O 2. 3101294"  "370369"            
+[115] "PC 17558"           "A4. 54510"          "27267"             
+[118] "370372"             "C 17369"            "2668"              
+[121] "347061"             "349241"             "SOTON/O.Q. 3101307"
+[124] "A/5. 3337"          "228414"             "C.A. 29178"        
+[127] "SC/PARIS 2133"      "11752"              "7534"              
+[130] "PC 17593"           "2678"               "347081"            
+[133] "STON/O2. 3101279"   "365222"             "231945"            
+[136] "C.A. 33112"         "350043"             "230080"            
+[139] "244310"             "S.O.P. 1166"        "113776"            
+[142] "A.5. 11206"         "A/5. 851"           "Fa 265302"         
+[145] "PC 17597"           "35851"              "SOTON/OQ 392090"   
+[148] "315037"             "CA. 2343"           "371362"            
+[151] "C.A. 33595"         "347068"             "315093"            
+[154] "363291"             "113505"             "PC 17318"          
+[157] "111240"             "STON/O 2. 3101280"  "17764"             
+[160] "350404"             "4133"               "PC 17595"          
+[163] "250653"             "LINE"               "SC/PARIS 2131"     
+[166] "230136"             "315153"             "113767"            
+[169] "370365"             "111428"             "364849"            
+[172] "349247"             "234604"             "28424"             
+[175] "350046"             "PC 17610"           "368703"            
+[178] "4579"               "370370"             "248747"            
+[181] "345770"             "3101264"            "2628"              
+[184] "A/5 3540"           "347054"             "2699"              
+[187] "367231"             "112277"             "SOTON/O.Q. 3101311"
+[190] "F.C.C. 13528"       "A/5 21174"          "250646"            
+[193] "367229"             "35273"              "STON/O2. 3101283"  
+[196] "243847"             "11813"              "W/C 14208"         
+[199] "SOTON/OQ 392089"    "220367"             "21440"             
+[202] "349234"             "19943"              "PP 4348"           
+[205] "SW/PP 751"          "A/5 21173"          "236171"            
+[208] "347067"             "237442"             "C.A. 29566"        
+[211] "W./C. 6609"         "26707"              "C.A. 31921"        
+[214] "28665"              "SCO/W 1585"         "367230"            
+[217] "W./C. 14263"        "STON/O 2. 3101275"  "2694"              
+[220] "19928"              "347071"             "250649"            
+[223] "11751"              "244252"             "362316"            
+[226] "113514"             "A/5. 3336"          "370129"            
+[229] "2650"               "PC 17585"           "110152"            
+[232] "PC 17755"           "230433"             "384461"            
+[235] "110413"             "112059"             "382649"            
+[238] "C.A. 17248"         "347083"             "PC 17582"          
+[241] "PC 17760"           "113798"             "250644"            
+[244] "PC 17596"           "370375"             "13502"             
+[247] "347073"             "239853"             "C.A. 2673"         
+[250] "336439"             "347464"             "345778"            
+[253] "A/5. 10482"         "113056"             "349239"            
+[256] "345774"             "349206"             "237798"            
+[259] "370373"             "19877"              "11967"             
+[262] "SC/Paris 2163"      "349236"             "349233"            
+[265] "PC 17612"           "2693"               "113781"            
+[268] "19988"              "9234"               "367226"            
+[271] "226593"             "A/5 2466"           "17421"             
+[274] "PC 17758"           "P/PP 3381"          "PC 17485"          
+[277] "11767"              "PC 17608"           "250651"            
+[280] "349243"             "F.C.C. 13529"       "347470"            
+[283] "29011"              "36928"              "16966"             
+[286] "A/5 21172"          "349219"             "234818"            
+[289] "345364"             "28551"              "111361"            
+[292] "113043"             "PC 17611"           "349225"            
+[295] "7598"               "113784"             "248740"            
+[298] "244361"             "229236"             "248733"            
+[301] "31418"              "386525"             "C.A. 37671"        
+[304] "315088"             "7267"               "113510"            
+[307] "2695"               "2647"               "345783"            
+[310] "237671"             "330931"             "330980"            
+[313] "SC/PARIS 2167"      "2691"               "SOTON/O.Q. 3101310"
+[316] "C 7076"             "110813"             "2626"              
+[319] "14313"              "PC 17477"           "11765"             
+[322] "3101267"            "323951"             "C 7077"            
+[325] "113503"             "2648"               "347069"            
+[328] "PC 17757"           "2653"               "STON/O 2. 3101293" 
+[331] "349227"             "27849"              "367655"            
+[334] "SC 1748"            "113760"             "350034"            
+[337] "3101277"            "350052"             "350407"            
+[340] "28403"              "244278"             "240929"            
+[343] "STON/O 2. 3101289"  "341826"             "4137"              
+[346] "315096"             "28664"              "347064"            
+[349] "29106"              "312992"             "349222"            
+[352] "394140"             "STON/O 2. 3101269"  "343095"            
+[355] "28220"              "250652"             "28228"             
+[358] "345773"             "349254"             "A/5. 13032"        
+[361] "315082"             "347080"             "A/4. 34244"        
+[364] "2003"               "250655"             "364851"            
+[367] "SOTON/O.Q. 392078"  "110564"             "376564"            
+[370] "SC/AH 3085"         "STON/O 2. 3101274"  "13507"             
+[373] "C.A. 18723"         "345769"             "347076"            
+[376] "230434"             "65306"              "33638"             
+[379] "113794"             "2666"               "113786"            
+[382] "65303"              "113051"             "17453"             
+[385] "A/5 2817"           "349240"             "13509"             
+[388] "17464"              "F.C.C. 13531"       "371060"            
+[391] "19952"              "364506"             "111320"            
+[394] "234360"             "A/S 2816"           "SOTON/O.Q. 3101306"
+[397] "113792"             "36209"              "323592"            
+[400] "315089"             "SC/AH Basle 541"    "7553"              
+[403] "31027"              "3460"               "350060"            
+[406] "3101298"            "239854"             "A/5 3594"          
+[409] "4134"               "11771"              "A.5. 18509"        
+[412] "65304"              "SOTON/OQ 3101317"   "113787"            
+[415] "PC 17609"           "A/4 45380"          "36947"             
+[418] "C.A. 6212"          "350035"             "315086"            
+[421] "364846"             "330909"             "4135"              
+[424] "26360"              "111427"             "C 4001"            
+[427] "382651"             "SOTON/OQ 3101316"   "PC 17473"          
+[430] "PC 17603"           "349209"             "36967"             
+[433] "C.A. 34260"         "226875"             "349242"            
+[436] "12749"              "349252"             "2624"              
+[439] "2700"               "367232"             "W./C. 14258"       
+[442] "PC 17483"           "3101296"            "29104"             
+[445] "2641"               "2690"               "315084"            
+[448] "113050"             "PC 17761"           "364498"            
+[451] "13568"              "WE/P 5735"          "2908"              
+[454] "693"                "SC/PARIS 2146"      "244358"            
+[457] "330979"             "2620"               "347085"            
+[460] "113807"             "11755"              "345572"            
+[463] "372622"             "349251"             "218629"            
+[466] "SOTON/OQ 392082"    "SOTON/O.Q. 392087"  "A/4 48871"         
+[469] "349205"             "2686"               "350417"            
+[472] "S.W./PP 752"        "11769"              "PC 17474"          
+[475] "14312"              "A/4. 20589"         "358585"            
+[478] "243880"             "2689"               "STON/O 2. 3101286" 
+[481] "237789"             "13049"              "3411"              
+[484] "237565"             "13567"              "14973"             
+[487] "A./5. 3235"         "STON/O 2. 3101273"  "A/5 3902"          
+[490] "364848"             "SC/AH 29037"        "248727"            
+[493] "2664"               "349214"             "113796"            
+[496] "364511"             "111426"             "349910"            
+[499] "349246"             "113804"             "SOTON/O.Q. 3101305"
+[502] "370377"             "364512"             "220845"            
+[505] "31028"              "2659"               "11753"             
+[508] "350029"             "54636"              "36963"             
+[511] "219533"             "349224"             "334912"            
+[514] "27042"              "347743"             "13214"             
+[517] "112052"             "237668"             "STON/O 2. 3101292" 
+[520] "350050"             "349231"             "13213"             
+[523] "S.O./P.P. 751"      "CA. 2314"           "349221"            
+[526] "8475"               "330919"             "365226"            
+[529] "349223"             "29751"              "2623"              
+[532] "5727"               "349210"             "STON/O 2. 3101285" 
+[535] "234686"             "312993"             "A/5 3536"          
+[538] "19996"              "29750"              "F.C. 12750"        
+[541] "C.A. 24580"         "244270"             "239856"            
+[544] "349912"             "342826"             "4138"              
+[547] "330935"             "6563"               "349228"            
+[550] "350036"             "24160"              "17474"             
+[553] "349256"             "2672"               "113800"            
+[556] "248731"             "363592"             "35852"             
+[559] "348121"             "PC 17475"           "36864"             
+[562] "350025"             "223596"             "PC 17476"          
+[565] "PC 17482"           "113028"             "7545"              
+[568] "250647"             "348124"             "34218"             
+[571] "36568"              "347062"             "350048"            
+[574] "12233"              "250643"             "113806"            
+[577] "315094"             "36866"              "236853"            
+[580] "STON/O2. 3101271"   "239855"             "28425"             
+[583] "233639"             "349201"             "349218"            
+[586] "16988"              "376566"             "STON/O 2. 3101288" 
+[589] "250648"             "113773"             "335097"            
+[592] "29103"              "392096"             "345780"            
+[595] "349204"             "350042"             "29108"             
+[598] "363294"             "SOTON/O2 3101272"   "2663"              
+[601] "347074"             "112379"             "364850"            
+[604] "8471"               "345781"             "350047"            
+[607] "S.O./P.P. 3"        "2674"               "29105"             
+[610] "347078"             "383121"             "36865"             
+[613] "2687"               "113501"             "W./C. 6607"        
+[616] "SOTON/O.Q. 3101312" "374887"             "3101265"           
+[619] "12460"              "PC 17600"           "349203"            
+[622] "28213"              "17465"              "349244"            
+[625] "2685"               "2625"               "347089"            
+[628] "347063"             "112050"             "347087"            
+[631] "248723"             "3474"               "28206"             
+[634] "364499"             "112058"             "STON/O2. 3101290"  
+[637] "S.C./PARIS 2079"    "C 7075"             "315098"            
+[640] "19972"              "368323"             "367228"            
+[643] "2671"               "347468"             "2223"              
+[646] "PC 17756"           "315097"             "392092"            
+[649] "11774"              "SOTON/O2 3101287"   "2683"              
+[652] "315090"             "C.A. 5547"          "349213"            
+[655] "347060"             "PC 17592"           "392091"            
+[658] "113055"             "2629"               "350026"            
+[661] "28134"              "17466"              "233866"            
+[664] "236852"             "SC/PARIS 2149"      "PC 17590"          
+[667] "345777"             "349248"             "695"               
+[670] "345765"             "2667"               "349212"            
+[673] "349217"             "349257"             "7552"              
+[676] "C.A./SOTON 34068"   "SOTON/OQ 392076"    "211536"            
+[679] "112053"             "111369"             "370376"            
+>     unique(merged_data$Fare)#Missing value
+  [1]   7.2500  71.2833   7.9250  53.1000   8.0500   8.4583  51.8625  21.0750
+  [9]  11.1333  30.0708  16.7000  26.5500  31.2750   7.8542  16.0000  29.1250
+ [17]  13.0000  18.0000   7.2250  26.0000   8.0292  35.5000  31.3875 263.0000
+ [25]   7.8792   7.8958  27.7208 146.5208   7.7500  10.5000  82.1708  52.0000
+ [33]   7.2292  11.2417   9.4750  21.0000  41.5792  15.5000  21.6792  17.8000
+ [41]  39.6875   7.8000  76.7292  61.9792  27.7500  46.9000  80.0000  83.4750
+ [49]  27.9000  15.2458   8.1583   8.6625  73.5000  14.4542  56.4958   7.6500
+ [57]  29.0000  12.4750   9.0000   9.5000   7.7875  47.1000  15.8500  34.3750
+ [65]  61.1750  20.5750  34.6542  63.3583  23.0000  77.2875   8.6542   7.7750
+ [73]  24.1500   9.8250  14.4583 247.5208   7.1417  22.3583   6.9750   7.0500
+ [81]  14.5000  15.0458  26.2833   9.2167  79.2000   6.7500  11.5000  36.7500
+ [89]   7.7958  12.5250  66.6000   7.3125  61.3792   7.7333  69.5500  16.1000
+ [97]  15.7500  20.5250  55.0000  25.9250  33.5000  30.6958  25.4667  28.7125
+[105]   0.0000  15.0500  39.0000  22.0250  50.0000   8.4042   6.4958  10.4625
+[113]  18.7875  31.0000 113.2750  27.0000  76.2917  90.0000   9.3500  13.5000
+[121]   7.5500  26.2500  12.2750   7.1250  52.5542  20.2125  86.5000 512.3292
+[129]  79.6500 153.4625 135.6333  19.5000  29.7000  77.9583  20.2500  78.8500
+[137]  91.0792  12.8750   8.8500 151.5500  30.5000  23.2500  12.3500 110.8833
+[145] 108.9000  24.0000  56.9292  83.1583 262.3750  14.0000 164.8667 134.5000
+[153]   6.2375  57.9792  28.5000 133.6500  15.9000   9.2250  35.0000  75.2500
+[161]  69.3000  55.4417 211.5000   4.0125 227.5250  15.7417   7.7292  12.0000
+[169] 120.0000  12.6500  18.7500   6.8583  32.5000   7.8750  14.4000  55.9000
+[177]   8.1125  81.8583  19.2583  19.9667  89.1042  38.5000   7.7250  13.7917
+[185]   9.8375   7.0458   7.5208  12.2875   9.5875  49.5042  78.2667  15.1000
+[193]   7.6292  22.5250  26.2875  59.4000   7.4958  34.0208  93.5000 221.7792
+[201] 106.4250  49.5000  71.0000  13.8625   7.8292  39.6000  17.4000  51.4792
+[209]  26.3875  30.0000  40.1250   8.7125  15.0000  33.0000  42.4000  15.5500
+[217]  65.0000  32.3208   7.0542   8.4333  25.5875   9.8417   8.1375  10.1708
+[225] 211.3375  57.0000  13.4167   7.7417   9.4833   7.7375   8.3625  23.4500
+[233]  25.9292   8.6833   8.5167   7.8875  37.0042   6.4500   6.9500   8.3000
+[241]   6.4375  39.4000  14.1083  13.8583  50.4958   5.0000   9.8458  10.5167
+>     unique(merged_data$Cabin)# multiple cabin values and missing values.
+  [1] ""                "C85"             "C123"            "E46"            
+  [5] "G6"              "C103"            "D56"             "A6"             
+  [9] "C23 C25 C27"     "B78"             "D33"             "B30"            
+ [13] "C52"             "B28"             "C83"             "F33"            
+ [17] "F G73"           "E31"             "A5"              "D10 D12"        
+ [21] "D26"             "C110"            "B58 B60"         "E101"           
+ [25] "F E69"           "D47"             "B86"             "F2"             
+ [29] "C2"              "E33"             "B19"             "A7"             
+ [33] "C49"             "F4"              "A32"             "B4"             
+ [37] "B80"             "A31"             "D36"             "D15"            
+ [41] "C93"             "C78"             "D35"             "C87"            
+ [45] "B77"             "E67"             "B94"             "C125"           
+ [49] "C99"             "C118"            "D7"              "A19"            
+ [53] "B49"             "D"               "C22 C26"         "C106"           
+ [57] "C65"             "E36"             "C54"             "B57 B59 B63 B66"
+ [61] "C7"              "E34"             "C32"             "B18"            
+ [65] "C124"            "C91"             "E40"             "T"              
+ [69] "C128"            "D37"             "B35"             "E50"            
+ [73] "C82"             "B96 B98"         "E10"             "E44"            
+ [77] "A34"             "C104"            "C111"            "C92"            
+ [81] "E38"             "D21"             "E12"             "E63"            
+ [85] "A14"             "B37"             "C30"             "D20"            
+ [89] "B79"             "E25"             "D46"             "B73"            
+ [93] "C95"             "B38"             "B39"             "B22"            
+ [97] "C86"             "C70"             "A16"             "C101"           
+[101] "C68"             "A10"             "E68"             "B41"            
+[105] "A20"             "D19"             "D50"             "D9"             
+[109] "A23"             "B50"             "A26"             "D48"            
+[113] "E58"             "C126"            "B71"             "B51 B53 B55"    
+[117] "D49"             "B5"              "B20"             "F G63"          
+[121] "C62 C64"         "E24"             "C90"             "C45"            
+[125] "E8"              "B101"            "D45"             "C46"            
+[129] "D30"             "E121"            "D11"             "E77"            
+[133] "F38"             "B3"              "D6"              "B82 B84"        
+[137] "D17"             "A36"             "B102"            "B69"            
+[141] "E49"             "C47"             "D28"             "E17"            
+[145] "A24"             "C50"             "B42"             "C148"           
+>     unique(merged_data$Embarked)#Blank values. 
+[1] "S" "C" "Q" "" 
+> "
++ I have used SQLDF package to find out the number of missing values(only for the columns that are not OK above)
++ "
+[1] "\nI have used SQLDF package to find out the number of missing values(only for the columns that are not OK above)\n"
+>     sqldf("select count(*) from merged_data where Name is null")
+  count(*)
+1        0
+>     sqldf("select count(*) from merged_data where age is null")
+  count(*)
+1      354
+>     sqldf("select count(*) from merged_data where ticket is null")
+  count(*)
+1        0
+>     sqldf("select count(*) from merged_data where fare is null")
+  count(*)
+1        0
+>     sqldf("select count(*) from merged_data where cabin is null")
+  count(*)
+1        0
+>     sqldf("select count(*) from merged_data where embarked is null")
+  count(*)
+1        0
+> 
+> "The same can be done using the combination of sum and is.na too"
+[1] "The same can be done using the combination of sum and is.na too"
+> 
+>     sum(is.na(merged_data$Name)) 
+[1] 0
+>     sum(is.na(merged_data$Age)) # 263 values are missing
+[1] 354
+>     sum(is.na(merged_data$Ticket))
+[1] 0
+>     sum(is.na(merged_data$Fare)) # 1 value is missing
+[1] 0
+>     sum(is.na(merged_data$Cabin))
+[1] 0
+>     sum(is.na(merged_data$Embarked))
+[1] 0
+> 
+> "So, before we can make any sense out of this data we will need to do some cleansing. We will also need to decide which column needs to be picked first since the data is interdependent.
++ 
++ 3.1 Missing-data imputation (Age)
++ There are a lot of missing values in the dataset and age is an important factor that can contribute to the survival of the passengers.
++ you can use different functions in different packages(for example mice) for imputation based on the missing data and its relationship with other columns. 
++ I have however, created a function here based on the observed data for age. 
++ "
+[1] "So, before we can make any sense out of this data we will need to do some cleansing. We will also need to decide which column needs to be picked first since the data is interdependent.\n\n3.1 Missing-data imputation (Age)\nThere are a lot of missing values in the dataset and age is an important factor that can contribute to the survival of the passengers.\nyou can use different functions in different packages(for example mice) for imputation based on the missing data and its relationship with other columns. \nI have however, created a function here based on the observed data for age. \n"
+>     #Creating imputation function
+>     random.imp <- function (a){
++       missing <- is.na(a)
++       count.missing <- sum(missing)
++       not_missing.data <- a[!missing]
++       imputed <- a
++       imputed[missing] <- sample (not_missing.data, count.missing, replace=TRUE)
++       return (imputed)
++     }
+>     
+>     # updating the missing values in the Age columns
+>     Age<-random.imp(merged_data$Age)
+>     imputed_age<-data.frame(Age)
+> 
+> "Lets create a graph to see if the imputed data for Age looks similar to the non-imputed data. if it will then we can say that our imputation function has worked well."
+[1] "Lets create a graph to see if the imputed data for Age looks similar to the non-imputed data. if it will then we can say that our imputation function has worked well."
+> 
+>     par(mfrow=c(1,2))
+>     hist(merged_data$Age, freq=F, main='Age: Original Data', 
++          col='darkgreen', ylim=c(0,0.04))
+>     hist(imputed_age$Age, freq=F, main='Age: Imputed Output', 
++          col='lightgreen', ylim=c(0,0.04))
+> 
+> "The output of the graph looks good and therefore this function suits our requirement. We will thus update the age with the new imputed age."
+[1] "The output of the graph looks good and therefore this function suits our requirement. We will thus update the age with the new imputed age."
+> 
+>     #Finally we update the age
+>     merged_data$Age <- imputed_age$Age
+> 
+> "3.2 Extracting surnames
++ 
++ we need the surname to find out the family size given the fact that we do have the columns Parch and SibSp collumns to support this value. I have used strsplit function and extracted everything before the comma(,). The output can be properly formatted using sapply. below are the two ways in which this can be achieved.
++ "
+[1] "3.2 Extracting surnames\n\nwe need the surname to find out the family size given the fact that we do have the columns Parch and SibSp collumns to support this value. I have used strsplit function and extracted everything before the comma(,). The output can be properly formatted using sapply. below are the two ways in which this can be achieved.\n"
+>     Surname<-sapply(strsplit(merged_data$Name, ","), `[`, 1)
+>     #OR
+>     #Surname<-sapply(strsplit(merged_data$Name, ","), function(x) x[1])
+> 
+>     #Adding the new surname column
+>     merged_data$Surname <-Surname
+> 
+> "3.3 Extracting Titles
++ We do have the column sex to know the gender of the passenger. But to understand if there were any male or female kids in the ship too, we need to extract the titles.
++ Extracting titles is a bit tricky. Here we have used str_locate() to find the beginning and end of the Title. beginning must be 2 spaces after the comma(,). So we have used +2.
++ End should be one space before the dot(.) so we have used -1. [,1] has been used for all the rows.
++ "
+[1] "3.3 Extracting Titles\nWe do have the column sex to know the gender of the passenger. But to understand if there were any male or female kids in the ship too, we need to extract the titles.\nExtracting titles is a bit tricky. Here we have used str_locate() to find the beginning and end of the Title. beginning must be 2 spaces after the comma(,). So we have used +2.\nEnd should be one space before the dot(.) so we have used -1. [,1] has been used for all the rows.\n"
+>     # Extracting Titles 
+>     title<-str_sub(merged_data$Name, str_locate(merged_data$Name, ",")[ , 1] + 2, str_locate(merged_data$Name, "\\.")[ , 1] - 1)
+>     
+>     #adding title to the merged_data table
+>     merged_data$Titles <- title
+> 
+> "3.3.1: Simplifying the titles
++ For the sake of simplicity, I decided to have only 4 titles viz. Mr., Mrs., Master and Miss.
++ "
+[1] "3.3.1: Simplifying the titles\nFor the sake of simplicity, I decided to have only 4 titles viz. Mr., Mrs., Master and Miss.\n"
+> 
+>     #checking the titles
+>     
+>         unique(merged_data$Titles)
+ [1] "Mr"           "Mrs"          "Miss"         "Master"       "Don"         
+ [6] "Rev"          "Dr"           "Mme"          "Ms"           "Major"       
+[11] "Lady"         "Sir"          "Mlle"         "Col"          "Capt"        
+[16] "the Countess" "Jonkheer"    
+>     
+>     #converting different titles to normal titles
+>     #Other way is converting any female and male on the basis of age. try later
+>     merged_data$Titles <- gsub("Dona|Lady|Madame|the Countess|Mme", "Mrs", merged_data$Titles)
+>     merged_data$Titles <- gsub("Don|Jonkheer|Sir|Dr|Major|Col|Capt|Rev", "Mr", merged_data$Titles)
+>     merged_data$Titles <- gsub("Ms|Mlle", "Miss", merged_data$Titles)
+>     
+>     #checking the titles again
+>     unique(merged_data$Titles)
+[1] "Mr"     "Mrs"    "Miss"   "Master"
+> 
+> "Looks good now."
+[1] "Looks good now."
+> 
+>     #converting the title column as factor instead of characters. So it can be used for ranking
+>     merged_data$Titles <- as.factor(merged_data$Titles)
+> 
+> 
+> "3.4. Age category
++ Its natural to think that people of certain age may have higher survival rate as compared to others. We therefore would create the age category as well
++ "
+[1] "3.4. Age category\nIts natural to think that people of certain age may have higher survival rate as compared to others. We therefore would create the age category as well\n"
+>     # Create the column child, and indicate whether child or adult
+>     merged_data$Age_category[merged_data$Age < 18] <- 'Child'
+>     merged_data$Age_category[merged_data$Age >= 18] <- 'Adult'
+> 
+> "
++ 3.5. Missing fare
++ Because the fare can depend on Age category and title, we can now find the missing fare too even though there is just one missing value and it may not have a huge impact on our prediction.
++ "
+[1] "\n3.5. Missing fare\nBecause the fare can depend on Age category and title, we can now find the missing fare too even though there is just one missing value and it may not have a huge impact on our prediction.\n"
+>     #Finding the row where the fare is missing
+>     sqldf("select * from merged_data where fare is null")
+ [1] PassengerId  Survived     Pclass       Name         Sex         
+ [6] Age          SibSp        Parch        Ticket       Fare        
+[11] Cabin        Embarked     Surname      Titles       Age_category
+<0 rows> (or 0-length row.names)
+> "
++ We see that passengerid 1044 has missing fare. I am sharing two methods here.
++ "
+[1] "\nWe see that passengerid 1044 has missing fare. I am sharing two methods here.\n"
+>     merged_data$Fare[1044] <- mean(merged_data[merged_data$Pclass == '3' & merged_data$Embarked == 'S' &merged_data$Age_category=='Adult'& merged_data$Titles=='Mr', ]$Fare, na.rm = TRUE)
+>     #OR
+>     #missingfare<-sqldf("select avg(fare),embarked from merged_data where Pclass=3 and embarked ='S' and Titles='Mr' and Age_category='Adult'")
+>     #merged_data$Fare[1044]<-missingfare
+>     
+>     
+> "
++ 3.6. Missing Embarkment values
++ We can find the missing embarkment values using sqldf function or which function.
++ "
+[1] "\n3.6. Missing Embarkment values\nWe can find the missing embarkment values using sqldf function or which function.\n"
+>     sqldf("select * from merged_data where embarked isnull or Embarked=''")
+  PassengerId Survived Pclass                                      Name    Sex
+1          62        1      1                       Icard, Miss. Amelie female
+2         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn) female
+3          62        0      1                       Icard, Miss. Amelie female
+4         830        0      1 Stone, Mrs. George Nelson (Martha Evelyn) female
+  Age SibSp Parch Ticket Fare Cabin Embarked Surname Titles Age_category
+1  38     0     0 113572   80   B28            Icard   Miss        Adult
+2  62     0     0 113572   80   B28            Stone    Mrs        Adult
+3  38     0     0 113572   80   B28            Icard   Miss        Adult
+4  62     0     0 113572   80   B28            Stone    Mrs        Adult
+>     #OR
+>     # merged_data[which(merged_data$Embarked == ''), ]
+> "
++ The next step is to find the average fare nearest to 80 keeping in mind that the passenger is a female travelling in 1st class and category is adult. I have shared two methods below
++ "
+[1] "\nThe next step is to find the average fare nearest to 80 keeping in mind that the passenger is a female travelling in 1st class and category is adult. I have shared two methods below\n"
+>     # finding the average fare of all the embarkment locations 
+>     sqldf("select avg(fare),embarked from merged_data where Pclass=1 and Age_category ='Adult' and Sex='female' and Ticket!=113572 group by embarked")
+  avg(fare) Embarked
+1 117.28920        C
+2  90.00000        Q
+3  97.99208        S
+>     #OR
+>     mean(merged_data[merged_data$Pclass == '1' & merged_data$Age_category=='Adult'& merged_data$Sex=='female'& merged_data$Embarked=='C' & merged_data$Ticket!=113572, ]$Fare, na.rm = FALSE)
+[1] 117.2892
+>     mean(merged_data[merged_data$Pclass == '1' & merged_data$Age_category=='Adult'& merged_data$Sex=='female'& merged_data$Embarked=='Q' & merged_data$Ticket!=113572, ]$Fare, na.rm = FALSE)
+[1] 90
+>     mean(merged_data[merged_data$Pclass == '1' & merged_data$Age_category=='Adult'& merged_data$Sex=='female'& merged_data$Embarked=='S' & merged_data$Ticket!=113572, ]$Fare, na.rm = FALSE)
+[1] 97.99208
+> "
++ We see that the average fare at Embankment Q is closest to 80. Thus we insert Q into the missing embankment values
++ "
+[1] "\nWe see that the average fare at Embankment Q is closest to 80. Thus we insert Q into the missing embankment values\n"
+>     #inserting Q into missing embankment values
+>     merged_data$Embarked[merged_data$Embarked == '' &  merged_data$Ticket=='113572']        <- 'Q' 
+> 
+> "3.7 impact of family size on survival
++ Its very natural to think that in a situation where its the question of life, family size does matter. 
++ Lets first create the new column Fsize and then later on in section 4, check if it can help us in improving our prediction or not.
++ "
+[1] "3.7 impact of family size on survival\nIts very natural to think that in a situation where its the question of life, family size does matter. \nLets first create the new column Fsize and then later on in section 4, check if it can help us in improving our prediction or not.\n"
+>     #creating the Fsize column first
+>     merged_data$Fsize<-sqldf("select (sibsp+parch+1) family_size from merged_data")
+>     #OR
+>     merged_data$Fsize <- merged_data$SibSp + merged_data$Parch + 1
+>     str(merged_data$Fsize) 
+ num [1:1782] 2 2 1 2 1 1 1 5 3 2 ...
+> "
++ 3.8. Sorting out the cabin names
++ cabin names are a bit un-formatted. So, I have cleaned up this column a bit.
++ "
+[1] "\n3.8. Sorting out the cabin names\ncabin names are a bit un-formatted. So, I have cleaned up this column a bit.\n"
+>     merged_data$cabin_name<-str_sub(merged_data$Cabin, 1,1)
+>     
+>     # Make variables factors into factors
+>     factor_vars <- c('PassengerId','Pclass','Sex','Embarked',
++                      'Titles','Surname','Fsize')
+> 
+>     merged_data[factor_vars] <- lapply(merged_data[factor_vars], function(x) as.factor(x))
+> 
+> "
++ 4. Finding the relationship between survival and different columns
++ I'm now done with cleaning up the data. I have created new column that I think are required and took care of missing values mostly(except cabin).
++ At this stage I decided to ask myself the questions that may influence the prediction.
++ "
+[1] "\n4. Finding the relationship between survival and different columns\nI'm now done with cleaning up the data. I have created new column that I think are required and took care of missing values mostly(except cabin).\nAt this stage I decided to ask myself the questions that may influence the prediction.\n"
+> "
++ Q1: has the travel class influenced the rate of survival?
++ Based on the outcome below, its a clear that passenger class has big impact on the chances on survival.
++ "
+[1] "\nQ1: has the travel class influenced the rate of survival?\nBased on the outcome below, its a clear that passenger class has big impact on the chances on survival.\n"
+>     #Survived by Class 
+> survived_by_class<-sqldf (c("select sum(survived) total_survived,count(survived) total_passengers, ((sum(survived)*100/count(survived))) percentage_survived, PClass from merged_data where passengerid<=891 group by PClass order by PClass"))    
+> 
+> barplot(as.matrix(survived_by_class$percentage_survived), 
++             col=rainbow(11), beside = T, ylab = "Percent_survived", xlab = "Class", 
++             names.arg=c("1","2","3"),
++             axis.lty=1,offset=0, ylim = c(0, 100))
+>     
+>     legend("topright", c("1","2","3"), cex=0.9, 
++            bty="n", fill=rainbow(5));
+> "
++ Q2: Has gender influenced the rate of survival?
++ Based on the outcome below, its a clear that gender has a big impact on the chances on survival.
++ "
+[1] "\nQ2: Has gender influenced the rate of survival?\nBased on the outcome below, its a clear that gender has a big impact on the chances on survival.\n"
+>     #Survived by gender
+>     survived_by_gender<-sqldf (c("select sum(survived) total_survived,count(survived) total_passengers, ((sum(survived)*100/count(survived))) percentage_survived, Sex from merged_data where passengerid<=891 group by Sex order by Sex"))
+>     
+>     barplot(as.matrix(survived_by_gender$percentage_survived), 
++             col=rainbow(11), beside = T, ylab = "Percent_survived", xlab = "Gender", 
++             names.arg=c("FEMALE","MALE"),
++             axis.lty=1,offset=0, ylim = c(0, 100))
+>     
+>     
+>     legend("topright", c("MALE","FEMALE"), cex=0.9, 
++            bty="n", fill=rainbow(5));
+> "
++ Q3: has age played any role?
++ From the output below it looks like that there is a bit of influence here.
++ " 
+[1] "\nQ3: has age played any role?\nFrom the output below it looks like that there is a bit of influence here.\n"
+> 
+>     #Survived by age
+>     survived_by_age<-sqldf (c("select Age_category, sum(survived) as Survived, (sum(survived)*100)/count(passengerid) as pct_survived from merged_data where (survived =1 or survived =0) and passengerid<=891 group by Age_category"))
+>     
+>     barplot(as.matrix(survived_by_age$pct_survived), 
++             col=rainbow(11), beside = T, ylab = "%survived", xlab = "Age", 
++             names.arg=c("Adult","Child"),
++             axis.lty=1,offset=0, ylim = c(0, 100))
+>     
+>     
+>     legend("topright", c("Adult","Child"), cex=0.6, 
++            bty="n", fill=rainbow(5));
+> "
++ Q4: Has familysize any impact on chances of survival?
++ The output is really quite interesting.  Passengers with no family have a low survival rate. Passengers with a family size of 2, 3 and 4 have very high chances. Finally, passengers with family size of 5,6,7,8 and 11 have a low rate of survival. This really makes sense. So, the family size dues infulence the chances of survival.
++ "
+[1] "\nQ4: Has familysize any impact on chances of survival?\nThe output is really quite interesting.  Passengers with no family have a low survival rate. Passengers with a family size of 2, 3 and 4 have very high chances. Finally, passengers with family size of 5,6,7,8 and 11 have a low rate of survival. This really makes sense. So, the family size dues infulence the chances of survival.\n"
+>     #is there a relationship between family size and survived?
+>     survived_by_family<-sqldf (c("select sum(survived) total_survived,count(survived) total_passengers, ((sum(survived)*100/count(survived))) percentage_survived, Fsize from merged_data where passengerid<=891 group by Fsize order by Fsize"))
+>     
+>     barplot(as.matrix(survived_by_family$percentage_survived), 
++             col=rainbow(11), beside = T, ylab = "Percent_survived", xlab = "Family_size", 
++             names.arg=c("1","2","3","4","5","6","7","8","11"),
++             axis.lty=1,offset=0, ylim = c(0, 100))
+>     
+>     legend("topright", c("1","2","3","4","5","6","7","8","11"), cex=0.6, 
++            bty="n", fill=rainbow(5));
+> "
++ Q5: Does being a mother impacted the survival rate?
++ There is a bit of impact it seems although not much.
++ "
+[1] "\nQ5: Does being a mother impacted the survival rate?\nThere is a bit of impact it seems although not much.\n"
+>     # Adding Mother variable
+>     merged_data$Mother <- 'Not Mother'
+>     merged_data$Mother[merged_data$Sex == 'female' & merged_data$Parch > 0 & merged_data$Age > 18 & merged_data$Title != 'Miss'] <- 'Mother'
+> 
+>     #Chances of survival of mothers
+>     survived_by_mother<-sqldf (c("select Mother as is_mother,sum(survived) total_survived,count(passengerid) total_female_passengers, ((sum(survived)*100/count(passengerid))) percentage_females_survived from merged_data where passengerid<=891 and sex ='female' group by Mother order by mother"))
+>     
+>     
+>     barplot(as.matrix(survived_by_mother$percentage_females_survived), 
++             col=rainbow(11), beside = T, ylab = "Percent_survived", xlab = "Is_Mother", 
++             names.arg=c("Mother","Not_mother"),
++             axis.lty=1,offset=0, ylim = c(0, 100))
+>     
+>     
+>     legend("topright", c("Mother","Not_mother"), cex=0.9, 
++            bty="n", fill=rainbow(5));
+> "
++ Q6: Does being a father impacted the survival rate?
++ The results clearly shows that the rat of survivals of the fathers are almost 50% to that of non-fathers
++ "
+[1] "\nQ6: Does being a father impacted the survival rate?\nThe results clearly shows that the rat of survivals of the fathers are almost 50% to that of non-fathers\n"
+>     #Adding father variable
+>     merged_data$Father <- 'Not Father'
+>     merged_data$Father[merged_data$Sex == 'male' & merged_data$Parch > 0 & merged_data$Age > 18 & merged_data$Title != 'Master'] <- 'Father'
+>     
+>     # Show counts
+>     table(merged_data$Father, merged_data$Survived)
+            
+                0    1
+  Father       81    6
+  Not Father 1359  336
+>     #OR
+>     survived_by_father<-sqldf (c("select Father as is_father,sum(survived) total_survived,count(passengerid) total_male_passengers, ((sum(survived)*100/count(passengerid))) percentage_males_survived from merged_data where passengerid<=891 and sex ='male' group by Father order by Father"))
+>     
+>     
+>     barplot(as.matrix(survived_by_father$percentage_males_survived), 
++             col=rainbow(11), beside = T, ylab = "Percent_survived", xlab = "Is_Father", 
++             names.arg=c("Father","Not_Father"),
++             axis.lty=1,offset=0, ylim = c(0, 100))
+>     
+>     
+>     legend("topright", c("Father","Not_Father"), cex=0.9, 
++            bty="n", fill=rainbow(5));
+> "
++ 6.Splitting the data
++ "
+[1] "\n6.Splitting the data\n"
+>     #marking some of the remaining columns as factors
+>     merged_data$Mother <- factor(merged_data$Mother)
+>     merged_data$Father <- factor(merged_data$Father)
+>     merged_data$Pclass<- factor(merged_data$Pclass)
+>     merged_data$Sex<- factor(merged_data$Sex)
+>     merged_data$Embarked<- factor(merged_data$Embarked)
+>     merged_data$Titles<- factor(merged_data$Titles)
+>     merged_data$Age_category<- factor(merged_data$Age_category)
+>     
+>     #Splitting back the data
+>     train <- merged_data[1:891,]
+>     test <- merged_data[892:1309,]
+> "
++ 7. Building the model
++ Finally, its time to build the prediction model based on the factors that contributes the most.
++ "
+[1] "\n7. Building the model\nFinally, its time to build the prediction model based on the factors that contributes the most.\n"
+>     # Set a random seed so that the output is always same
+>     set.seed(123)
+>     
+>     # Build the model (note: not all possible variables are used)
+>     rf_model <- randomForest(factor(Survived) ~ Pclass + Sex + Age + Fsize+Father+Mother+Titles+Age_category,
++                              data = train)
+>     
+>     
+>     # Show model error
+>     plot(rf_model, ylim=c(0,0.36))
+>     legend('topright', colnames(rf_model$err.rate), col=1:3, fill=1:3, border = 1)
+> 
+> "
++ 8. Ranking the prediction variables
++ We would now see the ranking given to the variables that we have chosen to build the model
++ "
+[1] "\n8. Ranking the prediction variables\nWe would now see the ranking given to the variables that we have chosen to build the model\n"
+>     importance    <- importance(rf_model)
+>     varImportance <- data.frame(Variables = row.names(importance), 
++                                 Importance = round(importance[ ,'MeanDecreaseGini'],2))
+>     
+>     # Create a rank variable based on importance
+>     rankImportance <- varImportance %>%
++       mutate(Rank = paste0('#',dense_rank(desc(Importance))))
+>     
+>     # Use ggplot2 to visualize the relative importance of variables
+>     ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
++                                y = Importance, fill = Importance)) +
++       geom_bar(stat='identity') + 
++       geom_text(aes(x = Variables, y = 0.5, label = Rank),
++                 hjust=0, vjust=0.55, size = 4, colour = 'red') +
++       labs(x = 'Variables') +
++       coord_flip() + 
++       theme_few()
+> 
+> "
++ 9. Making the prediction
++ We will not predict the survival of passengers from test dataset based on the model that we have created.
++ "
+[1] "\n9. Making the prediction\nWe will not predict the survival of passengers from test dataset based on the model that we have created.\n"
+> # Predict using the test set
+> prediction <- predict(rf_model, test)
+> 
+> # Saving the solution into a dataframe
+> solution <- data.frame(PassengerID = test$PassengerId, Survived = prediction)
+> 
+> # Write the solution to a csv file.
+> write.csv(solution, file = 'rf_mod_Solution.csv', row.names = F)
+> 
+> proc.time()
+   user  system elapsed 
+  1.512   0.234   1.818 

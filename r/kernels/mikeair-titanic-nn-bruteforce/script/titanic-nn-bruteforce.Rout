@@ -1,0 +1,373 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> #######################################################################
+> # The intention of this kernel is only to demonstrate a simple way of
+> # grid searching optimal network structure/hyperparams, evaluated by AUC
+> ########################################################################
+> 
+> library(neuralnet);
+> library(pROC)
+Type 'citation("pROC")' for a citation.
+
+Attaching package: ‘pROC’
+
+The following objects are masked from ‘package:stats’:
+
+    cov, smooth, var
+
+> library(caret)
+Loading required package: lattice
+Loading required package: ggplot2
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> 
+> data <- read.csv(file="../input/train.csv",header=T,na.strings=c(""))
+> str(data)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 147 levels "A10","A14","A16",..: NA 82 NA 56 NA NA 130 NA NA NA ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+> 
+> data$male <- as.integer(data$Sex == "male")
+> data$embarkedC <- as.integer(data$Embarked == "C")
+> data$embarkedQ <- as.integer(data$Embarked == "Q")
+> 
+> #mean imputation of everything that have missing values:
+> for(i in 1:ncol(data)){
++   data[is.na(data[,i]), i] <- mean(data[,i], na.rm = TRUE)
++ }
+Warning messages:
+1: In mean.default(data[, i], na.rm = TRUE) :
+  argument is not numeric or logical: returning NA
+2: In mean.default(data[, i], na.rm = TRUE) :
+  argument is not numeric or logical: returning NA
+3: In mean.default(data[, i], na.rm = TRUE) :
+  argument is not numeric or logical: returning NA
+4: In mean.default(data[, i], na.rm = TRUE) :
+  argument is not numeric or logical: returning NA
+5: In mean.default(data[, i], na.rm = TRUE) :
+  argument is not numeric or logical: returning NA
+> 
+> #removing some of the features for the sake of simplicity:
+> data$Name = NULL;data$Ticket = NULL;data$Cabin=NULL;
+> data$PassengerId=NULL;data$Sex=NULL;data$Embarked=NULL
+> #str(data)
+> 
+> #train <- data
+> 
+> ######## subsetting for train and test set:
+> 
+> index <- sample(1:nrow(data),round(0.75*nrow(data)))
+> 
+> train <- data[index,]
+> test <- data[-index,]
+> 
+> 
+> #Train data: making model matrix
+> m <- model.matrix(  ~ Survived + Pclass + male + Age + SibSp+ Fare+ embarkedC+ embarkedQ, data=train)
+> head(m)
+    (Intercept) Survived Pclass male      Age SibSp    Fare embarkedC embarkedQ
+644           1        1      3    1 29.69912     0 56.4958         0         0
+223           1        0      3    1 51.00000     0  8.0500         0         0
+677           1        0      3    1 24.50000     0  8.0500         0         0
+482           1        0      2    1 29.69912     0  0.0000         0         0
+389           1        0      3    1 29.69912     0  7.7292         0         1
+73            1        0      2    1 21.00000     0 73.5000         0         0
+> 
+> #Test data: making model matrix
+> m2 <- model.matrix(  ~  Pclass + male + Age + SibSp+ Fare+ embarkedC+ embarkedQ, data=test)
+> head(m2)
+   (Intercept) Pclass male Age SibSp    Fare embarkedC embarkedQ
+2            1      1    0  38     1 71.2833         1         0
+9            1      3    0  27     0 11.1333         0         0
+10           1      2    0  14     1 30.0708         1         0
+16           1      2    0  55     0 16.0000         0         0
+19           1      3    0  31     1 18.0000         0         0
+24           1      1    1  28     0 35.5000         0         0
+> 
+> ###############################################################################
+> 
+> Test_metric = NULL
+> Test_metric1 = NULL
+> Test_metric2 = NULL
+> Test_metric3 = NULL
+> Test_AUC = NULL
+> Train_AUC = NULL
+> RES_DF = NULL
+> overall = NULL
+> 
+> #Set the hyper parameter alternatives in here:
+> #more layers are defined by: c(25,25), 
+> #see: ?neuralnet for more info
+> 
+> HiddenNodes1 <- list(c(25),c(50))#,  c(25,25,25), c(10,20,20), c(15,15,15)
+> Thresholds=c(0.5,0.8)
+> LearningRate=c(0.15,0.2)
+> Algorithms=c("rprop+")
+> Epochs=1
+> 
+> 
+> for (k in HiddenNodes1){
++   for (j in LearningRate){
++     for (i in Thresholds){
++       for (l in Algorithms){
++         
++         r2 <- neuralnet( Survived ~ Pclass + male + Age + SibSp+ Fare+ embarkedC+ embarkedQ, 
++                          data=train, 
++                          hidden=k,               #        <- c(nodesLayer1,nodesLayer2,nodesLayer3)
++                          threshold=i,
++                          rep=Epochs,        
++                          learningrate=j, 
++                          algorithm =l, #"rprop+"
++                          lifesign = "full",
++                          err.fct = "sse"
++         )
++         
++         ######### Storing values from the model ########################################
++         
++         Test_metric = rbind(Test_metric, j) #learningrate
++         Test_metric1 = rbind(Test_metric1, i) #threshold
++         Test_metric2 = rbind(Test_metric2, k) #hidden nodes in layer1
++         Test_metric3 = rbind(Test_metric3, l) #algorithm
++         
++         ################################################################################
++ 
++         #predictions
++         res <- compute(r2, m2[,c("Pclass", "male", "Age", "SibSp","Fare","embarkedC","embarkedQ")])     #test
++         res2 <- compute(r2, m[,c("Pclass", "male", "Age", "SibSp","Fare","embarkedC","embarkedQ")])     #train
++         
++         ################################################################################
++         
++         #Predictions DF for train set:
++         pred_train.df = as.data.frame(res2$net.result)
++         names(pred_train.df)[names(pred_train.df)=="V1"] <- "prediction"
++         pred_train.df$prediction <- as.numeric(pred_train.df$prediction < 0.5)
++         
++         
++         #Predictions DF for test set:
++         pred_test.df = as.data.frame(res$net.result)
++         names(pred_test.df)[names(pred_test.df)=="V1"] <- "prediction"
++         pred_test.df$prediction <- as.numeric(pred_test.df$prediction < 0.5)
++         
++         #============ TRAIN AUC ==============#
++         
++         #Make a roc object: First target, then prediction
++         rocobj_train <- roc(train$Survived, pred_train.df$prediction)
++         
++         #get the area under the curve:
++         Train_AUC <- rbind(Train_AUC, rocobj_train$auc)
++         
++         #============ TEST AUC ==============#
++         
++         #Make a roc object: First target, then prediction
++         rocobj_test <- roc(test$Survived, pred_test.df$prediction)
++         
++         #get the area under the curve:
++         Test_AUC <- rbind(Test_AUC, rocobj_test$auc)
++         
++         #########################################################
++         
++         print("The test-AUC for this model was:")
++         print(rocobj_test$auc)
++         
++         print("The train-AUC for this model was:")
++         print(rocobj_train$auc)
++         
++       }}}}
+hidden: 25    thresh: 0.5    rep: 1/1    steps:    1000	min thresh: 1.2939310815735
+                                                   2000	min thresh: 0.96606218767356
+                                                   3000	min thresh: 0.96606218767356
+                                                   4000	min thresh: 0.715614102980966
+                                                   5000	min thresh: 0.715614102980966
+                                                   6000	min thresh: 0.608384340953705
+                                                   7000	min thresh: 0.520892133829229
+                                                   8000	min thresh: 0.520892133829229
+                                                   8443	error: 28.52976	time: 8.41 secs
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+[1] "The test-AUC for this model was:"
+Area under the curve: 0.7688
+[1] "The train-AUC for this model was:"
+Area under the curve: 0.8835
+hidden: 25    thresh: 0.8    rep: 1/1    steps:    1000	min thresh: 1.13454610233666
+                                                   2000	min thresh: 0.801880454655999
+                                                   2425	error: 33.31626	time: 2.29 secs
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+[1] "The test-AUC for this model was:"
+Area under the curve: 0.7657
+[1] "The train-AUC for this model was:"
+Area under the curve: 0.8453
+hidden: 25    thresh: 0.5    rep: 1/1    steps:    1000	min thresh: 1.02857135133908
+                                                   2000	min thresh: 1.02857135133908
+                                                   3000	min thresh: 1.02857135133908
+                                                   4000	min thresh: 0.827477605230978
+                                                   5000	min thresh: 0.513049154613759
+                                                   6000	min thresh: 0.513049154613759
+                                                   6306	error: 28.4258 	time: 6.05 secs
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+[1] "The test-AUC for this model was:"
+Area under the curve: 0.7876
+[1] "The train-AUC for this model was:"
+Area under the curve: 0.8723
+hidden: 25    thresh: 0.8    rep: 1/1    steps:    1000	min thresh: 1.88314290868283
+                                                   2000	min thresh: 1.03553970120759
+                                                   3000	min thresh: 1.03553970120759
+                                                   4000	min thresh: 1.03553970120759
+                                                   4635	error: 30.37974	time: 4.56 secs
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+[1] "The test-AUC for this model was:"
+Area under the curve: 0.7988
+[1] "The train-AUC for this model was:"
+Area under the curve: 0.868
+hidden: 50    thresh: 0.5    rep: 1/1    steps:    1000	min thresh: 1.79396932044373
+                                                   2000	min thresh: 1.16081341767413
+                                                   3000	min thresh: 1.06704622047222
+                                                   4000	min thresh: 0.879231715482986
+                                                   5000	min thresh: 0.81661850385438
+                                                   6000	min thresh: 0.81661850385438
+                                                   7000	min thresh: 0.81661850385438
+                                                   8000	min thresh: 0.687609600524121
+                                                   9000	min thresh: 0.687609600524121
+                                                  10000	min thresh: 0.598283255017906
+                                                  11000	min thresh: 0.537364132372014
+                                                  12000	min thresh: 0.537364132372014
+                                                  13000	min thresh: 0.514169559095055
+                                                  14000	min thresh: 0.514169559095055
+                                                  15000	min thresh: 0.514169559095055
+                                                  16000	min thresh: 0.514169559095055
+                                                  17000	min thresh: 0.514169559095055
+                                                  18000	min thresh: 0.514169559095055
+                                                  19000	min thresh: 0.514169559095055
+                                                  20000	min thresh: 0.514169559095055
+                                                  20047	error: 22.43439	time: 38.94 secs
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+[1] "The test-AUC for this model was:"
+Area under the curve: 0.8098
+[1] "The train-AUC for this model was:"
+Area under the curve: 0.9137
+hidden: 50    thresh: 0.8    rep: 1/1    steps:    1000	min thresh: 1.50576902305803
+                                                   2000	min thresh: 1.05754704208874
+                                                   2881	error: 26.56775	time: 5.53 secs
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+[1] "The test-AUC for this model was:"
+Area under the curve: 0.7782
+[1] "The train-AUC for this model was:"
+Area under the curve: 0.8802
+hidden: 50    thresh: 0.5    rep: 1/1    steps:    1000	min thresh: 1.02563753106923
+                                                   2000	min thresh: 1.02563753106923
+                                                   3000	min thresh: 0.770634255843191
+                                                   4000	min thresh: 0.723932810942135
+                                                   5000	min thresh: 0.6720349858694
+                                                   6000	min thresh: 0.6720349858694
+                                                   7000	min thresh: 0.584944042269632
+                                                   8000	min thresh: 0.584944042269632
+                                                   9000	min thresh: 0.584944042269632
+                                                  10000	min thresh: 0.536588027208795
+                                                  11000	min thresh: 0.536588027208795
+                                                  11709	error: 23.94343	time: 21.64 secs
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+[1] "The test-AUC for this model was:"
+Area under the curve: 0.7764
+[1] "The train-AUC for this model was:"
+Area under the curve: 0.8962
+hidden: 50    thresh: 0.8    rep: 1/1    steps:    1000	min thresh: 3.01097667897252
+                                                   2000	min thresh: 2.44984284533384
+                                                   3000	min thresh: 1.52033453676327
+                                                   4000	min thresh: 1.33580841929951
+                                                   5000	min thresh: 1.2149020038144
+                                                   5123	error: 24.5077 	time: 9.77 secs
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+Setting levels: control = 0, case = 1
+Setting direction: controls > cases
+[1] "The test-AUC for this model was:"
+Area under the curve: 0.7822
+[1] "The train-AUC for this model was:"
+Area under the curve: 0.8962
+> 
+> 
+> ################################################################################
+> 
+> #Wrapping up the results:
+> Difference = as.data.frame(as.numeric(Test_AUC-Train_AUC));colnames(Difference)="Difference"
+> Difference
+   Difference
+1 -0.11473455
+2 -0.07965025
+3 -0.08475777
+4 -0.06914883
+5 -0.10389696
+6 -0.10200923
+7 -0.11973564
+8 -0.11401300
+> 
+> resultsettings.df <- as.data.frame(cbind(Test_metric[1:length(Test_AUC),], Test_metric1[1:length(Test_AUC),], Test_metric2[1:length(Test_AUC),], Test_metric3[1:length(Test_AUC),], Train_AUC, Test_AUC, Difference))
+> rownames(resultsettings.df) <- NULL
+> colnames(resultsettings.df) <- c("Learningrate","Thresholds","Hiddenlayers","Algo","AUC_Train","AUC_Test","Difference")
+> 
+> #Showing the performance of the models, for further evaluation:
+> resultsettings.df[order(resultsettings.df$AUC_Test, decreasing = TRUE),]
+  Learningrate Thresholds Hiddenlayers   Algo AUC_Train  AUC_Test  Difference
+5         0.15        0.5           50 rprop+ 0.9136714 0.8097744 -0.10389696
+4         0.20        0.8           25 rprop+ 0.8679792 0.7988304 -0.06914883
+3         0.20        0.5           25 rprop+ 0.8723100 0.7875522 -0.08475777
+8         0.20        0.8           50 rprop+ 0.8961767 0.7821637 -0.11401300
+6         0.15        0.8           50 rprop+ 0.8802465 0.7782373 -0.10200923
+7         0.20        0.5           50 rprop+ 0.8961767 0.7764411 -0.11973564
+1         0.15        0.5           25 rprop+ 0.8834898 0.7687552 -0.11473455
+2         0.15        0.8           25 rprop+ 0.8453144 0.7656642 -0.07965025
+> 
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 80.514  18.020  99.024 

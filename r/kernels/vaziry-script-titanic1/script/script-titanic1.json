@@ -1,0 +1,1 @@
+{"c(\"package:generics\", \"package:base\")":["as.factor"],"package:base":["data.frame","length","rep"],"package:stats":["glm","predict.glm"],"package:utils":["read.csv"]}

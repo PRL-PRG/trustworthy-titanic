@@ -1,0 +1,465 @@
+---
+title: "Titanic"
+author: "Aeint Thet Ngon"
+output:
+  html_document:
+    number_sections: true
+    toc: true
+---
+
+#Introduction
+
+According to Kaggle, this is the description for the competition:
+
+The sinking of the RMS Titanic is one of the most infamous shipwrecks in history.  On April 15, 1912, during her maiden voyage, the Titanic sank after colliding with an iceberg, killing 1502 out of 2224 passengers and crew. This sensational tragedy shocked the international community and led to better safety regulations for ships.
+
+One of the reasons that the shipwreck led to such loss of life was that there were not enough lifeboats for the passengers and crew. Although there was some element of luck involved in surviving the sinking, some groups of people were more likely to survive than others, such as women, children, and the upper-class.
+
+In this challenge, we ask you to complete the analysis of what sorts of people were likely to survive. In particular, we ask you to apply the tools of machine learning to predict which passengers survived the tragedy.
+
+#Data Exploration
+
+##Loading Libraries and Data
+
+Loading R packages used beside the build in libraries
+```{r, message=FALSE, warning=FALSE}
+library(ggplot2)
+library(dplyr)
+library(ggthemes)
+library(stringr)
+library(knitr)
+library(gridExtra)
+library(randomForest)
+library(caret)
+library(Hmisc)
+```
+
+Loading the data in. 
+
+```{r}
+train <-read.csv("../input/train.csv")
+test <-read.csv("../input/test.csv")
+```
+
+
+##Data Size and Structure
+
+```{r}
+str(train)
+```
+
+The training set has 891 observations.  
+There are a total of 12 variables. All of the variables look like they are in their right class, except for Survived and Pclass, which should be factirs.
+
+There are a total of 418 test observations. The test and train will be combined into all for ease of data cleaning and feature enginnering purposes and will be separated before prediction again.
+
+```{r}
+test$Survived=NA
+all=rbind(train, test)
+all=transform(all, Survived=as.factor(Survived), Pclass=as.factor(Pclass))
+```
+
+##Missing Information
+
+```{r}
+sapply(all, function(x) {sum(is.na(x))})
+```
+
+There are 418 missing in Survived, which is the NAs that was added from test dataset. There are 263 people with missing ages and one person with no Fare information. 
+
+
+#Data Exploration
+There are 12 variables available, including PassengerID which will not offer any predicting power so it will not be explored in the following section. 
+
+##Survived
+The first and foremost important variable to look at would be how many survived. From records, we know that less than half of the passengers survived. So how about the data we have?
+```{r}
+ggplot(all[!is.na(all$Survived),], aes(x=Survived, fill=Survived)) + geom_bar(position="dodge") +
+    geom_label(aes(label=scales::percent(..count../sum(..count..))),
+              stat='count',position = position_dodge(0.9), fontface = "bold")+theme_stata()+
+  scale_fill_brewer(palette="Pastel1")
+
+```
+
+61.6% of the passengers on the train dataset did not survive. This percentage is a little lower than the actual percentage who did not surivive, i.e. 67.5%.
+Other variables will be explored how they relate to the survival rate on the Titanic.
+
+
+##Sex
+
+```{r}
+p1=ggplot(all, aes(x=Sex, fill=Sex)) + geom_bar(position="dodge") +
+    geom_label(aes(label=scales::percent(..count../sum(..count..))), stat='count') +
+    ggtitle("All Data")+
+    theme_stata()+scale_fill_brewer(palette="Pastel1")
+
+p2=ggplot(all[!is.na(all$Survived),], aes(x=Sex, fill=Survived)) + geom_bar(position="dodge") +
+    geom_label(aes(label=..count..), stat='count') +
+    ggtitle("Training Data Only")+
+    theme_stata() + scale_fill_brewer(palette="Pastel1")
+              
+grid.arrange(p1,p2, nrow=1)
+
+```
+
+There are more men than women both in the training set and the merged dataset. From the traiing data, we can see that out of more than 300 that survived Titanic, more than a third of the survivors are females. And out of the people who didn't survive, more than 85% of them are males. It seems like sex is a good predictor for surviving. 
+
+##Passenger Class (Pclass) 
+```{r}
+ggplot(all[!is.na(all$Survived),], aes(x=Pclass, fill=Pclass)) + geom_bar(position="dodge") +
+    geom_label(aes(label=scales::percent(..count../sum(..count..))), stat='count') +
+  ggtitle("All Data")+
+    theme_stata() + scale_fill_brewer(palette="Pastel1")
+```
+
+
+More than half of the passengers are from the third class. There are slightly more people in the first class than in the second class.  
+
+```{r}
+p4=ggplot(all[!is.na(all$Survived),], aes(x=Pclass, fill=Survived)) + geom_bar(position="dodge") +
+  geom_text(aes(label=scales::percent(..count../sum(..count..))), stat='count', position = position_dodge(0.9), vjust = 0) +
+    theme_stata() + scale_fill_brewer(palette="Pastel1")
+
+p5=ggplot(all[!is.na(all$Survived),], aes(x=Pclass, fill=Survived)) + geom_bar(position="stack") +
+facet_grid(.~Sex)+ geom_text(aes(label=..count..), stat="count", position= position_stack(vjust = 0.5))+
+    theme_stata() + scale_fill_brewer(palette="Pastel1")
+
+p6=ggplot(all[!is.na(all$Survived),], aes(x=Pclass, fill=Survived)) + geom_bar(position="dodge") +
+facet_grid(.~Sex)+
+    theme_stata() + scale_fill_brewer(palette="Pastel1")
+ 
+p7=ggplot(all[!is.na(all$Survived),], aes(x=Pclass, fill=Survived)) + geom_bar(position="fill") +
+facet_grid(.~Sex) + 
+  theme_stata() + scale_fill_brewer(palette="Pastel1")
+
+
+
+grid.arrange( p4, p5, ncol=2) 
+
+```
+
+
+Not so surprisingly, most of the people from third class did not survive the crush. Nearly 42% of people who were killed were from the third class. More than a frouth of these people are males. Being a female in the first or second class guarantee 100% survival rate on Titanc. A female in the 3rd class seems to have a 50-50 chance of survival. But by being a male in the first doubles the chance of survival compared to males in the second and third class. 
+
+So maybe an interaction term between Pclass and Sex will give better prediction than separately. 
+
+
+###Creating interaction terms between sex and class
+```{r}
+all$SexClass <- ifelse(all$Sex=="male" & all$Pclass==1, "P1Male", 
+                       ifelse(all$Sex=="male" & all$Pclass==2, "P2Male", 
+                              ifelse(all$Sex=="male" & all$Pclass==3, "P3Male", 
+                                     ifelse(all$Sex=="female" & all$Pclass==1, "P1Female", 
+                                            ifelse(all$Sex=="female" & all$Pclass==2, "P2Female", 
+                                                   ifelse(all$Sex=="female" & all$Pclass==3, "P3Female", ""))))))
+```
+
+
+##Name
+
+What can we possibly extract from names? Everyone has an almost unique one! But there are titles in the name. Maybe this could give information for survival. 
+
+###Title Extraction
+```{r}
+head(all$Name)
+all$title=str_extract(all$Name, pattern="[:upper:]\\w+\\.")
+kable(table(all$Sex, all$title))
+```
+
+The most common titles are Miss, Mrs, Mr and Master. The rest of the titles only held by one or two or at most 8 people. Mlle and Ms can be added to Miss, Mme to Mrs and the rest can be combined into one group. 
+
+```{r}
+all$title=ifelse(all$title %in% c("Mlle.", "Ms."), "Miss.", all$title)
+all$title=ifelse(all$title=="Mme.", "Mrs.", all$title)
+all$title=ifelse(!(all$title %in% c("Miss.", "Mrs.", "Mr.", "Master.")), "Rare", all$title)
+kable(table(all$Sex, all$title))
+```
+
+```{r, message=FALSE, warning=FALSE}
+p6=ggplot(all[(!is.na(all$Survived)),], aes(x=title, fill=Survived)) + geom_bar(position="stack") + geom_text(aes(label=..count..), stat="count", position= position_stack(vjust = 0.5))+
+    theme_stata()+ 
+    scale_fill_brewer(palette="Pastel1")
+
+p7=ggplot(all[(!is.na(all$Survived)),], aes(x=title, y=Age, fill=Sex))+geom_boxplot()+
+  theme_stata()+ scale_fill_brewer(palette="Pastel1")
+
+grid.arrange(p6, p7, ncol=2)
+```
+
+While most of the passengers under the title Miss or Mrs surivived, most of the Mrs didn't. THe passengers under the title Master, i.e. male passengers under the age of 15, has about 50% chance of surviving. 
+
+##SibSp and Parch
+
+Does the survival increases if the group travelling together is bigger? 
+SibSp indicates the number of sibiling, including the step sibilings, and spouses on Titanic and Parch indicates the number of parents and children. If a child travels with just a nanny Parch equals 0. 
+
+Before exploring the traveling partners further, let's look at whether the survival rate of kids (anyone under age 18) increases or decreases is affected by traveling with a nannies instead of parents. But there does not seem to be a significant difference between the two groups. 
+
+###Children traveling with nannies
+```{r}
+kids <- all %>% filter(Age<=18) %>% mutate(nanny=ifelse(Parch==0, 1, 0))
+ggplot(kids[(!is.na(kids$Survived)),], aes(x=nanny, fill=Survived)) + geom_bar(position="stack") + geom_text(aes(label=..count..), stat="count", position= position_stack(vjust = 0.5))+
+    theme_stata()+ 
+    scale_fill_brewer(palette="Pastel1")
+```
+
+###Family Size
+Family size variable is created by adding up the number of sibiling, spouses, parents and children traveling together. 
+
+```{r}
+all$famSize=all$SibSp+all$Parch
+ggplot(all[(!is.na(all$Survived)),], aes(x=famSize, fill=Survived)) + 
+    geom_bar(stat="count")+
+    theme_stata()+ 
+    scale_fill_brewer(palette="Pastel1")
+```
+
+```{r}
+all[(all$famSize==7), ]
+```
+
+###Group Size (varying from family size)
+From the group that traveled together, we can inferred that they have the same fare values and the same ticket numbers. Using this information, we can see that the family size doesn't give you the full information about people traveling together. 
+
+```{r}
+all[(all$Ticket==113503), c("Name", "Age", "Ticket", "Fare", "famSize")]
+
+all[(all$Ticket==110152), c("Name", "Age", "Ticket", "Fare", "famSize")]
+```
+
+Both of these ticket groups are composed of more people than the family size. 
+
+```{r}
+all <- all %>% group_by(Ticket, Fare) %>% mutate(n=n()) %>% mutate(TSize=n-1)
+
+ggplot(all[(!is.na(all$Survived)),], aes(x=TSize, fill=Survived)) + 
+    geom_bar(stat="count")+
+    theme_stata()+ 
+    scale_fill_brewer(palette="Pastel1")
+```
+
+```{r}
+hist(all$TSize-all$famSize)
+```
+
+While most of the passengers have the same number under ticket size and family size, the maximum of family size or ticket size will be used as groupsize.
+
+```{r}
+all <- all %>% mutate(groupSize=max(TSize, famSize)) %>%
+  mutate(group=ifelse(groupSize==0, "solo", ifelse(groupSize==1 | groupSize==2, "duo", ifelse(groupSize==3 | groupSize==4, "small group", ifelse(groupSize>=5, "big group", " "))))) %>% 
+  transform(group=factor(group, levels=c("solo", "duo", "small group", "big group")))
+
+ggplot(all[!is.na(all$Survived),], aes(x=group, fill=Survived)) +geom_bar(stat="count", position="dodge")+
+    geom_label(aes(label=..count..), stat='count')+
+      theme_stata() + scale_fill_brewer(palette="Pastel1")
+```
+
+Most of the people are traveling solo and this group has the highest chance of not surviving.
+
+
+##Fare
+
+How is fare calculated and does fare affect the survival rate? From the previous section, we can see that fare is calcuated for each ticket group and not for each person. So we cancalculate the fare per person first and see the effect instead. 
+
+```{r}
+all$FarePP=ifelse(all$TSize>0, all$Fare/all$TSize, all$Fare)
+```
+
+###Missing Fare variable 
+
+There's a Fare vale that's misssing. So what will be a good predictor for the Fare. 
+Ticket prices will most likely depend on which class people are in and how long the trip is. Maybe Embarked and Passenger Class might be a good predictor. And we can use the median for each group to find out what the missing value is for fare. 
+
+
+```{r}
+FareMissing <- all[!is.na(all$Fare),] %>% group_by(Pclass) %>%summarise(FareMed=median(FarePP))
+all <- left_join(all, FareMissing, by=c("Pclass"))
+
+all[is.na(all$Fare),c("Name", "Pclass", "Embarked", "Fare", "FarePP")]
+
+FareMissing[FareMissing$Pclass==3,]
+
+```
+
+```{r}
+all$FarePP[all$PassengerId==1044] <- 7.8542
+```
+
+
+###Zero Fare Values
+There are some fare values that are zero. It could be the case that these people won free tickets. But to not confuse the algorithms later on, we will replace the fare per person with the median fare per person. 
+```{r}
+
+all$FarePP[which(all$Fare==0)]=all$FareMed[which(all$FarePP==0)]
+
+```
+
+```{r}
+ggplot(all[!is.na(all$Survived),], aes(x=FarePP, fill="sienna2")) +
+  geom_histogram(bins=30) + guides(fill=FALSE) +theme_stata() 
+```
+
+Fare is highly skewed. 
+
+```{r}
+all$FareBin=cut2(all$FarePP, g=5)
+
+ggplot(all[!is.na(all$Survived),], aes(x=FareBin, fill=Survived)) +geom_bar(stat="count") + facet_grid(.~Pclass)+
+          theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
+    scale_fill_brewer(palette="Pastel1")
+```
+
+
+For prediction purposes, FareBin can be used instead of FarePP.
+
+
+##Age
+From the inital look at the data, we can see that there are missing Ages from both training and test sets.
+Age could be most related to the titles. Masters are younger male passengers, while Mr are older male passengers. A similar pattern holds for Miss and Mrs even though the difference is not as apparent. 
+I will use linear regression and mean/median method to fill in the missing ages and see which one has least difference. 
+
+
+```{r}
+ggplot(all[!is.na(all$Survived) & !is.na(all$Age),], aes(x = Age)) + geom_density(aes(fill = Survived), alpha=0.7)+theme_stata()+  scale_fill_brewer(palette="Pastel1")
+```
+
+###Age and title
+```{r}
+ggplot(all[!is.na(all$Age),], aes(x = title, y = Age, fill=Pclass )) +
+  geom_boxplot() + scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_stata() + scale_fill_brewer(palette="Pastel1")
+```
+
+###Prediction for missing age using linear regression
+```{r}
+age_lm=lm(Age~Pclass+title+groupSize, data=all[!is.na(all$Age),])
+
+summary(age_lm)
+
+all$AgePred=predict(age_lm, all)
+```
+
+```{r}
+p8=ggplot(all[!is.na(all$Age),], aes(x=Age, fill="sienna2")) +
+  geom_histogram(bins=30) + guides(fill=FALSE) +theme_stata()
+p9=ggplot(all[!is.na(all$Age),], aes(x=AgePred, fill="sienna2")) +
+  geom_histogram(bins=30) + guides(fill=FALSE) +theme_stata()
+p10=ggplot(all[!is.na(all$Age),], aes(x=Age-AgePred)) +
+  geom_histogram(bins=30) + guides(fill=FALSE) +theme_stata()
+grid.arrange(p8, p9, p10, ncol=3)
+```
+
+The prediction using linear regression has differences with the given age ranging from -25 to about 30. 
+
+I will also use mean and median by group to see if the prediction can be better. 
+
+###Prediction for missing age using mean and median
+```{r}
+#Using mean
+AgeMeanMed=all[!is.na(all$Age),] %>% group_by(Pclass, title, groupSize) %>% mutate(AgePred=mean(Age))
+
+p11=ggplot(AgeMeanMed[!is.na(AgeMeanMed$Age),], aes(x=Age, fill="sienna2")) +
+  geom_histogram(bins=30) + guides(fill=FALSE) +theme_stata()
+p12=ggplot(AgeMeanMed[!is.na(AgeMeanMed$Age),], aes(x=AgePred, fill="sienna2")) +
+  geom_histogram(bins=30) + guides(fill=FALSE) +theme_stata()
+p13=ggplot(AgeMeanMed[!is.na(AgeMeanMed$Age),], aes(x=Age-AgePred)) +
+  geom_histogram(bins=30) + guides(fill=FALSE) +theme_stata()
+grid.arrange(p11, p12, p13, ncol=3)
+
+```
+
+```{r}
+#Using mean
+AgeMeanMed=all[!is.na(all$Age),] %>% group_by(Pclass, title, groupSize) %>% mutate(AgePred=median(Age))
+
+p14=ggplot(AgeMeanMed[!is.na(AgeMeanMed$Age),], aes(x=Age, fill="sienna2")) +
+  geom_histogram(bins=30) + guides(fill=FALSE) +theme_stata()
+p15=ggplot(AgeMeanMed[!is.na(AgeMeanMed$Age),], aes(x=AgePred, fill="sienna2")) +
+  geom_histogram(bins=30) + guides(fill=FALSE) +theme_stata()
+p16=ggplot(AgeMeanMed[!is.na(AgeMeanMed$Age),], aes(x=Age-AgePred)) +
+  geom_histogram(bins=30) + guides(fill=FALSE) +theme_stata()
+grid.arrange(p14, p15, p16, ncol=3)
+
+```
+
+The mean and median do not perform as well as linear regression in terms of age prediction even though given the complexity of the method, it performs decently.
+
+I will be using the predicted age from linear regression to fill in the missing age values.
+
+
+```{r}
+all$Age[is.na(all$Age)]=all$AgePred[is.na(all$Age)]
+
+```
+
+
+#Prediction
+
+I'm going to use three different methods for prediction. Then I will evaluate the errors on the training set. 
+```{r}
+all$SexClass=as.factor(all$SexClass)
+#Separating back into train and test
+trainFix=all[!is.na(all$Survived)& !is.na(all$Age),]
+testFix=all[is.na(all$Survived),]
+```
+
+
+##Logistics Regression
+I'm going to use logistic regression as the inital, base method.
+```{r}
+LR_model <- glm(Survived~SexClass+ Age +FareBin+group,family=binomial(link='logit'),data=trainFix)
+pred_train <-predict(LR_model, newdata=trainFix, type="response")
+pred=ifelse(pred_train<.5, 0, 1)
+mean(pred==trainFix$Survived)
+```
+
+##Support Vector Machine
+Support Vector Machine(SVM) is very robust and efficient and known to work well with small datasets.
+```{r}
+set.seed(1001)
+svm_model <- train(Survived~SexClass+ Age +FarePP+group, data=trainFix, 'svmRadial', 
+preProcess= c('center', 'scale'), trControl=trainControl(method="cv", number=5))
+svm_model
+
+pred_train <-predict(svm_model,trainFix)
+mean(pred_train==trainFix$Survived)
+```
+
+##Random Forest
+Random Forest is known for high accuracy and is also not prone to overfitting. There are two Random Forest libraries that I found. And they have different prediction powers. So I will be using the same variables to compare the libraries and among other methods as well.
+
+```{r}
+RF_model=train(x=trainFix[,c('SexClass', 'Age', 'FarePP', 'group')], y=trainFix$Survived, data=trainFix, method='rf', trControl=trainControl(method="cv", number=5))
+RF_model
+
+pred_train <-predict(RF_model,trainFix)
+mean(pred_train==trainFix$Survived)
+```
+
+```{r}
+RF_model1=randomForest(Survived~ SexClass+ Age +FarePP+group, data=trainFix)
+varImpPlot(RF_model1)
+pred_train <-predict(RF_model1,trainFix)
+mean(pred_train==trainFix$Survived)
+```
+
+###writing submission
+
+```{r}
+
+test$Survived=predict(RF_model, testFix)
+submission=data.frame(PassengerID=test$PassengerId, Survived=test$Survived)
+
+write.csv(submission, "submission.csv", row.names=FALSE)
+```
+
+
+###What to Improve on?
+After the first submission, I have 76% rate.
+
+I wonder if there's more information I can get from the variables that I'm not using such as Cabin, Embarked.
+
+I can also make changes to the variables being used. Or maybe I can use different prediction methods and also different prediction methods for certain groups of people. 
+
+
+Side Note: This is my first kernel and competition on Kaggle. Suggestions on how I can do better are more than welcome! Thank you all in advance. 

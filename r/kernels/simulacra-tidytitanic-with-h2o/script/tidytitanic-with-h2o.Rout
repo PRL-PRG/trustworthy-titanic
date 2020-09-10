@@ -1,0 +1,973 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(comment=NA, message=FALSE, warning=FALSE)
+> 
+> 
+> ## ----message=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(stringr)
+> library(forcats)
+> library(magrittr)
+
+Attaching package: ‘magrittr’
+
+The following object is masked from ‘package:purrr’:
+
+    set_names
+
+The following object is masked from ‘package:tidyr’:
+
+    extract
+
+> library(modelr)
+Warning message:
+package ‘modelr’ was built under R version 3.6.2 
+> 
+> 
+> ## ----message=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- read_csv("../input/train.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test <- read_csv("../input/test.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data <- train %>%
++   select(-Survived) %>%
++   bind_rows(test) %>%
++   mutate(is_train = factor(c(rep("train", nrow(train)),
++                              rep("test", nrow(test)))),
++          Survived = c(train$Survived, rep(NA, nrow(test)))
++          )
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train %>% nrow() + 
++   test %>% nrow() ==
++   nrow(data)
+[1] TRUE
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% glimpse
+Rows: 1,309
+Columns: 13
+$ PassengerId [3m[90m<dbl>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+$ Pclass      [3m[90m<dbl>[39m[23m 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Braund, Mr. Owen Harris", "Cumings, Mrs. John Bradley (F…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "female", "female", "male", "male", "ma…
+$ Age         [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+$ SibSp       [3m[90m<dbl>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+$ Parch       [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "A/5 21171", "PC 17599", "STON/O2. 3101282", "113803", "3…
+$ Fare        [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+$ Cabin       [3m[90m<chr>[39m[23m NA, "C85", NA, "C123", NA, NA, "E46", NA, NA, NA, "G6", "…
+$ Embarked    [3m[90m<chr>[39m[23m "S", "C", "S", "S", "S", "Q", "S", "S", "S", "C", "S", "S…
+$ is_train    [3m[90m<fct>[39m[23m train, train, train, train, train, train, train, train, t…
+$ Survived    [3m[90m<dbl>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% summarize_all(n_distinct)
+[90m# A tibble: 1 x 13[39m
+  PassengerId Pclass  Name   Sex   Age SibSp Parch Ticket  Fare Cabin Embarked
+        [3m[90m<int>[39m[23m  [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m  [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m
+[90m1[39m        [4m1[24m309      3  [4m1[24m307     2    99     7     8    929   282   187        4
+[90m# … with 2 more variables: is_train [3m[90m<int>[90m[23m, Survived [3m[90m<int>[90m[23m[39m
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data <- data %>%
++   select(-PassengerId)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data$Name %>% head(n = 50)
+ [1] "Braund, Mr. Owen Harris"                                  
+ [2] "Cumings, Mrs. John Bradley (Florence Briggs Thayer)"      
+ [3] "Heikkinen, Miss. Laina"                                   
+ [4] "Futrelle, Mrs. Jacques Heath (Lily May Peel)"             
+ [5] "Allen, Mr. William Henry"                                 
+ [6] "Moran, Mr. James"                                         
+ [7] "McCarthy, Mr. Timothy J"                                  
+ [8] "Palsson, Master. Gosta Leonard"                           
+ [9] "Johnson, Mrs. Oscar W (Elisabeth Vilhelmina Berg)"        
+[10] "Nasser, Mrs. Nicholas (Adele Achem)"                      
+[11] "Sandstrom, Miss. Marguerite Rut"                          
+[12] "Bonnell, Miss. Elizabeth"                                 
+[13] "Saundercock, Mr. William Henry"                           
+[14] "Andersson, Mr. Anders Johan"                              
+[15] "Vestrom, Miss. Hulda Amanda Adolfina"                     
+[16] "Hewlett, Mrs. (Mary D Kingcome)"                          
+[17] "Rice, Master. Eugene"                                     
+[18] "Williams, Mr. Charles Eugene"                             
+[19] "Vander Planke, Mrs. Julius (Emelia Maria Vandemoortele)"  
+[20] "Masselmani, Mrs. Fatima"                                  
+[21] "Fynney, Mr. Joseph J"                                     
+[22] "Beesley, Mr. Lawrence"                                    
+[23] "McGowan, Miss. Anna \"Annie\""                            
+[24] "Sloper, Mr. William Thompson"                             
+[25] "Palsson, Miss. Torborg Danira"                            
+[26] "Asplund, Mrs. Carl Oscar (Selma Augusta Emilia Johansson)"
+[27] "Emir, Mr. Farred Chehab"                                  
+[28] "Fortune, Mr. Charles Alexander"                           
+[29] "O'Dwyer, Miss. Ellen \"Nellie\""                          
+[30] "Todoroff, Mr. Lalio"                                      
+[31] "Uruchurtu, Don. Manuel E"                                 
+[32] "Spencer, Mrs. William Augustus (Marie Eugenie)"           
+[33] "Glynn, Miss. Mary Agatha"                                 
+[34] "Wheadon, Mr. Edward H"                                    
+[35] "Meyer, Mr. Edgar Joseph"                                  
+[36] "Holverson, Mr. Alexander Oskar"                           
+[37] "Mamee, Mr. Hanna"                                         
+[38] "Cann, Mr. Ernest Charles"                                 
+[39] "Vander Planke, Miss. Augusta Maria"                       
+[40] "Nicola-Yarred, Miss. Jamila"                              
+[41] "Ahlin, Mrs. Johan (Johanna Persdotter Larsson)"           
+[42] "Turpin, Mrs. William John Robert (Dorothy Ann Wonnacott)" 
+[43] "Kraeff, Mr. Theodor"                                      
+[44] "Laroche, Miss. Simonne Marie Anne Andree"                 
+[45] "Devaney, Miss. Margaret Delia"                            
+[46] "Rogers, Mr. William John"                                 
+[47] "Lennon, Mr. Denis"                                        
+[48] "O'Driscoll, Miss. Bridget"                                
+[49] "Samaan, Mr. Youssef"                                      
+[50] "Arnold-Franchi, Mrs. Josef (Josefine Franchi)"            
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   mutate(title = 
++            str_extract(Name, pattern = ",\\s\\w*\\.") %>%
++            str_sub(start = 3, end = -2)
++            ) -> data
+> 
+> data
+[90m# A tibble: 1,309 x 13[39m
+   Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin Embarked is_train
+    [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m    [3m[90m<fct>[39m[23m   
+[90m 1[39m      3 Brau… male     22     1     0 A/5 2…  7.25 [31mNA[39m    S        train   
+[90m 2[39m      1 Cumi… fema…    38     1     0 PC 17… 71.3  C85   C        train   
+[90m 3[39m      3 Heik… fema…    26     0     0 STON/…  7.92 [31mNA[39m    S        train   
+[90m 4[39m      1 Futr… fema…    35     1     0 113803 53.1  C123  S        train   
+[90m 5[39m      3 Alle… male     35     0     0 373450  8.05 [31mNA[39m    S        train   
+[90m 6[39m      3 Mora… male     [31mNA[39m     0     0 330877  8.46 [31mNA[39m    Q        train   
+[90m 7[39m      1 McCa… male     54     0     0 17463  51.9  E46   S        train   
+[90m 8[39m      3 Pals… male      2     3     1 349909 21.1  [31mNA[39m    S        train   
+[90m 9[39m      3 John… fema…    27     0     2 347742 11.1  [31mNA[39m    S        train   
+[90m10[39m      2 Nass… fema…    14     1     0 237736 30.1  [31mNA[39m    C        train   
+[90m# … with 1,299 more rows, and 2 more variables: Survived [3m[90m<dbl>[90m[23m, title [3m[90m<chr>[90m[23m[39m
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   distinct(title)
+[90m# A tibble: 18 x 1[39m
+   title   
+   [3m[90m<chr>[39m[23m   
+[90m 1[39m Mr      
+[90m 2[39m Mrs     
+[90m 3[39m Miss    
+[90m 4[39m Master  
+[90m 5[39m Don     
+[90m 6[39m Rev     
+[90m 7[39m Dr      
+[90m 8[39m Mme     
+[90m 9[39m Ms      
+[90m10[39m Major   
+[90m11[39m Lady    
+[90m12[39m Sir     
+[90m13[39m Mlle    
+[90m14[39m Col     
+[90m15[39m Capt    
+[90m16[39m [31mNA[39m      
+[90m17[39m Jonkheer
+[90m18[39m Dona    
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% 
++   group_by(title) %>%
++   count() %>%
++   filter( n < 5) %>%
++   walk(glimpse) %>%
++   use_series(title) -> rare_title
+ chr [1:12] "Capt" "Col" "Don" "Dona" "Jonkheer" "Lady" "Major" "Mlle" ...
+ int [1:12] 1 4 1 1 1 1 2 2 1 2 ...
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rare_title
+ [1] "Capt"     "Col"      "Don"      "Dona"     "Jonkheer" "Lady"    
+ [7] "Major"    "Mlle"     "Mme"      "Ms"       "Sir"      NA        
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   select(title, Survived) %>%
++   filter(title == "Col")
+[90m# A tibble: 4 x 2[39m
+  title Survived
+  [3m[90m<chr>[39m[23m    [3m[90m<dbl>[39m[23m
+[90m1[39m Col          1
+[90m2[39m Col          0
+[90m3[39m Col         [31mNA[39m
+[90m4[39m Col         [31mNA[39m
+>   
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> title_error <- c("Mme", "Mlle", "Jonkheer", NA)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% 
++   select(Name, title) %>%
++   filter(title %in% title_error)
+[90m# A tibble: 5 x 2[39m
+  Name                                                       title   
+  [3m[90m<chr>[39m[23m                                                      [3m[90m<chr>[39m[23m   
+[90m1[39m [90m"[39mAubart, Mme. Leontine Pauline[90m"[39m                            Mme     
+[90m2[39m [90m"[39mSagesser, Mlle. Emma[90m"[39m                                     Mlle    
+[90m3[39m [90m"[39mMayne, Mlle. Berthe Antonine (\"Mrs de Villiers\")[90m"[39m       Mlle    
+[90m4[39m [90m"[39mRothes, the Countess. of (Lucy Noel Martha Dyer-Edwards)[90m"[39m [31mNA[39m      
+[90m5[39m [90m"[39mReuchlin, Jonkheer. John George[90m"[39m                          Jonkheer
+>   
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% 
++   replace_na(
++     list(title = "Countess")
++   ) -> data
+> 
+> rare_title[is.na(rare_title)] <- "Countess"
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   mutate(title = fct_collapse(factor(title),
++                               Rare_Title = rare_title)) -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> explore_survival <- function(...){
++   data %>%
++   group_by(...) %>% 
++   summarise(avg_survival = mean(Survived, na.rm = TRUE),
++             count = n(),
++             na_survived = sum(is.na(Survived))) %>%
++   arrange(avg_survival %>% desc())
++ }
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> explore_survival(title)
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 7 x 4[39m
+  title      avg_survival count na_survived
+  [3m[90m<fct>[39m[23m             [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m       [3m[90m<int>[39m[23m
+[90m1[39m Mrs               0.792   197          72
+[90m2[39m Miss              0.698   260          78
+[90m3[39m Rare_Title        0.643    18           4
+[90m4[39m Master            0.575    61          21
+[90m5[39m Dr                0.429     8           1
+[90m6[39m Mr                0.157   757         240
+[90m7[39m Rev               0         8           2
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #View(data)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %<>%
++   mutate(Pclass = factor(Pclass) %>%
++            fct_recode(Upper = "1",
++                       Middle = "2",
++                       Lower = "3")) %>%
++   rename(Status = Pclass)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   mutate(Port = str_extract(Ticket, pattern = ".*\\s") %>%
++            str_sub(start = 1, end = -2)) -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #View(data)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   group_by(Port) %>%
++   summarize(mean_survival = mean(Survived, na.rm = T),
++             count = n(),
++             na = sum(is.na(Survived))) %>%
++   arrange(mean_survival)
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 51 x 4[39m
+   Port       mean_survival count    na
+   [3m[90m<chr>[39m[23m              [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m [3m[90m<int>[39m[23m
+[90m 1[39m A./5.                  0     3     1
+[90m 2[39m A.5.                   0     3     1
+[90m 3[39m A/4                    0     6     3
+[90m 4[39m A/4.                   0     3     0
+[90m 5[39m A/S                    0     1     0
+[90m 6[39m A4.                    0     1     0
+[90m 7[39m C.A./SOTON             0     1     0
+[90m 8[39m CA                     0    10     4
+[90m 9[39m F.C.                   0     3     2
+[90m10[39m Fa                     0     1     0
+[90m# … with 41 more rows[39m
+>   
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> find_label <- function(pat){
++   str_subset(data$Port, pattern = pat) %>% unique()
++ }
+> 
+> A <- find_label("^A")
+> Paris <- find_label("(PA)|(Pa)")
+> S <- find_label("^S\\.") %>% setdiff(Paris)
+> W <- find_label("^W")
+> CA_died <-  c("C.A./SOTON", "CA", "CA.")
+> C_survived <- c("C", "C.A.")
+> P <- find_label("^P")
+> SOTON <- find_label("SOTON")
+> STON <- find_label("STON")
+> F_ <- find_label("^F")
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   mutate(Port = factor(Port)) %>%
++   mutate(Port = fct_collapse(Port,
++     A = A,
++     Paris = Paris,
++     S = S,
++     W = W,
++     CA_died = CA_died,
++     C_survived = C_survived,
++     P = P,
++     SOTON = SOTON,
++     STON = STON,
++     F_ = F_
++   )) -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% 
++   group_by(Port) %>%
++   count() %>%
++   arrange(n)
+[90m# A tibble: 20 x 2[39m
+[90m# Groups:   Port [20][39m
+   Port            n
+   [3m[90m<fct>[39m[23m       [3m[90m<int>[39m[23m
+[90m 1[39m LP              1
+[90m 2[39m SC/A.3          1
+[90m 3[39m SC/A4           1
+[90m 4[39m SC/AH Basle     1
+[90m 5[39m SCO/W           1
+[90m 6[39m SO/C            1
+[90m 7[39m SW/PP           1
+[90m 8[39m SC              2
+[90m 9[39m SC/AH           4
+[90m10[39m F_             13
+[90m11[39m S              18
+[90m12[39m Paris          19
+[90m13[39m W              19
+[90m14[39m CA_died        22
+[90m15[39m STON           22
+[90m16[39m SOTON          28
+[90m17[39m A              42
+[90m18[39m C_survived     54
+[90m19[39m P              98
+[90m20[39m [31mNA[39m            961
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% 
++   mutate(Port = fct_lump(Port, n = 10)) -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% 
++   group_by(Port) %>%
++   count() %>%
++   arrange(n)
+[90m# A tibble: 12 x 2[39m
+[90m# Groups:   Port [12][39m
+   Port           n
+   [3m[90m<fct>[39m[23m      [3m[90m<int>[39m[23m
+[90m 1[39m F_            13
+[90m 2[39m Other         13
+[90m 3[39m S             18
+[90m 4[39m Paris         19
+[90m 5[39m W             19
+[90m 6[39m CA_died       22
+[90m 7[39m STON          22
+[90m 8[39m SOTON         28
+[90m 9[39m A             42
+[90m10[39m C_survived    54
+[90m11[39m P             98
+[90m12[39m [31mNA[39m           961
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   select(Ticket, Port, Survived) %>%
++   filter(is.na(Port)) %>%
++   arrange(Ticket)
+[90m# A tibble: 961 x 3[39m
+   Ticket Port  Survived
+   [3m[90m<chr>[39m[23m  [3m[90m<fct>[39m[23m    [3m[90m<dbl>[39m[23m
+[90m 1[39m 110152 [31mNA[39m           1
+[90m 2[39m 110152 [31mNA[39m           1
+[90m 3[39m 110152 [31mNA[39m           1
+[90m 4[39m 110413 [31mNA[39m           0
+[90m 5[39m 110413 [31mNA[39m           1
+[90m 6[39m 110413 [31mNA[39m           1
+[90m 7[39m 110465 [31mNA[39m           0
+[90m 8[39m 110465 [31mNA[39m           0
+[90m 9[39m 110469 [31mNA[39m          [31mNA[39m
+[90m10[39m 110489 [31mNA[39m          [31mNA[39m
+[90m# … with 951 more rows[39m
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% 
++   mutate(Ticket_number = str_extract(Ticket, pattern = "(\\s[0-9]*)|(^[0-9]*$)") %>%
++            as.integer() %>%
++            as.character()) -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> find_num <- function(num){
++   str_subset(data$Ticket_number, pattern = paste("^", num, sep = "")) %>% unique()
++ }
+> 
+> 
+> data %>%
++   mutate(Ticket_group = factor(Ticket_number) %>% 
++            fct_collapse(
++              `1` = find_num(1),
++              `2` = find_num(2),
++              `3` = find_num(3),
++              `4` = find_num(4),
++              `5` = find_num(5),
++              `6` = find_num(6),
++              `7` = find_num(7),
++              `8` = find_num(8),
++              `9` = find_num(9),
++              other = NA
++            )) -> data
+Warning messages:
+1: Problem with `mutate()` input `Ticket_group`.
+[34mℹ[39m Unknown levels in `f`: NA
+[34mℹ[39m Input `Ticket_group` is ``%>%`(...)`. 
+2: Unknown levels in `f`: NA 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   group_by(Ticket_group) %>% 
++   summarise(avg_survival = mean(Survived, na.rm = TRUE),
++             count = n(),
++             na_survived = sum(is.na(Survived))) -> explore_ticket
+`summarise()` ungrouping output (override with `.groups` argument)
+> 
+> explore_ticket
+[90m# A tibble: 10 x 4[39m
+   Ticket_group avg_survival count na_survived
+   [3m[90m<fct>[39m[23m               [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m       [3m[90m<int>[39m[23m
+[90m 1[39m 1                  0.606    342         111
+[90m 2[39m 2                  0.409    364         122
+[90m 3[39m 3                  0.254    516         161
+[90m 4[39m 4                  0.133     22           7
+[90m 5[39m 5                  0.125      9           1
+[90m 6[39m 6                  0.071[4m4[24m    21           7
+[90m 7[39m 7                  0.267     20           5
+[90m 8[39m 8                  0          5           2
+[90m 9[39m 9                  1          5           2
+[90m10[39m [31mNA[39m                 0.4        5           0
+>   
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(data = explore_ticket %>% filter(Ticket_group %in% 1:3)) +
++   geom_bar(stat = "identity", aes(x = Ticket_group, y = avg_survival, fill = Ticket_group)) +
++   geom_text(mapping = aes(x = Ticket_group, y = .2, label = count))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #data %>% View()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   distinct(Embarked)
+[90m# A tibble: 4 x 1[39m
+  Embarked
+  [3m[90m<chr>[39m[23m   
+[90m1[39m S       
+[90m2[39m C       
+[90m3[39m Q       
+[90m4[39m [31mNA[39m      
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% 
++   filter(is.na(Embarked))
+[90m# A tibble: 2 x 16[39m
+  Status Name  Sex     Age SibSp Parch Ticket  Fare Cabin Embarked is_train
+  [3m[90m<fct>[39m[23m  [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m    [3m[90m<fct>[39m[23m   
+[90m1[39m Upper  Icar… fema…    38     0     0 113572    80 B28   [31mNA[39m       train   
+[90m2[39m Upper  Ston… fema…    62     0     0 113572    80 B28   [31mNA[39m       train   
+[90m# … with 5 more variables: Survived [3m[90m<dbl>[90m[23m, title [3m[90m<fct>[90m[23m, Port [3m[90m<fct>[90m[23m,[39m
+[90m#   Ticket_number [3m[90m<chr>[90m[23m, Ticket_group [3m[90m<fct>[90m[23m[39m
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   mutate(Cabin_Letter = str_extract(Cabin, pattern = "^[A-Z]"),
++          Cabin_Number = str_extract(Cabin, pattern = "[0-9]{1,3}"),
++          Cabin_Multiple = str_length(Cabin) > 4) -> data
+>   
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> explore_survival(Cabin_Letter) 
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 9 x 4[39m
+  Cabin_Letter avg_survival count na_survived
+  [3m[90m<chr>[39m[23m               [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m       [3m[90m<int>[39m[23m
+[90m1[39m D                   0.758    46          13
+[90m2[39m E                   0.75     41           9
+[90m3[39m B                   0.745    65          18
+[90m4[39m F                   0.615    21           8
+[90m5[39m C                   0.593    94          35
+[90m6[39m G                   0.5       5           1
+[90m7[39m A                   0.467    22           7
+[90m8[39m [31mNA[39m                  0.300  [4m1[24m014         327
+[90m9[39m T                   0         1           0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> explore_survival(Cabin_Number) %>% arrange(desc(count)) %>% arrange(Cabin_Number%>% as.integer())
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 105 x 4[39m
+   Cabin_Number avg_survival count na_survived
+   [3m[90m<chr>[39m[23m               [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m       [3m[90m<int>[39m[23m
+[90m 1[39m 2                   0.6       6           1
+[90m 2[39m 3                   1         1           0
+[90m 3[39m 4                   1         5           2
+[90m 4[39m 5                   0.667     3           0
+[90m 5[39m 6                   0.5       9           3
+[90m 6[39m 7                   0.667     4           1
+[90m 7[39m 8                   1         2           0
+[90m 8[39m 9                   1         2           1
+[90m 9[39m 10                  0.667     5           2
+[90m10[39m 11                  1         3           2
+[90m# … with 95 more rows[39m
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   mutate(caBIN = factor(Cabin_Number) %>%
++            fct_collapse(
++              `1-25` = str_c(1:25),
++              `26-55` = str_c(26:55),
++              `56-150` = str_c(56:150)
++            )) -> data
+Warning messages:
+1: Problem with `mutate()` input `caBIN`.
+[34mℹ[39m Unknown levels in `f`: 1, 13, 27, 59, 64, 66, 72, 74, 75, 76, 81, 84, 88, 98, 100, 107, 108, 109, 112, 113, 114, 115, 117, 119, 120, 122, 127, 129, 131, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 149, 150
+[34mℹ[39m Input `caBIN` is ``%>%`(...)`. 
+2: Unknown levels in `f`: 1, 13, 27, 59, 64, 66, 72, 74, 75, 76, 81, 84, 88, 98, 100, 107, 108, 109, 112, 113, 114, 115, 117, 119, 120, 122, 127, 129, 131, 133, 134, 135, 136, 137, 138, 139, 140, 141, 142, 143, 144, 145, 146, 147, 149, 150 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> explore_survival(caBIN)
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 4 x 4[39m
+  caBIN  avg_survival count na_survived
+  [3m[90m<fct>[39m[23m         [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m       [3m[90m<int>[39m[23m
+[90m1[39m 1-25          0.721    83          22
+[90m2[39m 26-55         0.683   101          38
+[90m3[39m 56-150        0.618   105          29
+[90m4[39m [31mNA[39m            0.301  [4m1[24m020         329
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> explore_survival(Cabin_Multiple)
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 3 x 4[39m
+  Cabin_Multiple avg_survival count na_survived
+  [3m[90m<lgl>[39m[23m                 [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m       [3m[90m<int>[39m[23m
+[90m1[39m FALSE                 0.678   254          74
+[90m2[39m TRUE                  0.583    41          17
+[90m3[39m [31mNA[39m                    0.300  [4m1[24m014         327
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #View(data)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% 
++   mutate(Family_Size = SibSp + Parch) -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> count_na <- function(){
++ data %>% 
++   select(-Survived) %>%
++   summarise_all(~sum(is.na(.))) %>% 
++   gather(key = "column", value = "na_count") %>%
++   filter(na_count > 0)
++ }
+> 
+> count_na()
+[90m# A tibble: 11 x 2[39m
+   column         na_count
+   [3m[90m<chr>[39m[23m             [3m[90m<int>[39m[23m
+[90m 1[39m Age                 263
+[90m 2[39m Fare                  1
+[90m 3[39m Cabin              [4m1[24m014
+[90m 4[39m Embarked              2
+[90m 5[39m Port                961
+[90m 6[39m Ticket_number         5
+[90m 7[39m Ticket_group          5
+[90m 8[39m Cabin_Letter       [4m1[24m014
+[90m 9[39m Cabin_Number       [4m1[24m020
+[90m10[39m Cabin_Multiple     [4m1[24m014
+[90m11[39m caBIN              [4m1[24m020
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   mutate(Sex = factor(Sex),
++          Survived = factor(Survived),
++          Embarked = factor(Embarked),
++          Cabin_Letter = factor(Cabin_Letter),
++          Cabin_Number = factor(Cabin_Number),
++          Cabin_Multiple = factor(Cabin_Multiple),
++          ) -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% head
+[90m# A tibble: 6 x 21[39m
+  Status Name  Sex     Age SibSp Parch Ticket  Fare Cabin Embarked is_train
+  [3m[90m<fct>[39m[23m  [3m[90m<chr>[39m[23m [3m[90m<fct>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m   
+[90m1[39m Lower  Brau… male     22     1     0 A/5 2…  7.25 [31mNA[39m    S        train   
+[90m2[39m Upper  Cumi… fema…    38     1     0 PC 17… 71.3  C85   C        train   
+[90m3[39m Lower  Heik… fema…    26     0     0 STON/…  7.92 [31mNA[39m    S        train   
+[90m4[39m Upper  Futr… fema…    35     1     0 113803 53.1  C123  S        train   
+[90m5[39m Lower  Alle… male     35     0     0 373450  8.05 [31mNA[39m    S        train   
+[90m6[39m Lower  Mora… male     [31mNA[39m     0     0 330877  8.46 [31mNA[39m    Q        train   
+[90m# … with 10 more variables: Survived [3m[90m<fct>[90m[23m, title [3m[90m<fct>[90m[23m, Port [3m[90m<fct>[90m[23m,[39m
+[90m#   Ticket_number [3m[90m<chr>[90m[23m, Ticket_group [3m[90m<fct>[90m[23m, Cabin_Letter [3m[90m<fct>[90m[23m,[39m
+[90m#   Cabin_Number [3m[90m<fct>[90m[23m, Cabin_Multiple [3m[90m<fct>[90m[23m, caBIN [3m[90m<fct>[90m[23m, Family_Size [3m[90m<dbl>[90m[23m[39m
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% 
++   mutate_if(is.factor, .funs = 'as.character') -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   replace_na(replace = list(
++     Cabin_Letter = 0,
++     Cabin_Number = 0, 
++     Cabin_Multiple = 0, 
++     Port = 0,
++     Ticket_group = 0,
++     caBIN = 0,
++     Survived = 0
++   )) -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   mutate_if(is.character, .funs = "factor") -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # data %>% 
+> #   mutate_at(.vars = vars(Cabin_Letter, Cabin_Number, Cabin_Multiple, Port, Ticket_group, caBIN), .funs = "addNA") -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> count_na()
+[90m# A tibble: 5 x 2[39m
+  column        na_count
+  [3m[90m<chr>[39m[23m            [3m[90m<int>[39m[23m
+[90m1[39m Age                263
+[90m2[39m Fare                 1
+[90m3[39m Cabin             [4m1[24m014
+[90m4[39m Embarked             2
+[90m5[39m Ticket_number        5
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   select(-Name, -Ticket, -Cabin, -Ticket_number, -Cabin_Number) -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> count_na()
+[90m# A tibble: 3 x 2[39m
+  column   na_count
+  [3m[90m<chr>[39m[23m       [3m[90m<int>[39m[23m
+[90m1[39m Age           263
+[90m2[39m Fare            1
+[90m3[39m Embarked        2
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% 
++   group_by(title) %>%
++   summarise(mean_age = mean(Age
++                             ,na.rm = T))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 7 x 2[39m
+  title      mean_age
+  [3m[90m<fct>[39m[23m         [3m[90m<dbl>[39m[23m
+[90m1[39m Dr            43.6 
+[90m2[39m Master         5.48
+[90m3[39m Miss          21.8 
+[90m4[39m Mr            32.3 
+[90m5[39m Mrs           37.0 
+[90m6[39m Rare_Title    42.9 
+[90m7[39m Rev           41.2 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% 
++   filter(title == 'Master')
+[90m# A tibble: 61 x 16[39m
+   Status Sex     Age SibSp Parch  Fare Embarked is_train Survived title Port 
+   [3m[90m<fct>[39m[23m  [3m[90m<fct>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m [3m[90m<fct>[39m[23m
+[90m 1[39m Lower  male   2        3     1  21.1 S        train    0        Mast… 0    
+[90m 2[39m Lower  male   2        4     1  29.1 Q        train    0        Mast… 0    
+[90m 3[39m Lower  male   7        4     1  39.7 S        train    0        Mast… 0    
+[90m 4[39m Lower  male  11        5     2  46.9 S        train    0        Mast… CA_d…
+[90m 5[39m Lower  male   4        3     2  27.9 S        train    0        Mast… 0    
+[90m 6[39m Lower  male  [31mNA[39m        1     1  15.2 C        train    1        Mast… 0    
+[90m 7[39m Middle male   0.83     0     2  29   S        train    1        Mast… 0    
+[90m 8[39m Lower  male  12        1     0  11.2 C        train    1        Mast… 0    
+[90m 9[39m Lower  male  [31mNA[39m        8     2  69.6 S        train    0        Mast… CA_d…
+[90m10[39m Lower  male   1        4     1  39.7 S        train    0        Mast… 0    
+[90m# … with 51 more rows, and 5 more variables: Ticket_group [3m[90m<fct>[90m[23m,[39m
+[90m#   Cabin_Letter [3m[90m<fct>[90m[23m, Cabin_Multiple [3m[90m<fct>[90m[23m, caBIN [3m[90m<fct>[90m[23m, Family_Size [3m[90m<dbl>[90m[23m[39m
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% 
++   group_by(title) %>% 
++   mutate(Age = if_else(is.na(Age), median(Age, na.rm = T), Age)) %>%
++   ungroup() -> data
+>   
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   group_by(Embarked) %>%
++   count()
+[90m# A tibble: 4 x 2[39m
+[90m# Groups:   Embarked [4][39m
+  Embarked     n
+  [3m[90m<fct>[39m[23m    [3m[90m<int>[39m[23m
+[90m1[39m C          270
+[90m2[39m Q          123
+[90m3[39m S          914
+[90m4[39m [31mNA[39m           2
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++  filter(!(Embarked %in% c("C", "Q", "S")))
+[90m# A tibble: 2 x 16[39m
+  Status Sex     Age SibSp Parch  Fare Embarked is_train Survived title Port 
+  [3m[90m<fct>[39m[23m  [3m[90m<fct>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m [3m[90m<fct>[39m[23m
+[90m1[39m Upper  fema…    38     0     0    80 [31mNA[39m       train    1        Miss  0    
+[90m2[39m Upper  fema…    62     0     0    80 [31mNA[39m       train    1        Mrs   0    
+[90m# … with 5 more variables: Ticket_group [3m[90m<fct>[90m[23m, Cabin_Letter [3m[90m<fct>[90m[23m,[39m
+[90m#   Cabin_Multiple [3m[90m<fct>[90m[23m, caBIN [3m[90m<fct>[90m[23m, Family_Size [3m[90m<dbl>[90m[23m[39m
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% 
++   replace_na(list(
++     Embarked = 'S'
++   )) -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   filter(is.na(Fare))
+[90m# A tibble: 1 x 16[39m
+  Status Sex     Age SibSp Parch  Fare Embarked is_train Survived title Port 
+  [3m[90m<fct>[39m[23m  [3m[90m<fct>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m [3m[90m<fct>[39m[23m
+[90m1[39m Lower  male   60.5     0     0    [31mNA[39m S        test     0        Mr    0    
+[90m# … with 5 more variables: Ticket_group [3m[90m<fct>[90m[23m, Cabin_Letter [3m[90m<fct>[90m[23m,[39m
+[90m#   Cabin_Multiple [3m[90m<fct>[90m[23m, caBIN [3m[90m<fct>[90m[23m, Family_Size [3m[90m<dbl>[90m[23m[39m
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   group_by(Status, Sex) %>%
++   summarize(medFare = median(Fare, na.rm = T))
+`summarise()` regrouping output by 'Status' (override with `.groups` argument)
+[90m# A tibble: 6 x 3[39m
+[90m# Groups:   Status [3][39m
+  Status Sex    medFare
+  [3m[90m<fct>[39m[23m  [3m[90m<fct>[39m[23m    [3m[90m<dbl>[39m[23m
+[90m1[39m Lower  female   10.5 
+[90m2[39m Lower  male      7.90
+[90m3[39m Middle female   23   
+[90m4[39m Middle male     13   
+[90m5[39m Upper  female   80.9 
+[90m6[39m Upper  male     49.5 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   group_by(Status, Sex) %>%
++   mutate(Fare = ifelse( is.na(Fare), median(Fare, na.rm = T), Fare)) %>% 
++   ungroup() -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #View(data)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> count_na()
+[90m# A tibble: 0 x 2[39m
+[90m# … with 2 variables: column [3m[90m<chr>[90m[23m, na_count [3m[90m<int>[90m[23m[39m
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% head()
+[90m# A tibble: 6 x 16[39m
+  Status Sex     Age SibSp Parch  Fare Embarked is_train Survived title Port 
+  [3m[90m<fct>[39m[23m  [3m[90m<fct>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m [3m[90m<fct>[39m[23m
+[90m1[39m Lower  male     22     1     0  7.25 S        train    0        Mr    A    
+[90m2[39m Upper  fema…    38     1     0 71.3  C        train    1        Mrs   P    
+[90m3[39m Lower  fema…    26     0     0  7.92 S        train    1        Miss  STON 
+[90m4[39m Upper  fema…    35     1     0 53.1  S        train    1        Mrs   0    
+[90m5[39m Lower  male     35     0     0  8.05 S        train    0        Mr    0    
+[90m6[39m Lower  male     29     0     0  8.46 Q        train    0        Mr    0    
+[90m# … with 5 more variables: Ticket_group [3m[90m<fct>[90m[23m, Cabin_Letter [3m[90m<fct>[90m[23m,[39m
+[90m#   Cabin_Multiple [3m[90m<fct>[90m[23m, caBIN [3m[90m<fct>[90m[23m, Family_Size [3m[90m<dbl>[90m[23m[39m
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>%
++   select(is_train, Survived, everything()) -> data
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> data %>% head %>% colnames() %>% setdiff(c("is_train", "Survived")) -> x_predictors
+> y_target <- "Survived"
+> 
+> train <- data %>% filter(is_train == "train") %>% select(-is_train)
+> test <- data %>% filter(is_train == "test") %>% select(-is_train, -Survived)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> model_matrix(data = data, formula = Survived ~ . -1) -> model_data
+> model_train <- model_data %>% filter(is_traintrain == 1) %>% select(-is_traintest, -is_traintrain) %>% bind_cols(train['Survived'])
+> model_test <-  model_data %>% filter(is_traintrain == 0) %>% select(-is_traintest, -is_traintrain)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> head(train)
+[90m# A tibble: 6 x 15[39m
+  Survived Status Sex     Age SibSp Parch  Fare Embarked title Port 
+  [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m  [3m[90m<fct>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m    [3m[90m<fct>[39m[23m [3m[90m<fct>[39m[23m
+[90m1[39m 0        Lower  male     22     1     0  7.25 S        Mr    A    
+[90m2[39m 1        Upper  fema…    38     1     0 71.3  C        Mrs   P    
+[90m3[39m 1        Lower  fema…    26     0     0  7.92 S        Miss  STON 
+[90m4[39m 1        Upper  fema…    35     1     0 53.1  S        Mrs   0    
+[90m5[39m 0        Lower  male     35     0     0  8.05 S        Mr    0    
+[90m6[39m 0        Lower  male     29     0     0  8.46 Q        Mr    0    
+[90m# … with 5 more variables: Ticket_group [3m[90m<fct>[90m[23m, Cabin_Letter [3m[90m<fct>[90m[23m,[39m
+[90m#   Cabin_Multiple [3m[90m<fct>[90m[23m, caBIN [3m[90m<fct>[90m[23m, Family_Size [3m[90m<dbl>[90m[23m[39m
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(h2o)
+Error in library(h2o) : there is no package called ‘h2o’
+Execution halted

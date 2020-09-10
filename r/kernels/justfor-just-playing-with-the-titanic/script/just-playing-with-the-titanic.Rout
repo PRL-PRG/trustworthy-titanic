@@ -1,0 +1,191 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> #####################################
+> # Just Playing with the Titanic
+> # Justfor, 2016
+> #####################################
+> 
+> #library(randomForest)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(rpart)
+> library(party)
+Loading required package: grid
+Loading required package: mvtnorm
+Loading required package: modeltools
+Loading required package: stats4
+Loading required package: strucchange
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: sandwich
+Warning messages:
+1: package ‘party’ was built under R version 3.6.2 
+2: package ‘zoo’ was built under R version 3.6.2 
+> 
+> set.seed(42)
+> 
+> # The train and test data is stored in the ../input directory
+> #train <- read.csv("../input/train.csv")
+> #test  <- read.csv("../input/test.csv")
+> 
+> train <- read.csv('../input/train.csv', stringsAsFactors = F)
+> test  <- read.csv('../input/test.csv', stringsAsFactors = F)
+> shuffle <- train[sample(nrow(train)),]
+> 
+> all_data <- bind_rows(shuffle, test)
+> 
+> str(all_data)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  561 321 153 74 228 146 634 49 128 303 ...
+ $ Survived   : int  0 0 0 0 0 0 0 0 1 0 ...
+ $ Pclass     : int  3 3 3 3 3 2 1 3 3 3 ...
+ $ Name       : chr  "Morrow, Mr. Thomas Rowan" "Dennis, Mr. Samuel" "Meo, Mr. Alfonzo" "Chronopoulos, Mr. Apostolos" ...
+ $ Sex        : chr  "male" "male" "male" "male" ...
+ $ Age        : num  NA 22 55.5 26 20.5 19 NA NA 24 19 ...
+ $ SibSp      : int  0 0 0 1 0 1 0 2 0 0 ...
+ $ Parch      : int  0 0 0 0 0 1 0 0 0 0 ...
+ $ Ticket     : chr  "372622" "A/5 21172" "A.5. 11206" "2680" ...
+ $ Fare       : num  7.75 7.25 8.05 14.45 7.25 ...
+ $ Cabin      : chr  "" "" "" "" ...
+ $ Embarked   : chr  "Q" "S" "S" "C" ...
+> 
+> # input the one missing value for Embarked
+> # Since many passengers embarked at Southampton, we give them the value S. C would be an alternative
+> table(all_data$Embarked)
+
+      C   Q   S 
+  2 270 123 914 
+> all_data$Embarked[c(62, 830)] <- "C"
+> all_data$Embarked <- factor(all_data$Embarked)
+> 
+> # Input Fare with median
+> all_data$Fare[1044] <- median(all_data[all_data$Pclass == '3' & all_data$Embarked == 'S', ]$Fare, na.rm = TRUE)
+> 
+> # Process Title from Name
+> all_data$Title <- gsub(".*\\ (.*)\\..*", "\\1", all_data$Name)
+> 
+> if(TRUE){
++     all_data$Title[all_data$Title == 'L'] <- 'Other'
++     all_data$Title[all_data$Title == 'Capt'] <- 'Other'
++     all_data$Title[all_data$Title == 'Countess'] <- 'Other'
++     all_data$Title[all_data$Title == 'Don'] <- 'Other'
++     all_data$Title[all_data$Title == 'Dona'] <- 'Other'
++     all_data$Title[all_data$Title == 'Mme'] <- 'Other'
++     all_data$Title[all_data$Title == 'Major'] <- 'Other'
++     all_data$Title[all_data$Title == 'Jonkheer'] <- 'Other'
++ 
++     # Also reassign mlle, ms, and mme accordingly
++     all_data$Title[all_data$Title == 'Mlle']        <- 'Miss' 
++     all_data$Title[all_data$Title == 'Ms']          <- 'Miss'
++     all_data$Title[all_data$Title == 'Mme']         <- 'Mrs' 
++     
++     rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
++                 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
++ 
++     all_data$Title[all_data$Title %in% rare_title]  <- 'Rare Title'
++ }
+> 
+> all_data$Title <- factor(all_data$Title)
+> 
+> all_data$Family_size <- all_data$Parch + all_data$SibSp + 1
+> 
+> all_data$FarePerPerson <- all_data$Fare / all_data$Family_size
+> 
+> all_data$Surname <- sapply(all_data$Name, FUN=function(x) {strsplit(x, split='[,.]')[[1]][1]})
+> 
+> all_data$FamilyID <- paste(as.character(all_data$Family_size), all_data$Surname, sep="")
+> all_data$FamilyID[all_data$Family_size < 2] <- 'Small'
+> famIDs <- data.frame(table(all_data$FamilyID))
+> famIDs <- famIDs[famIDs$Freq < 2,]
+> all_data$FamilyID[all_data$FamilyID %in% famIDs$Var1] <- 'Small'
+> print(length(unique(all_data$FamilyID)))
+[1] 176
+> all_data$FamilyID <- factor(all_data$FamilyID)
+> 
+> all_data$Sex <- factor(all_data$Sex)
+> 
+> str(all_data)
+'data.frame':	1309 obs. of  17 variables:
+ $ PassengerId  : int  561 321 153 74 228 146 634 49 128 303 ...
+ $ Survived     : int  0 0 0 0 0 0 0 0 1 0 ...
+ $ Pclass       : int  3 3 3 3 3 2 1 3 3 3 ...
+ $ Name         : chr  "Morrow, Mr. Thomas Rowan" "Dennis, Mr. Samuel" "Meo, Mr. Alfonzo" "Chronopoulos, Mr. Apostolos" ...
+ $ Sex          : Factor w/ 2 levels "female","male": 2 2 2 2 2 2 2 2 2 2 ...
+ $ Age          : num  NA 22 55.5 26 20.5 19 NA NA 24 19 ...
+ $ SibSp        : int  0 0 0 1 0 1 0 2 0 0 ...
+ $ Parch        : int  0 0 0 0 0 1 0 0 0 0 ...
+ $ Ticket       : chr  "372622" "A/5 21172" "A.5. 11206" "2680" ...
+ $ Fare         : num  7.75 7.25 8.05 14.45 7.25 ...
+ $ Cabin        : chr  "" "" "" "" ...
+ $ Embarked     : Factor w/ 4 levels "","C","Q","S": 3 4 4 2 4 4 4 2 4 4 ...
+ $ Title        : Factor w/ 6 levels "Master","Miss",..: 3 3 3 3 3 3 3 3 3 3 ...
+ $ Family_size  : num  1 1 1 2 1 3 1 3 1 1 ...
+ $ FarePerPerson: num  7.75 7.25 8.05 7.23 7.25 ...
+ $ Surname      : chr  "Morrow" "Dennis" "Meo" "Chronopoulos" ...
+ $ FamilyID     : Factor w/ 176 levels "11Sage","2Abelson",..: 176 176 176 20 176 176 176 143 176 176 ...
+> 
+> # Impute age
+> predicted_age <- cforest(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + 
++                         Family_size + FarePerPerson + FamilyID,
++                         data = all_data[!is.na(all_data$Age),],
++                         controls=cforest_unbiased(ntree=200, mtry=3))
+> all_data$Age[is.na(all_data$Age)] <- predict(predicted_age, all_data[is.na(all_data$Age),], 
++     OOB=TRUE, type = "response")
+Warning message:
+In all_data$Age[is.na(all_data$Age)] <- predict(predicted_age, all_data[is.na(all_data$Age),  :
+  number of items to replace is not a multiple of replacement length
+> 
+> all_data$Child[all_data$Age < 17] <- 'Child'
+> all_data$Child[all_data$Age >= 17] <- 'Adult'
+> all_data$Child <- factor(all_data$Child)
+> 
+> all_data$Mother <- 'Not Mother'
+> all_data$Mother[all_data$Sex == 'female' & all_data$Parch > 0 & 
++     all_data$Age > 17 & all_data$Title != 'Miss'] <- 'Mother'
+> all_data$Mother <- factor(all_data$Mother)
+> 
+> all_data$Deck<-substring(all_data$Cabin, 1, 1)
+> all_data$Deck <- factor(all_data$Deck)
+> table(all_data$Deck)
+
+        A    B    C    D    E    F    G    T 
+1014   22   65   94   46   41   21    5    1 
+> 
+> predicted_deck <- cforest(Deck ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + Child + Mother + Family_size + FarePerPerson + FamilyID,
++                        data = all_data[all_data$Deck != '',],
++                 controls=cforest_unbiased(ntree=200, mtry=3))

@@ -1,0 +1,208 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> train <- read.csv('../input/train.csv',stringsAsFactors=F)
+> test <- read.csv('../input/test.csv',stringsAsFactors=F)
+> test$Survived <- NA; allData <- rbind(train,test)
+> allData$TicketFreq <- ave(1:1309,allData$Ticket,FUN=length)
+> train$Title <- substring(train$Name,regexpr(',',train$Name)+2,regexpr('[.]',train$Name)-1)
+> train$Surname <- substring(train$Name,0,regexpr(',',train$Name)-1)
+> test$Title <- substring(test$Name,regexpr(',',test$Name)+2,regexpr('[.]',test$Name)-1)
+> test$Surname <- substring(test$Name,0,regexpr(',',test$Name)-1)
+> test$Fare[is.na(test$Fare)] = mean(allData$Fare[allData$Pclass==3],na.rm=T)
+> library(rpart)
+> ageFit <- rpart(Age ~ Title + Pclass + Sex + SibSp + Parch + Fare,train)
+> 
+> # RESPONSE: SURVIVED
+> trainData <- data.frame(Survived=train$Survived)
+> # FEATURE 1: GENDER
+> trainData$Sex <- 0
+> trainData$Sex[train$Sex=='female'] <- 1
+> # FEATURE 2: AGE
+> train$Age[is.na(train$Age)] <- predict(ageFit,train[is.na(train$Age),])
+> trainData$Age <- train$Age/80
+> # FEATURE 3: FAMILY SIZE
+> trainData$FamilySize <- (train$SibSp + train$Parch + 1)/11
+> # FEATURE 4: FARE ADJUSTED
+> trainData$FareAdj <- train$Fare/allData$TicketFreq[1:891]/222
+> # FEATURE 5: DID ONE FAMILY MEMBER SURVIVE?
+> trainData$FamilyOneSurvived <- 0
+> # FEATURE 6: DID ALL FAMILY MEMBERS DIE?
+> trainData$FamilyAllDied <- 0
+> for (i in 1:891){
++     x = which(train$Surname==train$Surname[i] & train$PassengerId!=i)
++     m <- mean(train$Survived[x])
++     if (!is.na(m) & m>0) trainData$FamilyOneSurvived[i] <- 1
++     if (!is.na(m) & m==0) trainData$FamilyAllDied[i] <- 1
++ }
+> write.csv(trainData,'trainData.csv',row.names=F)
+> 
+> head(trainData,10)
+   Survived Sex       Age FamilySize    FareAdj FamilyOneSurvived FamilyAllDied
+1         0   0 0.2750000 0.18181818 0.03265766                 0             1
+2         1   1 0.4750000 0.18181818 0.16054797                 0             0
+3         1   1 0.3250000 0.09090909 0.03569820                 0             0
+4         1   1 0.4375000 0.18181818 0.11959459                 0             1
+5         0   0 0.4375000 0.09090909 0.03626126                 1             0
+6         0   0 0.3666031 0.09090909 0.03810045                 1             0
+7         0   0 0.6750000 0.09090909 0.11680743                 0             0
+8         0   0 0.0250000 0.45454545 0.01898649                 0             1
+9         1   1 0.3375000 0.27272727 0.01671667                 1             0
+10        1   1 0.1750000 0.18181818 0.06772703                 0             1
+> 
+> # FEATURE 1: GENDER
+> testData <- data.frame(Sex=rep(0,418))
+> testData$Sex[test$Sex=='female'] <- 1
+> # FEATURE 2: AGE
+> test$Age[is.na(test$Age)] <- predict(ageFit,test[is.na(test$Age),])
+> testData$Age <- test$Age/80
+> # FEATURE 3: FAMILY SIZE
+> testData$FamilySize <- (test$SibSp + test$Parch + 1)/11
+> # FEATURE 4: FARE ADJUSTED
+> test$FareAdj <- test$Fare/allData$TicketFreq[892:1309]
+> testData$FareAdj <- test$Fare/allData$TicketFreq[892:1309]/222
+> # FEATURE 5: DID ONE FAMILY MEMBER SURVIVE?
+> testData$FamilyOneSurvived <- 0
+> # FEATURE 6: DID ALL FAMILY MEMBERS DIE?
+> testData$FamilyAllDied <- 0
+> for (i in 1:418){
++     x = which(train$Surname==test$Surname[i])
++     m <- mean(train$Survived[x])
++     if (!is.na(m) & m>0) testData$FamilyOneSurvived[i] <- 1
++     if (!is.na(m) & m==0) testData$FamilyAllDied[i] <- 1
++ }
+> test$OneSurvived <- testData$FamilyOneSurvived
+> test$AllDied <- testData$FamilyAllDied
+> write.csv(testData,'testData.csv',row.names=F)
+> 
+> library(neuralnet)
+> f <- as.formula('Survived ~ Sex + Age + FamilySize + FareAdj + FamilyOneSurvived + FamilyAllDied')
+> set.seed(8)
+> fit <- neuralnet(f,trainData,hidden=5,linear.output=F)
+> plot(fit)
+dev.new(): using pdf(file="Rplots6.pdf")
+> 
+> p <- compute(fit,testData); p <- ifelse(p[[2]]>0.5,1,0)
+> submit <- data.frame(PassengerId=892:1309,Survived=p)
+> write.csv(submit,'TitanicDeepNet.csv',row.names=F)
+> x = which( (test$Sex=='male' & p==1) | (test$Sex=='female' & p==0) )
+> row.names(test) <- 892:1309; test[x,c('Name','Sex','Age','SibSp','Parch','FareAdj','OneSurvived','AllDied')]
+                                                    Name    Sex       Age SibSp
+910                         Ilmakangas, Miss. Ida Livija female 27.000000     1
+913                            Olsen, Master. Artur Karl   male  9.000000     0
+925    Johnston, Mrs. Andrew G (Elizabeth Lily" Watson)" female 29.328244     1
+929                                   Cacic, Miss. Manda female 21.000000     0
+956                          Ryerson, Master. John Borie   male 13.000000     2
+972                                 Boulos, Master. Akar   male  6.000000     1
+981                          Wells, Master. Ralph Lester   male  2.000000     1
+1017                            Cribb, Miss. Laura Alice female 17.000000     0
+1024                       Lefebre, Mrs. Frank (Frances) female 29.328244     0
+1032                         Goodwin, Miss. Jessie Allis female 10.000000     5
+1045      Klasen, Mrs. (Hulda Kristina Eugenia Lofqvist) female 36.000000     0
+1053                      Touma, Master. Georges Youssef   male  7.000000     1
+1080                                     Sage, Miss. Ada female 18.940000     8
+1086                       Drew, Master. Marshall Brines   male  8.000000     0
+1088                     Spedden, Master. Robert Douglas   male  6.000000     0
+1093             Danbom, Master. Gilbert Sigvard Emanuel   male  0.330000     0
+1155                        Klasen, Miss. Gertrud Emilia female  1.000000     1
+1165                                  Lennon, Miss. Mary female 21.477273     1
+1172                              Oreskovic, Miss. Jelka female 23.000000     0
+1173                      Peacock, Master. Alfred Edward   male  0.750000     1
+1176                         Rosblom, Miss. Salli Helena female  2.000000     1
+1196                   McCarthy, Miss. Catherine Katie"" female 21.477273     0
+1199                           Aks, Master. Philip Frank   male  0.830000     0
+1201          Hansen, Mrs. Claus Peter (Jennie L Howard) female 45.000000     1
+1236                 van Billiard, Master. James William   male  6.447917     1
+1239     Whabee, Mrs. George Joseph (Shawneene Abi-Saab) female 38.000000     0
+1251 Lindell, Mrs. Edvard Bengtsson (Elin Gerda Persson) female 30.000000     1
+1257                      Sage, Mrs. John (Annie Bullen) female 29.328244     1
+1259        Riihivouri, Miss. Susanna Juhantytar Sanni"" female 22.000000     0
+1268                                   Kink, Miss. Maria female 22.000000     2
+1274                          Risien, Mrs. Samuel (Emma) female 29.328244     0
+1275                 McNamee, Mrs. Neal (Eileen O'Leary) female 19.000000     1
+1284                       Abbott, Master. Eugene Joseph   male 13.000000     0
+1309                            Peter, Master. Michael J   male  6.447917     1
+     Parch   FareAdj OneSurvived AllDied
+910      0  7.925000           0       1
+913      1  3.170800           0       1
+925      2  5.862500           0       1
+929      0  8.662500           0       1
+956      2 37.482143           1       0
+972      1  5.081933           0       1
+981      1  7.666667           1       0
+1017     1  8.050000           0       1
+1024     4  5.093340           0       1
+1032     2  5.862500           0       1
+1045     2  6.091650           0       1
+1053     1  5.081933           1       0
+1080     2  6.322727           0       1
+1086     2 10.833333           1       0
+1088     2 26.900000           1       0
+1093     2  4.800000           0       1
+1155     1  6.091650           0       1
+1165     0  7.750000           0       1
+1172     0  8.662500           0       1
+1173     1  4.591667           0       0
+1176     1  6.737500           0       1
+1196     0  7.750000           0       1
+1199     1  4.675000           1       0
+1201     0  7.054150           0       1
+1236     1  4.833333           0       1
+1239     0  7.229200           0       0
+1251     0  7.775000           0       1
+1257     9  6.322727           0       1
+1259     0  5.669643           0       0
+1268     0  8.662500           0       1
+1274     0  7.250000           0       1
+1275     0  8.050000           0       1
+1284     2  6.750000           1       0
+1309     1  7.452767           1       0
+> 
+> set.seed(1)
+> sum = 0
+> trials=10
+> cat(sprintf("Beginning %d trials of CV\n",trials))
+Beginning 10 trials of CV
+> for (i in 1:trials){
++     s = sample(1:891,180)
++     fit <- neuralnet(f,trainData[-s,],hidden=5,linear.output=F)
++     p <- compute(fit,trainData[s,-1])
++     p <- ifelse(p[[2]]>0.5,1,0)
++     c = sum(abs(p-trainData$Survived[s]))
++     cat(sprintf("  i=%d acc=%f\n",i,1-c/180))
++     sum = sum + c
++ }
+  i=1 acc=0.827778
+  i=2 acc=0.850000
+  i=3 acc=0.838889
+  i=4 acc=0.811111
+  i=5 acc=0.800000
+  i=6 acc=0.811111
+  i=7 acc=0.777778
+  i=8 acc=0.850000
+  i=9 acc=0.872222
+  i=10 acc=0.816667
+> cat(sprintf("Average CV over %d trials = %f",trials,1-sum/(180*trials)))
+Average CV over 10 trials = 0.825556> 
+> proc.time()
+   user  system elapsed 
+ 35.265   4.314  39.643 

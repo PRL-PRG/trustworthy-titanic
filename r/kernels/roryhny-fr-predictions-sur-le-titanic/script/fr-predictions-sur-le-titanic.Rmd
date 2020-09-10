@@ -1,0 +1,567 @@
+---
+title: "FR - Predictions sur la survie des passagers du Titanic"
+author: "Romain HENRY"
+output:
+  html_document:
+    highlight: "tango"
+    number_sections: yes
+    toc: yes
+  pdf_document:
+    toc: yes
+---
+
+*Note: As many documents already exist in English, this kernel has been willingly written in French*
+
+# Introduction
+
+Le but de cet exercice consiste à créer un modèle de prédiction de la survie des passagers du Titanic suite à son naufrage. C'est également une première application concrète de l'apprentissage machine sur un jeu de données réel. Le jeu de données contient initialement les données des 1309 passagers du Titanic, réparties sur 12 variables.
+
+## Le Titanic, un symbole tragique:
+
+Le *RMS Titanic*  était un paquebot transatlantique britannique, tragiquement célèbre pour son naufrage. Construit entre 1909 et 1912 par la *White Star Line*, le Titanic est à l'époque le plus grand et le plus luxueux paquebot, présenté comme le plus sûr grâce à une construction innovante de sa coque, censée être à l'épreuve des voies d'eau.  
+
+
+Bien qu'il soit qualifié d' "insubmersible", le paquebot fait naufrage lors de son voyage inaugural reliant Southampton (GB) à New York (EU) et alors qu'il transportait environ 2200 personnes *(Les chiffres exacts sont aujourd'hui encore inconnus, notamment ? cause des embarcations clandestines)* . L'origine du naufrage est une collision avec un iceberg que le Titanic percute le 14 Avril 1912 à 23h40. L'onde de choc de cette collision fait sauter les rivets et crée une voie d'eau dans la coque et sous la ligne de flottaison. Les enquêtes qui suivront le drame révèlent différentes causes de cet accident, tels que la vitesse, les conditions climatiques et naturelles, l'insuffisance matérielle ou encore une fragilisation antérieure par un incendie durant la phase de test du navire. L'ordre d'évacuation du navire est donnée à 0h25, l'évacuation se fait dans des conditions difficiles et le personnel n'est pas formé aux procédures d'urgence. De plus, le nombre de places disponibles sur les canots de sauvetage est inférieur au nombre de personnes présentes à bord. De nombreux SOS sont envoyés avec les TSF de l'époque, mais les navires voyageant sur la même ligne sont trop éloignés ou insuffisamment rapides pour porter secours aux passagers du Titanic à temps.  
+Le navire sombre totalement dans l'Atlantique le 15 Avril 1912 à 2h20. La mauvaise gestion de l'évacuation (comme les canots qui sont affalés alors qu'ils ne sont pas remplis) et les eaux très froides de l'Atlantique Nord causeront la mort de 1490 personnes pour 771 survivants. Son épave est localisée 73 ans plus tard, le 1^er^ Septembre 1985, par une équipe d'explorateurs Franco-Américains. Cet évènement est un drame majeur de la navigation maritime et demeure très connu de nos jours par les nombreux documentaires et fictions qui lui sont dédiés.
+
+## Premier regard sur les données et signification des variables:
+
+Le challenge propose de télécharger deux fichiers CSV: `train.csv` et `test.csv`.
+Le fichier `train.csv` contient les données qui permettront la construction de l'algorithme d'apprentissage. Le fichier `test.csv` contient les données sur lesquelles l'algorithme sera testé. Chaque passager possède un identifiant unique allant de 1 à 891 pour le fichier `train.csv` et de 892 à 1309 pour le fichier `test.csv`. Ces fichiers ne contiennent pas de données sur les membres de l'équipage, ce qui explique l'écart avec le nombre de personnes présentes à bord.
+
+
+Variables     | Description                                            | Notes sur les valeurs
+--------------|--------------------------------------------------------|--------------------------
+PassengerID   | Identifiant du passager                                | Entier compris entre 1 et 1309
+Survived      | Survivant ?                                            | 1 si le passager a survecu, 0 s'il est décédé
+Pclass        | Classe du passager                                     | 1 = 1^ère^ classe, 2 = 2^ème^ classe, 3 = 3^ème^ classe
+Name          | Nom et titre du passager                               | Style: Nom, titre. Prénoms
+Sex           | Sexe du passager                                       | 'male' ou 'female'
+Age           | Age du passager                                        | Décimal si inférieur à 1, estimé si de la forme xx.5
+SibSp         | Nombre d'époux, de frères ou de soeurs présents à bord | 
+Parch         | Nombre de parents ou d'enfants présents à bord         | 
+Ticket        | Numéro du ticket                                       | 
+Fare          | Prix des tickets                                       | Le prix est indiqué en  £ et pour un seul achat (peut correspondre à plusieurs tickets)
+Cabin         | Numéro de Cabine                                       | Un ou plusieurs numéro de cabine, de la forme 'A123'
+Embarked      | Port d'embarcation                                     | C =  Cherbourg, Q = Queenstown, S =  Southampton
+
+
+## Mise en place des librairies:
+
+```{r packages, warning=F, message=F}
+library(dplyr)           # Manipulation df
+library(ggplot2)         # Visualisation
+library(stringr)         # Manipulation carcts
+library(magrittr)        # Outil %>%
+library(randomForest)    # Algorithme
+```
+
+## Importations des fichiers CSV:
+
+On importe les premiers data frames `train` et `test`.  
+*Note: pour l'homogénéité linguistique avec les données proposées, les élements créés sont en anglais.*
+
+```{r, message=F}
+train <- read.csv('../input/train.csv', stringsAsFactors = F)
+test <- read.csv('../input/test.csv', stringsAsFactors = F)
+```
+
+Puis on regroupe en un seul data frame toutes les données: `full`.
+
+```{r, message=F}
+full <- bind_rows(train,test)
+```
+
+## Fonctions de recherche des valeurs manquantes:
+
+Pour retrouver les valeurs manquantes dans les différents data frame, on construit une fonction `NA_finder()` qui permet de localiser et sommer les NAs, espaces et caractères vides par variables.
+
+```{r, message=F}
+NA_finder <- function(df){
+  
+  NA_sum_t <- data.frame(VarPos = c(1:ncol(df)),
+                         VarName = rep(0),
+                         SumNA = rep(0),
+                         SumEmpty = rep(0),
+                         SumSpaces = rep(0))
+  
+  for(i in 1:ncol(df)){
+    if(sum(is.na(df[,i])) > 0){
+      NA_sum_t[i,'SumNA'] <- sum(is.na(df[,i]))
+      NA_sum_t[i, 'VarName'] <- names(df)[i]
+    } else if(length(which(df[,i] == '')) > 0){
+      NA_sum_t[i,'SumEmpty'] <- length(which(df[,i] == ''))
+      NA_sum_t[i, 'VarName'] <- names(df)[i]
+    } else if(length(which(df[,i] == ' ')) > 0){
+      NA_sum_t[i,'SumSpaces'] <- length(which(df[,i] == ' '))
+      NA_sum_t[i, 'VarName'] <- names(df)[i]
+    }
+  }
+  
+  NA_sum_res <- NA_sum_t %>%
+    filter(SumNA > 0 | SumEmpty > 0 | SumSpaces > 0) %>%
+    arrange(VarPos)
+  
+  return(NA_sum_res)
+  
+}
+
+```
+
+On utilise cette fonction sur `full`
+
+```{r}
+NA_finder(full)
+```
+
+Les 418 valeurs manquantes pour la variable `Survived` sont les prédictions à réaliser de la table `test`.
+
+# Création des nouvelles variables et enrichissement
+
+
+## Variables `Surname`, `Fstname` et `Title`:
+
+Les données renseignés dans la variable `Name` sont de la forme `Moran, Mr. James` - soit 'Nom, Titre. Prénom' . On décompose donc la variable en 3 nouvelles variables: `Surname`,`Title` et `Fstname`.
+
+```{r, message = F}
+split_name <- str_split(full$Name,'[.*,]') # Decomposition Name en 3 parties
+
+full['Surname'] <- rep(0) # Creation variable Nom de famille
+full['Fstname'] <- rep(0) # Creaation variable Prenom
+full['Title']   <- rep(0) # Creaation variable Titre
+
+ # Creation variables
+
+for(i in 1:1309){
+  full[i,'Surname'] <- split_name[[i]][1]
+}
+for(i in 1:1309){
+  full[i,'Fstname'] <- split_name[[i]][3]
+}
+for(i in 1:1309){
+  full[i,'Title'] <- split_name[[i]][2]
+}
+
+full$Title <- gsub('(.*\\s)',"",full$Title) # Suppression des espaces dans les titres
+
+```
+
+Il est alors possible de commencer à étudier la répartition des différents titres:
+
+```{r}
+table(full$Sex,full$Title) # Repartition selon le titre
+
+table(full$Pclass, full$Title) # Repartition selon la classe
+```
+
+4 titres principaux se distinguent: 
+
+* `Master`, titre des jeunes garçons
+* `Miss`, titre des jeunes filles et femmes non mariées
+* `Mr`
+* `Mrs`
+
+Le titre `Rev` désigne des révérends est sera confondu avec le titre `Mr` pour notre étude.  
+De même pour le titre `Dr`- qui désigne ici les auteurs d'une thèse, qu'ils soient médecins ou non - excépté pour l'unique doctorante.  
+Le titre `Ms` sera confondu avec le titre `Miss`.  
+Les autres titres sont des titres de noblesse - `Mme` et `Mlle` également - et seront regroupés sous la même catégorie: `Special`.
+
+```{r, message=F}
+special_titls <- c( "Don","Mme","Major","Lady","Sir","Mlle",
+                    "Col","Capt","Countess","Jonkheer","Dona") 
+
+for(i in 1:nrow(full)){
+  if(full[i,'Title'] == 'Ms'){
+    full[i, 'Title'] <- 'Miss'
+  } else if(full[i,'Title'] == 'Rev'){
+    full[i, 'Title'] <- 'Mr'
+  } else if(full[i,'Title'] == 'Dr' & full[i,'Sex'] == 'male'){
+    full[i, 'Title'] <- 'Mr'
+  } else if(full[i,'Title'] == 'Dr' & full[i,'Sex'] == 'female'){
+    full[i, 'Title'] <- 'Mrs'
+  } else if(full[i,'Title'] %in% special_titls){
+    full[i, 'Title'] <- 'Special'
+  }
+}
+
+```
+
+## Variable `FamNr`:
+
+Les variables `SibSp` et `Parch` donnent une indication sur les nombres de proches présents à bord pour chaque passager. La somme de ces variables aboutie à la taille de la famille pour chaque passager: `FamNr`
+
+```{r, message=F}
+full <- full %>%
+        mutate(FamNr = SibSp + Parch )
+```
+
+## Enrichissement de la variable `Fare`:
+
+Dans cette section, on cherche à renseigner la valeur manquante de la variable `Fare`. Cherchons le port d'embarcation, la classe de cette personne et son nombre de proches à bord:
+
+```{r}
+full[which(is.na(full$Fare)),c('PassengerId','Pclass','Embarked','FamNr')]
+```
+
+Cette personne a voyagé seule avec un ticket de 3ème classe et a embarqué a Southampton. Une bonne solution consiste à attribuer la médiane du prix payé pour cette catégorie de personne.
+
+```{r, message = F}
+p3Sou <- full %>% filter(Pclass == 3 & Embarked == 'S' & FamNr == 1)
+full[1044, 'Fare'] <- median(p3Sou$Fare, na.rm = T)
+
+```
+
+
+## Variables `Perptick` et `Fare_unit`:
+
+La variable `Fare` indique le prix payé pour un ticket donné, contenu dans la variable `Ticket`. Les personnes voyageant ensembles ont bien souvent acheté leurs places sous le même ticket, c'est le cas des familles. On crée une variable `Perptick` pour obtenir le nombre de personnes qui voyagent avec le même ticket. La formule suivante permet d'obtenir le prix payé par personne: $Fare\_unit = Fare/Perptick$ . Par commodité, on arrondira tous les prix résultants au centime.
+
+```{r}
+
+# Recherche des tickets identiques
+
+for(i in 1:nrow(full)){
+  full$Perptick[i] <- 0
+  for(j in 1:nrow(full)){
+    if(full[j, 'Ticket'] == full[i, 'Ticket']){
+      full[i, 'Perptick'] <- full[i, 'Perptick'] + 1
+    } 
+  }
+}
+
+```
+
+```{r, message=F}
+# Variable du prix a l'unite
+
+full$Fare_unit <- round(full$Fare / full$Perptick, 2)
+```
+
+## Variable `Deck`:
+
+Seuls les passagers de 1^ère^ classe et certains de 2^ème^ classe disposaient d'un numéro de cabine pour le voyage. Ces cabines étaient répartis entre les ponts A et E pour les 1^ère^ classe, et de D à G pour les autres. Cette donnée présente un intérêt pour l'étude de la survie, notamment celle des premières classes, car les cabines du pont A se trouvaient au plus proches des canots de sauvetage, tandis que les cabines du pont G étaient les plus éloignées. Pour connaitre le pont de la cabine des passagers, on récupère la première lettre contenue dans les données de la variable `Cabin`. On assignera aux valeurs vides - '' - la valeur `'Unk'`. La cabine `'T'` est une cabine de classe supérieure située sur le pont A.
+
+```{r}
+full$Deck <- sapply(X = full$Cabin, FUN = function(x){str_split(x, '[[:digit:]]')[[1]][1]}) 
+full[which(full$Deck == 'F G'),'Deck'] <- 'F'
+full[which(full$Deck == 'F E'),'Deck'] <- 'F'
+full[which(full$Deck == 'T'),'Deck'] <- 'A'
+
+for(i in 1:1309){
+  if(full[i,'Deck'] == ''){
+    full[i,'Deck'] <- 'Unk'
+  }
+}
+
+```
+
+## Enrichissement de la variable `Embarked`:
+
+La fonction `NA_finder()` appliquée sur `full` a retourné deux valeurs vides pour la variable `Embarked`. Comme nous connaissons pour chaque passager le prix unitaire du ticket, une étude des prix en fonction des différents ports d'embarcation et pour une classe donnée permettra d'en déduire ces valeurs. 
+
+```{r}
+# Prix des tickets des embarcations inconnues
+
+full[which(full$Embarked == ''), c('PassengerId','Pclass','Ticket','Fare_unit')]
+
+```
+
+Nous remarquons qu'il s'agit d'un même billet, payé 40£ par personne. Observons la répartition des prix des tickets de 1^ère^ classe avec des boîtes à moustache:
+
+```{r}
+
+ggplot(filter(full, Pclass == 1 & Embarked != ''), aes(x = factor(Embarked), y = Fare_unit)) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = 40), col = 'red', linetype = 'dashed') +
+  labs(x = 'Port', y = 'Prix (en £)', title = 'Prix du ticket selon les ports') +
+  coord_cartesian(ylim = c(5,60))
+
+
+```
+
+On peut donc supposer que ces personnes ont embarquées à Cherbourg.
+
+```{r, message = F}
+
+full[which(full$Embarked == ''), 'Embarked'] <- 'C'
+
+```
+
+
+# Enrichissement de la variable `Age`
+
+## Préparation des données:
+
+La variable `Age` est désormais la dernière variable qui nécessite un travail de préparation. Cette variable, indispensable pour l'algorithme de classification, comporte de nombreuses valeurs manquantes. Le but sera de créer une nouvelle variable catégorique décrivant la classe d'âge. On peut tout d'abord diviser le data frame `full` en deux parties: `age_k` et `age_unk`.
+
+```{r, message=F}
+
+full$Age <- round(full$Age, 0) # Arrondi pour les valeurs estimees
+age_unk <- full[which(is.na(full$Age)),] # Df age inconnu
+age_k <- full[-which(is.na(full$Age)),] # Df age connu
+
+age_k_surv <- age_k[which(age_k$PassengerId %in% c(1:891)),] # age connu et donnees survie
+
+```
+
+Les résultats obtenus pour `age_k` seront reportés sur `age_unk`, possible car le nombre d'observations que comporte `age_k` est bien supérieur à celui de `age_unk`. Le data frame `age_k_surv` permettra des études de survie sur des âges connus.
+
+## Détermination du seuil enfant-adulte:
+
+Au cours du naufrage du Titanic, les officiers avaient pour ordre d'évacuer en priorité les femmes et les enfants. Mais en 1912, la limite entre l'enfance et l'âge adulte n'était pas la même qu'aujourd'hui. Vérifions cela avec une visualisation montrant la survie en fonction de l'âge et du sexe:
+
+```{r, message=F,echo = T}
+
+youngs <- filter(age_k_surv, Age < 20) # Passagers de moins de vingt ans
+
+ggplot(youngs, aes(x = Age, fill = factor(Survived))) +
+  geom_histogram(position = 'dodge') +
+  geom_hline(aes(yintercept = 5), col = 'red', linetype = 'dashed') +
+  scale_y_continuous(breaks = c(0:15)) +
+  scale_fill_discrete(name = 'A survecu?', labels = c('Non','Oui')) +
+  facet_wrap( ~ Sex) +
+  labs(title = 'Survie des jeunes passagers') 
+  
+
+```
+
+
+Malheureusement, on constate que les données sont insuffisamment nombreuses: la ligne horizontale rouge est placée à 5. En dessous de cette valeur, on ne peut rien en déduire. On peut cependant augmenter l'intervalle de la variable `Age`, en passant de 1 à 5.
+
+```{r}
+
+ggplot(youngs, aes(x = Age, fill = factor(Survived))) +
+  geom_histogram(position = 'dodge', binwidth = 5) + # intervalle de 5
+  geom_hline(aes(yintercept = 5), col = 'red', linetype = 'dashed') +
+  scale_fill_discrete(name = 'A survecu?', labels = c('Non','Oui')) +
+  facet_wrap( ~ Sex) +
+  labs(title = 'Survie des jeunes passagers') 
+  
+
+```
+
+L'histogramme est désormais exploitable: on remarque une nette augmentation de décés pour les jeunes hommes à partir de 15 ans. On conviendra donc d'un âge de passage à l'âge adulte de 15 ans.
+
+## Étude de l'âge en fonction du titre:
+
+Afin d'enrichir les données de la variable `Age`, on utilisera dans un premier temps la variable `Title`, qui en est une bonne indication.
+
+```{r}
+ggplot(age_k, aes(x = Title, y = Age, group = Title)) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = 14), col = 'red', linetype = 'dashed')
+```
+
+La ligne rouge en pointillé représente l'âge de 14 ans, soit la limite de l'enfance que nous avons décidée précédemment et qui se trouve vérifiée en comparant les titres `Master` et `Mr`.  
+La variable est significative pour catégoriser les âges inconnus pour la plupart des titres. 
+
+### Cas du titre `Miss`:
+
+Le titre `Miss` demande une étude plus précise pour pouvoir être traité avec précision. Effectivement, un jeune garçon obtiendra le titre `Mr` à son passage à l'âge adulte tandis qu'une `Miss` deviendra `Mrs` après son mariage. La boîte à moustache précédente met ce point en évidence avec la présence d'outliers au-delà de 50 ans, qui correspondent à des femmes qui ne se sont jamais mariées.  
+
+On utilisera dans un premier temps la variable `FamNr`, qui nous permet de détecter les `Miss` qui voyagent sans famille:
+
+```{r}
+ggplot(filter(age_k, Title == 'Miss'), aes(x = factor(FamNr), y = Age, group = FamNr)) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = 14), col = 'red', linetype = 'dashed')
+```
+### `Miss` sans famille:
+
+Aucune boîte à moustache n'est assez précise pour être exploitée. Un point remarquable cependant: on découvre que des jeunes filles, et jusqu'à environ 5 ou 6 ans, voyageaient sans famille. Ces jeunes filles voyageaient sans doute sous la tutelle d'une personne sans lien familial. Observons les proportions de la variable `Perptick` pour les `Miss` sans famille (Variable `FamNr` à 0):
+
+```{r}
+
+ggplot(filter(age_k, Title == 'Miss' & FamNr == 0), aes(x = factor(Perptick), y = Age, group = Perptick)) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept = 14), col = 'red', linetype = 'dashed')
+
+```
+
+Ce graphique nous montre que les toutes les jeunes filles voyageant sans famille partagent leur ticket avec 1 seule autre personne (Perptick == 2). Ces jeunes filles représentent moins de 25% des données sur la variable `Perptick`, et si l'on tient compte du diagramme en bâton suivant:
+
+
+```{r}
+
+ggplot(filter(age_k, Title == 'Miss' & FamNr == 0), aes(x = factor(Perptick))) +
+  geom_bar(fill = 'blue', alpha = 0.5) 
+
+```
+On décide de ne pas prendre en compte ce cas particulier car il est d'une part trop peu représentatif (1 ou 2 `Miss` seulement se retrouvent dans le cas d'un voyage avec une nourrice) et conduirait d'autre part à un risque de surestimation du modèle.
+
+### Décision:
+
+Finalement, on conviendra que l'enrichissement de l'âge des `Miss` se fera en prenant les médianes obtenues avec la variable `FamNr`. Il serait tout de même intéressant de revenir sur ce point à l'avenir, dans un but d'amélioration du modèle.
+
+## Enrichissement du data frame `age_unk`:
+
+Dans un premier temps, la variable `Title` est une bonne indication de l'âge d'un passager. Ensuite, l'information apportée par la variable `FamNr` permet de déduire avec plus de précision l'âge exact, notamment pour le titre `Miss`. On utilisera ces deux variables pour renseigner tous les âges inconnus.  
+
+On commence par créer un data frame regroupant les médianes des âges de `age_k` en fonction de ces deux variables, `age_TitFam_Med`:
+
+```{r, results=F}
+
+age_TitFam_Med <- age_k %>% 
+  group_by(Title, FamNr) %>%
+  summarise(Age_median = median(Age)) %>%
+  ungroup()
+
+```
+
+Puis on applique une jointure à gauche de `age_unk` sur `age_TitFam_med`:
+
+```{r, results=F}
+
+age_unk <- left_join(age_unk, age_TitFam_Med, by = c("Title","FamNr"))
+
+```
+
+Ensuite, on applique la fonction `NA_finder()` créée précédemment pour vérification:
+
+```{r}
+
+filter(NA_finder(age_unk), VarName == 'Age_median')
+
+```
+
+On constate que 10 observations n'ont pas d'âges médians. Identifions ces observations:
+
+```{r}
+
+age_unk[which(is.na(age_unk$Age_median)),c("PassengerId","Name","SibSp",
+                                           "Parch","Title","Perptick","Age_median")]
+
+```
+
+Pratiquement tous les passagers font partis de la famille *Sage*, plus un jeune homme voyageant seul du nom de *Betros*. Ici, on attribuera l'âge médian en fonction de la variable `Parch`: 14 ans si `Parch` == 0, 16 si `Parch`== 2 et enfin 40 si `Parch`== 9. On complète ensuite les âges médians dans la variable `Age` et on regroupe les data frame `age_k` et `age_unk` en `full`
+
+
+```{r, results=F}
+
+for(i in 1 : nrow(age_unk)){
+  
+  if(is.na(age_unk$Age_median)[i] & age_unk$Parch[i] == 0){
+    age_unk[i,"Age_median"] <- 14
+  } else if(is.na(age_unk$Age_median)[i] & age_unk$Parch[i] == 2){
+    age_unk[i,"Age_median"] <- 16
+  } else if(is.na(age_unk$Age_median)[i] & age_unk$Parch[i] == 9){
+    age_unk[i,"Age_median"] <- 40
+  }
+  
+}
+
+for(i in 1 : nrow(age_unk)){
+  age_unk[i, "Age"] <- round(age_unk[i,"Age_median"],0)
+}
+
+full_bind <- bind_rows(age_k,age_unk[,c(1:19)])
+
+full <- full_bind[order(full_bind$PassengerId),]
+
+
+```
+
+## Création d'une classe d'âge:
+
+Dans cette section, le but est de catégoriser la variable `Age` en différentes classes d'âge en une nouvelle variable `Aclass`. On choisira ici:
+
+* `Baby` pour les passagers de 0 à 2 ans
+* `Child` pour les passagers de 3 à 14 ans
+* `Adult` pour les passagers de 15 à 59 ans
+* `Old` pour les passagers de 60 ans ou plus
+
+```{r}
+for(i in 1:nrow(full)){
+  if(full[i,"Age"] < 3){
+    full$Aclass[i] <- "Baby"
+  } else if(full[i,"Age"] >= 3 & full[i,"Age"] < 15){
+    full$Aclass[i] <- "Child"
+  } else if(full[i,"Age"] >= 15 & full[i,"Age"] < 60){
+    full$Aclass[i] <- "Adult"
+  } else {
+    full$Aclass[i] <- "Old"
+  }
+} 
+
+```
+
+Enfin, on effectue une dernière vérification avant le passage à l'algorithme:
+
+```{r}
+
+NA_finder(full)
+
+```
+Tout est bon, il 'y a plus de valeurs exceptionnelles ou vides (la variable `Deck` remplaçant la variable `Cabin`).
+
+
+# Mise en place de l'algorithme
+
+## Choix de l'algorithme:
+
+On utilisera pour cette étude une forêt d'arbres décisionnels, qui convient bien pour les classifications. De plus, l'indépendance des variables entre elles n'ayant pas été évoquée dans ce rapport, cet algorithme est beaucoup moins sensible aux corrélations des variables (à la différence du classification naïve Bayésienne).
+
+## Factorisation des variables catégoriques/discrètes:
+
+On catégorise ou discrétise les variables:
+
+```{r}
+
+cat_vars <- c('Aclass','Pclass','Sex','Embarked','Title','FamNr','Deck')
+
+
+full[cat_vars] <- lapply(full[cat_vars], function(x) as.factor(x))
+
+```
+
+## Création de l'algorithme
+
+Tout d'abord on redivise le data frame `full` en deux, `train_cl` qui sera le data frame d'entrainement et `test_cl` qui sera le data frame à prédire.
+
+```{r}
+
+train_cl <- full[1:891,]
+test_cl <- full[892:1309,]
+
+```
+
+Ensuite, on créé l'algorithme avec les variables souhaitées (ici celles du vecteur `cat_vars` mentionné plus haut) et pour les prédictions de la variable `Survived`.
+
+```{r}
+
+set.seed(459) # graine pour creation aleatoire
+
+random_for <- randomForest(factor(Survived) ~ Aclass + Pclass + Sex + Embarked + 
+                                              Title + FamNr + Deck + Perptick,  
+                                              data = train_cl)  # Modele
+
+prev_age <- predict(random_for, test_cl) # Previsions
+```
+
+Enfin, on enregistre les résultats sous le format demandé (Survie en fonction de l'ID des passagers) dans un fichier CSV.
+
+```{r}
+
+solution <- data.frame(PassengerID = test_cl$PassengerId, Survived = prev_age)
+
+# Laisser en com - write.csv(solution, file = 'sub_titanic.csv', row.names = F)
+
+```
+
+# Résultat et points d'amélioration de l'étude
+
+Après la soumission du fichier précédemment créé sur Kaggle, on obtient une proportion de bonnes prédictions de **0.784**. Ce score est perfectible et plusieurs axes seront repris pour établir un meilleur modèle. Voici quelques idées d'approfondissement:  
+
+* Les valeurs manquantes de la variable `Age` pourraient être renseignées avec une autre méthode, notamment en utilisant le package `rpart` (*recursive partionning for regression*) ou `mice` (*multiple imputation using chained equations*).  
+
+* Une étude sur la corrélation entre le prix payé, contenu dans `Fare`, et la survie.
+
+* La réalisation d'une analyse en composantes principales, pour éliminer les redondances dues aux corrélations entre les différentes variables, comme par exemple avec les variables `Deck` et `Pclass`.  
+
+* L'utilisation d'autres algorithmes de classification, tels que la méthode des k-plus proches voisins ou la classification naïve bayésienne.  
+
+# Conclusion
+
+L'exercice de prédiction que propose le site Kaggle est très intéressant pour une première expérience concrète. Il permet de se familiariser avec l'environnement de développement (dans cette étude le logiciel *RStudio*), d'effectuer un travail de nettoyage et d'enrichissement sur un jeu de données volontairement incomplet, de réfléchir et prendre des décisions à travers différentes visualisations statistiques et de comprendre l'influence des paramètres d'un modèle et des variables qui le constitue.
+
+Quant au drame du Titanic, son naufrage a permis une avancée majeure dans la sécurité maritime: révision complète des procédures d'évacuation, création d'une *Patrouille internationale des glaces*, mise en place d'une veille radio 24h sur 24, etc... Depuis le naufrage du paquebot en 1914, aucune personne n'est décédée des suites d'une collision entre un navire et un iceberg.

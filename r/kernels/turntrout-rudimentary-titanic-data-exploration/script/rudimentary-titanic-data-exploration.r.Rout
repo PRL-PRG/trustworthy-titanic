@@ -1,0 +1,261 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> libraries <- c('readr', 'data.table', 'testthat', 'gridExtra', 'corrplot', 'GGally', 'ggplot2', 'e1071', 'dplyr')
+> lapply(libraries, require, character.only = TRUE)
+Loading required package: readr
+Loading required package: data.table
+Loading required package: testthat
+Loading required package: gridExtra
+Loading required package: corrplot
+corrplot 0.84 loaded
+Loading required package: GGally
+Loading required package: ggplot2
+Registered S3 method overwritten by 'GGally':
+  method from   
+  +.gg   ggplot2
+Loading required package: e1071
+Loading required package: dplyr
+
+Attaching package: ‘dplyr’
+
+The following object is masked from ‘package:gridExtra’:
+
+    combine
+
+The following object is masked from ‘package:testthat’:
+
+    matches
+
+The following objects are masked from ‘package:data.table’:
+
+    between, first, last
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+[[1]]
+[1] TRUE
+
+[[2]]
+[1] TRUE
+
+[[3]]
+[1] TRUE
+
+[[4]]
+[1] TRUE
+
+[[5]]
+[1] TRUE
+
+[[6]]
+[1] TRUE
+
+[[7]]
+[1] TRUE
+
+[[8]]
+[1] TRUE
+
+[[9]]
+[1] TRUE
+
+Warning messages:
+1: package ‘GGally’ was built under R version 3.6.2 
+2: package ‘ggplot2’ was built under R version 3.6.2 
+3: package ‘dplyr’ was built under R version 3.6.2 
+> 
+> train = read_csv("../input/train.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test = read_csv("../input/test.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> str(train)
+tibble [891 × 12] (S3: spec_tbl_df/tbl_df/tbl/data.frame)
+ $ PassengerId: num [1:891] 1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : num [1:891] 0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : num [1:891] 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr [1:891] "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr [1:891] "male" "female" "female" "female" ...
+ $ Age        : num [1:891] 22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : num [1:891] 1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : num [1:891] 0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr [1:891] "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num [1:891] 7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr [1:891] NA "C85" NA "C123" ...
+ $ Embarked   : chr [1:891] "S" "C" "S" "S" ...
+ - attr(*, "spec")=
+  .. cols(
+  ..   PassengerId = [32mcol_double()[39m,
+  ..   Survived = [32mcol_double()[39m,
+  ..   Pclass = [32mcol_double()[39m,
+  ..   Name = [31mcol_character()[39m,
+  ..   Sex = [31mcol_character()[39m,
+  ..   Age = [32mcol_double()[39m,
+  ..   SibSp = [32mcol_double()[39m,
+  ..   Parch = [32mcol_double()[39m,
+  ..   Ticket = [31mcol_character()[39m,
+  ..   Fare = [32mcol_double()[39m,
+  ..   Cabin = [31mcol_character()[39m,
+  ..   Embarked = [31mcol_character()[39m
+  .. )
+> 
+> colSums(sapply(train, is.na))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0         177 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0         687           2 
+> 
+> plot_Missing <- function(data_in, title = NULL){
++   # create a data frame of the binarized data (0 for missing, 1 for not missing)
++   temp_df <- as.data.frame(ifelse(is.na(data_in), 0, 1))
++   # order the features by how much data they are missing
++   temp_df <- temp_df[,order(colSums(temp_df))]
++   # convert data to tileable entity (not sure about these two lines)
++   data_temp <- expand.grid(list(x = 1:nrow(temp_df), y = colnames(temp_df)))
++   data_temp$m <- as.vector(as.matrix(temp_df))
++   # add axis labels
++   data_temp <- data.frame(x = unlist(data_temp$x), y = unlist(data_temp$y), m = unlist(data_temp$m))
++   # construct the graph
++   ggplot(data_temp) + geom_tile(aes(x=x, y=y, fill=factor(m))) + scale_fill_manual(values=c("white", "black"), name="Missing\n(0=Yes, 1=No)") + theme_light() + ylab("") + xlab("") + ggtitle(title)
++ }
+> 
+> 
+> plot_Missing(train[,colSums(is.na(train)) > 0])
+> 
+> length(which(train$Parch == 0 & train$Age<18))
+[1] 32
+> 
+> train <- mutate(train, Nanny = Age < 18 & Parch == 0)
+> train$Nanny
+  [1] FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE  TRUE FALSE FALSE
+ [13] FALSE FALSE  TRUE FALSE FALSE    NA FALSE    NA FALSE FALSE  TRUE FALSE
+ [25] FALSE FALSE    NA FALSE    NA    NA FALSE    NA    NA FALSE FALSE FALSE
+ [37]    NA FALSE FALSE  TRUE FALSE FALSE    NA FALSE FALSE    NA    NA    NA
+ [49]    NA FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE FALSE
+ [61] FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+ [73] FALSE FALSE FALSE FALSE    NA    NA FALSE FALSE FALSE FALSE    NA FALSE
+ [85]  TRUE FALSE FALSE    NA FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA
+ [97] FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE FALSE FALSE    NA
+[109] FALSE    NA FALSE  TRUE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE
+[121] FALSE    NA FALSE FALSE FALSE  TRUE    NA FALSE FALSE FALSE FALSE FALSE
+[133] FALSE FALSE FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE
+[145] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE
+[157]  TRUE FALSE    NA FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE
+[169]    NA FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[181] FALSE    NA FALSE FALSE FALSE    NA    NA FALSE FALSE FALSE FALSE FALSE
+[193] FALSE FALSE FALSE FALSE    NA FALSE    NA FALSE FALSE FALSE FALSE FALSE
+[205] FALSE FALSE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE FALSE    NA FALSE
+[217] FALSE FALSE FALSE FALSE  TRUE FALSE FALSE    NA FALSE FALSE FALSE FALSE
+[229] FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE FALSE
+[241]    NA    NA FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE
+[253] FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE    NA FALSE FALSE FALSE
+[265]    NA FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE    NA FALSE
+[277] FALSE    NA FALSE FALSE FALSE FALSE  TRUE FALSE    NA FALSE FALSE FALSE
+[289] FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE    NA FALSE
+[301]    NA    NA FALSE    NA    NA FALSE    NA  TRUE FALSE FALSE FALSE FALSE
+[313] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[325] FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE  TRUE    NA    NA
+[337] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA
+[349] FALSE FALSE FALSE    NA FALSE FALSE    NA FALSE FALSE FALSE    NA    NA
+[361] FALSE FALSE FALSE FALSE    NA FALSE FALSE    NA    NA FALSE FALSE FALSE
+[373] FALSE FALSE FALSE    NA FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[385]    NA FALSE FALSE FALSE    NA  TRUE FALSE FALSE FALSE FALSE FALSE FALSE
+[397] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[409] FALSE FALSE    NA    NA FALSE    NA FALSE    NA FALSE FALSE FALSE FALSE
+[421]    NA FALSE FALSE FALSE FALSE    NA FALSE FALSE    NA FALSE FALSE    NA
+[433] FALSE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[445]    NA FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE    NA FALSE
+[457] FALSE    NA FALSE    NA FALSE FALSE FALSE FALSE    NA FALSE    NA FALSE
+[469]    NA FALSE    NA FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE FALSE
+[481] FALSE    NA FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE
+[493] FALSE FALSE FALSE    NA FALSE    NA FALSE FALSE  TRUE FALSE    NA FALSE
+[505]  TRUE FALSE FALSE    NA FALSE FALSE FALSE    NA FALSE FALSE FALSE FALSE
+[517] FALSE    NA FALSE FALSE FALSE FALSE    NA FALSE    NA FALSE FALSE    NA
+[529] FALSE FALSE FALSE    NA FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE
+[541] FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE FALSE
+[553]    NA FALSE FALSE FALSE FALSE    NA FALSE FALSE    NA FALSE FALSE    NA
+[565]    NA FALSE FALSE FALSE    NA FALSE FALSE FALSE FALSE    NA  TRUE FALSE
+[577] FALSE FALSE    NA FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE
+[589] FALSE    NA FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE    NA FALSE
+[601] FALSE    NA    NA FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA
+[613]    NA    NA FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[625] FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE    NA FALSE FALSE
+[637] FALSE FALSE FALSE    NA FALSE FALSE FALSE    NA FALSE FALSE FALSE FALSE
+[649]    NA FALSE    NA FALSE FALSE    NA FALSE FALSE    NA FALSE FALSE FALSE
+[661] FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE    NA FALSE FALSE
+[673] FALSE FALSE    NA FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE
+[685] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE
+[697] FALSE    NA FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[709] FALSE FALSE FALSE    NA FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE
+[721] FALSE  TRUE FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE  TRUE
+[733]    NA FALSE FALSE FALSE FALSE FALSE    NA    NA    NA FALSE FALSE FALSE
+[745] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[757] FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE  TRUE FALSE    NA FALSE
+[769]    NA FALSE FALSE FALSE FALSE    NA FALSE FALSE    NA  TRUE    NA FALSE
+[781]  TRUE  TRUE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA  TRUE
+[793] FALSE    NA FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[805] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA
+[817] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA    NA FALSE
+[829]    NA FALSE  TRUE FALSE    NA FALSE FALSE FALSE FALSE    NA FALSE    NA
+[841] FALSE  TRUE FALSE FALSE  TRUE FALSE FALSE FALSE FALSE    NA FALSE FALSE
+[853] FALSE FALSE FALSE FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE FALSE
+[865] FALSE FALSE FALSE FALSE    NA FALSE FALSE FALSE FALSE FALSE FALSE  TRUE
+[877] FALSE FALSE    NA FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
+[889] FALSE FALSE FALSE
+> 
+> proc.time()
+   user  system elapsed 
+  0.908   0.099   1.038 

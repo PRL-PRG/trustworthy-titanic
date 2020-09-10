@@ -1,0 +1,362 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> library(dplyr) # Data manipulation
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> 
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> #system("ls ../input")
+> 
+> #### Load the titanic dataset
+> train <- read.csv('../input/train.csv')
+> test  <- read.csv('../input/test.csv')
+> 
+> ## Check Data
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> str(test)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : Factor w/ 418 levels "Abbott, Master. Eugene Joseph",..: 210 409 273 414 182 370 85 58 5 104 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : Factor w/ 77 levels "","A11","A18",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+> 
+> full <- bind_rows(train,test) # Combine the train & test data set
+> str(full)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> ## Unique values per column
+> lapply(full, function(x) length(unique(x)))
+$PassengerId
+[1] 1309
+
+$Survived
+[1] 3
+
+$Pclass
+[1] 3
+
+$Name
+[1] 1307
+
+$Sex
+[1] 2
+
+$Age
+[1] 99
+
+$SibSp
+[1] 7
+
+$Parch
+[1] 8
+
+$Ticket
+[1] 929
+
+$Fare
+[1] 282
+
+$Cabin
+[1] 187
+
+$Embarked
+[1] 4
+
+> 
+> ## Boxplot of Age column to check for Outliers
+> boxplot(full$Age)
+> 
+> ## Creating User function to treat outliers in Age column
+> remove_outliers <- function(x, na.rm = TRUE) {
++ qnt <- quantile(x, probs=c(.25, .75), na.rm = na.rm)
++   H <- 1.5 * IQR(x, na.rm = T)
++   y <- x
++   y[x < (qnt[1] - H)] <- NA
++   y[x > (qnt[2] + H)] <- NA
++   y
++ }
+>   
+> ## Replace the outliers in Age column with NA 
+>   a <- remove_outliers(full$Age)
+>   sum(is.na(a))
+[1] 272
+>   full$Age <- a
+>   
+> ## Impute the missing values in Age column with Mean value
+> mean_full <- mean(full$Age, na.rm = T)
+> full[is.na(full$Age),"Age"] <- mean_full
+> 
+> ## Check for the Missing value for Embarked Column
+>    ## Passenger 62 and 830 in training data set are missing Embarkment
+>    full[c(62,830),'Embarked']
+[1]  
+Levels:  C Q S
+>    full[c(62,830),'Fare']
+[1] 80 80
+>    
+>    ## Exclude missing passenger Ids
+>    fare_emb <- full %>% filter(PassengerId != 62 & PassengerId != 830)
+>    
+>    ## GGPLOT to visualize Embarkment, Median Fare & Passenger Class
+>    ggplot(fare_emb, aes(x = Embarked, y = Fare, fill = factor(Pclass))) + geom_boxplot()
+Warning message:
+Removed 1 rows containing non-finite values (stat_boxplot). 
+>    
+>    ## Impute the missing embarked with 'C' since the Fare of Missing Embarked people is 80$ which is close to Median Fare value of Embarked 'C' people
+>       full$Embarked[c(62,830)] <- 'C'
+>       length(unique(full$Embarked))
+[1] 3
+> 
+> ## Create a new variable Family Size
+> full$FamSize <- full$SibSp + full$Parch + 1
+> 
+> ## GGPLOT to visualize relation between Family Size & Survival
+> ggplot(full, aes(x = FamSize, fill = factor(Survived))) + geom_bar()
+> 
+> ## Create a new variable based on Family Size
+> full$FamSizeD[full$FamSize == 1] <- 1   # Small
+> full$FamSizeD[full$FamSize > 1 & full$FamSize <= 4] <- 2  # Medium
+> full$FamSizeD[full$FamSize > 4] <- 3  # Large
+> 
+> ## Convert the variables into Factors
+> full$Pclass <- as.factor(full$Pclass)
+> full$Survived <- as.factor(full$Survived)
+> full$Embarked <- as.factor(full$Embarked)
+> full$FamSizeD <- as.factor(full$FamSizeD)
+> 
+> ## Divide the train and test data set
+> train_set <- full[1:891, ]
+> str(train_set)
+'data.frame':	891 obs. of  14 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+ $ FamSize    : num  2 2 1 2 1 1 1 5 3 2 ...
+ $ FamSizeD   : Factor w/ 3 levels "1","2","3": 2 2 1 2 1 1 1 3 2 2 ...
+> test_set <- full[-c(1:891), ]
+> str(test_set)
+'data.frame':	418 obs. of  14 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Survived   : Factor w/ 2 levels "0","1": NA NA NA NA NA NA NA NA NA NA ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 438 1298 1162 1303 1072 1259 178 949 896 994 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 781 841 726 776 252 869 787 159 745 520 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 3 4 3 4 4 4 3 4 2 4 ...
+ $ FamSize    : num  1 2 1 1 3 1 1 3 1 3 ...
+ $ FamSizeD   : Factor w/ 3 levels "1","2","3": 1 2 1 1 2 1 1 2 1 2 ...
+> 
+> ## Keep 20% of the data from train_set for validation purpose
+> set.seed(123)
+> div <- sample(nrow(train_set), nrow(train_set) * 0.8)
+> 
+> train_set1 <- train_set[div, ]
+> str(train_set1)
+'data.frame':	712 obs. of  14 variables:
+ $ PassengerId: int  415 463 179 526 195 818 118 299 229 244 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 2 1 1 1 2 1 1 2 1 1 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 2 3 1 2 2 1 2 3 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 797 285 325 249 114 509 831 719 248 505 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 2 2 2 1 2 2 2 2 2 ...
+ $ Age        : num  44 47 30 40.5 44 ...
+ $ SibSp      : int  0 0 0 0 0 1 1 0 0 0 ...
+ $ Parch      : int  0 0 0 0 0 1 0 0 0 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 656 7 170 447 605 619 54 99 126 659 ...
+ $ Fare       : num  7.92 38.5 13 7.75 27.72 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 135 1 1 30 1 1 53 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 4 4 3 2 2 4 4 4 4 ...
+ $ FamSize    : num  1 1 1 1 1 3 2 1 1 1 ...
+ $ FamSizeD   : Factor w/ 3 levels "1","2","3": 1 1 1 1 1 2 2 1 1 1 ...
+> 
+> valid_set <- train_set[-div, ]
+> str(valid_set)
+'data.frame':	179 obs. of  14 variables:
+ $ PassengerId: int  1 3 7 12 15 18 22 27 28 32 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 1 2 1 2 2 1 1 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 3 1 1 3 2 2 3 1 1 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 358 520 96 847 875 81 245 265 781 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 1 1 2 2 2 2 1 ...
+ $ Age        : num  22 26 54 58 14 ...
+ $ SibSp      : int  1 0 0 0 0 0 0 0 3 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 0 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 670 86 39 414 152 153 180 96 587 ...
+ $ Fare       : num  7.25 7.92 51.86 26.55 7.85 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 1 131 51 1 1 113 1 65 43 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 4 4 4 4 4 4 2 4 2 ...
+ $ FamSize    : num  2 1 1 1 1 1 1 1 6 2 ...
+ $ FamSizeD   : Factor w/ 3 levels "1","2","3": 2 1 1 1 1 1 1 1 3 2 ...
+> 
+> prop.table(table(train_set1$Survived))
+
+       0        1 
+0.616573 0.383427 
+> prop.table(table(valid_set$Survived))
+
+        0         1 
+0.6145251 0.3854749 
+> 
+> ## Build the Model 
+>    ## Logistic Regression Model
+>       lr_model1 <- glm(Survived ~ Pclass + Sex + Age + FamSizeD + Embarked, data = train_set1, family = binomial)
+>       summary(lr_model1)
+
+Call:
+glm(formula = Survived ~ Pclass + Sex + Age + FamSizeD + Embarked, 
+    family = binomial, data = train_set1)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6526  -0.6041  -0.4179   0.6195   2.6559  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  3.938228   0.499915   7.878 3.33e-15 ***
+Pclass2     -1.043374   0.305491  -3.415 0.000637 ***
+Pclass3     -2.012282   0.283112  -7.108 1.18e-12 ***
+Sexmale     -2.801822   0.228508 -12.261  < 2e-16 ***
+Age         -0.034464   0.009189  -3.751 0.000176 ***
+FamSizeD2    0.119844   0.224074   0.535 0.592758    
+FamSizeD3   -2.016697   0.493703  -4.085 4.41e-05 ***
+EmbarkedQ    0.129827   0.424805   0.306 0.759897    
+EmbarkedS   -0.501071   0.264920  -1.891 0.058571 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 947.98  on 711  degrees of freedom
+Residual deviance: 615.62  on 703  degrees of freedom
+AIC: 633.62
+
+Number of Fisher Scoring iterations: 5
+
+>       
+>    ## Prediction on training data set (train_set1)
+>       train_pred <- predict(lr_model1, newdata = train_set1, type = "response")
+>       table(train_set1$Survived, train_pred>0.5)
+   
+    FALSE TRUE
+  0   384   55
+  1    78  195
+>       
+>    ## Accuracy on training data set (train_set1)
+>       train_acc <- ((371+198)/(371+62+81+198)) * 100
+>       train_acc
+[1] 79.91573
+>   
+>    ## Prediction on validation data set (valid_set)
+>      valid_pred <- predict(lr_model1, newdata = valid_set, type = "response")
+>      table(valid_set$Survived, valid_pred>0.5)
+   
+    FALSE TRUE
+  0    94   16
+  1    24   45
+>    
+>    ## Accuracy on validaton data set (valid_set)
+>       valid_acc <- ((106+43)/(106+10+20+43)) * 100
+>       valid_acc
+[1] 83.24022
+>       
+> ## Prediction on test data set (test_set) & write the result
+>       test_pred <- predict(lr_model1, newdata = test_set, type = "response")
+>       test_set$Survived <- as.factor(ifelse(test_pred > 0.5, 1, 0))
+>       table(test_set$Survived)  
+
+  0   1 
+264 154 
+>       
+>       ## Save the output to data frame
+>       output <- data.frame(PassengerId = test_set$PassengerId, Survived = test_set$Survived)
+>       
+>       ## Write the output back to CSV file
+>       write.csv(output, file = "lr_logistic_reg.csv", row.names = F)
+> 
+> proc.time()
+   user  system elapsed 
+  1.027   0.080   1.108 

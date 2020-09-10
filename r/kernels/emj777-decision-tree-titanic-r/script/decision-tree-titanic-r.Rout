@@ -1,0 +1,291 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> #### LIBRARIES #################
+> library(readr)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(rpart)
+> library(rpart.plot)
+> 
+> #### LOAD FILES ################
+> 
+> rm(list = ls())
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> Survived <- train$Survived
+> train$Survived <- NULL
+> dataset <- bind_rows(train, test)
+> 
+> #### KNOWING DATA ##############
+> 
+> dim(dataset)
+[1] 1309   11
+> str(dataset)
+'data.frame':	1309 obs. of  11 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> summary(dataset)
+  PassengerId       Pclass                                    Name     
+ Min.   :   1   Min.   :1.000   Connolly, Miss. Kate            :   2  
+ 1st Qu.: 328   1st Qu.:2.000   Kelly, Mr. James                :   2  
+ Median : 655   Median :3.000   Abbing, Mr. Anthony             :   1  
+ Mean   : 655   Mean   :2.295   Abbott, Mr. Rossmore Edward     :   1  
+ 3rd Qu.: 982   3rd Qu.:3.000   Abbott, Mrs. Stanton (Rosa Hunt):   1  
+ Max.   :1309   Max.   :3.000   Abelson, Mr. Samuel             :   1  
+                                (Other)                         :1301  
+     Sex           Age            SibSp            Parch            Ticket    
+ female:466   Min.   : 0.17   Min.   :0.0000   Min.   :0.000   CA. 2343:  11  
+ male  :843   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000   1601    :   8  
+              Median :28.00   Median :0.0000   Median :0.000   CA 2144 :   8  
+              Mean   :29.88   Mean   :0.4989   Mean   :0.385   3101295 :   7  
+              3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7  
+              Max.   :80.00   Max.   :8.0000   Max.   :9.000   347082  :   7  
+              NA's   :263                                      (Other) :1261  
+      Fare                     Cabin      Embarked
+ Min.   :  0.000                  :1014    :  2   
+ 1st Qu.:  7.896   C23 C25 C27    :   6   C:270   
+ Median : 14.454   B57 B59 B63 B66:   5   Q:123   
+ Mean   : 33.295   G6             :   5   S:914   
+ 3rd Qu.: 31.275   B96 B98        :   4           
+ Max.   :512.329   C22 C26        :   4           
+ NA's   :1         (Other)        : 271           
+> 
+> #### DATA CLEANNING ############
+> 
+> # NA Fare: 1 record: Passenger 1044 
+> dataset$Fare[dataset$PassengerId == 1044] <- median(dataset$Fare, na.rm = TRUE)
+> # NA Age: 263 records
+> dataset$Age <- sapply(dataset$Age, FUN=function(x) {ifelse(is.na(x),median(dataset$Age, na.rm = TRUE),x)})
+> # Missing Values for Embarked: 2 records
+> table(dataset$Embarked) /sum(dataset$Embarked != "")
+
+                      C           Q           S 
+0.001530222 0.206579954 0.094108646 0.699311400 
+> # Almost 70% are 'S', then 'S' applied to missing values
+> dataset$Embarked[c(62,830)] <- "S"
+> # Missing Values for Cabin: 1014 records = 77%
+> 1 - (sum(dataset$Cabin != "")/nrow(dataset))
+[1] 0.7746371
+> dataset$Cabin <- substr(dataset$Cabin,1,1)
+> table(dataset$Cabin)
+
+        A    B    C    D    E    F    G    T 
+1014   22   65   94   46   41   21    5    1 
+> dataset$Cabin[dataset$Cabin == ""] <- "H"
+> 
+> #Factor
+> factor_vars <- c('PassengerId','Pclass','Sex','Embarked','Cabin')
+> dataset[factor_vars] <- lapply(dataset[factor_vars], function(x) as.factor(x))
+> 
+> #### MODEL #####################
+> # Supervised Learning: Decision Tree
+> train_cleanned <- dataset[1:891,]
+> test_cleanned <- dataset[892:1309,]
+> train_cleanned$Survived <- Survived
+> 
+> DT <- rpart(Survived ~ Pclass + Sex + Embarked + Cabin, train_cleanned, method = "class", cp=0)
+> summary(DT)
+Call:
+rpart(formula = Survived ~ Pclass + Sex + Embarked + Cabin, data = train_cleanned, 
+    method = "class", cp = 0)
+  n= 891 
+
+           CP nsplit rel error    xerror       xstd
+1 0.444444444      0 1.0000000 1.0000000 0.04244576
+2 0.032163743      1 0.5555556 0.5555556 0.03574957
+3 0.004385965      3 0.4912281 0.4912281 0.03413963
+4 0.001461988      5 0.4824561 0.5146199 0.03474917
+5 0.000000000      7 0.4795322 0.5087719 0.03459945
+
+Variable importance
+     Sex   Pclass    Cabin Embarked 
+      58       19       16        7 
+
+Node number 1: 891 observations,    complexity param=0.4444444
+  predicted class=0  expected loss=0.3838384  P(node) =1
+    class counts:   549   342
+   probabilities: 0.616 0.384 
+  left son=2 (577 obs) right son=3 (314 obs)
+  Primary splits:
+      Sex      splits as  RL,        improve=124.42630, (0 missing)
+      Pclass   splits as  RRL,       improve= 43.78183, (0 missing)
+      Cabin    splits as  LRRRRRRLL, improve= 43.55901, (0 missing)
+      Embarked splits as  -RLL,      improve= 11.92920, (0 missing)
+  Surrogate splits:
+      Cabin splits as  LRLRLLRLL, agree=0.663, adj=0.045, (0 split)
+
+Node number 2: 577 observations,    complexity param=0.004385965
+  predicted class=0  expected loss=0.1889081  P(node) =0.647587
+    class counts:   468   109
+   probabilities: 0.811 0.189 
+  left son=4 (471 obs) right son=5 (106 obs)
+  Primary splits:
+      Cabin    splits as  RRRRRR-LL, improve=14.418350, (0 missing)
+      Pclass   splits as  RLL,       improve=10.019140, (0 missing)
+      Embarked splits as  -RLL,      improve= 3.079304, (0 missing)
+  Surrogate splits:
+      Pclass splits as  RLL, agree=0.931, adj=0.623, (0 split)
+
+Node number 3: 314 observations,    complexity param=0.03216374
+  predicted class=1  expected loss=0.2579618  P(node) =0.352413
+    class counts:    81   233
+   probabilities: 0.258 0.742 
+  left son=6 (144 obs) right son=7 (170 obs)
+  Primary splits:
+      Pclass   splits as  RRL,       improve=31.163130, (0 missing)
+      Cabin    splits as  RRRRRRLL-, improve=12.210390, (0 missing)
+      Embarked splits as  -RLL,      improve= 3.450116, (0 missing)
+  Surrogate splits:
+      Cabin    splits as  RRRRRRLL-, agree=0.742, adj=0.437, (0 split)
+      Embarked splits as  -RLR,      agree=0.637, adj=0.208, (0 split)
+
+Node number 4: 471 observations
+  predicted class=0  expected loss=0.1358811  P(node) =0.5286195
+    class counts:   407    64
+   probabilities: 0.864 0.136 
+
+Node number 5: 106 observations,    complexity param=0.004385965
+  predicted class=0  expected loss=0.4245283  P(node) =0.1189675
+    class counts:    61    45
+   probabilities: 0.575 0.425 
+  left son=10 (89 obs) right son=11 (17 obs)
+  Primary splits:
+      Cabin    splits as  LLLLRL---, improve=1.0852490, (0 missing)
+      Embarked splits as  -RLL,      improve=0.5221826, (0 missing)
+
+Node number 6: 144 observations,    complexity param=0.03216374
+  predicted class=0  expected loss=0.5  P(node) =0.1616162
+    class counts:    72    72
+   probabilities: 0.500 0.500 
+  left son=12 (88 obs) right son=13 (56 obs)
+  Primary splits:
+      Embarked splits as  -RRL, improve=7.071429, (0 missing)
+  Surrogate splits:
+      Cabin splits as  ----LRLL-, agree=0.618, adj=0.018, (0 split)
+
+Node number 7: 170 observations
+  predicted class=1  expected loss=0.05294118  P(node) =0.1907969
+    class counts:     9   161
+   probabilities: 0.053 0.947 
+
+Node number 10: 89 observations,    complexity param=0.001461988
+  predicted class=0  expected loss=0.3932584  P(node) =0.09988777
+    class counts:    54    35
+   probabilities: 0.607 0.393 
+  left son=20 (58 obs) right son=21 (31 obs)
+  Primary splits:
+      Embarked splits as  -RLL,      improve=0.7811426, (0 missing)
+      Cabin    splits as  RRLR-L---, improve=0.2719101, (0 missing)
+
+Node number 11: 17 observations
+  predicted class=1  expected loss=0.4117647  P(node) =0.01907969
+    class counts:     7    10
+   probabilities: 0.412 0.588 
+
+Node number 12: 88 observations
+  predicted class=0  expected loss=0.375  P(node) =0.09876543
+    class counts:    55    33
+   probabilities: 0.625 0.375 
+
+Node number 13: 56 observations
+  predicted class=1  expected loss=0.3035714  P(node) =0.06285073
+    class counts:    17    39
+   probabilities: 0.304 0.696 
+
+Node number 20: 58 observations
+  predicted class=0  expected loss=0.3448276  P(node) =0.0650954
+    class counts:    38    20
+   probabilities: 0.655 0.345 
+
+Node number 21: 31 observations,    complexity param=0.001461988
+  predicted class=0  expected loss=0.483871  P(node) =0.03479237
+    class counts:    16    15
+   probabilities: 0.516 0.484 
+  left son=42 (10 obs) right son=43 (21 obs)
+  Primary splits:
+      Cabin splits as  RRLR-----, improve=0.2076805, (0 missing)
+
+Node number 42: 10 observations
+  predicted class=0  expected loss=0.4  P(node) =0.01122334
+    class counts:     6     4
+   probabilities: 0.600 0.400 
+
+Node number 43: 21 observations
+  predicted class=1  expected loss=0.4761905  P(node) =0.02356902
+    class counts:    10    11
+   probabilities: 0.476 0.524 
+
+> printcp(DT)
+
+Classification tree:
+rpart(formula = Survived ~ Pclass + Sex + Embarked + Cabin, data = train_cleanned, 
+    method = "class", cp = 0)
+
+Variables actually used in tree construction:
+[1] Cabin    Embarked Pclass   Sex     
+
+Root node error: 342/891 = 0.38384
+
+n= 891 
+
+        CP nsplit rel error  xerror     xstd
+1 0.444444      0   1.00000 1.00000 0.042446
+2 0.032164      1   0.55556 0.55556 0.035750
+3 0.004386      3   0.49123 0.49123 0.034140
+4 0.001462      5   0.48246 0.51462 0.034749
+5 0.000000      7   0.47953 0.50877 0.034599
+> rpart.plot(DT, type=1, extra = 102)
+> 
+> #### OUTPUT ####################
+> 
+> predict_dt <- predict(DT, test_cleanned, type = "class")
+> result <- data.frame(PassengerID = test_cleanned$PassengerId, Survived = predict_dt)
+> write.csv(result, file="result.csv", row.names = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  0.768   0.084   0.849 

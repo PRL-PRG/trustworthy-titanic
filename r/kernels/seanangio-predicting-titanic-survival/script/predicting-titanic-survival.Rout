@@ -1,0 +1,1365 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE)
+> 
+> 
+> ## ----message=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # load required libraries
+> library(caret)
+Loading required package: lattice
+Loading required package: ggplot2
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library(plyr)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:plyr’:
+
+    arrange, count, desc, failwith, id, mutate, rename, summarise,
+    summarize
+
+The following object is masked from ‘package:randomForest’:
+
+    combine
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(ggplot2)
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library(gridExtra)
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:randomForest’:
+
+    combine
+
+> library(stringr)
+> library(knitr)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # load data
+> training <- read.table("../input/train.csv", sep = ",", header = TRUE,
++                        na.strings = c("", "NA"))
+> testing <- read.table("../input/test.csv", sep = ",", header = TRUE,
++                          na.strings = c("", "NA"))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # examine structure of dataset
+> str(training)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 147 levels "A10","A14","A16",..: NA 82 NA 56 NA NA 130 NA NA NA ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # convert factor variables in training set
+> training$Survived <- factor(training$Survived)
+> training$Pclass <- factor(training$Pclass)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # plot survival by sex
+> mosaicplot(table(training$Survived, training$Sex))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # prop table of survival by sex
+> round(prop.table(table(training[,c("Survived", "Sex")])),2)
+        Sex
+Survived female male
+       0   0.09 0.53
+       1   0.26 0.12
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # plot survival by Pclass
+> mosaicplot(table(training$Survived, training$Pclass))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # prop table of survival by Pclass
+> round(prop.table(table(training[,c("Survived", "Pclass")])),2)
+        Pclass
+Survived    1    2    3
+       0 0.09 0.11 0.42
+       1 0.15 0.10 0.13
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # plot survival by embarked
+> mosaicplot(table(training$Survived, training$Embarked))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # prop table of survival by embarked
+> round(table(training[,c("Pclass", "Embarked")]),2)
+      Embarked
+Pclass   C   Q   S
+     1  85   2 127
+     2  17   3 164
+     3  66  72 353
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # impute C to missing embarked values
+> training$Embarked[is.na(training$Embarked)] <- "C"
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # extract titles and compare survival status
+> training$Title <- factor(str_extract(training$Name, "\\w+(?=\\.)"))
+> cbind(table(training$Title, training$Survived))
+           0   1
+Capt       1   0
+Col        1   1
+Countess   0   1
+Don        1   0
+Dr         4   3
+Jonkheer   1   0
+Lady       0   1
+Major      1   1
+Master    17  23
+Miss      55 127
+Mlle       0   2
+Mme        0   1
+Mr       436  81
+Mrs       26  99
+Ms         0   1
+Rev        6   0
+Sir        0   1
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # first create the new level
+> levels(training$Title) <- c(levels(training$Title), "HonM")
+> 
+> # define reassignments
+> single_ladies <- c("Mlle","Lady","Ms")
+> hon_male <- c("Sir","Major","Col","Jonkheer","Capt","Don","Col")
+> mrs <- c("Mme", "Countess", "Dona")
+> 
+> # relabel factors
+> training$Title[training$Title %in% single_ladies] <- "Miss"
+> training$Title[training$Title %in% mrs] <- "Mrs"
+> training$Title[training$Title %in% hon_male] <- "HonM"
+> 
+> # drop unused levels
+> training$Title <- droplevels(training$Title)
+> 
+> # confirm results
+> cbind(table(training$Title, training$Survived))
+         0   1
+Dr       4   3
+Master  17  23
+Miss    55 131
+Mr     436  81
+Mrs     26 101
+Rev      6   0
+HonM     5   3
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Pclass distribution where Cabin is not missing
+> training %>%
++     filter(Cabin != "") %>%
++     group_by(Pclass) %>%
++     dplyr::summarize(n = n())
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 3 x 2[39m
+  Pclass     n
+  [3m[90m<fct>[39m[23m  [3m[90m<int>[39m[23m
+[90m1[39m 1        176
+[90m2[39m 2         16
+[90m3[39m 3         12
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # create a variable based on if passenger assigned a cabin
+> training$BerthAssgn <- factor(ifelse(is.na(training$Cabin), 0, 1))
+> prop.table(table(training$BerthAssgn, training$Survived))
+   
+             0          1
+  0 0.53984287 0.23120090
+  1 0.07631874 0.15263749
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # create Deck variable
+> training$Deck <- substr(training$Cabin, 1,1)
+> training$Deck[is.na(training$Deck)] <- "Missing"
+> training$Deck <- factor(training$Deck)
+> table(training$Deck, training$Survived)
+         
+            0   1
+  A         8   7
+  B        12  35
+  C        24  35
+  D         8  25
+  E         8  24
+  F         5   8
+  G         2   2
+  Missing 481 206
+  T         1   0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # mosaic plot of surival by sibsp and parch
+> par(mfrow = c(1,2))
+> mosaicplot(table(training$Survived, training$SibSp))
+> mosaicplot(table(training$Survived, training$Parch))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # create a FamilySize variable
+> training$FamilySize <- training$SibSp + training$Parch
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # plot count of survivors and victims by FamilySize
+> ggplot(training, aes(x = FamilySize, fill = Survived)) +
++     geom_histogram(position = "dodge")
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # create FamCat variable
+> training$FamCat <- NA
+> training$FamCat[training$FamilySize == 0] <- "solo"
+> training$FamCat[training$FamilySize == 1] <- "pair"
+> training$FamCat[training$FamilySize == 2] <- "trio"
+> training$FamCat[training$FamilySize == 3] <- "quartet"
+> training$FamCat[training$FamilySize >= 4] <- "large"
+> training$FamCat <- factor(training$FamCat, levels = c("solo","pair","trio","quartet","large"), ordered = TRUE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # plot count of survivors and victims by FamCat
+> ggplot(training, aes(x = FamCat, fill = Survived)) +
++     geom_bar(position = "dodge")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Surival plotted by fare
+> ggplot(training, aes(y = Fare, x = Survived)) + 
++     geom_boxplot() +
++     coord_flip()
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # summary stats of survival by fare
+> summary(subset(training, 
++                training$Survived == 0 & training$Fare < 300)$Fare)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  0.000   7.854  10.500  22.118  26.000 263.000 
+> summary(subset(training, 
++                training$Survived == 1 & training$Fare < 300)$Fare)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00   12.41   26.00   44.29   56.93  263.00 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # fare plotted by surivors excluding 3 first class outliers
+> ggplot(filter(training, Fare < 400), 
++        aes(x = Fare, color = Survived)) +
++     geom_density() +
++     geom_vline(xintercept = 13)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # fare plotted by class excluding 3 first class outliers
+> ggplot(filter(training, Fare < 400), aes(x = Fare, color = Pclass)) +
++     geom_density() +
++     geom_vline(xintercept = 13)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # create CheapTix variable
+> training$CheapTix <- factor(ifelse(training$Fare <= 13, 1, 0))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # create 4 bins for Fare
+> training$FareBin <- cut(training$Fare, breaks = 4, 
++                         ordered_result = TRUE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # 15 cheapest fares
+> training %>%
++     arrange(Fare) %>%
++     select(Survived, Pclass, Sex, Fare) %>%
++     head(15)
+   Survived Pclass  Sex Fare
+1         0      3 male    0
+2         0      1 male    0
+3         1      3 male    0
+4         0      2 male    0
+5         0      3 male    0
+6         0      2 male    0
+7         0      2 male    0
+8         0      2 male    0
+9         0      3 male    0
+10        0      1 male    0
+11        0      2 male    0
+12        0      2 male    0
+13        0      1 male    0
+14        0      1 male    0
+15        0      1 male    0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # change fares of 0 to 0.01
+> training$Fare[training$Fare == 0] <- 0.01
+> 
+> # log transform Fare
+> training$FareLog <- log(training$Fare)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Survival plotted by age and class, faceted by sex
+> ggplot(training, aes(x = Age, y = Pclass, color = Survived)) + 
++     geom_jitter(height = 0.1, alpha = 0.3) +
++     facet_grid(Sex ~ .)
+Warning message:
+Removed 177 rows containing missing values (geom_point). 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # survival rate with missing Ages removed
+> training %>%
++     filter(!is.na(Age)) %>%
++     group_by(Survived) %>%
++     dplyr::summarize(n = n(),
++               survival = n()/(424+290))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 2 x 3[39m
+  Survived     n survival
+  [3m[90m<fct>[39m[23m    [3m[90m<int>[39m[23m    [3m[90m<dbl>[39m[23m
+[90m1[39m 0          424    0.594
+[90m2[39m 1          290    0.406
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # survival rate across training data
+> training %>%
++     group_by(Survived) %>%
++     dplyr::summarize(n = n(),
++               survival = n/nrow(training))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 2 x 3[39m
+  Survived     n survival
+  [3m[90m<fct>[39m[23m    [3m[90m<int>[39m[23m    [3m[90m<dbl>[39m[23m
+[90m1[39m 0          549    0.616
+[90m2[39m 1          342    0.384
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # impute missing Age values
+> set.seed(417)
+> tempData <- mice(training[,!names(training) %in% c("PassengerId", "Name", "Ticket", "Cabin")], method = "pmm")
+
+ iter imp variable
+  1   1  Age*
+  1   2  Age*
+  1   3  Age*
+  1   4  Age*
+  1   5  Age*
+  2   1  Age*
+  2   2  Age*
+  2   3  Age*
+  2   4  Age*
+  2   5  Age*
+  3   1  Age*
+  3   2  Age*
+  3   3  Age*
+  3   4  Age*
+  3   5  Age*
+  4   1  Age*
+  4   2  Age*
+  4   3  Age*
+  4   4  Age*
+  4   5  Age*
+  5   1  Age*
+  5   2  Age*
+  5   3  Age*
+  5   4  Age*
+  5   5  Age*
+ * Please inspect the loggedEvents 
+Warning message:
+Number of logged events: 50 
+> mice_output <- complete(tempData)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # compare missing and imputed age histograms
+> p1 <- ggplot(training, aes(x = Age)) + geom_histogram()
+> p2 <- ggplot(mice_output, aes(x = Age)) + geom_histogram()
+> grid.arrange(p1, p2, ncol = 2)
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+Warning message:
+Removed 177 rows containing non-finite values (stat_bin). 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # compare pre and post age distributions
+> summary(training$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.42   20.12   28.00   29.70   38.00   80.00     177 
+> summary(mice_output$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.42   12.00   25.00   25.66   36.00   80.00 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # replace age variable with mice output
+> training$Age <- mice_output$Age
+> sum(is.na(training$Age))
+[1] 0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # density curves of surivors and victims by age
+> ggplot(training, aes(x=Age, color = Survived)) + 
++     geom_density() +
++     geom_vline(xintercept = 14)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # create Child variable
+> training$Child <- factor(ifelse(training$Age <= 14, 1, 0))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # bin Ages in a new variable
+> training$AgeBin <- cut(training$Age, breaks = 5, 
++                        ordered_result = TRUE)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # drop unuseful predictors
+> drops <- c("PassengerId","Ticket", "Cabin", "Name")
+> training <- training[ , !(names(training) %in% drops)]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # check for near zero variance predictors
+> nearZero <- nearZeroVar(training, saveMetrics = TRUE)
+> nearZero[nearZero$nzv == TRUE,]
+        freqRatio percentUnique zeroVar  nzv
+FareBin  29.41379     0.4489338   FALSE TRUE
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # distribution of FareBin
+> table(training$FareBin)
+
+(-0.512,128]    (128,256]    (256,384]    (384,513] 
+         853           29            6            3 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # remove FareBin
+> training <- select(training, -FareBin)
+> 
+> 
+> ## ----results="hide"--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # stepwise backward elimination
+> fit.back <- step(glm(Survived ~ ., data = training, family = "binomial"), direction = 'backward')
+Start:  AIC=763.8
+Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + 
+    Title + BerthAssgn + Deck + FamilySize + FamCat + CheapTix + 
+    FareLog + Child + AgeBin
+
+
+Step:  AIC=763.8
+Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + 
+    Title + BerthAssgn + Deck + FamCat + CheapTix + FareLog + 
+    Child + AgeBin
+
+
+Step:  AIC=763.8
+Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + 
+    Title + Deck + FamCat + CheapTix + FareLog + Child + AgeBin
+
+           Df Deviance    AIC
+- AgeBin    4   696.77 758.77
+- Deck      8   707.36 761.36
+- Embarked  2   695.74 761.74
+- Parch     1   693.80 761.80
+- Child     1   693.89 761.89
+- CheapTix  1   693.92 761.92
+- Age       1   693.95 761.95
+- SibSp     1   693.99 761.99
+- Fare      1   694.59 762.59
+- Sex       1   695.17 763.17
+- FareLog   1   695.32 763.32
+<none>          693.80 763.80
+- FamCat    4   706.56 768.56
+- Pclass    2   706.07 772.07
+- Title     6   746.80 804.80
+
+Step:  AIC=758.77
+Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + 
+    Title + Deck + FamCat + CheapTix + FareLog + Child
+
+           Df Deviance    AIC
+- Deck      8   710.06 756.06
+- Embarked  2   698.68 756.68
+- Parch     1   696.77 756.77
+- CheapTix  1   696.82 756.82
+- SibSp     1   696.91 756.91
+- Fare      1   697.52 757.52
+- Child     1   697.71 757.71
+- Sex       1   697.86 757.86
+- FareLog   1   698.31 758.31
+<none>          696.77 758.77
+- Age       1   701.74 761.74
+- FamCat    4   708.98 762.98
+- Pclass    2   708.45 766.45
+- Title     6   749.31 799.31
+
+Step:  AIC=756.06
+Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + 
+    Title + FamCat + CheapTix + FareLog + Child
+
+           Df Deviance    AIC
+- Embarked  2   711.85 753.85
+- Parch     1   710.06 754.06
+- SibSp     1   710.27 754.27
+- CheapTix  1   710.28 754.28
+- Fare      1   710.43 754.43
+- Child     1   711.16 755.16
+<none>          710.06 756.06
+- Sex       1   712.06 756.06
+- FareLog   1   712.35 756.35
+- Age       1   713.73 757.73
+- FamCat    4   723.51 761.51
+- Pclass    2   736.03 778.03
+- Title     6   767.90 801.90
+
+Step:  AIC=753.85
+Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Title + 
+    FamCat + CheapTix + FareLog + Child
+
+           Df Deviance    AIC
+- Parch     1   711.85 751.85
+- CheapTix  1   712.00 752.00
+- SibSp     1   712.14 752.14
+- Fare      1   712.50 752.50
+- Child     1   712.62 752.62
+- Sex       1   713.67 753.67
+<none>          711.85 753.85
+- FareLog   1   714.19 754.19
+- Age       1   715.59 755.59
+- FamCat    4   726.03 760.03
+- Pclass    2   737.50 775.50
+- Title     6   768.95 798.95
+
+Step:  AIC=751.85
+Survived ~ Pclass + Sex + Age + SibSp + Fare + Title + FamCat + 
+    CheapTix + FareLog + Child
+
+           Df Deviance    AIC
+- CheapTix  1   712.00 750.00
+- Fare      1   712.50 750.50
+- SibSp     1   712.53 750.53
+- Child     1   712.63 750.63
+- Sex       1   713.67 751.67
+<none>          711.85 751.85
+- FareLog   1   714.19 752.19
+- Age       1   715.63 753.63
+- FamCat    4   733.44 765.44
+- Pclass    2   737.63 773.63
+- Title     6   768.99 796.99
+
+Step:  AIC=750
+Survived ~ Pclass + Sex + Age + SibSp + Fare + Title + FamCat + 
+    FareLog + Child
+
+          Df Deviance    AIC
+- SibSp    1   712.72 748.72
+- Fare     1   712.83 748.83
+- Child    1   712.93 748.93
+- Sex      1   713.79 749.79
+<none>         712.00 750.00
+- FareLog  1   714.27 750.27
+- Age      1   715.90 751.90
+- FamCat   4   733.69 763.69
+- Pclass   2   738.46 772.46
+- Title    6   769.09 795.09
+
+Step:  AIC=748.72
+Survived ~ Pclass + Sex + Age + Fare + Title + FamCat + FareLog + 
+    Child
+
+          Df Deviance    AIC
+- Child    1   713.65 747.65
+- Fare     1   713.69 747.69
+- Sex      1   714.59 748.59
+<none>         712.72 748.72
+- FareLog  1   714.84 748.84
+- Age      1   716.77 750.77
+- Pclass   2   740.34 772.34
+- Title    6   769.67 793.67
+- FamCat   4   766.17 794.17
+
+Step:  AIC=747.65
+Survived ~ Pclass + Sex + Age + Fare + Title + FamCat + FareLog
+
+          Df Deviance    AIC
+- Fare     1   714.90 746.90
+- Sex      1   715.51 747.51
+- FareLog  1   715.65 747.65
+<none>         713.65 747.65
+- Age      1   717.16 749.16
+- Pclass   2   740.84 770.84
+- Title    6   770.00 792.00
+- FamCat   4   767.72 793.72
+
+Step:  AIC=746.9
+Survived ~ Pclass + Sex + Age + Title + FamCat + FareLog
+
+          Df Deviance    AIC
+- Sex      1   716.68 746.68
+<none>         714.90 746.90
+- Age      1   718.55 748.55
+- FareLog  1   719.46 749.46
+- Pclass   2   741.74 769.74
+- Title    6   770.33 790.33
+- FamCat   4   767.74 791.74
+
+Step:  AIC=746.68
+Survived ~ Pclass + Age + Title + FamCat + FareLog
+
+          Df Deviance     AIC
+<none>         716.68  746.68
+- Age      1   720.17  748.17
+- FareLog  1   721.16  749.16
+- Pclass   2   743.83  769.83
+- FamCat   4   769.60  791.60
+- Title    6  1000.49 1018.49
+> 
+> # stepwise forward elimination
+> null <- glm(Survived ~ 1, data = training, family = "binomial")
+> full <- glm(Survived ~ ., data = training, family = "binomial")
+> fit.forward <- step(null, scope = list(lower=null, upper=full), direction = "forward")
+Start:  AIC=1188.66
+Survived ~ 1
+
+             Df Deviance     AIC
++ Title       6   878.18  892.18
++ Sex         1   917.80  921.80
++ Pclass      2  1083.11 1089.11
++ FareLog     1  1089.07 1093.07
++ BerthAssgn  1  1098.86 1102.86
++ Deck        8  1088.43 1106.43
++ FamCat      4  1108.48 1118.48
++ Fare        1  1117.57 1121.57
++ CheapTix    1  1120.83 1124.83
++ Embarked    2  1159.30 1165.30
++ Parch       1  1180.84 1184.84
+<none>           1186.66 1188.66
++ Age         1  1185.37 1189.37
++ SibSp       1  1185.51 1189.51
++ Child       1  1185.53 1189.53
++ AgeBin      4  1180.26 1190.26
++ FamilySize  1  1186.41 1190.41
+
+Step:  AIC=892.18
+Survived ~ Title
+
+             Df Deviance    AIC
++ Pclass      2   778.31 796.31
++ BerthAssgn  1   805.59 821.59
++ Deck        8   794.10 824.10
++ FamCat      4   804.72 826.72
++ FamilySize  1   832.83 848.83
++ SibSp       1   837.15 853.15
++ FareLog     1   845.96 861.96
++ Fare        1   849.03 865.03
++ Parch       1   860.10 876.10
++ Embarked    2   858.16 876.16
++ CheapTix    1   866.29 882.29
+<none>            878.18 892.18
++ Sex         1   876.26 892.26
++ Child       1   877.44 893.44
++ Age         1   877.89 893.89
++ AgeBin      4   876.74 898.74
+
+Step:  AIC=796.31
+Survived ~ Title + Pclass
+
+             Df Deviance    AIC
++ FamCat      4   725.27 751.27
++ FamilySize  1   742.04 762.04
++ SibSp       1   746.27 766.27
++ Parch       1   763.31 783.31
++ Age         1   769.61 789.61
++ Embarked    2   769.78 791.78
++ AgeBin      4   766.54 792.54
++ BerthAssgn  1   772.69 792.69
++ CheapTix    1   772.99 792.99
+<none>            778.31 796.31
++ Sex         1   776.71 796.71
++ Child       1   776.88 796.88
++ FareLog     1   778.27 798.27
++ Fare        1   778.30 798.30
++ Deck        8   764.95 798.95
+
+Step:  AIC=751.27
+Survived ~ Title + Pclass + FamCat
+
+             Df Deviance    AIC
++ FareLog     1   720.17 748.17
++ BerthAssgn  1   720.69 748.69
++ Age         1   721.16 749.16
++ Fare        1   721.17 749.17
+<none>            725.27 751.27
++ Sex         1   723.75 751.75
++ Embarked    2   721.98 751.98
++ SibSp       1   724.25 752.25
++ AgeBin      4   718.28 752.28
++ Parch       1   724.78 752.78
++ FamilySize  1   724.85 752.85
++ Child       1   724.89 752.89
++ CheapTix    1   725.21 753.21
++ Deck        8   713.36 755.36
+
+Step:  AIC=748.17
+Survived ~ Title + Pclass + FamCat + FareLog
+
+             Df Deviance    AIC
++ BerthAssgn  1   715.79 745.79
++ Age         1   716.68 746.68
+<none>            720.17 748.17
++ Sex         1   718.55 748.55
++ Fare        1   718.86 748.86
++ SibSp       1   718.98 748.98
++ FamilySize  1   719.57 749.57
++ Parch       1   719.69 749.69
++ CheapTix    1   719.71 749.71
++ Embarked    2   717.78 749.78
++ Child       1   719.89 749.89
++ AgeBin      4   713.93 749.93
++ Deck        8   708.19 752.19
+
+Step:  AIC=745.79
+Survived ~ Title + Pclass + FamCat + FareLog + BerthAssgn
+
+             Df Deviance    AIC
++ Age         1   711.55 743.55
+<none>            715.79 745.79
++ Sex         1   714.50 746.50
++ Fare        1   714.66 746.66
++ AgeBin      4   708.74 746.74
++ SibSp       1   714.85 746.85
++ Embarked    2   713.01 747.01
++ FamilySize  1   715.25 747.25
++ Child       1   715.26 747.26
++ Parch       1   715.46 747.46
++ CheapTix    1   715.66 747.66
++ Deck        7   708.19 752.19
+
+Step:  AIC=743.55
+Survived ~ Title + Pclass + FamCat + FareLog + BerthAssgn + Age
+
+             Df Deviance    AIC
+<none>            711.55 743.55
++ Sex         1   710.13 744.13
++ Fare        1   710.56 744.56
++ Child       1   710.58 744.58
++ SibSp       1   710.84 744.84
++ Parch       1   711.19 745.19
++ FamilySize  1   711.28 745.28
++ CheapTix    1   711.33 745.33
++ Embarked    2   709.68 745.68
++ Deck        7   702.30 748.30
++ AgeBin      4   708.62 748.62
+> 
+> # stepwise both direction
+> fit.both <- step(glm(Survived ~ ., data = training, family = "binomial"), direction = 'both')
+Start:  AIC=763.8
+Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + 
+    Title + BerthAssgn + Deck + FamilySize + FamCat + CheapTix + 
+    FareLog + Child + AgeBin
+
+
+Step:  AIC=763.8
+Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + 
+    Title + BerthAssgn + Deck + FamCat + CheapTix + FareLog + 
+    Child + AgeBin
+
+
+Step:  AIC=763.8
+Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + 
+    Title + Deck + FamCat + CheapTix + FareLog + Child + AgeBin
+
+           Df Deviance    AIC
+- AgeBin    4   696.77 758.77
+- Deck      8   707.36 761.36
+- Embarked  2   695.74 761.74
+- Parch     1   693.80 761.80
+- Child     1   693.89 761.89
+- CheapTix  1   693.92 761.92
+- Age       1   693.95 761.95
+- SibSp     1   693.99 761.99
+- Fare      1   694.59 762.59
+- Sex       1   695.17 763.17
+- FareLog   1   695.32 763.32
+<none>          693.80 763.80
+- FamCat    4   706.56 768.56
+- Pclass    2   706.07 772.07
+- Title     6   746.80 804.80
+
+Step:  AIC=758.77
+Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + 
+    Title + Deck + FamCat + CheapTix + FareLog + Child
+
+           Df Deviance    AIC
+- Deck      8   710.06 756.06
+- Embarked  2   698.68 756.68
+- Parch     1   696.77 756.77
+- CheapTix  1   696.82 756.82
+- SibSp     1   696.91 756.91
+- Fare      1   697.52 757.52
+- Child     1   697.71 757.71
+- Sex       1   697.86 757.86
+- FareLog   1   698.31 758.31
+<none>          696.77 758.77
+- Age       1   701.74 761.74
+- FamCat    4   708.98 762.98
++ AgeBin    4   693.80 763.80
+- Pclass    2   708.45 766.45
+- Title     6   749.31 799.31
+
+Step:  AIC=756.06
+Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + 
+    Title + FamCat + CheapTix + FareLog + Child
+
+             Df Deviance    AIC
++ BerthAssgn  1   705.79 753.79
+- Embarked    2   711.85 753.85
+- Parch       1   710.06 754.06
+- SibSp       1   710.27 754.27
+- CheapTix    1   710.28 754.28
+- Fare        1   710.43 754.43
+- Child       1   711.16 755.16
+<none>            710.06 756.06
+- Sex         1   712.06 756.06
+- FareLog     1   712.35 756.35
+- Age         1   713.73 757.73
++ Deck        8   696.77 758.77
++ AgeBin      4   707.36 761.36
+- FamCat      4   723.51 761.51
+- Pclass      2   736.03 778.03
+- Title       6   767.90 801.90
+
+Step:  AIC=753.79
+Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + 
+    Title + FamCat + CheapTix + FareLog + Child + BerthAssgn
+
+             Df Deviance    AIC
+- Embarked    2   707.77 751.77
+- Parch       1   705.79 751.79
+- CheapTix    1   705.83 751.83
+- SibSp       1   705.95 751.95
+- Fare        1   706.15 752.15
+- Child       1   706.82 752.82
+- Sex         1   707.41 753.41
+- FareLog     1   707.63 753.63
+<none>            705.79 753.79
+- Age         1   709.80 755.80
+- BerthAssgn  1   710.06 756.06
+- FamCat      4   717.65 757.65
++ Deck        7   696.77 758.77
++ AgeBin      4   702.96 758.96
+- Pclass      2   719.20 763.20
+- Title       6   760.91 796.91
+
+Step:  AIC=751.77
+Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Title + 
+    FamCat + CheapTix + FareLog + Child + BerthAssgn
+
+             Df Deviance    AIC
+- Parch       1   707.77 749.77
+- CheapTix    1   707.78 749.78
+- SibSp       1   708.00 750.00
+- Fare        1   708.41 750.41
+- Child       1   708.47 750.47
+- Sex         1   709.23 751.23
+- FareLog     1   709.65 751.65
+<none>            707.77 751.77
++ Embarked    2   705.79 753.79
+- Age         1   711.84 753.84
+- BerthAssgn  1   711.85 753.85
+- FamCat      4   720.37 756.37
++ Deck        7   698.68 756.68
++ AgeBin      4   705.01 757.01
+- Pclass      2   720.37 760.37
+- Title       6   762.28 794.28
+
+Step:  AIC=749.77
+Survived ~ Pclass + Sex + Age + SibSp + Fare + Title + FamCat + 
+    CheapTix + FareLog + Child + BerthAssgn
+
+             Df Deviance    AIC
+- CheapTix    1   707.78 747.78
+- SibSp       1   708.29 748.29
+- Fare        1   708.41 748.41
+- Child       1   708.48 748.48
+- Sex         1   709.23 749.23
+- FareLog     1   709.65 749.65
+<none>            707.77 749.77
++ Parch       1   707.77 751.77
++ FamilySize  1   707.77 751.77
++ Embarked    2   705.79 751.79
+- BerthAssgn  1   711.85 751.85
+- Age         1   711.89 751.89
++ Deck        7   698.68 754.68
++ AgeBin      4   705.02 755.02
+- Pclass      2   720.42 758.42
+- FamCat      4   728.55 762.55
+- Title       6   762.31 792.31
+
+Step:  AIC=747.78
+Survived ~ Pclass + Sex + Age + SibSp + Fare + Title + FamCat + 
+    FareLog + Child + BerthAssgn
+
+             Df Deviance    AIC
+- SibSp       1   708.31 746.31
+- Fare        1   708.49 746.49
+- Child       1   708.55 746.55
+- Sex         1   709.23 747.23
+<none>            707.78 747.78
+- FareLog     1   709.92 747.92
++ CheapTix    1   707.77 749.77
++ Parch       1   707.78 749.78
++ FamilySize  1   707.78 749.78
++ Embarked    2   705.83 749.83
+- Age         1   711.96 749.96
+- BerthAssgn  1   712.00 750.00
++ Deck        7   698.69 752.69
++ AgeBin      4   705.07 753.07
+- Pclass      2   721.43 757.43
+- FamCat      4   728.66 760.66
+- Title       6   762.31 790.31
+
+Step:  AIC=746.31
+Survived ~ Pclass + Sex + Age + Fare + Title + FamCat + FareLog + 
+    Child + BerthAssgn
+
+             Df Deviance    AIC
+- Child       1   709.07 745.07
+- Fare        1   709.13 745.13
+- Sex         1   709.81 745.81
+<none>            708.31 746.31
+- FareLog     1   710.32 746.32
++ SibSp       1   707.78 747.78
++ Parch       1   708.02 748.02
++ FamilySize  1   708.14 748.14
++ Embarked    2   706.24 748.24
++ CheapTix    1   708.29 748.29
+- Age         1   712.63 748.63
+- BerthAssgn  1   712.72 748.72
++ Deck        7   699.17 751.17
++ AgeBin      4   705.73 751.73
+- Pclass      2   722.27 756.27
+- Title       6   762.69 788.69
+- FamCat      4   760.08 790.08
+
+Step:  AIC=745.07
+Survived ~ Pclass + Sex + Age + Fare + Title + FamCat + FareLog + 
+    BerthAssgn
+
+             Df Deviance    AIC
+- Fare        1   710.13 744.13
+- Sex         1   710.56 744.56
+- FareLog     1   710.98 744.98
+<none>            709.07 745.07
++ Child       1   708.31 746.31
++ SibSp       1   708.55 746.55
++ Parch       1   708.82 746.82
++ FamilySize  1   708.86 746.86
++ CheapTix    1   708.99 746.99
+- Age         1   713.29 747.29
++ Embarked    2   707.38 747.38
+- BerthAssgn  1   713.65 747.65
++ AgeBin      4   705.88 749.88
++ Deck        7   699.88 749.88
+- Pclass      2   723.11 755.11
+- Title       6   763.07 787.07
+- FamCat      4   761.40 789.40
+
+Step:  AIC=744.13
+Survived ~ Pclass + Sex + Age + Title + FamCat + FareLog + BerthAssgn
+
+             Df Deviance    AIC
+- Sex         1   711.55 743.55
+<none>            710.13 744.13
++ Fare        1   709.07 745.07
++ Child       1   709.13 745.13
++ SibSp       1   709.47 745.47
++ Parch       1   709.81 745.81
++ CheapTix    1   709.86 745.86
++ FamilySize  1   709.86 745.86
++ Embarked    2   708.11 746.11
+- FareLog     1   714.41 746.41
+- Age         1   714.50 746.50
+- BerthAssgn  1   714.90 746.90
++ AgeBin      4   706.91 748.91
++ Deck        7   701.32 749.32
+- Pclass      2   724.04 754.04
+- Title       6   763.30 785.30
+- FamCat      4   761.42 787.42
+
+Step:  AIC=743.55
+Survived ~ Pclass + Age + Title + FamCat + FareLog + BerthAssgn
+
+             Df Deviance     AIC
+<none>            711.55  743.55
++ Sex         1   710.13  744.13
++ Fare        1   710.56  744.56
++ Child       1   710.58  744.58
++ SibSp       1   710.84  744.84
++ Parch       1   711.19  745.19
++ FamilySize  1   711.28  745.28
++ CheapTix    1   711.33  745.33
++ Embarked    2   709.68  745.68
+- FareLog     1   715.76  745.76
+- Age         1   715.79  745.79
+- BerthAssgn  1   716.68  746.68
++ Deck        7   702.30  748.30
++ AgeBin      4   708.62  748.62
+- Pclass      2   725.30  753.30
+- FamCat      4   762.91  786.91
+- Title       6   988.09 1008.09
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # call of backward, forward and both step models
+> summary(fit.back)$call
+glm(formula = Survived ~ Pclass + Age + Title + FamCat + FareLog, 
+    family = "binomial", data = training)
+> summary(fit.both)$call
+glm(formula = Survived ~ Pclass + Age + Title + FamCat + FareLog + 
+    BerthAssgn, family = "binomial", data = training)
+> summary(fit.forward)$call
+glm(formula = Survived ~ Title + Pclass + FamCat + FareLog + 
+    BerthAssgn + Age, family = "binomial", data = training)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> form1 <- formula(Survived ~ Pclass + Age + Title + FamCat + FareLog)
+> form2 <- formula(Survived ~ Pclass + Age + Title + FamCat + FareLog + BerthAssgn)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(417)
+> # 60/40 split of training data
+> intrain <- createDataPartition(y = training$Survived, p = 0.6, 
++                                list = FALSE)
+> train <- training[intrain,]
+> test <- training[-intrain,]
+> 
+> # confirm dimensions
+> dim(train); dim(test)
+[1] 536  17
+[1] 355  17
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # survivor proportions in train and test sets
+> round(prop.table(table(train$Survived)),3)
+
+    0     1 
+0.616 0.384 
+> round(prop.table(table(test$Survived)),3)
+
+    0     1 
+0.617 0.383 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # set cv for all models
+> ctrl <- trainControl(method = "repeatedcv", number = 10, repeats = 5)
+> 
+> # vector of algorithms we want to try
+> methods <- c("glm", "glmnet", "rpart", "ranger", "svmRadial", "knn")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # initialize empty lists of model fits, predictions, and accuracies
+> fits <- vector("list")
+> pred <- vector("list")
+> acc <- vector("list")
+> 
+> # fit a series of models with different methods
+> for (m in methods) {
++     set.seed(417)
++     fits[[m]] <- train(form1, data = train, method = m, 
++                trControl = ctrl, tuneLength = 5)
++ }
+Warning message:
+In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+> 
+> # generate predictions and accuracy for each model fits
+> for (mod in names(fits)) {
++     pred[[mod]] <- predict(fits[[mod]], test)
++     acc[[mod]] <- mean(test$Survived == pred[[mod]])
++ }
+> 
+> # save accuracies and predictions in dfs
+> acc.df1 <- as.data.frame(acc)
+> pred.df1 <- as.data.frame(pred)
+> acc.df1
+        glm    glmnet     rpart    ranger svmRadial       knn
+1 0.8366197 0.8394366 0.8309859 0.8394366 0.8309859 0.7887324
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # initialize empty lists of model fits, predictions, and accuracies
+> fits <- vector("list")
+> pred <- vector("list")
+> acc <- vector("list")
+> 
+> # fit a series of models with different methods
+> for (m in methods) {
++     set.seed(417)
++     fits[[m]] <- train(form2, data = train, method = m, 
++                trControl = ctrl, tuneLength = 5)
++ }
+Warning message:
+In predict.lm(object, newdata, se.fit, scale = 1, type = if (type ==  :
+  prediction from a rank-deficient fit may be misleading
+> 
+> # generate predictions and accuracy for each model fits
+> for (mod in names(fits)) {
++     pred[[mod]] <- predict(fits[[mod]], test)
++     acc[[mod]] <- mean(test$Survived == pred[[mod]])
++ }
+> 
+> # save accuracies and predictions in dfs
+> acc.df2 <- as.data.frame(acc)
+> pred.df2 <- as.data.frame(pred)
+> acc.df2
+        glm    glmnet    rpart   ranger svmRadial       knn
+1 0.8450704 0.8394366 0.828169 0.828169 0.8422535 0.7887324
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # combine accuracy results
+> acc.all <- rbind(acc.df1, acc.df2)
+> acc.all
+        glm    glmnet     rpart    ranger svmRadial       knn
+1 0.8366197 0.8394366 0.8309859 0.8394366 0.8309859 0.7887324
+2 0.8450704 0.8394366 0.8281690 0.8281690 0.8422535 0.7887324
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # convert factor variables in testing set
+> testing$Pclass <- factor(testing$Pclass)
+> 
+> # extract titles 
+> testing$Title <- factor(str_extract(testing$Name, "\\w+(?=\\.)"))
+> levels(testing$Title) <- c(levels(testing$Title), "HonM")
+> # define reassignments
+> single_ladies <- c("Mlle","Lady","Ms")
+> hon_male <- c("Sir","Major","Col","Jonkheer","Capt","Don","Col")
+> mrs <- c("Mme", "Countess", "Dona")
+> # relabel factors
+> testing$Title[testing$Title %in% single_ladies] <- "Miss"
+> testing$Title[testing$Title %in% mrs] <- "Mrs"
+> testing$Title[testing$Title %in% hon_male] <- "HonM"
+> 
+> # drop unused levels
+> testing$Title <- droplevels(testing$Title)
+> 
+> # create a variable based on if passenger assigned a cabin
+> testing$BerthAssgn <- factor(ifelse(is.na(testing$Cabin), 0, 1))
+> 
+> # create Deck variable
+> testing$Deck <- substr(testing$Cabin, 1,1)
+> testing$Deck[is.na(testing$Deck)] <- "Missing"
+> testing$Deck <- factor(testing$Deck)
+> 
+> # create a FamilySize variable
+> testing$FamilySize <- testing$SibSp + testing$Parch
+> 
+> # create FamCat variable
+> testing$FamCat <- NA
+> testing$FamCat[testing$FamilySize == 0] <- "solo"
+> testing$FamCat[testing$FamilySize == 1] <- "pair"
+> testing$FamCat[testing$FamilySize == 2] <- "trio"
+> testing$FamCat[testing$FamilySize == 3] <- "quartet"
+> testing$FamCat[testing$FamilySize >= 4] <- "large"
+> testing$FamCat <- factor(testing$FamCat, levels = c("solo","pair","trio","quartet","large"), ordered = TRUE)
+> 
+> # impute 1 missing Fare value with median
+> testing$Fare[is.na(testing$Fare)] <- mean(testing$Fare, na.rm = TRUE)
+> 
+> # create CheapTix variable
+> testing$CheapTix <- factor(ifelse(testing$Fare <= 13, 1, 0))
+> 
+> # change fares of 0 to 0.01
+> testing$Fare[testing$Fare == 0] <- 0.01
+> 
+> # log transform Fare
+> testing$FareLog <- log(testing$Fare)
+> 
+> # impute missing Age values
+> set.seed(417)
+> tempData <- mice(testing[,!names(testing) %in% c("PassengerId", "Name", "Ticket", "Cabin")], method = "pmm")
+
+ iter imp variable
+  1   1  Age*
+  1   2  Age*
+  1   3  Age*
+  1   4  Age*
+  1   5  Age*
+  2   1  Age*
+  2   2  Age*
+  2   3  Age*
+  2   4  Age*
+  2   5  Age*
+  3   1  Age*
+  3   2  Age*
+  3   3  Age*
+  3   4  Age*
+  3   5  Age*
+  4   1  Age*
+  4   2  Age*
+  4   3  Age*
+  4   4  Age*
+  4   5  Age*
+  5   1  Age*
+  5   2  Age*
+  5   3  Age*
+  5   4  Age*
+  5   5  Age*
+ * Please inspect the loggedEvents 
+Warning message:
+Number of logged events: 50 
+> mice_output <- complete(tempData)
+> 
+> # replace age variable with mice output
+> testing$Age <- mice_output$Age
+> 
+> # create Child variable
+> testing$Child <- factor(ifelse(testing$Age <= 14, 1, 0))
+> 
+> # bin Ages in a new variable
+> testing$AgeBin <- cut(testing$Age, breaks = 5, 
++                        ordered_result = TRUE)
+> # drop unuseful predictors
+> drops <- c("Ticket", "Cabin", "Name")
+> testing <- testing[ , !(names(testing) %in% drops)]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> form2
+Survived ~ Pclass + Age + Title + FamCat + FareLog + BerthAssgn
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(417)
+> fit.best <- train(form2, data = train, method = "ranger", 
++                trControl = ctrl, tuneLength = 5)
+> 
+> # Make predictions on the test dataset
+> pred.best <- predict(fit.best, test)
+> 
+> # Examine the confusion matrix
+> table(test$Survived, pred.best)
+   pred.best
+      0   1
+  0 192  27
+  1  35 101
+> 
+> # Compute the accuracy on the test dataset
+> mean(test$Survived == pred.best)
+[1] 0.8253521
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(417)
+> # generate predictions on testing dataset
+> testing$Survived <- predict(fit.best, testing)
+> 
+> # keep requested columns
+> submission <- testing[,c("PassengerId", "Survived")]
+> 
+> # Write the solution to file
+> write.csv(submission, file = 'submission.csv', row.names = FALSE)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+768.708  15.621 169.726 

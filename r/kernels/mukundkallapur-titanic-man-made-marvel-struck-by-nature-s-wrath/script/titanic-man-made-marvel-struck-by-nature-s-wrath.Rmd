@@ -1,0 +1,217 @@
+---
+title: "Titanic, A joy trip turned into a disaster"
+author: "Mukund G Kallapur"
+date: "22-Jan-2019"
+output:
+  html_document:
+    number_sections: true
+    toc: true
+---
+
+```{r setup, include=FALSE, message=FALSE}
+knitr::opts_chunk$set(echo = FALSE,warning = FALSE, error = TRUE)
+```
+
+# Introduction
+
+This is my first Kaggle kernel. This is one of the most easiest datasets which can be found on Kaggle. This version of my kernel primarily 
+focuses on the EDA or the Exploratory Data Analysis part of the raw data.
+
+
+```{r Setup, message=FALSE}
+## Load the library and read the file. 
+library(tidyverse)
+library(DMwR)
+
+titanic_vis <- read.csv("../input/train.csv")
+```
+So, now that the data is loaded, let us move forward. 
+
+# What this Titanic dataset about?
+
+We all know that the Titanic ship accident was one of the biggest tragic incident of that time. This dataset contains demographic information 
+about the passengers who travelled on that ill fated ship. This dataset is tremendously small in size as compared to some other 
+humongous datasets we can see on Kaggle. 
+
+Hence many beginners like me pick this dataset to begin with EDA, building basic models such as Logistic regression, slowly get into Machine
+Learning part, Artificial Neural Networks and finally end up building models with Ensemble approaches. 
+
+I believe that even before we think of modelling, EDA is must. Hence I have spent enough time and energy to come up with some decent visuals
+with an interpretation behind each one of them. 
+
+Before jumping directly to visuals, let me tell you what the Data tells us !
+
+# Data Speaks, Let us hear !
+
+```{r}
+str(titanic_vis)
+dim(titanic_vis)
+```
+By looking at the structure and the dmension, we can say that there are 891 records in the dataset with 11 Independent Variables and 
+1 Target attribute which is the 'Survived' attribute represented as '1' and '0'. 
+
+# Data Type conversion and recoding.
+
+Notice that few of the attributes are considered as Integers by default by R. We have to convert those to categorical despite they being 
+numbers, they represent categories. They will need recoding since it would give a better meaning when visualized.  
+
+
+```{r}
+### Conversion of the attributes 'Survived' and 'PClass' to 'Categorical'
+
+titanic_vis$Survived <- as.factor(titanic_vis$Survived)
+titanic_vis$Pclass <- as.factor(titanic_vis$Pclass)
+
+### Recode the attributes Survived, PClass, Embarked and Gender for better Visualization. 
+titanic_vis$Survived <-  ifelse(titanic_vis$Survived == "1","Yes", "No")
+titanic_vis$Pclass <- ifelse(titanic_vis$Pclass == "1", "First",
+                          ifelse(titanic_vis$Pclass == "2", "Second", "Third"))
+titanic_vis$Sex <- ifelse(titanic_vis$Sex == "male", "Male", "Female")
+
+titanic_vis$Embarked <- ifelse(titanic_vis$Embarked == "C", "Cherbourg",
+                             ifelse(titanic_vis$Embarked == "Q", "Queenstown", 
+                             ifelse(titanic_vis$Embarked == "S","Southampton","Southampton")))
+                             
+## Impute the Age
+
+#summary(titanic_vis)
+#sum(is.na(titanic_vis))
+titanic_vis <- DMwR :: centralImputation(titanic_vis)
+                             
+## Binning the Age manually and splitting into groups using recode method. 
+
+titanic_vis$Age <- ifelse(titanic_vis$Age <=1, "Baby",
+                      ifelse((titanic_vis$Age > 1 & titanic_vis$Age <= 12), "Kid",
+                             ifelse((titanic_vis$Age > 12 & titanic_vis$Age <= 19), "Teen",
+                                    ifelse((titanic_vis$Age > 19 & titanic_vis$Age <= 40), "Young",
+                                           ifelse((titanic_vis$Age > 40 & titanic_vis$Age <= 60), 
+                                                  "Middle","Senior")))))
+                                                  
+titanic_vis$Age <- as.factor(titanic_vis$Age)                             
+                             
+```
+
+# Visualizations 
+## Overall Survival Count
+
+The below plot highlights that out of 891 passengers, 342 were able to see the light of the day whereas 549 succumbed to death!
+
+```{r}
+titanic_vis %>%
+  group_by(Survived) %>% 
+      summarise(n=n()) %>% 
+        ggplot() +
+          geom_col(aes(reorder(Survived, -n),y=n, fill = Survived), width = 0.4) +
+            xlab("Survival of Passengers") + ylab("Count") + 
+              ggtitle("Titanic Survival Count") +
+                  theme_minimal() + 
+                    theme(plot.title = element_text(hjust = 0.5, face = "bold"),axis.title.x.bottom = element_text(face = "bold"), 
+                        axis.title.y.left = element_text(face = "bold")) +
+                            geom_text(aes(x = Survived, y = n, label = n), vjust = -0.5, stat = "sum", show.legend = FALSE)
+```
+
+
+
+
+
+## Survival Count against the Passenger Class 
+
+Looking at the below plot we can infer that the passengers who were travelling in the least expensive Class 3 were the most affected. Out of 
+491 passengers who travelled in 3rd class, only 119 were able to swim out alive !
+
+```{r}
+titanic_vis %>%
+  group_by(Pclass, Survived) %>%
+    dplyr :: summarise(n = n()) %>% 
+      ggplot(aes(x = reorder(Pclass, -n), y = n, fill = Survived)) + 
+          geom_bar(position = "dodge",stat = "identity", color = "black")  +
+                geom_text(aes(label = n),position=position_dodge(width=0.9), vjust=-0.25) +
+                    xlab("Passenger Class") + ylab("Count") + 
+                        ggtitle("Titanic Passenger Class vs Survival") +
+                            theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),axis.title.x.bottom = element_text(face = "bold",
+  vjust = 3,size = 15), axis.title.y.left = element_text(face = "bold", size = 15),
+  axis.text.x.bottom = element_text(face = "bold",size = 12,vjust = 3))
+```
+
+## Survival Count against Gender
+
+Wow !! Indeed, many men lost their lives !!! 
+
+```{r}
+titanic_vis %>%
+  group_by(Sex, Survived) %>%
+    summarise(n = n()) %>% 
+      ggplot(aes(x = reorder(Sex,-n), y = n, fill = Survived)) + 
+          geom_bar(position = position_stack(), stat = "identity", width = 0.7, color = "black")  +
+            geom_text(aes(label = n),position=position_stack(vjust = 0.5), size = 5) +
+                             xlab("Passenger Gender") + ylab("Count") + 
+                    ggtitle("Titanic Passenger Gender vs Survival") +
+                      theme_minimal() +
+  scale_fill_brewer(palette = 15) +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),axis.title.x.bottom = element_text(face = "bold",vjust = 3,size = 15), axis.title.y.left = element_text(face = "bold", size = 15),axis.text.x.bottom = element_text(face = "bold",size = 12,vjust = 3))
+
+```
+
+## Survival Count against Embarked
+
+Southampton being one of the major cities in the United Kingdom and also it being a major port there is no wonder that maximum number of
+people embarked from there. Out of 891 passengers, a total of 646 people boarded the RMS Titanic from Southampton. Among those 646 passengers, 
+427 survived to tell the tale !!
+```{r}
+titanic_vis %>%
+  group_by(Embarked, Survived) %>%
+  
+  summarise(n = n()) %>%
+  
+  ggplot(aes(x = reorder(Embarked, -n), y = n, fill = Survived)) + 
+  geom_bar(position = position_stack(), stat = "identity", width = 0.7, color = "black")  +
+
+  geom_text(aes(label = n),position=position_stack(vjust = 0.5), size = 5) +
+  xlab("Embarkation Point") + ylab("Count") + 
+  ggtitle("Embarked against Survival") +
+  theme_minimal() +
+  scale_fill_brewer(palette = 14) +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        axis.title.x.bottom = element_text(face = "bold",vjust = 3,size = 15), 
+        axis.title.y.left = element_text(face = "bold", size = 15),
+        axis.text.x.bottom = element_text(face = "bold",size = 12,vjust = 3))
+```
+
+
+## Survival Count against different Age Categories
+
+Visualization of the below plot implies that people in the Age group belonging to 20 and 40, who are classified as "Young". The total population 
+of people in this age range was 577. Among those who Survived were 208 and 369 died Young !
+
+Another inference what we can draw from this plot is regariding the Babies less than 1 year. There were 14 babies and 12 survived. Kids in the 
+age group 1 and 12 wre 55 in number and Survival ratio is almost equally distributed. 
+
+Another staggering thing to notice is that there were 22 passengers aged 60 plus and among them only 5 survived. This may be due to the reason 
+that they might have panicked when all the hell broke loose !!!
+```{r}
+titanic_vis %>%
+  select(Age,Survived) %>%
+    group_by(Age, Survived) %>%
+        dplyr :: summarise(n = n()) %>%
+            arrange(desc(Age)) %>%
+  ggplot() +
+  #coord_flip()+
+        geom_col(aes(x=reorder(Age, -n), y = n,fill = Age)) +
+          xlab("Age") + ylab("Count") + 
+            facet_grid(~ fct_rev(Survived),scales = "free") +
+                            guides(fill = guide_legend(title = "Age Categories"))  +
+                    ggtitle("Survival vs Age")  +
+                        theme_minimal() + 
+                            theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+                                axis.title.x.bottom = element_text(face = "bold"), 
+                                    axis.title.y.left = element_text(face = "bold"), 
+                                        axis.text.x.bottom = element_text(face = "bold"),
+                                            legend.title = element_text(face = "bold")) +
+                                                geom_text(aes(x = Age, y = n, label = n, vjust = -0.5))
+```
+
+# Future Scope
+
+In the future, I will be focussing on the Modelling part and build multiple models for Survival prediction.  
+

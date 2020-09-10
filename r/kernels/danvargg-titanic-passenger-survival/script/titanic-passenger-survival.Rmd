@@ -1,0 +1,76 @@
+---
+title: "Titanic Passenger Survival"
+author: "Daniel Vargas"
+date: June 01, 2017
+output: 
+    html_document:
+        theme: darkly
+        code_folding: hide
+---
+
+## The Challenge
+
+One of the reasons that the shipwreck led to such loss of life was that there were not enough lifeboats for the passengers and crew. Although there was some element of luck involved in surviving the sinking, some groups of people were more likely to survive than others, such as women, children, and the upper-class.
+
+In this challenge, I will complete the analysis of what sorts of people were likely to survive.
+
+## The data
+
+The data has been split into two groups:
+
+* training set (`train.csv`)
+* test set (`test.csv`)
+
+#### Data Dictionary
+
+Variable	Definition	Key
+survival	Survival	0 = No, 1 = Yes
+pclass	Ticket class	1 = 1st, 2 = 2nd, 3 = 3rd
+sex	Sex	
+Age	Age in years	
+sibsp	# of siblings / spouses aboard the Titanic	
+parch	# of parents / children aboard the Titanic	
+ticket	Ticket number	
+fare	Passenger fare	
+cabin	Cabin number	
+embarked	Port of Embarkation	C = Cherbourg, Q = Queenstown, S = Southampton
+
+### Understanding the data
+
+```{r sets}
+train <- read.csv("../input/train.csv", stringsAsFactors = FALSE)
+test <- read.csv("../input/test.csv", stringsAsFactors = FALSE)
+dim(train); dim(test)
+str(train); str(test)
+```
+
+#### Quick Feature engineering
+
+Splitting the cabins into desks to use as input
+
+```{r feng}
+strsplit(train$Cabin[2], NULL)[[1]]
+train$Deck <- factor(sapply(train$Cabin, function(x) strsplit(x, NULL)[[1]][1]))
+test$Deck <- factor(sapply(test$Cabin, function(x) strsplit(x, NULL)[[1]][1]))
+train$Survived <- as.factor(train$Survived)
+```
+
+## Prediction model with Random Forests
+
+```{r pilot, message = FALSE, warnings = FALSE}
+set.seed(20170601)
+library(e1071)
+m <- naiveBayes(Survived ~ 
+        Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Deck, 
+        data = train, method = "rf", metric = "Accuracy", na.action = na.pass)
+m
+```
+## Prediction and Solution
+
+```{r prediction, message = FALSE, warnings = FALSE}
+library(caret)
+p <- predict(m, test, type = "class")
+head(p, 20)
+sol <- data.frame(PassengerID = test$PassengerId, Survived = p)
+write.csv(sol, file = "titanic_sol.csv", row.names = F)
+```

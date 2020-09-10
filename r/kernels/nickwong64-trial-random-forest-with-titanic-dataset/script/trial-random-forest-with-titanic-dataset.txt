@@ -1,0 +1,64 @@
+
+library(randomForest)
+library(caret)
+
+#load the dataset
+training <- read.csv("../input/train.csv")
+testing  <- read.csv("../input/test.csv")
+
+head(training)
+dim(training)
+dim(testing)
+names(training)
+prop.table(table(training$Sex, training$Survived), 1)
+summary(training$Age)
+
+#Partition the training set for training and testing
+set.seed(1010)
+inTrain <- createDataPartition(y=training$Survived, p=0.70, list=FALSE)
+train1  <- training[inTrain,]
+train2  <- training[-inTrain,]
+dim(train1)
+dim(train2)
+
+
+#Remove near zero covariates from train1 and train2
+nzv_cols <- nearZeroVar(train1)
+if(length(nzv_cols) > 0) {
+  train1 <- train1[, -nzv_cols]
+  train2 <- train2[, -nzv_cols]
+}
+dim(train1)
+dim(train2)
+
+#Calculate the missing values in train1, train2 and testing dataset
+train1$Age[is.na(train1$Age)] <- median(train1$Age, na.rm=TRUE)
+train1$Fare[is.na(train1$Fare)] <- median(train1$Fare, na.rm=TRUE)
+train1$Survived <- as.factor(train1$Survived)
+
+train2$Age[is.na(train2$Age)] <- median(train2$Age, na.rm=TRUE)
+train2$Fare[is.na(train2$Fare)] <- median(train2$Fare, na.rm=TRUE)
+train2$Survived <- as.factor(train2$Survived)
+
+testing$Age[is.na(testing$Age)] <- median(testing$Age, na.rm=TRUE)
+testing$Fare[is.na(testing$Fare)] <- median(testing$Fare, na.rm=TRUE)
+
+
+#Check the accurary and gini graphs to see which factors is important
+set.seed(1010)
+fitModel <- randomForest(Survived~Sex + Age + Pclass + Fare,
+                         data=train1, importance=TRUE, ntree=100)
+varImpPlot(fitModel)
+
+#Predict with the test set
+predictions <- predict(fitModel, newdata=train2)
+confusionMat <- confusionMatrix(predictions, train2$Survived)
+confusionMat
+
+#Predict with testing set for submission
+testPredictions <- predict(fitModel, newdata=testing)
+
+#Create submission file to kaggle
+submit <- data.frame(PassengerId = testing$PassengerId, Survived = testPredictions)
+write.csv(submit, file = "titanic.csv", row.names = FALSE)
+

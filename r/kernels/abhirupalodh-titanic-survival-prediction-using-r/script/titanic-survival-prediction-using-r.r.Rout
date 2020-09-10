@@ -1,0 +1,564 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> #Importing the Training Dataset
+> train=read.csv("../input/train.csv")
+> 
+> print(head(train))
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> 
+> summary(train)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked
+            :687    :  2   
+ B96 B98    :  4   C:168   
+ C23 C25 C27:  4   Q: 77   
+ G6         :  4   S:644   
+ C22 C26    :  3           
+ D          :  3           
+ (Other)    :186           
+> nrow(train)
+[1] 891
+> ncol(train)
+[1] 12
+> colnames(train)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"   
+> 
+> #Since Cabin  has more than 70% of the data unknown , Using it will be pointless. Moreover with such less  data , replacing with mean and medium won't beuseful
+> #Survival of a person doesn't depends on the location the person embarked his/her journey. Hence omitting this too.
+> 
+> train_refined=train[,-c(11,12)]
+> colnames(train_refined)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+> 
+> 
+> #Replaceing NA's in Age with mean or median
+> 
+> boxplot(train_refined$Age)
+> hist(train_refined$Age)
+> 
+> 
+> 
+> 
+> 
+> #Removing Outliers
+> age_mean=mean(train_refined$Age,na.rm=TRUE)
+> train_refined$Age[is.na(train_refined$Age)]=age_mean
+> summary(train_refined)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:22.00  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :29.70  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:35.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                               
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+> 
+> #Prediction 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> colnames(train_refined)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+> train_refined=train_refined[,c(1,2,3,5,6,7,8,10)]
+> 
+> nrow(train_refined)
+[1] 891
+> train_data=train_refined[1:625,]
+> test_data=train_refined[626:891,]
+> target=test_data[,2]
+> as.factor(target)->target
+> test_data=test_data[,-c(2)]
+> test_data
+    PassengerId Pclass    Sex      Age SibSp Parch     Fare
+626         626      1   male 61.00000     0     0  32.3208
+627         627      2   male 57.00000     0     0  12.3500
+628         628      1 female 21.00000     0     0  77.9583
+629         629      3   male 26.00000     0     0   7.8958
+630         630      3   male 29.69912     0     0   7.7333
+631         631      1   male 80.00000     0     0  30.0000
+632         632      3   male 51.00000     0     0   7.0542
+633         633      1   male 32.00000     0     0  30.5000
+634         634      1   male 29.69912     0     0   0.0000
+635         635      3 female  9.00000     3     2  27.9000
+636         636      2 female 28.00000     0     0  13.0000
+637         637      3   male 32.00000     0     0   7.9250
+638         638      2   male 31.00000     1     1  26.2500
+639         639      3 female 41.00000     0     5  39.6875
+640         640      3   male 29.69912     1     0  16.1000
+641         641      3   male 20.00000     0     0   7.8542
+642         642      1 female 24.00000     0     0  69.3000
+643         643      3 female  2.00000     3     2  27.9000
+644         644      3   male 29.69912     0     0  56.4958
+645         645      3 female  0.75000     2     1  19.2583
+646         646      1   male 48.00000     1     0  76.7292
+647         647      3   male 19.00000     0     0   7.8958
+648         648      1   male 56.00000     0     0  35.5000
+649         649      3   male 29.69912     0     0   7.5500
+650         650      3 female 23.00000     0     0   7.5500
+651         651      3   male 29.69912     0     0   7.8958
+652         652      2 female 18.00000     0     1  23.0000
+653         653      3   male 21.00000     0     0   8.4333
+654         654      3 female 29.69912     0     0   7.8292
+655         655      3 female 18.00000     0     0   6.7500
+656         656      2   male 24.00000     2     0  73.5000
+657         657      3   male 29.69912     0     0   7.8958
+658         658      3 female 32.00000     1     1  15.5000
+659         659      2   male 23.00000     0     0  13.0000
+660         660      1   male 58.00000     0     2 113.2750
+661         661      1   male 50.00000     2     0 133.6500
+662         662      3   male 40.00000     0     0   7.2250
+663         663      1   male 47.00000     0     0  25.5875
+664         664      3   male 36.00000     0     0   7.4958
+665         665      3   male 20.00000     1     0   7.9250
+666         666      2   male 32.00000     2     0  73.5000
+667         667      2   male 25.00000     0     0  13.0000
+668         668      3   male 29.69912     0     0   7.7750
+669         669      3   male 43.00000     0     0   8.0500
+670         670      1 female 29.69912     1     0  52.0000
+671         671      2 female 40.00000     1     1  39.0000
+672         672      1   male 31.00000     1     0  52.0000
+673         673      2   male 70.00000     0     0  10.5000
+674         674      2   male 31.00000     0     0  13.0000
+675         675      2   male 29.69912     0     0   0.0000
+676         676      3   male 18.00000     0     0   7.7750
+677         677      3   male 24.50000     0     0   8.0500
+678         678      3 female 18.00000     0     0   9.8417
+679         679      3 female 43.00000     1     6  46.9000
+680         680      1   male 36.00000     0     1 512.3292
+681         681      3 female 29.69912     0     0   8.1375
+682         682      1   male 27.00000     0     0  76.7292
+683         683      3   male 20.00000     0     0   9.2250
+684         684      3   male 14.00000     5     2  46.9000
+685         685      2   male 60.00000     1     1  39.0000
+686         686      2   male 25.00000     1     2  41.5792
+687         687      3   male 14.00000     4     1  39.6875
+688         688      3   male 19.00000     0     0  10.1708
+689         689      3   male 18.00000     0     0   7.7958
+690         690      1 female 15.00000     0     1 211.3375
+691         691      1   male 31.00000     1     0  57.0000
+692         692      3 female  4.00000     0     1  13.4167
+693         693      3   male 29.69912     0     0  56.4958
+694         694      3   male 25.00000     0     0   7.2250
+695         695      1   male 60.00000     0     0  26.5500
+696         696      2   male 52.00000     0     0  13.5000
+697         697      3   male 44.00000     0     0   8.0500
+698         698      3 female 29.69912     0     0   7.7333
+699         699      1   male 49.00000     1     1 110.8833
+700         700      3   male 42.00000     0     0   7.6500
+701         701      1 female 18.00000     1     0 227.5250
+702         702      1   male 35.00000     0     0  26.2875
+703         703      3 female 18.00000     0     1  14.4542
+704         704      3   male 25.00000     0     0   7.7417
+705         705      3   male 26.00000     1     0   7.8542
+706         706      2   male 39.00000     0     0  26.0000
+707         707      2 female 45.00000     0     0  13.5000
+708         708      1   male 42.00000     0     0  26.2875
+709         709      1 female 22.00000     0     0 151.5500
+710         710      3   male 29.69912     1     1  15.2458
+711         711      1 female 24.00000     0     0  49.5042
+712         712      1   male 29.69912     0     0  26.5500
+713         713      1   male 48.00000     1     0  52.0000
+714         714      3   male 29.00000     0     0   9.4833
+715         715      2   male 52.00000     0     0  13.0000
+716         716      3   male 19.00000     0     0   7.6500
+717         717      1 female 38.00000     0     0 227.5250
+718         718      2 female 27.00000     0     0  10.5000
+719         719      3   male 29.69912     0     0  15.5000
+720         720      3   male 33.00000     0     0   7.7750
+721         721      2 female  6.00000     0     1  33.0000
+722         722      3   male 17.00000     1     0   7.0542
+723         723      2   male 34.00000     0     0  13.0000
+724         724      2   male 50.00000     0     0  13.0000
+725         725      1   male 27.00000     1     0  53.1000
+726         726      3   male 20.00000     0     0   8.6625
+727         727      2 female 30.00000     3     0  21.0000
+728         728      3 female 29.69912     0     0   7.7375
+729         729      2   male 25.00000     1     0  26.0000
+730         730      3 female 25.00000     1     0   7.9250
+731         731      1 female 29.00000     0     0 211.3375
+732         732      3   male 11.00000     0     0  18.7875
+733         733      2   male 29.69912     0     0   0.0000
+734         734      2   male 23.00000     0     0  13.0000
+735         735      2   male 23.00000     0     0  13.0000
+736         736      3   male 28.50000     0     0  16.1000
+737         737      3 female 48.00000     1     3  34.3750
+738         738      1   male 35.00000     0     0 512.3292
+739         739      3   male 29.69912     0     0   7.8958
+740         740      3   male 29.69912     0     0   7.8958
+741         741      1   male 29.69912     0     0  30.0000
+742         742      1   male 36.00000     1     0  78.8500
+743         743      1 female 21.00000     2     2 262.3750
+744         744      3   male 24.00000     1     0  16.1000
+745         745      3   male 31.00000     0     0   7.9250
+746         746      1   male 70.00000     1     1  71.0000
+747         747      3   male 16.00000     1     1  20.2500
+748         748      2 female 30.00000     0     0  13.0000
+749         749      1   male 19.00000     1     0  53.1000
+750         750      3   male 31.00000     0     0   7.7500
+751         751      2 female  4.00000     1     1  23.0000
+752         752      3   male  6.00000     0     1  12.4750
+753         753      3   male 33.00000     0     0   9.5000
+754         754      3   male 23.00000     0     0   7.8958
+755         755      2 female 48.00000     1     2  65.0000
+756         756      2   male  0.67000     1     1  14.5000
+757         757      3   male 28.00000     0     0   7.7958
+758         758      2   male 18.00000     0     0  11.5000
+759         759      3   male 34.00000     0     0   8.0500
+760         760      1 female 33.00000     0     0  86.5000
+761         761      3   male 29.69912     0     0  14.5000
+762         762      3   male 41.00000     0     0   7.1250
+763         763      3   male 20.00000     0     0   7.2292
+764         764      1 female 36.00000     1     2 120.0000
+765         765      3   male 16.00000     0     0   7.7750
+766         766      1 female 51.00000     1     0  77.9583
+767         767      1   male 29.69912     0     0  39.6000
+768         768      3 female 30.50000     0     0   7.7500
+769         769      3   male 29.69912     1     0  24.1500
+770         770      3   male 32.00000     0     0   8.3625
+771         771      3   male 24.00000     0     0   9.5000
+772         772      3   male 48.00000     0     0   7.8542
+773         773      2 female 57.00000     0     0  10.5000
+774         774      3   male 29.69912     0     0   7.2250
+775         775      2 female 54.00000     1     3  23.0000
+776         776      3   male 18.00000     0     0   7.7500
+777         777      3   male 29.69912     0     0   7.7500
+778         778      3 female  5.00000     0     0  12.4750
+779         779      3   male 29.69912     0     0   7.7375
+780         780      1 female 43.00000     0     1 211.3375
+781         781      3 female 13.00000     0     0   7.2292
+782         782      1 female 17.00000     1     0  57.0000
+783         783      1   male 29.00000     0     0  30.0000
+784         784      3   male 29.69912     1     2  23.4500
+785         785      3   male 25.00000     0     0   7.0500
+786         786      3   male 25.00000     0     0   7.2500
+787         787      3 female 18.00000     0     0   7.4958
+788         788      3   male  8.00000     4     1  29.1250
+789         789      3   male  1.00000     1     2  20.5750
+790         790      1   male 46.00000     0     0  79.2000
+791         791      3   male 29.69912     0     0   7.7500
+792         792      2   male 16.00000     0     0  26.0000
+793         793      3 female 29.69912     8     2  69.5500
+794         794      1   male 29.69912     0     0  30.6958
+795         795      3   male 25.00000     0     0   7.8958
+796         796      2   male 39.00000     0     0  13.0000
+797         797      1 female 49.00000     0     0  25.9292
+798         798      3 female 31.00000     0     0   8.6833
+799         799      3   male 30.00000     0     0   7.2292
+800         800      3 female 30.00000     1     1  24.1500
+801         801      2   male 34.00000     0     0  13.0000
+802         802      2 female 31.00000     1     1  26.2500
+803         803      1   male 11.00000     1     2 120.0000
+804         804      3   male  0.42000     0     1   8.5167
+805         805      3   male 27.00000     0     0   6.9750
+806         806      3   male 31.00000     0     0   7.7750
+807         807      1   male 39.00000     0     0   0.0000
+808         808      3 female 18.00000     0     0   7.7750
+809         809      2   male 39.00000     0     0  13.0000
+810         810      1 female 33.00000     1     0  53.1000
+811         811      3   male 26.00000     0     0   7.8875
+812         812      3   male 39.00000     0     0  24.1500
+813         813      2   male 35.00000     0     0  10.5000
+814         814      3 female  6.00000     4     2  31.2750
+815         815      3   male 30.50000     0     0   8.0500
+816         816      1   male 29.69912     0     0   0.0000
+817         817      3 female 23.00000     0     0   7.9250
+818         818      2   male 31.00000     1     1  37.0042
+819         819      3   male 43.00000     0     0   6.4500
+820         820      3   male 10.00000     3     2  27.9000
+821         821      1 female 52.00000     1     1  93.5000
+822         822      3   male 27.00000     0     0   8.6625
+823         823      1   male 38.00000     0     0   0.0000
+824         824      3 female 27.00000     0     1  12.4750
+825         825      3   male  2.00000     4     1  39.6875
+826         826      3   male 29.69912     0     0   6.9500
+827         827      3   male 29.69912     0     0  56.4958
+828         828      2   male  1.00000     0     2  37.0042
+829         829      3   male 29.69912     0     0   7.7500
+830         830      1 female 62.00000     0     0  80.0000
+831         831      3 female 15.00000     1     0  14.4542
+832         832      2   male  0.83000     1     1  18.7500
+833         833      3   male 29.69912     0     0   7.2292
+834         834      3   male 23.00000     0     0   7.8542
+835         835      3   male 18.00000     0     0   8.3000
+836         836      1 female 39.00000     1     1  83.1583
+837         837      3   male 21.00000     0     0   8.6625
+838         838      3   male 29.69912     0     0   8.0500
+839         839      3   male 32.00000     0     0  56.4958
+840         840      1   male 29.69912     0     0  29.7000
+841         841      3   male 20.00000     0     0   7.9250
+842         842      2   male 16.00000     0     0  10.5000
+843         843      1 female 30.00000     0     0  31.0000
+844         844      3   male 34.50000     0     0   6.4375
+845         845      3   male 17.00000     0     0   8.6625
+846         846      3   male 42.00000     0     0   7.5500
+847         847      3   male 29.69912     8     2  69.5500
+848         848      3   male 35.00000     0     0   7.8958
+849         849      2   male 28.00000     0     1  33.0000
+850         850      1 female 29.69912     1     0  89.1042
+851         851      3   male  4.00000     4     2  31.2750
+852         852      3   male 74.00000     0     0   7.7750
+853         853      3 female  9.00000     1     1  15.2458
+854         854      1 female 16.00000     0     1  39.4000
+855         855      2 female 44.00000     1     0  26.0000
+856         856      3 female 18.00000     0     1   9.3500
+857         857      1 female 45.00000     1     1 164.8667
+858         858      1   male 51.00000     0     0  26.5500
+859         859      3 female 24.00000     0     3  19.2583
+860         860      3   male 29.69912     0     0   7.2292
+861         861      3   male 41.00000     2     0  14.1083
+862         862      2   male 21.00000     1     0  11.5000
+863         863      1 female 48.00000     0     0  25.9292
+864         864      3 female 29.69912     8     2  69.5500
+865         865      2   male 24.00000     0     0  13.0000
+866         866      2 female 42.00000     0     0  13.0000
+867         867      2 female 27.00000     1     0  13.8583
+868         868      1   male 31.00000     0     0  50.4958
+869         869      3   male 29.69912     0     0   9.5000
+870         870      3   male  4.00000     1     1  11.1333
+871         871      3   male 26.00000     0     0   7.8958
+872         872      1 female 47.00000     1     1  52.5542
+873         873      1   male 33.00000     0     0   5.0000
+874         874      3   male 47.00000     0     0   9.0000
+875         875      2 female 28.00000     1     0  24.0000
+876         876      3 female 15.00000     0     0   7.2250
+877         877      3   male 20.00000     0     0   9.8458
+878         878      3   male 19.00000     0     0   7.8958
+879         879      3   male 29.69912     0     0   7.8958
+880         880      1 female 56.00000     0     1  83.1583
+881         881      2 female 25.00000     0     1  26.0000
+882         882      3   male 33.00000     0     0   7.8958
+883         883      3 female 22.00000     0     0  10.5167
+884         884      2   male 28.00000     0     0  10.5000
+885         885      3   male 25.00000     0     0   7.0500
+886         886      3 female 39.00000     0     5  29.1250
+887         887      2   male 27.00000     0     0  13.0000
+888         888      1 female 19.00000     0     0  30.0000
+889         889      3 female 29.69912     1     2  23.4500
+890         890      1   male 26.00000     0     0  30.0000
+891         891      3   male 32.00000     0     0   7.7500
+> 
+> 
+> class(train_data$Survived)
+[1] "integer"
+> as.factor(train_data$Survived)->train_data$Survived
+> 
+> #'PassengerId' 'Pclass'  'Sex' 'Age' 'SibSp' 'Parch' 'Fare'
+> 
+> model_randomForest=randomForest(Survived ~ PassengerId + Pclass + Sex + Age +  SibSp + Parch + Fare, data = train_data)
+> model_randomForest
+
+Call:
+ randomForest(formula = Survived ~ PassengerId + Pclass + Sex +      Age + SibSp + Parch + Fare, data = train_data) 
+               Type of random forest: classification
+                     Number of trees: 500
+No. of variables tried at each split: 2
+
+        OOB estimate of  error rate: 17.28%
+Confusion matrix:
+    0   1 class.error
+0 346  33  0.08707124
+1  75 171  0.30487805
+> 
+> 
+> pred = predict(model_randomForest,test_data)
+> print(pred)
+626 627 628 629 630 631 632 633 634 635 636 637 638 639 640 641 642 643 644 645 
+  0   0   1   0   0   0   0   1   0   0   1   0   0   0   0   0   1   0   0   1 
+646 647 648 649 650 651 652 653 654 655 656 657 658 659 660 661 662 663 664 665 
+  1   0   0   0   0   0   1   0   0   0   0   0   1   0   1   0   0   0   0   0 
+666 667 668 669 670 671 672 673 674 675 676 677 678 679 680 681 682 683 684 685 
+  0   0   0   0   1   1   1   0   0   0   0   0   0   0   0   0   0   0   0   0 
+686 687 688 689 690 691 692 693 694 695 696 697 698 699 700 701 702 703 704 705 
+  0   0   0   0   1   1   1   0   0   0   0   0   1   1   0   1   1   0   0   0 
+706 707 708 709 710 711 712 713 714 715 716 717 718 719 720 721 722 723 724 725 
+  0   1   1   1   0   1   1   1   0   0   0   1   1   0   0   1   0   0   0   1 
+726 727 728 729 730 731 732 733 734 735 736 737 738 739 740 741 742 743 744 745 
+  0   1   1   0   0   1   0   0   0   0   0   0   0   0   0   1   1   1   0   0 
+746 747 748 749 750 751 752 753 754 755 756 757 758 759 760 761 762 763 764 765 
+  1   0   1   1   0   1   1   0   0   1   1   0   0   0   1   0   0   0   1   0 
+766 767 768 769 770 771 772 773 774 775 776 777 778 779 780 781 782 783 784 785 
+  1   0   0   0   0   0   0   1   0   1   0   0   1   0   1   0   1   1   0   0 
+786 787 788 789 790 791 792 793 794 795 796 797 798 799 800 801 802 803 804 805 
+  0   0   0   1   0   0   0   0   1   0   0   1   0   0   0   0   1   1   0   0 
+806 807 808 809 810 811 812 813 814 815 816 817 818 819 820 821 822 823 824 825 
+  0   0   0   0   1   0   0   0   0   0   0   0   0   0   0   1   0   0   0   0 
+826 827 828 829 830 831 832 833 834 835 836 837 838 839 840 841 842 843 844 845 
+  0   0   1   0   1   0   1   0   0   0   1   0   0   0   1   0   0   1   0   0 
+846 847 848 849 850 851 852 853 854 855 856 857 858 859 860 861 862 863 864 865 
+  0   0   0   0   1   0   0   1   1   1   0   1   1   0   0   0   0   1   0   0 
+866 867 868 869 870 871 872 873 874 875 876 877 878 879 880 881 882 883 884 885 
+  1   1   0   0   1   0   1   0   0   1   0   0   0   0   1   1   0   0   0   0 
+886 887 888 889 890 891 
+  0   0   1   0   1   0 
+Levels: 0 1
+> data.frame(target,pred)->accuracy_tab
+> 
+> accuracy_tab$target==accuracy_tab$pred->accuracy_vec
+> count=0
+> for(i in 1:nrow(accuracy_tab))
++ {
++   if(accuracy_vec[i]==FALSE)
++ {
++   count=count+1
++ }
++   }
+> 
+> Error = (count/nrow(accuracy_tab))*100
+> Accuracy = 100 -Error
+> paste("Accuracy : ",Accuracy)
+[1] "Accuracy :  84.2105263157895"
+> 
+> test <- read.csv("../input/test.csv")
+> summary(test)
+  PassengerId         Pclass     
+ Min.   : 892.0   Min.   :1.000  
+ 1st Qu.: 996.2   1st Qu.:1.000  
+ Median :1100.5   Median :3.000  
+ Mean   :1100.5   Mean   :2.266  
+ 3rd Qu.:1204.8   3rd Qu.:3.000  
+ Max.   :1309.0   Max.   :3.000  
+                                 
+                                        Name         Sex           Age       
+ Abbott, Master. Eugene Joseph            :  1   female:152   Min.   : 0.17  
+ Abelseth, Miss. Karen Marie              :  1   male  :266   1st Qu.:21.00  
+ Abelseth, Mr. Olaus Jorgensen            :  1                Median :27.00  
+ Abrahamsson, Mr. Abraham August Johannes :  1                Mean   :30.27  
+ Abrahim, Mrs. Joseph (Sophie Halaut Easu):  1                3rd Qu.:39.00  
+ Aks, Master. Philip Frank                :  1                Max.   :76.00  
+ (Other)                                  :412                NA's   :86     
+     SibSp            Parch             Ticket         Fare        
+ Min.   :0.0000   Min.   :0.0000   PC 17608:  5   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.0000   113503  :  4   1st Qu.:  7.896  
+ Median :0.0000   Median :0.0000   CA. 2343:  4   Median : 14.454  
+ Mean   :0.4474   Mean   :0.3923   16966   :  3   Mean   : 35.627  
+ 3rd Qu.:1.0000   3rd Qu.:0.0000   220845  :  3   3rd Qu.: 31.500  
+ Max.   :8.0000   Max.   :9.0000   347077  :  3   Max.   :512.329  
+                                   (Other) :396   NA's   :1        
+             Cabin     Embarked
+                :327   C:102   
+ B57 B59 B63 B66:  3   Q: 46   
+ A34            :  2   S:270   
+ B45            :  2           
+ C101           :  2           
+ C116           :  2           
+ (Other)        : 80           
+> 
+> #Fare has one NA . Hence omitting it
+> test=test[!is.na(test$Fare),]
+> 
+> test=test[,-c(3,8,10,11)]
+> colnames(test)
+[1] "PassengerId" "Pclass"      "Sex"         "Age"         "SibSp"      
+[6] "Parch"       "Fare"       
+> 
+> test_age_mean=mean(test$Age,na.rm=TRUE)
+> test$Age[is.na(test$Age)]=test_age_mean
+> summary(test)
+  PassengerId       Pclass          Sex           Age            SibSp       
+ Min.   : 892   Min.   :1.000   female:152   Min.   : 0.17   Min.   :0.0000  
+ 1st Qu.: 996   1st Qu.:1.000   male  :265   1st Qu.:23.00   1st Qu.:0.0000  
+ Median :1101   Median :3.000                Median :30.18   Median :0.0000  
+ Mean   :1101   Mean   :2.264                Mean   :30.18   Mean   :0.4484  
+ 3rd Qu.:1205   3rd Qu.:3.000                3rd Qu.:35.00   3rd Qu.:1.0000  
+ Max.   :1309   Max.   :3.000                Max.   :76.00   Max.   :8.0000  
+     Parch             Fare        
+ Min.   :0.0000   Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:  7.896  
+ Median :0.0000   Median : 14.454  
+ Mean   :0.3933   Mean   : 35.627  
+ 3rd Qu.:0.0000   3rd Qu.: 31.500  
+ Max.   :9.0000   Max.   :512.329  
+> 
+> Survived = predict(model_randomForest,test)
+> test$PassengerId->PassengerId
+> data.frame(PassengerId,Survived) -> Predicted_Results
+> 
+> write.csv(Predicted_Results,file='survival_prediction.csv',row.names=F)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  0.467   0.070   0.567 

@@ -1,0 +1,1435 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # Data Input -----
+> 
+> library(class)
+> library(rpart)
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> library(partykit)
+Loading required package: grid
+Loading required package: libcoin
+Loading required package: mvtnorm
+Warning message:
+package ‘partykit’ was built under R version 3.6.2 
+> library(data.table) 
+> library(stringr)
+> 
+> rm(list = ls()); gc()
+          used (Mb) gc trigger  (Mb) limit (Mb) max used  (Mb)
+Ncells 1390874 74.3    2356307 125.9         NA  2356307 125.9
+Vcells 2371944 18.1    8388608  64.0      16384  4151197  31.7
+> train <- fread("../input/train.csv")
+> gender_submission <- fread("../input/gender_submission.csv")
+> test <- fread("../input/test.csv")
+> 
+> # Naive Bayes Calculator ---
+> 
+> NBCalc <- function(train, test, rows, objective){
++   stopifnot((is.character(rows) & is.character(objective)) | 
++               (is.numeric(rows) & is.numeric(objective))) # stops if rows and objective is not in the same format
++ 
++   rts <- if(is.numeric(rows)){
++     as.numeric(cbind(as.data.table(t(rows)), as.data.table(objective)))
++   } else {
++     as.character(cbind(as.data.table(t(rows)), as.data.table(objective)))
++   }                                                        # rows to select
++ 
++   dat <- train[, rts, with = FALSE]                        # train data inside the function
++   det <- test[, rows, with = FALSE]                        # test data inside the function
++   det$p1 <- train[, mean(get(objective))]                  # overall probability of success / desired output. i.e churners for churn analysis
++ 
++   p1 <- train[, mean(get(objective))]                      # overall probability of success / desired output. i.e churners for churn analysis
++ 
++   nrowdet <- nrow(det)                                     # for data check
++ 
++   rff <- ncol(dat) - 1                                     # amount of rows to be used in forloop
++ 
++   for(i in 1:rff){
++ 
++     name <- colnames(dat)[i]                               # name of the i-th column in forloop
++ 
++     res  <- dat[, .(value = unique(get(name)),             # factors of the i-th column in forloop
++ 
++                     lift  = mean(get(objective)) / p1),    # lift of the i-th column in forloop
++ 
++                   .(get(name))][,2:3]
++ 
++     res  <- `colnames<-`(res, c("value", paste0("lift_", name)))
++ 
++     det  <- merge(det,
++ 
++                   res,
++ 
++                   by.x = paste0(name), by.y = "value")
++ 
++     stopifnot(nrowdet == nrow(det))
++ 
++   }
++ 
++   scol <- rff + 2
++ 
++   ecol <- (2 * rff) + 1
++ 
++   det[, NaiveBayesProb := apply(det[, scol:ecol], 1, prod) * p1]
++ 
++   return(det)
++ 
++ }
+> 
+> 
+> 
+> # (Train) Data Manipulation ----
+> 
+> # Title Creation
+> 
+> train[, Title := trimws(str_split_fixed(gsub(",", ".", Name), "[.]", n = 3)[, 2])]
+> 
+> train[Title == "Master", Title := "Mr"]
+> 
+> train[Title == "Mlle", Title := "Miss"]
+> 
+> train[Title %in% c("Ms", "Mme"), Title := "Mrs"]
+> 
+> train[Title %in% c("the Countess", "Sir", "Jonkheer", "Lady", "Don", "Dona"), Title := "Noble"]
+> 
+> train[Title %in% c("Capt", "Col", "Major"), Title := "Military"]
+> 
+> train[, Title := as.factor(Title)]
+> 
+> 
+> 
+> # Na Reduction & Factor Generation
+> 
+> train <- merge(train, 
++ 
++ 							 train[, mean(Age, na.rm = T), .(Title)],
++ 
++ 							 by = "Title")
+> 
+> train[, Age := ceiling(Age)]
+> 
+> train[, glmAge := ifelse(is.na(Age), V1, Age)] # 29 is the median and the mean.
+> 
+> train[, V1 := NULL]
+> 
+> train[, Cl_Age := as.factor(pmin(ceiling(glmAge / 10), 8))]
+> 
+> train[, Cl_Relative := as.factor(pmin(SibSp + Parch, 5))]
+> 
+> train[, Pclass := as.factor(Pclass)]
+> 
+> train[, Embarked := as.factor(Embarked)]
+> 
+> train[, Sex := as.factor(Sex)]
+> 
+> train[, log_Fare := log10(Fare + 1)]
+> 
+> train[log_Fare < 1, Cl_Fare := "Cheapest"]
+> 
+> train[log_Fare >= 1 & log_Fare < 1.5, Cl_Fare := "Cheap"]
+> 
+> train[log_Fare >= 1.5 & log_Fare < 2, Cl_Fare := "Modest"]
+> 
+> train[log_Fare > 2, Cl_Fare := "Expensive"]
+> 
+> 
+> 
+> train[, CabinDpt := substr(Cabin, 1,1)]
+> 
+> train[CabinDpt == " ", CabinDpt := as.character(NA)]
+> 
+> 
+> 
+> train <- merge(train,
++ 
++ 							 train[, .(nTicket = .N), Ticket],
++ 
++ 							 all.x = T, by = "Ticket")
+> 
+> train[, fac_nTicket := as.factor(nTicket)]
+> 
+> 
+> 
+> # (Test) Data Manipulation ----
+> 
+> # Title Creation
+> 
+> test[, Title := trimws(str_split_fixed(gsub(",", ".", Name), "[.]", n = 3)[, 2])]
+> 
+> test[Title == "Master", Title := "Mr"]
+> 
+> test[Title == "Mlle", Title := "Miss"]
+> 
+> test[Title %in% c("Ms", "Mme"), Title := "Mrs"]
+> 
+> test[Title %in% c("the Countess", "Sir", "Jonkheer", "Lady", "Don", "Dona"), Title := "Noble"]
+> 
+> test[Title %in% c("Capt", "Col", "Major"), Title := "Military"]
+> 
+> test[, Title := as.factor(Title)]
+> 
+> 
+> 
+> # Na Reduction & Factor Generation
+> 
+> test[is.na(Fare), Fare := 0]
+> 
+> 
+> 
+> test <- merge(test, 
++ 
++ 							test[, mean(Age, na.rm = T), .(Title)],
++ 
++ 							by = "Title")
+> 
+> test[, Age := ceiling(Age)]
+> 
+> test[, glmAge := ifelse(is.na(Age), V1, Age)] # 29 is the median and the mean.
+> 
+> test[, V1 := NULL]
+> 
+> test[, Cl_Age := as.factor(pmin(ceiling(glmAge / 10), 8))]
+> 
+> test[, Cl_Relative := as.factor(pmin(SibSp + Parch, 5))]
+> 
+> test[, Pclass := as.factor(Pclass)]
+> 
+> test[, Embarked := as.factor(Embarked)]
+> 
+> test[, Sex := as.factor(Sex)]
+> 
+> 
+> 
+> test[, log_Fare := log10(Fare + 1)]
+> 
+> test[log_Fare < 1, Cl_Fare := "Cheapest"]
+> 
+> test[log_Fare >= 1 & log_Fare < 1.5, Cl_Fare := "Cheap"]
+> 
+> test[log_Fare >= 1.5 & log_Fare < 2, Cl_Fare := "Modest"]
+> 
+> test[log_Fare > 2, Cl_Fare := "Expensive"]
+> 
+> 
+> 
+> test[, CabinDpt := substr(Cabin, 1,1)]
+> 
+> test[CabinDpt == " ", CabinDpt := as.character(NA)]
+> 
+> 
+> 
+> test <- merge(test,
++ 
++ 							test[, .(nTicket = .N), Ticket],
++ 
++ 							all.x = T, by = "Ticket")
+> 
+> test[, fac_nTicket := as.factor(nTicket)]
+> 
+> 
+> 
+> # K-NN K Selection ----
+> 
+> acc   <- data.table(set = numeric(),
++ 
++ 										k_nn = numeric(),
++ 
++ 										Accuracy = integer())
+> 
+> s <- 1
+> 
+> while(s < 101){
++ 
++ 	knn_train <- train[, .(Survived,
++ 
++ 												 Title = as.numeric(Title), 
++ 
++ 												 Pclass = as.numeric(Pclass), 
++ 
++ 												 Sex = as.numeric(Sex), 
++ 
++ 												 Embarked = as.numeric(Embarked), 
++ 
++ 												 glmAge, 
++ 
++ 												 Relative = as.numeric(Cl_Relative), 
++ 
++ 												 log_Fare, 
++ 
++ 												 nTicket)]
++ 
++ 	
++ 
++ 	#Randomly shuffle the data
++ 
++ 	knn_train <- knn_train[sample(nrow(train)),]
++ 
++ 	knn_r <- knn_train[1:700]   # R: tRain set for K selection
++ 
++ 	knn_e <- knn_train[701:891] # E: tEst set for K selection
++ 
++ 	knn_s <- knn_r$Survived     # S: Survived column of tRain set
++ 
++ 	knn_r[, Survived := NULL]   # 
++ 
++ 	knn_a <- knn_e$Survived     # A: Actual outcome of tEst set
++ 
++ 	knn_e[, Survived := NULL]   # 
++ 
++ 	
++ 
++ 	for(k in 1:100){
++ 
++ 		knn_o <- cbind(knn_e, 
++ 
++ 									 pred = knn(knn_r, knn_e, knn_s, k),
++ 
++ 									 res  = knn_a) # O :kNN Outcomes
++ 
++ 		acc   <- rbind(acc,
++ 
++ 									 as.data.table(t(c(set = s,
++ 
++ 									 									k_nn = k, 
++ 
++ 									 									Accuracy = knn_o[pred == res, .N / nrow(knn_o)]))))
++ 
++ 	}
++ 
++ 	# print(paste0(s, " numaralı rastgele deneme kümesi için işlem tamamlandı.")) -- a print code to remind myself the progres of while loop.
++ 
++ 	s <- s + 1
++ 
++ }
+> 
+> 
+> 
+> acc[, .(Ort = mean(Accuracy),
++ 
++ 				SD = sd(Accuracy))
++ 
++ 		, .(k_nn)][order(-Ort)]
+     k_nn       Ort         SD
+  1:    3 0.7573298 0.03029524
+  2:    5 0.7487958 0.02656106
+  3:    4 0.7479058 0.02617669
+  4:    9 0.7457592 0.02836904
+  5:    6 0.7455497 0.02660293
+  6:   11 0.7454974 0.02807052
+  7:   10 0.7454450 0.02699328
+  8:    7 0.7440838 0.02790615
+  9:    8 0.7433508 0.02661313
+ 10:   13 0.7412042 0.02753634
+ 11:    1 0.7407330 0.02567587
+ 12:   12 0.7403141 0.02726091
+ 13:   14 0.7368063 0.02851055
+ 14:    2 0.7367016 0.02775707
+ 15:   15 0.7356545 0.02728624
+ 16:   17 0.7301047 0.03021287
+ 17:   16 0.7293194 0.03084884
+ 18:   18 0.7238220 0.02917789
+ 19:   19 0.7225131 0.03006243
+ 20:   20 0.7197906 0.03060536
+ 21:   21 0.7157592 0.03115958
+ 22:   22 0.7152356 0.03183297
+ 23:   23 0.7121466 0.03232568
+ 24:   24 0.7102618 0.03195732
+ 25:   25 0.7085864 0.03312305
+ 26:   26 0.7085340 0.03286151
+ 27:   27 0.7068586 0.03065973
+ 28:   28 0.7044503 0.03324950
+ 29:   29 0.7020419 0.03302993
+ 30:   30 0.7005236 0.03224008
+ 31:   31 0.6989529 0.03299139
+ 32:   32 0.6962304 0.03392226
+ 33:   33 0.6939791 0.03239751
+ 34:   34 0.6938220 0.03279762
+ 35:   35 0.6896859 0.03479162
+ 36:   36 0.6879058 0.03443196
+ 37:   37 0.6870157 0.03541260
+ 38:   38 0.6838220 0.03497450
+ 39:   39 0.6830890 0.03381168
+ 40:   40 0.6794764 0.03398423
+ 41:   41 0.6767016 0.03541100
+ 42:   42 0.6758115 0.03393613
+ 43:   43 0.6736126 0.03322321
+ 44:   44 0.6728796 0.03200286
+ 45:   45 0.6716230 0.03351248
+ 46:   46 0.6703665 0.03363487
+ 47:   49 0.6697382 0.03344301
+ 48:   48 0.6697382 0.03267244
+ 49:   47 0.6693717 0.03367152
+ 50:   51 0.6674346 0.03397527
+ 51:   50 0.6668063 0.03435649
+ 52:   52 0.6664398 0.03303999
+ 53:   53 0.6660733 0.03237361
+ 54:   55 0.6656021 0.03292548
+ 55:   56 0.6656021 0.03306813
+ 56:   54 0.6654974 0.03273352
+ 57:   57 0.6641885 0.03214565
+ 58:   59 0.6624084 0.03258588
+ 59:   58 0.6623037 0.03299978
+ 60:   60 0.6604188 0.03346237
+ 61:   61 0.6601047 0.03355872
+ 62:   62 0.6591099 0.03321217
+ 63:   63 0.6580628 0.03394441
+ 64:   64 0.6568063 0.03380283
+ 65:   65 0.6565445 0.03318803
+ 66:   66 0.6540838 0.03319015
+ 67:   67 0.6539267 0.03329215
+ 68:   68 0.6536649 0.03423421
+ 69:   69 0.6517277 0.03374631
+ 70:   70 0.6516754 0.03377071
+ 71:   71 0.6506806 0.03318035
+ 72:   72 0.6503665 0.03418731
+ 73:   73 0.6501571 0.03317451
+ 74:   74 0.6486911 0.03348289
+ 75:   75 0.6481675 0.03186865
+ 76:   76 0.6472775 0.03261285
+ 77:   77 0.6463874 0.03392585
+ 78:   78 0.6453927 0.03373297
+ 79:   79 0.6441361 0.03425103
+ 80:   80 0.6430366 0.03527786
+ 81:   81 0.6426702 0.03376185
+ 82:   82 0.6415183 0.03475659
+ 83:   83 0.6401571 0.03475978
+ 84:   84 0.6396859 0.03548134
+ 85:   85 0.6392147 0.03613638
+ 86:   86 0.6375916 0.03597115
+ 87:   87 0.6365445 0.03560443
+ 88:   89 0.6351832 0.03541495
+ 89:   88 0.6350262 0.03483489
+ 90:   90 0.6349738 0.03629682
+ 91:   91 0.6348691 0.03522477
+ 92:   92 0.6336649 0.03597019
+ 93:   93 0.6332984 0.03663728
+ 94:   94 0.6312042 0.03733647
+ 95:   95 0.6288482 0.03699058
+ 96:   96 0.6283770 0.03753366
+ 97:   97 0.6276963 0.03811863
+ 98:   98 0.6272251 0.03763694
+ 99:   99 0.6256545 0.03893508
+100:  100 0.6226178 0.03759042
+     k_nn       Ort         SD
+> 
+> 
+> 
+> # Output ----
+> 
+> knn_test  <- test[, .(PassengerId,
++ 
++ 											Title = as.numeric(Title), 
++ 
++ 											Pclass = as.numeric(Pclass), 
++ 
++ 											Sex = as.numeric(Sex), 
++ 
++ 											Embarked = as.numeric(Embarked), 
++ 
++ 											glmAge, 
++ 
++ 											Relative = as.numeric(Cl_Relative), 
++ 
++ 											log_Fare, 
++ 
++ 											nTicket)]
+> 
+> 
+> 
+> knn_test <- cbind(knn_test,
++ 
++ 									Survived = knn(knn_train[, 2:9], knn_test[, 2:9], cl = train$Survived, k = 7))
+> 
+> 
+> 
+> fwrite(knn_test[, c(1,10)], "submission_knn_2.csv")
+> 
+> 
+> 
+> # 10-Fold Logistic Regression----
+> 
+> #Randomly shuffle the data
+> 
+> train2 <- train[sample(nrow(train)),]
+> 
+> 
+> 
+> #Create 10 equally size folds
+> 
+> folds <- cut(seq(1,nrow(train2)), breaks = 10, labels = FALSE)
+> 
+> 
+> 
+> acc <- data.table(Model = character(),
++ 
++ 									Accuracy = integer())
+> 
+> 
+> 
+> #Perform 10 fold cross validation
+> 
+> for(i in 1:10){
++ 
++ 	#Segement your data by fold using the which() function 
++ 
++ 	testIndexes <- which(folds == i, arr.ind=TRUE)
++ 
++ 	testData <- train2[testIndexes, ]
++ 
++ 	trainData <- train2[-testIndexes, ]
++ 
++ 	assign(x = paste0("model_", i),
++ 
++ 				 step(direction = "backward",
++ 
++ 				 		 object = glm(formula = Survived ~ glmAge + log_Fare + SibSp + Parch + Embarked + Pclass + Title + Cl_Relative + nTicket,
++ 
++ 				 		 						 data = trainData, 
++ 
++ 				 		 						 family = binomial(link = "logit"))))
++ 
++ 	testData[, phat := predict.glm(get(paste0("model_", i)), newdata = testData, type = "response")]
++ 
++ 	testData[, pred := ifelse(phat > 0.5, 1, 0)]
++ 
++ 	pasted <- cbind(Model = paste0("model_", i),
++ 
++ 									Accuracy = testData[pred == Survived, .N / nrow(testData)])
++ 
++ 	acc <- rbind(acc, pasted, deparse.level = 0)
++ 
++ 	#Use the test and train data partitions however you desire...
++ 
++ }
+Start:  AIC=725.59
+Survived ~ glmAge + log_Fare + SibSp + Parch + Embarked + Pclass + 
+    Title + Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- Embarked     3   685.02 723.02
+- nTicket      1   681.63 723.63
+- Parch        1   681.98 723.98
+- SibSp        1   682.38 724.38
+<none>             681.59 725.59
+- log_Fare     1   684.48 726.48
+- Cl_Relative  5   693.68 727.68
+- Pclass       2   701.56 741.56
+- glmAge       1   712.58 754.58
+- Title        6   870.39 902.39
+
+Step:  AIC=723.02
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- nTicket      1   685.03 721.03
+- Parch        1   685.41 721.41
+- SibSp        1   685.94 721.94
+<none>             685.02 723.02
+- log_Fare     1   688.91 724.91
+- Cl_Relative  5   698.22 726.22
+- Pclass       2   703.30 737.30
+- glmAge       1   715.45 751.45
+- Title        6   885.90 911.90
+
+Step:  AIC=721.03
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative
+
+              Df Deviance    AIC
+- Parch        1   685.41 719.41
+- SibSp        1   685.94 719.94
+<none>             685.03 721.03
+- log_Fare     1   689.97 723.97
+- Cl_Relative  5   698.48 724.48
+- Pclass       2   706.53 738.53
+- glmAge       1   715.71 749.71
+- Title        6   886.27 910.27
+
+Step:  AIC=719.41
+Survived ~ glmAge + log_Fare + SibSp + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+- SibSp        1   686.06 718.06
+<none>             685.41 719.41
+- log_Fare     1   690.23 722.23
+- Cl_Relative  5   704.34 728.34
+- Pclass       2   707.46 737.46
+- glmAge       1   716.61 748.61
+- Title        6   886.27 908.27
+
+Step:  AIC=718.06
+Survived ~ glmAge + log_Fare + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+<none>             686.06 718.06
+- log_Fare     1   690.75 720.75
+- Pclass       2   709.01 737.01
+- Cl_Relative  5   724.81 746.81
+- glmAge       1   717.42 747.42
+- Title        6   891.40 911.40
+Start:  AIC=724.13
+Survived ~ glmAge + log_Fare + SibSp + Parch + Embarked + Pclass + 
+    Title + Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- Embarked     3   683.13 721.13
+- Parch        1   680.73 722.73
+- SibSp        1   681.20 723.20
+- nTicket      1   681.30 723.30
+<none>             680.13 724.13
+- log_Fare     1   682.52 724.52
+- Cl_Relative  5   696.11 730.11
+- Pclass       2   700.84 740.84
+- glmAge       1   702.72 744.72
+- Title        6   871.17 903.17
+
+Step:  AIC=721.13
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- Parch        1   683.78 719.78
+- nTicket      1   684.11 720.11
+- SibSp        1   684.37 720.37
+<none>             683.13 721.13
+- log_Fare     1   686.36 722.36
+- Cl_Relative  5   699.89 727.89
+- Pclass       2   701.89 735.89
+- glmAge       1   705.79 741.79
+- Title        6   888.10 914.10
+
+Step:  AIC=719.78
+Survived ~ glmAge + log_Fare + SibSp + Pclass + Title + Cl_Relative + 
+    nTicket
+
+              Df Deviance    AIC
+- SibSp        1   684.52 718.52
+- nTicket      1   684.61 718.61
+<none>             683.78 719.78
+- log_Fare     1   687.07 721.07
+- Cl_Relative  5   704.97 730.97
+- Pclass       2   702.64 734.64
+- glmAge       1   706.79 740.79
+- Title        6   888.14 912.14
+
+Step:  AIC=718.52
+Survived ~ glmAge + log_Fare + Pclass + Title + Cl_Relative + 
+    nTicket
+
+              Df Deviance    AIC
+- nTicket      1   685.25 717.25
+<none>             684.52 718.52
+- log_Fare     1   687.78 719.78
+- Pclass       2   703.95 733.95
+- glmAge       1   707.96 739.96
+- Cl_Relative  5   720.10 744.10
+- Title        6   893.24 915.24
+
+Step:  AIC=717.25
+Survived ~ glmAge + log_Fare + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+<none>             685.25 717.25
+- log_Fare     1   690.72 720.72
+- Pclass       2   704.89 732.89
+- glmAge       1   709.17 739.17
+- Cl_Relative  5   730.03 752.03
+- Title        6   893.24 913.24
+Start:  AIC=708.75
+Survived ~ glmAge + log_Fare + SibSp + Parch + Embarked + Pclass + 
+    Title + Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- Embarked     3   666.52 704.52
+- Parch        1   664.85 706.85
+- nTicket      1   664.89 706.89
+- SibSp        1   665.28 707.28
+<none>             664.75 708.75
+- log_Fare     1   668.19 710.19
+- Cl_Relative  5   679.34 713.34
+- Pclass       2   683.75 723.75
+- glmAge       1   686.64 728.64
+- Title        6   866.10 898.10
+
+Step:  AIC=704.52
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- nTicket      1   666.59 702.59
+- Parch        1   666.63 702.63
+- SibSp        1   667.14 703.14
+<none>             666.52 704.52
+- log_Fare     1   670.73 706.73
+- Cl_Relative  5   681.75 709.75
+- Pclass       2   684.43 718.43
+- glmAge       1   688.53 724.53
+- Title        6   880.11 906.11
+
+Step:  AIC=702.59
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative
+
+              Df Deviance    AIC
+- Parch        1   666.68 700.68
+- SibSp        1   667.17 701.17
+<none>             666.59 702.59
+- log_Fare     1   672.16 706.16
+- Cl_Relative  5   681.96 707.96
+- Pclass       2   686.84 718.84
+- glmAge       1   688.86 722.86
+- Title        6   880.44 904.44
+
+Step:  AIC=700.68
+Survived ~ glmAge + log_Fare + SibSp + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+- SibSp        1   667.57 699.57
+<none>             666.68 700.68
+- log_Fare     1   672.19 704.19
+- Cl_Relative  5   685.37 709.37
+- Pclass       2   687.19 717.19
+- glmAge       1   689.07 721.07
+- Title        6   880.69 902.69
+
+Step:  AIC=699.57
+Survived ~ glmAge + log_Fare + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+<none>             667.57 699.57
+- log_Fare     1   672.94 702.94
+- Pclass       2   689.03 717.03
+- glmAge       1   690.24 720.24
+- Cl_Relative  5   704.08 726.08
+- Title        6   886.79 906.79
+Start:  AIC=732.13
+Survived ~ glmAge + log_Fare + SibSp + Parch + Embarked + Pclass + 
+    Title + Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- Embarked     3   690.73 728.73
+- nTicket      1   688.17 730.17
+- Parch        1   688.40 730.40
+- SibSp        1   688.93 730.93
+<none>             688.13 732.13
+- log_Fare     1   690.69 732.69
+- Cl_Relative  5   700.75 734.75
+- Pclass       2   707.42 747.42
+- glmAge       1   711.87 753.87
+- Title        6   875.99 907.99
+
+Step:  AIC=728.73
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- nTicket      1   690.74 726.74
+- Parch        1   690.95 726.95
+- SibSp        1   691.55 727.55
+<none>             690.73 728.73
+- log_Fare     1   694.23 730.23
+- Cl_Relative  5   704.13 732.13
+- Pclass       2   709.76 743.76
+- glmAge       1   714.91 750.91
+- Title        6   886.55 912.55
+
+Step:  AIC=726.74
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative
+
+              Df Deviance    AIC
+- Parch        1   690.95 724.95
+- SibSp        1   691.55 725.55
+<none>             690.74 726.74
+- log_Fare     1   695.25 729.25
+- Cl_Relative  5   704.35 730.35
+- Pclass       2   712.94 744.94
+- glmAge       1   715.22 749.22
+- Title        6   887.02 911.02
+
+Step:  AIC=724.95
+Survived ~ glmAge + log_Fare + SibSp + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+- SibSp        1   691.86 723.86
+<none>             690.95 724.95
+- log_Fare     1   695.38 727.38
+- Cl_Relative  5   708.51 732.51
+- Pclass       2   713.69 743.69
+- glmAge       1   715.87 747.87
+- Title        6   887.29 909.29
+
+Step:  AIC=723.86
+Survived ~ glmAge + log_Fare + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+<none>             691.86 723.86
+- log_Fare     1   696.18 726.18
+- Pclass       2   715.43 743.43
+- glmAge       1   716.96 746.96
+- Cl_Relative  5   727.11 749.11
+- Title        6   893.97 913.97
+Start:  AIC=723.15
+Survived ~ glmAge + log_Fare + SibSp + Parch + Embarked + Pclass + 
+    Title + Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- Embarked     3   682.04 720.04
+- nTicket      1   679.31 721.31
+- Parch        1   679.68 721.68
+- SibSp        1   680.07 722.07
+- log_Fare     1   680.30 722.30
+<none>             679.15 723.15
+- Cl_Relative  5   690.78 724.78
+- Pclass       2   699.99 739.99
+- glmAge       1   706.14 748.14
+- Title        6   873.60 905.60
+
+Step:  AIC=720.04
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- nTicket      1   682.27 718.27
+- Parch        1   682.60 718.60
+- SibSp        1   683.13 719.13
+- log_Fare     1   683.76 719.76
+<none>             682.04 720.04
+- Cl_Relative  5   694.67 722.67
+- Pclass       2   701.65 735.65
+- glmAge       1   709.29 745.29
+- Title        6   886.19 912.19
+
+Step:  AIC=718.27
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative
+
+              Df Deviance    AIC
+- Parch        1   682.93 716.93
+- SibSp        1   683.56 717.56
+- log_Fare     1   683.77 717.77
+<none>             682.27 718.27
+- Cl_Relative  5   695.95 721.95
+- Pclass       2   706.54 738.54
+- glmAge       1   709.29 743.29
+- Title        6   887.05 911.05
+
+Step:  AIC=716.93
+Survived ~ glmAge + log_Fare + SibSp + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+- SibSp        1   683.65 715.65
+- log_Fare     1   684.33 716.33
+<none>             682.93 716.93
+- Cl_Relative  5   699.83 723.83
+- Pclass       2   707.99 737.99
+- glmAge       1   710.55 742.55
+- Title        6   887.08 909.08
+
+Step:  AIC=715.65
+Survived ~ glmAge + log_Fare + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+- log_Fare     1   684.97 714.97
+<none>             683.65 715.65
+- Cl_Relative  5   712.98 734.98
+- Pclass       2   709.59 737.59
+- glmAge       1   711.28 741.28
+- Title        6   892.66 912.66
+
+Step:  AIC=714.97
+Survived ~ glmAge + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+<none>             684.97 714.97
+- Cl_Relative  5   713.27 733.27
+- glmAge       1   712.79 740.79
+- Pclass       2   764.05 790.05
+- Title        6   898.53 916.53
+Start:  AIC=721.81
+Survived ~ glmAge + log_Fare + SibSp + Parch + Embarked + Pclass + 
+    Title + Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- Embarked     3   681.02 719.02
+- nTicket      1   677.82 719.82
+- Parch        1   678.56 720.56
+- SibSp        1   678.59 720.59
+<none>             677.81 721.81
+- log_Fare     1   680.46 722.46
+- Cl_Relative  5   690.92 724.92
+- Pclass       2   697.91 737.91
+- glmAge       1   699.71 741.71
+- Title        6   862.91 894.91
+
+Step:  AIC=719.02
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- nTicket      1   681.02 717.02
+- Parch        1   681.85 717.85
+- SibSp        1   681.93 717.93
+<none>             681.02 719.02
+- log_Fare     1   684.54 720.54
+- Cl_Relative  5   694.97 722.97
+- Pclass       2   699.39 733.39
+- glmAge       1   702.97 738.97
+- Title        6   877.28 903.28
+
+Step:  AIC=717.02
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative
+
+              Df Deviance    AIC
+- Parch        1   681.86 715.86
+- SibSp        1   681.95 715.95
+<none>             681.02 717.02
+- log_Fare     1   685.35 719.35
+- Cl_Relative  5   695.31 721.31
+- Pclass       2   702.54 734.54
+- glmAge       1   703.11 737.11
+- Title        6   877.94 901.94
+
+Step:  AIC=715.86
+Survived ~ glmAge + log_Fare + SibSp + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+- SibSp        1   681.99 713.99
+<none>             681.86 715.86
+- log_Fare     1   685.97 717.97
+- Cl_Relative  5   700.13 724.13
+- Pclass       2   704.14 734.14
+- glmAge       1   704.64 736.64
+- Title        6   877.95 899.95
+
+Step:  AIC=713.99
+Survived ~ glmAge + log_Fare + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+<none>             681.99 713.99
+- log_Fare     1   686.06 716.06
+- Pclass       2   704.84 732.84
+- glmAge       1   704.84 734.84
+- Cl_Relative  5   716.63 738.63
+- Title        6   882.04 902.04
+Start:  AIC=704.08
+Survived ~ glmAge + log_Fare + SibSp + Parch + Embarked + Pclass + 
+    Title + Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- Embarked     3   662.53 700.53
+- Parch        1   660.08 702.08
+- nTicket      1   660.27 702.27
+- SibSp        1   660.39 702.39
+<none>             660.08 704.08
+- log_Fare     1   663.10 705.10
+- Cl_Relative  5   676.30 710.30
+- Pclass       2   678.30 718.30
+- glmAge       1   686.52 728.52
+- Title        6   845.18 877.18
+
+Step:  AIC=700.53
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- Parch        1   662.53 698.53
+- nTicket      1   662.63 698.63
+- SibSp        1   662.94 698.94
+<none>             662.53 700.53
+- log_Fare     1   666.38 702.38
+- Cl_Relative  5   679.37 707.37
+- Pclass       2   679.44 713.44
+- glmAge       1   689.02 725.02
+- Title        6   858.53 884.53
+
+Step:  AIC=698.53
+Survived ~ glmAge + log_Fare + SibSp + Pclass + Title + Cl_Relative + 
+    nTicket
+
+              Df Deviance    AIC
+- nTicket      1   662.63 696.63
+- SibSp        1   664.06 698.06
+<none>             662.53 698.53
+- log_Fare     1   666.38 700.38
+- Cl_Relative  5   681.73 707.73
+- Pclass       2   679.47 711.47
+- glmAge       1   689.12 723.12
+- Title        6   859.28 883.28
+
+Step:  AIC=696.63
+Survived ~ glmAge + log_Fare + SibSp + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+- SibSp        1   664.11 696.11
+<none>             662.63 696.63
+- log_Fare     1   668.42 700.42
+- Cl_Relative  5   683.09 707.09
+- Pclass       2   682.41 712.41
+- glmAge       1   689.67 721.67
+- Title        6   859.49 881.49
+
+Step:  AIC=696.11
+Survived ~ glmAge + log_Fare + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+<none>             664.11 696.11
+- log_Fare     1   669.71 699.71
+- Pclass       2   684.97 712.97
+- glmAge       1   691.28 721.28
+- Cl_Relative  5   706.15 728.15
+- Title        6   867.14 887.14
+Start:  AIC=717.4
+Survived ~ glmAge + log_Fare + SibSp + Parch + Embarked + Pclass + 
+    Title + Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- Embarked     3   676.30 714.30
+- Parch        1   673.47 715.47
+- nTicket      1   673.48 715.48
+- SibSp        1   674.03 716.03
+<none>             673.40 717.40
+- log_Fare     1   678.45 720.45
+- Cl_Relative  5   688.76 722.76
+- Pclass       2   686.15 726.15
+- glmAge       1   695.56 737.56
+- Title        6   872.49 904.49
+
+Step:  AIC=714.3
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- Parch        1   676.37 712.37
+- nTicket      1   676.49 712.49
+- SibSp        1   677.00 713.00
+<none>             676.30 714.30
+- log_Fare     1   682.71 718.71
+- Cl_Relative  5   692.47 720.47
+- Pclass       2   688.28 722.28
+- glmAge       1   698.93 734.93
+- Title        6   884.49 910.49
+
+Step:  AIC=712.37
+Survived ~ glmAge + log_Fare + SibSp + Pclass + Title + Cl_Relative + 
+    nTicket
+
+              Df Deviance    AIC
+- nTicket      1   676.58 710.58
+- SibSp        1   677.65 711.65
+<none>             676.37 712.37
+- log_Fare     1   682.75 716.75
+- Cl_Relative  5   694.19 720.19
+- Pclass       2   688.44 720.44
+- glmAge       1   699.21 733.21
+- Title        6   884.91 908.91
+
+Step:  AIC=710.58
+Survived ~ glmAge + log_Fare + SibSp + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+- SibSp        1   677.98 709.98
+<none>             676.58 710.58
+- log_Fare     1   683.47 715.47
+- Cl_Relative  5   696.39 720.39
+- Pclass       2   693.44 723.44
+- glmAge       1   699.22 731.22
+- Title        6   886.26 908.26
+
+Step:  AIC=709.98
+Survived ~ glmAge + log_Fare + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+<none>             677.98 709.98
+- log_Fare     1   684.64 714.64
+- Pclass       2   695.89 723.89
+- glmAge       1   700.87 730.87
+- Cl_Relative  5   717.72 739.72
+- Title        6   893.44 913.44
+Start:  AIC=715.35
+Survived ~ glmAge + log_Fare + SibSp + Parch + Embarked + Pclass + 
+    Title + Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- Embarked     3   674.78 712.78
+- nTicket      1   671.37 713.37
+- Parch        1   671.78 713.78
+- SibSp        1   671.88 713.88
+<none>             671.35 715.35
+- log_Fare     1   674.78 716.78
+- Cl_Relative  5   688.99 722.99
+- Pclass       2   691.24 731.24
+- glmAge       1   692.28 734.28
+- Title        6   856.18 888.18
+
+Step:  AIC=712.78
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- nTicket      1   674.78 710.78
+- Parch        1   675.32 711.32
+- SibSp        1   675.48 711.48
+<none>             674.78 712.78
+- log_Fare     1   679.22 715.22
+- Cl_Relative  5   693.43 721.43
+- Pclass       2   692.53 726.53
+- glmAge       1   695.16 731.16
+- Title        6   874.32 900.32
+
+Step:  AIC=710.78
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative
+
+              Df Deviance    AIC
+- Parch        1   675.32 709.32
+- SibSp        1   675.48 709.48
+<none>             674.78 710.78
+- log_Fare     1   680.30 714.30
+- Cl_Relative  5   693.98 719.98
+- Pclass       2   695.46 727.46
+- glmAge       1   695.30 729.30
+- Title        6   874.58 898.58
+
+Step:  AIC=709.32
+Survived ~ glmAge + log_Fare + SibSp + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+- SibSp        1   675.48 707.48
+<none>             675.32 709.32
+- log_Fare     1   680.64 712.64
+- Cl_Relative  5   699.17 723.17
+- Pclass       2   696.58 726.58
+- glmAge       1   696.27 728.27
+- Title        6   874.59 896.59
+
+Step:  AIC=707.48
+Survived ~ glmAge + log_Fare + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+<none>             675.48 707.48
+- log_Fare     1   680.78 710.78
+- Pclass       2   697.10 725.10
+- glmAge       1   696.44 726.44
+- Cl_Relative  5   716.33 738.33
+- Title        6   878.94 898.94
+Start:  AIC=730.27
+Survived ~ glmAge + log_Fare + SibSp + Parch + Embarked + Pclass + 
+    Title + Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- Embarked     3   688.84 726.84
+- Parch        1   686.27 728.27
+- SibSp        1   686.55 728.55
+- nTicket      1   686.65 728.65
+<none>             686.27 730.27
+- log_Fare     1   689.39 731.39
+- Cl_Relative  5   702.63 736.63
+- Pclass       2   705.27 745.27
+- glmAge       1   708.29 750.29
+- Title        6   862.29 894.29
+
+Step:  AIC=726.84
+Survived ~ glmAge + log_Fare + SibSp + Parch + Pclass + Title + 
+    Cl_Relative + nTicket
+
+              Df Deviance    AIC
+- Parch        1   688.85 724.85
+- nTicket      1   689.12 725.12
+- SibSp        1   689.21 725.21
+<none>             688.84 726.84
+- log_Fare     1   692.49 728.49
+- Cl_Relative  5   705.90 733.90
+- Pclass       2   706.29 740.29
+- glmAge       1   710.67 746.67
+- Title        6   878.37 904.37
+
+Step:  AIC=724.85
+Survived ~ glmAge + log_Fare + SibSp + Pclass + Title + Cl_Relative + 
+    nTicket
+
+              Df Deviance    AIC
+- nTicket      1   689.12 723.12
+- SibSp        1   690.32 724.32
+<none>             688.85 724.85
+- log_Fare     1   692.49 726.49
+- Cl_Relative  5   708.58 734.58
+- Pclass       2   706.31 738.31
+- glmAge       1   710.76 744.76
+- Title        6   878.79 902.79
+
+Step:  AIC=723.12
+Survived ~ glmAge + log_Fare + SibSp + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+- SibSp        1   690.53 722.53
+<none>             689.12 723.12
+- log_Fare     1   694.69 726.69
+- Cl_Relative  5   709.70 733.70
+- Pclass       2   708.24 738.24
+- glmAge       1   711.45 743.45
+- Title        6   878.92 900.92
+
+Step:  AIC=722.53
+Survived ~ glmAge + log_Fare + Pclass + Title + Cl_Relative
+
+              Df Deviance    AIC
+<none>             690.53 722.53
+- log_Fare     1   696.00 726.00
+- Pclass       2   710.23 738.23
+- glmAge       1   712.70 742.70
+- Cl_Relative  5   733.54 755.54
+- Title        6   886.87 906.87
+> 
+> acc[, Accuracy := as.numeric(Accuracy)]
+> 
+> selectedcols <- colnames(as.data.table(get(acc[Accuracy == max(Accuracy)]$Model)$model))[2:ncol(get(acc[Accuracy == max(Accuracy)]$Model)$model)]
+> 
+> model <- glm(formula = Survived ~ glmAge + log_Fare + Pclass + Title + Cl_Relative,
++ 
++ 						 data = train, family = binomial(link = "logit"))
+> 
+> test[, phat := predict.glm(model, newdata = test, type = "response")]
+> 
+> test[, Survived := ifelse(phat > 0.5, 1, 0)]
+> 
+> gender_submission <- merge(gender_submission[, 1],
++ 
++ 													 test[, c("PassengerId", "Survived")],
++ 
++ 													 by = "PassengerId")
+> 
+> fwrite(gender_submission, "submission_20171228_4.csv")
+> 
+> 
+> 
+> # Naive Bayes Estimation ----
+> 
+> train[, .(mean(Survived), .N), .(Sex)]
+      Sex        V1   N
+1: female 0.7420382 314
+2:   male 0.1889081 577
+> 
+> summary(aov(formula = Survived ~ Sex, data = train))
+             Df Sum Sq Mean Sq F value Pr(>F)    
+Sex           1  62.21   62.21   372.4 <2e-16 ***
+Residuals   889 148.51    0.17                   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+> 
+> train[, .(mean(Survived), .N), .(Embarked)]
+   Embarked        V1   N
+1:        S 0.3369565 644
+2:        C 0.5535714 168
+3:          1.0000000   2
+4:        Q 0.3896104  77
+> 
+> summary(aov(formula = Survived ~ Embarked, data = train))
+             Df Sum Sq Mean Sq F value   Pr(>F)    
+Embarked      3   7.02  2.3391   10.19 1.34e-06 ***
+Residuals   887 203.71  0.2297                     
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+> 
+> train[, .(mean(Survived), .N), .(Pclass)]
+   Pclass        V1   N
+1:      1 0.6296296 216
+2:      2 0.4728261 184
+3:      3 0.2423625 491
+> 
+> summary(aov(formula = Survived ~ Pclass, data = train))
+             Df Sum Sq Mean Sq F value Pr(>F)    
+Pclass        2  24.33   12.17   57.97 <2e-16 ***
+Residuals   888 186.39    0.21                   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+> 
+> train[, .(mean(Survived), .N), .(Cl_Fare)] # Fare Classes
+     Cl_Fare        V1   N
+1:    Modest 0.5287356 174
+2:     Cheap 0.4220963 353
+3:  Cheapest 0.1993569 311
+4: Expensive 0.7358491  53
+> 
+> summary(aov(formula = Survived ~ Cl_Fare, data = train))
+             Df Sum Sq Mean Sq F value Pr(>F)    
+Cl_Fare       3  21.32   7.107   33.28 <2e-16 ***
+Residuals   887 189.41   0.214                   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+> 
+> train[, .(mean(Survived), .N), .(Cl_Age)] # Age Classes (some doubts but i guess it will be fine)
+   Cl_Age        V1   N
+1:      3 0.3984962 266
+2:      2 0.3826087 115
+3:      4 0.3355932 295
+4:      6 0.4047619  42
+5:      5 0.3793103  87
+6:      7 0.2352941  17
+7:      1 0.5937500  64
+8:      8 0.2000000   5
+> 
+> summary(aov(formula = Survived ~ Cl_Age, data = train))
+             Df Sum Sq Mean Sq F value Pr(>F)  
+Cl_Age        7   4.13  0.5898   2.521 0.0143 *
+Residuals   883 206.60  0.2340                 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+> 
+> train[, .(mean(Survived), .N), .(Cl_Relative)] # Amount of Relatives Classes
+   Cl_Relative        V1   N
+1:           0 0.3035382 537
+2:           2 0.5784314 102
+3:           1 0.5527950 161
+4:           3 0.7241379  29
+5:           5 0.1489362  47
+6:           4 0.2000000  15
+> 
+> summary(aov(formula = Survived ~ Cl_Relative, data = train))
+             Df Sum Sq Mean Sq F value   Pr(>F)    
+Cl_Relative   5  18.38   3.676   16.91 5.44e-16 ***
+Residuals   885 192.35   0.217                     
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+> 
+> summary(aov(formula = Survived ~ as.factor(nTicket), data = train))
+                    Df Sum Sq Mean Sq F value Pr(>F)    
+as.factor(nTicket)   6  22.26   3.710    17.4 <2e-16 ***
+Residuals          884 188.46   0.213                   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+> 
+> 
+> 
+> rows <- c("Pclass", "Title", "Embarked", "Cl_Fare", "Cl_Age", "Cl_Relative", "fac_nTicket")
+> 
+> objective <- "Survived"
+> 
+> 
+> 
+> fwrite(file = "submission_naivebayes_2.csv",
++ 
++ 			 x = merge(test[, 1:20], 
++ 
++ 			 					NBCalc(train, test, rows, objective)[, .(Survived = ifelse(mean(NaiveBayesProb) > 0.5, 1, 0))
++ 
++ 			 																							 , .(fac_nTicket, Cl_Relative, Cl_Age, Cl_Fare, Embarked, Title, Pclass)],
++ 
++ 			 					by = c("Pclass", "Title", "Embarked", "Cl_Fare", "Cl_Age", "Cl_Relative", "fac_nTicket"), all.x = TRUE)[, .(PassengerId, Survived)])
+> 
+> 
+> 
+> # Tree Based Algorithms ----
+> 
+> # Decision Tree ----
+> 
+> library("rpart"); library("randomForest"); library("partykit")
+> 
+> 
+> 
+> # Plain Decision Trees are not used for prediction rather for exploration.
+> 
+> dt <- rpart(data = train, formula = Survived ~ Title + Pclass + Sex + Embarked + glmAge + Cl_Relative + log_Fare + nTicket + CabinDpt)
+> 
+> printcp(dt)
+
+Regression tree:
+rpart(formula = Survived ~ Title + Pclass + Sex + Embarked + 
+    glmAge + Cl_Relative + log_Fare + nTicket + CabinDpt, data = train)
+
+Variables actually used in tree construction:
+[1] CabinDpt    Cl_Relative glmAge      Pclass      Sex        
+
+Root node error: 210.73/891 = 0.23651
+
+n= 891 
+
+        CP nsplit rel error  xerror     xstd
+1 0.295231      0   1.00000 1.00169 0.016046
+2 0.073942      1   0.70477 0.71431 0.033294
+3 0.034211      2   0.63083 0.64642 0.032213
+4 0.023849      3   0.59662 0.64148 0.032702
+5 0.017599      4   0.57277 0.60118 0.032973
+6 0.013599      5   0.55517 0.58090 0.032687
+7 0.010000      6   0.54157 0.57644 0.032800
+> 
+> plotcp(dt)
+> 
+> plot(dt)
+> 
+> text(dt, use.n = TRUE, all = TRUE, cex = 0.8)
+> 
+> 
+> 
+> # Random Forest is an exploration technique.
+> 
+> # rf_train <- train[, .(Title, Pclass, Sex, Embarked, glmAge, Cl_Relative, log_Fare, nTicket)]
+> 
+> # rf_test  <- test[, .(Title, Pclass, Sex, Embarked, glmAge, Cl_Relative, log_Fare, nTicket)]
+> 
+> # rf_survived <- as.factor(train$Survived)
+> 
+> # rf <- randomForest(rf_train, rf_survived)
+> 
+> # 
+> 
+> # plot(rf)
+> 
+> # predict(object = rf, newdata = rf_test, type = "response", norm.votes = TRUE, predict.all = FALSE, proximity = FALSE, nodes = FALSE)
+> 
+> 
+> 
+> model_ct <- ctree(formula = Survived ~ Title + Pclass + Sex + Embarked + glmAge + Cl_Relative + log_Fare + nTicket, data = train)
+> 
+> test[, prob := predict(object = model_ct, newdata = test)]
+> 
+> test[, Survived := ifelse(prob > 0.5, 1, 0)]
+> 
+> fwrite(test[, .(PassengerId, Survived)], "submission_Ctree_1.csv")
+> 
+> 
+> 
+> model_ct2 <- ctree(formula = Survived ~ Title + Pclass + Sex + Embarked + glmAge + Cl_Relative + log_Fare + nTicket, data = train, control = ctree_control(minsplit = 31))
+> 
+> test[, prob2 := predict(object = model_ct2, newdata = test)]
+> 
+> test[, Survived2 := ifelse(prob2 > 0.5, 1, 0)]
+> 
+> fwrite(test[, .(PassengerId, Survived = Survived2)], "submission_Ctree_2.csv")
+> 
+> 
+> 
+> model_ct3 <- ctree(formula = Survived ~ Title + Pclass + Embarked + glmAge + Cl_Relative + log_Fare + nTicket, data = train)
+> 
+> test[, prob3 := predict(object = model_ct2, newdata = test)]
+> 
+> test[, Survived3 := ifelse(prob2 > 0.5, 1, 0)]
+> 
+> fwrite(test[, .(PassengerId, Survived = Survived3)], "submission_Ctree_3.csv")
+> 
+> proc.time()
+   user  system elapsed 
+170.186   3.078  64.652 

@@ -1,0 +1,745 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ---- warning=FALSE,message=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> library(data.table)
+> library(scales)
+
+Attaching package: ‘scales’
+
+The following object is masked from ‘package:readr’:
+
+    col_factor
+
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> library(pander)
+> library(rpart)
+> library(pROC)
+Type 'citation("pROC")' for a citation.
+
+Attaching package: ‘pROC’
+
+The following objects are masked from ‘package:stats’:
+
+    cov, smooth, var
+
+> library(plyr)
+> require(randomForest)
+Loading required package: randomForest
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #list.files("../input")
+> trainData = read.csv(file='../input/train.csv', stringsAsFactors = F)
+> trainData = setDT(trainData)
+> summary(trainData)
+  PassengerId       Survived          Pclass          Name          
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000   Length:891        
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median :446.0   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309                     
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000                     
+                                                                    
+     Sex                 Age            SibSp           Parch       
+ Length:891         Min.   : 0.42   Min.   :0.000   Min.   :0.0000  
+ Class :character   1st Qu.:20.12   1st Qu.:0.000   1st Qu.:0.0000  
+ Mode  :character   Median :28.00   Median :0.000   Median :0.0000  
+                    Mean   :29.70   Mean   :0.523   Mean   :0.3816  
+                    3rd Qu.:38.00   3rd Qu.:1.000   3rd Qu.:0.0000  
+                    Max.   :80.00   Max.   :8.000   Max.   :6.0000  
+                    NA's   :177                                     
+    Ticket               Fare           Cabin             Embarked        
+ Length:891         Min.   :  0.00   Length:891         Length:891        
+ Class :character   1st Qu.:  7.91   Class :character   Class :character  
+ Mode  :character   Median : 14.45   Mode  :character   Mode  :character  
+                    Mean   : 32.20                                        
+                    3rd Qu.: 31.00                                        
+                    Max.   :512.33                                        
+                                                                          
+> testData = read.csv(file='../input/test.csv',stringsAsFactors = F)
+> testData = setDT(testData)
+> summary(testData)
+  PassengerId         Pclass          Name               Sex           
+ Min.   : 892.0   Min.   :1.000   Length:418         Length:418        
+ 1st Qu.: 996.2   1st Qu.:1.000   Class :character   Class :character  
+ Median :1100.5   Median :3.000   Mode  :character   Mode  :character  
+ Mean   :1100.5   Mean   :2.266                                        
+ 3rd Qu.:1204.8   3rd Qu.:3.000                                        
+ Max.   :1309.0   Max.   :3.000                                        
+                                                                       
+      Age            SibSp            Parch           Ticket         
+ Min.   : 0.17   Min.   :0.0000   Min.   :0.0000   Length:418        
+ 1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.0000   Class :character  
+ Median :27.00   Median :0.0000   Median :0.0000   Mode  :character  
+ Mean   :30.27   Mean   :0.4474   Mean   :0.3923                     
+ 3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.0000                     
+ Max.   :76.00   Max.   :8.0000   Max.   :9.0000                     
+ NA's   :86                                                          
+      Fare            Cabin             Embarked        
+ Min.   :  0.000   Length:418         Length:418        
+ 1st Qu.:  7.896   Class :character   Class :character  
+ Median : 14.454   Mode  :character   Mode  :character  
+ Mean   : 35.627                                        
+ 3rd Qu.: 31.500                                        
+ Max.   :512.329                                        
+ NA's   :1                                              
+> trainData$sample = 'training'
+> testData$sample = 'testing'
+> trainData = rbind.fill(trainData,testData)
+> trainData = setDT(trainData)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainData[,Pclass:=as.factor(Pclass),]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainData$surname = gsub(',.*','',trainData$Name,perl=TRUE)
+> trainData$title = gsub('.*,\\s|\\..*','',trainData$Name) # (anything, comma, white space) or (full stop, anything) gets replaced with blank
+> 
+> head(trainData[,c('Name','surname','title')])
+                                                  Name   surname title
+1:                             Braund, Mr. Owen Harris    Braund    Mr
+2: Cumings, Mrs. John Bradley (Florence Briggs Thayer)   Cumings   Mrs
+3:                              Heikkinen, Miss. Laina Heikkinen  Miss
+4:        Futrelle, Mrs. Jacques Heath (Lily May Peel)  Futrelle   Mrs
+5:                            Allen, Mr. William Henry     Allen    Mr
+6:                                    Moran, Mr. James     Moran    Mr
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainData$cabinLetter = gsub('(\\d*)|\\s+','',trainData$Cabin)
+> trainData$cabinNumCabins = nchar(trainData$cabinLetter)
+> trainData$cabinLetter = substring(trainData$cabinLetter,1,1)
+> trainData$cabinMain = sapply(strsplit(trainData$Cabin,' '),function(x) {if (length(x)>0){x[[1]]}else{''}})
+> trainData$cabinNumber = as.numeric(gsub('\\D*','',trainData$cabinMain))
+> trainData$hasCabin = ifelse(trainData$cabinLetter == '',0,1)
+> 
+> head(trainData[,c('Cabin','cabinLetter','cabinNumber','hasCabin')])
+   Cabin cabinLetter cabinNumber hasCabin
+1:                            NA        0
+2:   C85           C          85        1
+3:                            NA        0
+4:  C123           C         123        1
+5:                            NA        0
+6:                            NA        0
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> head(trainData[,c('Ticket')])
+             Ticket
+1:        A/5 21171
+2:         PC 17599
+3: STON/O2. 3101282
+4:           113803
+5:           373450
+6:           330877
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainData$ticketNumber = as.numeric(gsub('^.* ','',trainData$Ticket))
+Warning message:
+NAs introduced by coercion 
+> trainData$ticketPrefix = gsub('\\d*$','',trainData$Ticket)
+> 
+> head(trainData[,c('Ticket','ticketNumber','ticketPrefix')])
+             Ticket ticketNumber ticketPrefix
+1:        A/5 21171        21171         A/5 
+2:         PC 17599        17599          PC 
+3: STON/O2. 3101282      3101282    STON/O2. 
+4:           113803       113803             
+5:           373450       373450             
+6:           330877       330877             
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> head(trainData[,c('Embarked')])
+   Embarked
+1:        S
+2:        C
+3:        S
+4:        S
+5:        S
+6:        Q
+> 
+> 
+> ## ----familysize------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainData$familySize = trainData$SibSp + trainData$Parch + 1
+> trainData[,numPplSameTicket := .N,.(ticketNumber)]
+> trainData[,travelGroupSize:=pmax(familySize, numPplSameTicket),]
+> trainData[,travellingSolo:=ifelse(travelGroupSize==1,1,0),]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> checkColumn = function(df,colname){
++   
++   testData = df[[colname]]
++   numMissing = max(sum(is.na(testData)|is.nan(testData)|testData==''),0)
++ 
++   
++   if (class(testData) == 'numeric' | class(testData) == 'Date' | class(testData) == 'difftime' | class(testData) == 'integer'){
++     list('col' = colname,'class' = class(testData), 'num' = length(testData) - numMissing, 'numMissing' = numMissing, 'numInfinite' = sum(is.infinite(testData)), 'avgVal' = mean(testData,na.rm=TRUE), 'minVal' = round(min(testData,na.rm = TRUE)), 'maxVal' = round(max(testData,na.rm = TRUE)))
++   } else{
++     list('col' = colname,'class' = class(testData), 'num' = length(testData) - numMissing, 'numMissing' = numMissing, 'numInfinite' = NA,  'avgVal' = NA, 'minVal' = NA, 'maxVal' = NA)
++   }
++   
++ }
+> checkAllCols = function(df){
++   resDF = data.frame()
++   for (colName in names(df)){
++     resDF = rbind(resDF,as.data.frame(checkColumn(df=df,colname=colName)))
++   }
++   resDF
++ }
+> 
+> 
+> ## ----results='asis'--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> pandoc.table(checkAllCols(trainData))
+
+-------------------------------------------------------------------------
+       col            class     num    numMissing   numInfinite   avgVal 
+------------------ ----------- ------ ------------ ------------- --------
+   PassengerId       integer    1309       0             0         655   
+
+     Survived        integer    891       418            0        0.3838 
+
+      Pclass         factor     1309       0            NA          NA   
+
+       Name         character   1309       0            NA          NA   
+
+       Sex          character   1309       0            NA          NA   
+
+       Age           numeric    1046      263            0        29.88  
+
+      SibSp          integer    1309       0             0        0.4989 
+
+      Parch          integer    1309       0             0        0.385  
+
+      Ticket        character   1309       0            NA          NA   
+
+       Fare          numeric    1308       1             0         33.3  
+
+      Cabin         character   295       1014          NA          NA   
+
+     Embarked       character   1307       2            NA          NA   
+
+      sample        character   1309       0            NA          NA   
+
+     surname        character   1309       0            NA          NA   
+
+      title         character   1309       0            NA          NA   
+
+   cabinLetter      character   295       1014          NA          NA   
+
+  cabinNumCabins     integer    1309       0             0        0.272  
+
+    cabinMain       character   295       1014          NA          NA   
+
+   cabinNumber       numeric    282       1027           0        49.27  
+
+     hasCabin        numeric    1309       0             0        0.2254 
+
+   ticketNumber      numeric    1305       4             0        283939 
+
+   ticketPrefix     character   352       957           NA          NA   
+
+    familySize       numeric    1309       0             0        1.884  
+
+ numPplSameTicket    integer    1309       0             0        2.114  
+
+ travelGroupSize     numeric    1309       0             0        2.208  
+
+  travellingSolo     numeric    1309       0             0        0.5004 
+-------------------------------------------------------------------------
+
+Table: Table continues below
+
+ 
+------------------
+ minVal   maxVal  
+-------- ---------
+   1       1309   
+
+   0         1    
+
+   NA       NA    
+
+   NA       NA    
+
+   NA       NA    
+
+   0        80    
+
+   0         8    
+
+   0         9    
+
+   NA       NA    
+
+   0        512   
+
+   NA       NA    
+
+   NA       NA    
+
+   NA       NA    
+
+   NA       NA    
+
+   NA       NA    
+
+   NA       NA    
+
+   0         4    
+
+   NA       NA    
+
+   2        148   
+
+   0         1    
+
+   2      3101317 
+
+   NA       NA    
+
+   1        11    
+
+   1        11    
+
+   1        11    
+
+   0         1    
+------------------
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainData[,likelyChild:=ifelse(SibSp > 1,1,
++                         ifelse(Parch > 2,0,
++                                         3)),] #Use '3' to denote 'no clues'
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ageTree = rpart(Age ~ Fare + Pclass + Embarked + title + SibSp + Parch + travelGroupSize + likelyChild,data = trainData)
+> rpart.plot::rpart.plot(ageTree)
+> trainData$predAge = predict(ageTree,trainData)
+> ggplot(data=trainData,aes(x=Age,y=predAge)) + geom_point() + geom_smooth()
+`geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
+Warning messages:
+1: Removed 263 rows containing non-finite values (stat_smooth). 
+2: Removed 263 rows containing missing values (geom_point). 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainData[is.na(Age),Age := predAge,]
+> trainData[,predAge := NULL,]
+> trainData[,likelyChild := NULL,]
+> summary(trainData$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.17   22.00   28.86   29.70   36.50   80.00 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainData[Cabin=='',c('Cabin','cabinMain','cabinLetter','cabinNumCabins','cabinNumber','hasCabin'):=.('U','U','U',0,0,0)]
+> trainData[is.na(cabinNumber),cabinNumber:=0,]
+> 
+> 
+> ## ----echo=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(data=trainData,aes(x=Embarked)) + geom_bar() + facet_grid(Pclass ~ .,scales='free_y')
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainData[Embarked == '',,] # travelling on same ticket
+   PassengerId Survived Pclass                                      Name    Sex
+1:          62        1      1                       Icard, Miss. Amelie female
+2:         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn) female
+   Age SibSp Parch Ticket Fare Cabin Embarked   sample surname title
+1:  38     0     0 113572   80   B28          training   Icard  Miss
+2:  62     0     0 113572   80   B28          training   Stone   Mrs
+   cabinLetter cabinNumCabins cabinMain cabinNumber hasCabin ticketNumber
+1:           B              1       B28          28        1       113572
+2:           B              1       B28          28        1       113572
+   ticketPrefix familySize numPplSameTicket travelGroupSize travellingSolo
+1:                       1                2               2              0
+2:                       1                2               2              0
+> trainData[ticketNumber == 113572,,] # anyone else on same ticket?
+   PassengerId Survived Pclass                                      Name    Sex
+1:          62        1      1                       Icard, Miss. Amelie female
+2:         830        1      1 Stone, Mrs. George Nelson (Martha Evelyn) female
+   Age SibSp Parch Ticket Fare Cabin Embarked   sample surname title
+1:  38     0     0 113572   80   B28          training   Icard  Miss
+2:  62     0     0 113572   80   B28          training   Stone   Mrs
+   cabinLetter cabinNumCabins cabinMain cabinNumber hasCabin ticketNumber
+1:           B              1       B28          28        1       113572
+2:           B              1       B28          28        1       113572
+   ticketPrefix familySize numPplSameTicket travelGroupSize travellingSolo
+1:                       1                2               2              0
+2:                       1                2               2              0
+> #No, bother
+> 
+> 
+> ## ---- results='asis'-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> embarked1stTree = rpart(Embarked ~ Fare,data = trainData[Pclass==1,,])
+> rpart.plot::rpart.plot(embarked1stTree)
+Warning message:
+Bad 'data' field in model 'call' (expected a data.frame or a matrix).
+To silence this warning:
+    Call rpart.plot with roundint=FALSE,
+    or rebuild the rpart model with model=TRUE. 
+> trainData$predictedEmbarkationPoint = predict(embarked1stTree,trainData,type="class")
+> pandoc.table(table(trainData[Pclass==1,.(Embarked,predictedEmbarkationPoint),]))
+
+---------------------------------
+ &nbsp;   &nbsp;    C    Q    S  
+-------- -------- ----- --- -----
+            0       2    0    0  
+
+ **C**      0      107   0   34  
+
+ **Q**      0       0    0    3  
+
+ **S**      0      28    0   149 
+---------------------------------
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #trainData[Embarked=='',Embarked:=predict(embarked1stTree,.SD,type='class')]
+> trainData[Embarked=='',Embarked:=predictedEmbarkationPoint,]
+> trainData[,predictedEmbarkationPoint:=NULL,]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainData[is.na(ticketNumber),ticketNumber:=0,]
+> trainData[ticketPrefix == '',ticketPrefix:='Unk',]
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainData[is.na(Fare),.N,.(sample)]
+    sample N
+1: testing 1
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainData[Fare==0,.N,.(sample)]
+     sample  N
+1: training 15
+2:  testing  2
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fareTree = rpart(Fare ~ Age + Pclass + Embarked + title + SibSp + Parch + travelGroupSize,data = trainData)
+> rpart.plot::rpart.plot(fareTree)
+> trainData$predFare = predict(fareTree,trainData)
+> ggplot(data=trainData,aes(x=Fare,y=predFare)) + geom_point() + geom_smooth()
+`geom_smooth()` using method = 'gam' and formula 'y ~ s(x, bs = "cs")'
+Warning messages:
+1: Removed 1 rows containing non-finite values (stat_smooth). 
+2: Removed 1 rows containing missing values (geom_point). 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> trainData[is.na(Fare) | Fare==0,Fare := predFare,]
+> trainData[,predFare := NULL,]
+> summary(trainData$Fare)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  3.171   7.925  14.458  33.583  31.275 512.329 
+> 
+> 
+> ## ----results='asis'--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> pandoc.table(checkAllCols(trainData))
+
+-------------------------------------------------------------------------
+       col            class     num    numMissing   numInfinite   avgVal 
+------------------ ----------- ------ ------------ ------------- --------
+   PassengerId       integer    1309       0             0         655   
+
+     Survived        integer    891       418            0        0.3838 
+
+      Pclass         factor     1309       0            NA          NA   
+
+       Name         character   1309       0            NA          NA   
+
+       Sex          character   1309       0            NA          NA   
+
+       Age           numeric    1309       0             0         29.7  
+
+      SibSp          integer    1309       0             0        0.4989 
+
+      Parch          integer    1309       0             0        0.385  
+
+      Ticket        character   1309       0            NA          NA   
+
+       Fare          numeric    1309       0             0        33.58  
+
+      Cabin         character   1309       0            NA          NA   
+
+     Embarked       character   1309       0            NA          NA   
+
+      sample        character   1309       0            NA          NA   
+
+     surname        character   1309       0            NA          NA   
+
+      title         character   1309       0            NA          NA   
+
+   cabinLetter      character   1309       0            NA          NA   
+
+  cabinNumCabins     integer    1309       0             0        0.272  
+
+    cabinMain       character   1309       0            NA          NA   
+
+   cabinNumber       numeric    1309       0             0        10.61  
+
+     hasCabin        numeric    1309       0             0        0.2254 
+
+   ticketNumber      numeric    1309       0             0        283071 
+
+   ticketPrefix     character   1309       0            NA          NA   
+
+    familySize       numeric    1309       0             0        1.884  
+
+ numPplSameTicket    integer    1309       0             0        2.114  
+
+ travelGroupSize     numeric    1309       0             0        2.208  
+
+  travellingSolo     numeric    1309       0             0        0.5004 
+-------------------------------------------------------------------------
+
+Table: Table continues below
+
+ 
+------------------
+ minVal   maxVal  
+-------- ---------
+   1       1309   
+
+   0         1    
+
+   NA       NA    
+
+   NA       NA    
+
+   NA       NA    
+
+   0        80    
+
+   0         8    
+
+   0         9    
+
+   NA       NA    
+
+   3        512   
+
+   NA       NA    
+
+   NA       NA    
+
+   NA       NA    
+
+   NA       NA    
+
+   NA       NA    
+
+   NA       NA    
+
+   0         4    
+
+   NA       NA    
+
+   0        148   
+
+   0         1    
+
+   0      3101317 
+
+   NA       NA    
+
+   1        11    
+
+   1        11    
+
+   1        11    
+
+   0         1    
+------------------
+
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> #logit
+> logit <- function(pr) {
++   #pr = pmax(pmin(pr,0.99999999999),0.00000000001)
++   log(pr/(1-pr)) 
++ } 
+> 
+> #format graph
+> formatGraph = function(x,addYPctFmt=FALSE,ymin=NA,ymax=NA){
++   x = x + 
++     theme(panel.grid.minor = element_blank(), 
++           panel.grid.major = element_line(color='gray50',linetype = 'dashed'),
++           panel.grid.major.x = element_blank()) +
++     theme(panel.background = element_blank())
++   
++   if (addYPctFmt==TRUE){
++     #x = x + 
++     #  scale_y_continuous(limits=c(0,1), labels=percent) 
++     if (!is.na(ymin) | !is.na(ymax)){
++       x = x +
++         scale_y_continuous(labels=percent,limits=c(ymin,ymax))
++     } else{
++        x = x +
++            scale_y_continuous(labels=percent)
++     }
++   } else {
++     if (!is.na(ymin) | !is.na(ymax)){
++       x = x +
++         scale_y_continuous(limits=c(ymin,ymax))
++     } 
++   }
++   
++   x
++ }
+> 
+> #plot a barplot
+> barPlot = function(x,y,data){
++     #pandoc.header(paste0('\n logitBar plotting ',x,'\n'),3)
++     pandoc.p(' \n Colour and labels show percentage of population in each category \n')
++     
++     plotData = data[!is.na(get(y)),.(meanY = mean(get(y),na.rm=TRUE),num=.N),.(get(x))]
++     names(plotData) = c(x,y,'num')
++     plotData[,totNum:=sum(num),]
++     plotData[,pct:=round(num/totNum,2),]
++     plotData[,logitY:=logit(get(y)),]
++     
++     ggp1 = ggplot(data=plotData,aes(x=get(x),y=get(y),colour=pct,fill=pct)) + geom_bar(stat='identity') + labs(x=x,y=y) + geom_label(aes(label=pct),fill='white')
++     
++     print(formatGraph(ggp1))
++ }
+> 
+> #plot a graph of logit odds against density
+> logitloess <- function(x, y, data,plotDensity=TRUE) { 
++   
++   #pandoc.p(paste0(' \n Plotting ',y,' against ',x))
++   
++   xvals = data[[x]]
++   yvals = data[[y]]
++ 
++   # data fixes
++   xvals = xvals[!is.na(yvals)]
++   yvals = yvals[!is.na(yvals)]
++   
++ 
++   if (length(unique(xvals))>20){
++   
++   
++     #message('setting quantiles')
++     xquantiles = quantile(xvals,prob=c(0.05,0.95),na.rm=TRUE)
++   
++     #message('loessfit - building local regression model')
++     loessfit <- predict(loess(yvals~xvals,span = 0.7)) 
++     loessfit2 = predict(loess(yvals~xvals,span = 0.2))
++     pi <- pmax(pmin(loessfit,0.99999999),0.0000001) 
++     pi2 = pmax(pmin(loessfit2,0.99999999),0.0000001)
++     logitfitted <- logit(pi) 
++     logitfitted2 = logit(pi2)
++   
++   
++     yquantiles = quantile(logitfitted2,prob=c(0.05,0.95),na.rm=TRUE)
++     t=data.frame(xaxis=xvals[!is.na(xvals)],yaxis=logitfitted,yaxis2=yvals[!is.na(xvals)],yaxis3=logitfitted2)
++     t=t[t$xaxis>xquantiles[1] & t$xaxis < xquantiles[2],]
++     #message('printing graph')
++     ggp1 = ggplot(data=t,aes(x=xaxis,y=yaxis)) + geom_line() + ylab(paste("logodds(",y,")")) + xlab(x) + geom_line(aes(y=yaxis3),linetype='dashed',alpha=0.3) + geom_point(aes(y=yaxis3),alpha=0.3,colour='red') + geom_hline(yintercept = 0)  
++     ggp2 = ggplot(data=t,aes(x=xaxis,y=yaxis)) + ylab(paste("density(",y,")")) + xlab(x) + geom_density(colour = 'red',fill='red',alpha=0.05,aes(y=..scaled..),show.legend =FALSE) 
++   
++     print(formatGraph(ggp1,ymin = yquantiles[1],ymax=yquantiles[2]))
++     if (plotDensity){
++         print(formatGraph(ggp2,addYPctFmt=TRUE))
++     }
++   }else{
++     barPlot(x,y,data)
++   }
++     
++   
++ }
+> 
+> 
+> 
+> ## ----dataexploration, results='asis', error=FALSE, warning=FALSE, message=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------
+> for (n in names(trainData)){
++     #message('examining ',n,' for plotting')
++     pandoc.header(n,3)
++     if (class(trainData[[n]]) == 'numeric' | class(trainData[[n]]) == 'integer'){
++         logitloess(n,'Survived',trainData)
++     } else {
++         barPlot(n,'Survived',trainData)
++     }
++     pandoc.p(' \n ')
++ }
+
+### PassengerId
+
+
+ 
+ 
+
+
+### Survived
+
+
+ 
+ Colour and labels show percentage of population in each category 
+
+
+Error: `data` must be uniquely named but has duplicate columns
+Backtrace:
+[90m     [39m█
+[90m  1. [39m└─global::logitloess(n, "Survived", trainData)
+[90m  2. [39m  └─global::barPlot(x, y, data)
+[90m  3. [39m    ├─base::print(formatGraph(ggp1))
+[90m  4. [39m    └─ggplot2:::print.ggplot(formatGraph(ggp1))
+[90m  5. [39m      ├─ggplot2::ggplot_build(x)
+[90m  6. [39m      └─ggplot2:::ggplot_build.ggplot(x)
+[90m  7. [39m        └─ggplot2:::by_layer(function(l, d) l$compute_aesthetics(d, plot))
+[90m  8. [39m          └─ggplot2:::f(l = layers[[i]], d = data[[i]])
+[90m  9. [39m            └─l$compute_aesthetics(d, plot)
+[90m 10. [39m              └─ggplot2:::f(..., self = self)
+[90m 11. [39m                └─ggplot2:::scales_add_defaults(...)
+[90m 12. [39m                  └─base::lapply(aesthetics[new_aesthetics], eval_tidy, data = data)
+[90m 13. [39m                    └─rlang:::FUN(X[[i]], ...)
+In addition: Warning message:
+Removed 84 rows containing missing values (geom_point). 
+Execution halted

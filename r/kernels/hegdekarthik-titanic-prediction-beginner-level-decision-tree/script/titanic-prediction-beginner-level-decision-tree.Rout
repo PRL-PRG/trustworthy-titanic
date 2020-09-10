@@ -1,0 +1,406 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Clear the workspace
+> rm(list = ls())
+> 
+> #load packages
+> library(caret)
+Loading required package: lattice
+Loading required package: ggplot2
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(e1071)
+> library(rpart)
+> library(rpart.plot)
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Read the data
+> trainTitanic = read.csv( "../input/train.csv", header = TRUE)
+> testTitanic = read.csv( "../input/test.csv", header = TRUE)
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> str(trainTitanic)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> str(testTitanic)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : Factor w/ 418 levels "Abbott, Master. Eugene Joseph",..: 210 409 273 414 182 370 85 58 5 104 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : Factor w/ 77 levels "","A11","A18",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Fill Survived column of test data to NA to make it homogeneous with the test data
+> testTitanic$Survived = NA
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Combine the data
+> completeTitanic = rbind(trainTitanic, testTitanic)
+> head(completeTitanic)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> sapply(completeTitanic[,-c(2)], function(x){sum(is.na(x))})
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+          0           0           0           0         263           0 
+      Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           1           0           0 
+> sapply(completeTitanic[,-c(2)], function(x){sum(x == "")})
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+          0           0           0           0          NA           0 
+      Parch      Ticket        Fare       Cabin    Embarked 
+          0           0          NA        1014           2 
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> completeTitanic$Fare[is.na(completeTitanic$Fare)] = median(completeTitanic$Fare, na.rm = TRUE)
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Fill the 'Embarked' with the mode, which is 'S'
+> completeTitanic$Embarked[completeTitanic$Embarked == ""] <- 'S'
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Create a new variable which contains siblings, spouse and individuals
+> completeTitanic$FamilySize <- completeTitanic$SibSp + completeTitanic$Parch + 1
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Process the data to split the Titles in the name
+> completeTitanic$Title <- sapply(as.character(completeTitanic$Name), FUN=function(x) {strsplit(x, split='[,.]')[[1]][2]})
+> completeTitanic$Title <- sub(' ', '', completeTitanic$Title)
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Before finding/filling the age, combine the sir names to most common ones.
+> completeTitanic$Title <- as.character(completeTitanic$Title)
+> completeTitanic$Title[completeTitanic$Title %in% c('Dona', 'Lady', 'the Countess', 'Ms', 'Mme', 'Mlle')] <- 'Mrs'
+> completeTitanic$Title[completeTitanic$Title %in% c('Capt', 'Col', 'Don', 'Dr', 'Jonkheer', 'Major', 'Rev', 'Sir')] <- 'Others'
+> 
+> #To check how many titles do we have now
+> levels(as.factor(completeTitanic$Title))
+[1] "Master" "Miss"   "Mr"     "Mrs"    "Others"
+> 
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Check the number of people with Titles
+> table(completeTitanic$Title)
+
+Master   Miss     Mr    Mrs Others 
+    61    260    757    205     26 
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Fill the ages with respect to their Title
+> 
+> completeTitanic$Age[which(is.na(completeTitanic$Age) & completeTitanic$Title == 'Mr')] <- median(completeTitanic$Age[completeTitanic$Title == "Mr"],na.rm = TRUE)
+> completeTitanic$Age[which(is.na(completeTitanic$Age) & completeTitanic$Title == 'Mrs')] <- median(completeTitanic$Age[completeTitanic$Title == "Mrs"],na.rm = TRUE)
+> completeTitanic$Age[which(is.na(completeTitanic$Age) & completeTitanic$Title == 'Master')] <- median(completeTitanic$Age[completeTitanic$Title == "Master"],na.rm = TRUE)
+> completeTitanic$Age[which(is.na(completeTitanic$Age) & completeTitanic$Title == 'Miss')] <- median(completeTitanic$Age[completeTitanic$Title == "Miss"],na.rm = TRUE)
+> completeTitanic$Age[which(is.na(completeTitanic$Age) & completeTitanic$Title == 'Others')] <- median(completeTitanic$Age[completeTitanic$Title == "Others"],na.rm = TRUE)
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> completeTitanic$Title[completeTitanic$Age < 18] <- 'Children'
+> completeTitanic$Title <- factor(completeTitanic$Title)
+> levels(completeTitanic$Title)
+[1] "Children" "Miss"     "Mr"       "Mrs"      "Others"  
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Convert the datatypes to required format
+> 
+> completeTitanic$Survived = factor(completeTitanic$Survived)
+> completeTitanic$Pclass = factor(completeTitanic$Pclass)
+> completeTitanic$Name = as.character(completeTitanic$Name)
+> completeTitanic$Title = factor(completeTitanic$Title)
+> 
+> #Check the summary of full data once again
+> summary(completeTitanic)
+  PassengerId   Survived   Pclass      Name               Sex     
+ Min.   :   1   0   :549   1:323   Length:1309        female:466  
+ 1st Qu.: 328   1   :342   2:277   Class :character   male  :843  
+ Median : 655   NA's:418   3:709   Mode  :character               
+ Mean   : 655                                                     
+ 3rd Qu.: 982                                                     
+ Max.   :1309                                                     
+                                                                  
+      Age            SibSp            Parch            Ticket    
+ Min.   : 0.17   Min.   :0.0000   Min.   :0.000   CA. 2343:  11  
+ 1st Qu.:22.00   1st Qu.:0.0000   1st Qu.:0.000   1601    :   8  
+ Median :29.00   Median :0.0000   Median :0.000   CA 2144 :   8  
+ Mean   :29.43   Mean   :0.4989   Mean   :0.385   3101295 :   7  
+ 3rd Qu.:35.00   3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7  
+ Max.   :80.00   Max.   :8.0000   Max.   :9.000   347082  :   7  
+                                                  (Other) :1261  
+      Fare                     Cabin      Embarked   FamilySize    
+ Min.   :  0.000                  :1014    :  0    Min.   : 1.000  
+ 1st Qu.:  7.896   C23 C25 C27    :   6   C:270    1st Qu.: 1.000  
+ Median : 14.454   B57 B59 B63 B66:   5   Q:123    Median : 1.000  
+ Mean   : 33.281   G6             :   5   S:916    Mean   : 1.884  
+ 3rd Qu.: 31.275   B96 B98        :   4            3rd Qu.: 2.000  
+ Max.   :512.329   C22 C26        :   4            Max.   :11.000  
+                   (Other)        : 271                            
+      Title    
+ Children:162  
+ Miss    :193  
+ Mr      :728  
+ Mrs     :200  
+ Others  : 26  
+               
+               
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Now remove the redundant columns which we will not be used in the prediction algorithm
+> columnToDelete <- c('Cabin', 'PassengerId', 'Name','Ticket')
+> completeTitanic[,columnToDelete] <- NULL
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Seperate Test and Train data from the combined data
+> trainTitanicData <- head(completeTitanic, n = nrow(trainTitanic))
+> testTitanicData <- tail(completeTitanic, n = nrow(testTitanic))
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Model building and prediction part
+> 
+> #Using Decision Tree and K cross validation
+> 
+> #Use K cross validation to find the 'cp' parameter
+> set.seed(1)
+> numfold = trainControl(method = "cv", number = 10)    
+> cpgrid = expand.grid(.cp=seq(0.01,0.7,0.01)) 
+> cpVal = train(Survived~., data = trainTitanicData, method='rpart', trControl=numfold, tuneGrid=cpgrid)
+> cpVal
+CART 
+
+891 samples
+  9 predictor
+  2 classes: '0', '1' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 803, 802, 801, 802, 802, 802, ... 
+Resampling results across tuning parameters:
+
+  cp    Accuracy   Kappa     
+  0.01  0.8170369  0.60106415
+  0.02  0.8214939  0.61453105
+  0.03  0.7979724  0.56395236
+  0.04  0.7867487  0.54237312
+  0.05  0.7867487  0.54237312
+  0.06  0.7867487  0.54237312
+  0.07  0.7867487  0.54237312
+  0.08  0.7867487  0.54237312
+  0.09  0.7867487  0.54237312
+  0.10  0.7867487  0.54237312
+  0.11  0.7867487  0.54237312
+  0.12  0.7867487  0.54237312
+  0.13  0.7867487  0.54237312
+  0.14  0.7867487  0.54237312
+  0.15  0.7867487  0.54237312
+  0.16  0.7867487  0.54237312
+  0.17  0.7867487  0.54237312
+  0.18  0.7867487  0.54237312
+  0.19  0.7867487  0.54237312
+  0.20  0.7867487  0.54237312
+  0.21  0.7867487  0.54237312
+  0.22  0.7867487  0.54237312
+  0.23  0.7867487  0.54237312
+  0.24  0.7867487  0.54237312
+  0.25  0.7867487  0.54237312
+  0.26  0.7867487  0.54237312
+  0.27  0.7867487  0.54237312
+  0.28  0.7867487  0.54237312
+  0.29  0.7867487  0.54237312
+  0.30  0.7867487  0.54237312
+  0.31  0.7867487  0.54237312
+  0.32  0.7867487  0.54237312
+  0.33  0.7867487  0.54237312
+  0.34  0.7867487  0.54237312
+  0.35  0.7867487  0.54237312
+  0.36  0.7867487  0.54237312
+  0.37  0.7867487  0.54237312
+  0.38  0.7867487  0.54237312
+  0.39  0.7867487  0.54237312
+  0.40  0.7867487  0.54237312
+  0.41  0.7867487  0.54237312
+  0.42  0.7867487  0.54237312
+  0.43  0.7867487  0.54237312
+  0.44  0.7249509  0.35613433
+  0.45  0.6566196  0.14393624
+  0.46  0.6274061  0.04223905
+  0.47  0.6161701  0.00000000
+  0.48  0.6161701  0.00000000
+  0.49  0.6161701  0.00000000
+  0.50  0.6161701  0.00000000
+  0.51  0.6161701  0.00000000
+  0.52  0.6161701  0.00000000
+  0.53  0.6161701  0.00000000
+  0.54  0.6161701  0.00000000
+  0.55  0.6161701  0.00000000
+  0.56  0.6161701  0.00000000
+  0.57  0.6161701  0.00000000
+  0.58  0.6161701  0.00000000
+  0.59  0.6161701  0.00000000
+  0.60  0.6161701  0.00000000
+  0.61  0.6161701  0.00000000
+  0.62  0.6161701  0.00000000
+  0.63  0.6161701  0.00000000
+  0.64  0.6161701  0.00000000
+  0.65  0.6161701  0.00000000
+  0.66  0.6161701  0.00000000
+  0.67  0.6161701  0.00000000
+  0.68  0.6161701  0.00000000
+  0.69  0.6161701  0.00000000
+  0.70  0.6161701  0.00000000
+
+Accuracy was used to select the optimal model using the largest value.
+The final value used for the model was cp = 0.02.
+> 
+> #Based on cpVal, replace cp in the decision tree model
+> dec_tree <- rpart(Survived~., data = trainTitanicData, cp=0.02, method = 'class')
+> prp(dec_tree)
+> pv2 <- predict(dec_tree,type = 'class')
+> table(trainTitanicData$Survived, pv2)
+   pv2
+      0   1
+  0 491  58
+  1  90 252
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Predict and check for the train value
+> 
+> predictTrain <- predict(dec_tree, type='class')
+> actualTrain <- trainTitanicData$Survived
+> table(predictTrain,actualTrain)
+            actualTrain
+predictTrain   0   1
+           0 491  90
+           1  58 252
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Build a Confusion Matrix and check the different parameters
+> confusionMatrix(predictTrain, actualTrain)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction   0   1
+         0 491  90
+         1  58 252
+                                          
+               Accuracy : 0.8339          
+                 95% CI : (0.8078, 0.8578)
+    No Information Rate : 0.6162          
+    P-Value [Acc > NIR] : < 2e-16         
+                                          
+                  Kappa : 0.6425          
+                                          
+ Mcnemar's Test P-Value : 0.01083         
+                                          
+            Sensitivity : 0.8944          
+            Specificity : 0.7368          
+         Pos Pred Value : 0.8451          
+         Neg Pred Value : 0.8129          
+             Prevalence : 0.6162          
+         Detection Rate : 0.5511          
+   Detection Prevalence : 0.6521          
+      Balanced Accuracy : 0.8156          
+                                          
+       'Positive' Class : 0               
+                                          
+> 
+> #Check the precsion of the preicted data
+> precision(predictTrain, actualTrain)
+[1] 0.8450947
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Predict on Test data
+> predictTest <- predict(dec_tree, newdata = testTitanicData, type='class')
+> table(predictTest)
+predictTest
+  0   1 
+258 160 
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> newdf_ <- data.frame(PassengerId =testTitanic$PassengerId, Survived = 0)
+> newdf_$Survived <- predictTest
+> 
+> #Write the file an output file
+> write.csv(newdf_, 'output_file.csv', row.names = FALSE)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  4.086   0.214   4.372 

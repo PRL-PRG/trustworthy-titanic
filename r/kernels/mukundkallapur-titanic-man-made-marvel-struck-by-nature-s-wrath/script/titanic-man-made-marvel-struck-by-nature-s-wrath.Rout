@@ -1,0 +1,200 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE, message=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = FALSE,warning = FALSE, error = TRUE)
+> 
+> 
+> ## ----Setup, message=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ## Load the library and read the file. 
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(DMwR)
+Loading required package: lattice
+Loading required package: grid
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+> 
+> titanic_vis <- read.csv("../input/train.csv")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> str(titanic_vis)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> dim(titanic_vis)
+[1] 891  12
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ### Conversion of the attributes 'Survived' and 'PClass' to 'Categorical'
+> 
+> titanic_vis$Survived <- as.factor(titanic_vis$Survived)
+> titanic_vis$Pclass <- as.factor(titanic_vis$Pclass)
+> 
+> ### Recode the attributes Survived, PClass, Embarked and Gender for better Visualization. 
+> titanic_vis$Survived <-  ifelse(titanic_vis$Survived == "1","Yes", "No")
+> titanic_vis$Pclass <- ifelse(titanic_vis$Pclass == "1", "First",
++                           ifelse(titanic_vis$Pclass == "2", "Second", "Third"))
+> titanic_vis$Sex <- ifelse(titanic_vis$Sex == "male", "Male", "Female")
+> 
+> titanic_vis$Embarked <- ifelse(titanic_vis$Embarked == "C", "Cherbourg",
++                              ifelse(titanic_vis$Embarked == "Q", "Queenstown", 
++                              ifelse(titanic_vis$Embarked == "S","Southampton","Southampton")))
+>                              
+> ## Impute the Age
+> 
+> #summary(titanic_vis)
+> #sum(is.na(titanic_vis))
+> titanic_vis <- DMwR :: centralImputation(titanic_vis)
+>                              
+> ## Binning the Age manually and splitting into groups using recode method. 
+> 
+> titanic_vis$Age <- ifelse(titanic_vis$Age <=1, "Baby",
++                       ifelse((titanic_vis$Age > 1 & titanic_vis$Age <= 12), "Kid",
++                              ifelse((titanic_vis$Age > 12 & titanic_vis$Age <= 19), "Teen",
++                                     ifelse((titanic_vis$Age > 19 & titanic_vis$Age <= 40), "Young",
++                                            ifelse((titanic_vis$Age > 40 & titanic_vis$Age <= 60), 
++                                                   "Middle","Senior")))))
+>                                                   
+> titanic_vis$Age <- as.factor(titanic_vis$Age)                             
+>                              
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic_vis %>%
++   group_by(Survived) %>% 
++       summarise(n=n()) %>% 
++         ggplot() +
++           geom_col(aes(reorder(Survived, -n),y=n, fill = Survived), width = 0.4) +
++             xlab("Survival of Passengers") + ylab("Count") + 
++               ggtitle("Titanic Survival Count") +
++                   theme_minimal() + 
++                     theme(plot.title = element_text(hjust = 0.5, face = "bold"),axis.title.x.bottom = element_text(face = "bold"), 
++                         axis.title.y.left = element_text(face = "bold")) +
++                             geom_text(aes(x = Survived, y = n, label = n), vjust = -0.5, stat = "sum", show.legend = FALSE)
+`summarise()` ungrouping output (override with `.groups` argument)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic_vis %>%
++   group_by(Pclass, Survived) %>%
++     dplyr :: summarise(n = n()) %>% 
++       ggplot(aes(x = reorder(Pclass, -n), y = n, fill = Survived)) + 
++           geom_bar(position = "dodge",stat = "identity", color = "black")  +
++                 geom_text(aes(label = n),position=position_dodge(width=0.9), vjust=-0.25) +
++                     xlab("Passenger Class") + ylab("Count") + 
++                         ggtitle("Titanic Passenger Class vs Survival") +
++                             theme_minimal() +
++   theme(plot.title = element_text(hjust = 0.5, face = "bold"),axis.title.x.bottom = element_text(face = "bold",
++   vjust = 3,size = 15), axis.title.y.left = element_text(face = "bold", size = 15),
++   axis.text.x.bottom = element_text(face = "bold",size = 12,vjust = 3))
+`summarise()` regrouping output by 'Pclass' (override with `.groups` argument)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic_vis %>%
++   group_by(Sex, Survived) %>%
++     summarise(n = n()) %>% 
++       ggplot(aes(x = reorder(Sex,-n), y = n, fill = Survived)) + 
++           geom_bar(position = position_stack(), stat = "identity", width = 0.7, color = "black")  +
++             geom_text(aes(label = n),position=position_stack(vjust = 0.5), size = 5) +
++                              xlab("Passenger Gender") + ylab("Count") + 
++                     ggtitle("Titanic Passenger Gender vs Survival") +
++                       theme_minimal() +
++   scale_fill_brewer(palette = 15) +
++   theme(plot.title = element_text(hjust = 0.5, face = "bold"),axis.title.x.bottom = element_text(face = "bold",vjust = 3,size = 15), axis.title.y.left = element_text(face = "bold", size = 15),axis.text.x.bottom = element_text(face = "bold",size = 12,vjust = 3))
+`summarise()` regrouping output by 'Sex' (override with `.groups` argument)
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic_vis %>%
++   group_by(Embarked, Survived) %>%
++   
++   summarise(n = n()) %>%
++   
++   ggplot(aes(x = reorder(Embarked, -n), y = n, fill = Survived)) + 
++   geom_bar(position = position_stack(), stat = "identity", width = 0.7, color = "black")  +
++ 
++   geom_text(aes(label = n),position=position_stack(vjust = 0.5), size = 5) +
++   xlab("Embarkation Point") + ylab("Count") + 
++   ggtitle("Embarked against Survival") +
++   theme_minimal() +
++   scale_fill_brewer(palette = 14) +
++   theme(plot.title = element_text(hjust = 0.5, face = "bold"),
++         axis.title.x.bottom = element_text(face = "bold",vjust = 3,size = 15), 
++         axis.title.y.left = element_text(face = "bold", size = 15),
++         axis.text.x.bottom = element_text(face = "bold",size = 12,vjust = 3))
+`summarise()` regrouping output by 'Embarked' (override with `.groups` argument)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic_vis %>%
++   select(Age,Survived) %>%
++     group_by(Age, Survived) %>%
++         dplyr :: summarise(n = n()) %>%
++             arrange(desc(Age)) %>%
++   ggplot() +
++   #coord_flip()+
++         geom_col(aes(x=reorder(Age, -n), y = n,fill = Age)) +
++           xlab("Age") + ylab("Count") + 
++             facet_grid(~ fct_rev(Survived),scales = "free") +
++                             guides(fill = guide_legend(title = "Age Categories"))  +
++                     ggtitle("Survival vs Age")  +
++                         theme_minimal() + 
++                             theme(plot.title = element_text(hjust = 0.5, face = "bold"),
++                                 axis.title.x.bottom = element_text(face = "bold"), 
++                                     axis.title.y.left = element_text(face = "bold"), 
++                                         axis.text.x.bottom = element_text(face = "bold"),
++                                             legend.title = element_text(face = "bold")) +
++                                                 geom_text(aes(x = Age, y = n, label = n, vjust = -0.5))
+`summarise()` regrouping output by 'Age' (override with `.groups` argument)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  2.011   0.128   2.168 

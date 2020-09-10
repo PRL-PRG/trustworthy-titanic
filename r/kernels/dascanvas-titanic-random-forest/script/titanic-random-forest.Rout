@@ -1,0 +1,576 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> #Hello all, this is my first kernel and I am using randomforest to work with the titanic dataset.
+> #All feedback is appreciated, so just let me know what you think.
+> 
+> #Import both train and Test data; making sure that strings are not factors as default; also make sure that all blank observations are now NA
+> train <- read.csv('../input/train.csv', stringsAsFactors = FALSE,na.strings=c("NA", ""))
+> test  <- read.csv('../input/test.csv', stringsAsFactors = FALSE,na.strings=c("NA", ""))
+> 
+> #Observe the structure of the new dataframes
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  NA "C85" NA "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> str(test)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : chr  "Kelly, Mr. James" "Wilkes, Mrs. James (Ellen Needs)" "Myles, Mr. Thomas Francis" "Wirz, Mr. Albert" ...
+ $ Sex        : chr  "male" "female" "male" "male" ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : chr  "330911" "363272" "240276" "315154" ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : chr  NA NA NA NA ...
+ $ Embarked   : chr  "Q" "S" "Q" "S" ...
+> 
+> #Combine the two dataframes
+> library(plyr)
+> total  <- rbind.fill(train, test)
+> str(total)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  NA "C85" NA "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> 
+> #Make Survived as factors/categories
+> total$Survived <- factor(total$Survived)
+> total$Pclass <- factor(total$Pclass)
+> total$Sex <- factor(total$Sex)
+> 
+> 
+> #Add Feature Engineering to Include Family Size and Titles
+> total$FamilySize <- 1 + total$SibSp + total$Parch
+> 
+> table(total$FamilySize)
+
+  1   2   3   4   5   6   7   8  11 
+790 235 159  43  22  25  16   8  11 
+> table(total$FamilySize, total$Survived)
+    
+       0   1
+  1  374 163
+  2   72  89
+  3   43  59
+  4    8  21
+  5   12   3
+  6   19   3
+  7    8   4
+  8    6   0
+  11   7   0
+> 
+> total$FamilySize1 <- "N"
+> 
+> total$FamilySize1[total$FamilySize <= 1] <- "alone"
+> total$FamilySize1[total$FamilySize >=2 & total$FamilySize <=3 ] <- "small_family"
+> total$FamilySize1[total$FamilySize >=4 & total$FamilySize <=7 ] <- "medium_family"
+> total$FamilySize1[total$FamilySize >= 8] <- "large_family"
+> 
+> table(total$FamilySize1)
+
+        alone  large_family medium_family  small_family 
+          790            19           106           394 
+> table(total$FamilySize1,total$Sex, total$Survived)
+, ,  = 0
+
+               
+                female male
+  alone             27  347
+  large_family       5    8
+  medium_family     22   25
+  small_family      27   88
+
+, ,  = 1
+
+               
+                female male
+  alone             99   64
+  large_family       0    0
+  medium_family     25    6
+  small_family     109   39
+
+> table(total$FamilySize1, total$Survived)
+               
+                  0   1
+  alone         374 163
+  large_family   13   0
+  medium_family  47  31
+  small_family  115 148
+> 
+> total$FamilySize1 <- factor(total$FamilySize1)
+> 
+> #Check for title in names
+> library(stringr)
+> total$title <- str_sub(total$Name, str_locate(total$Name, ",")[ , 1] + 2, str_locate(total$Name, "\\.")[ , 1] - 1)
+> 
+> table(total$title)
+
+        Capt          Col          Don         Dona           Dr     Jonkheer 
+           1            4            1            1            8            1 
+        Lady        Major       Master         Miss         Mlle          Mme 
+           1            2           61          260            2            1 
+          Mr          Mrs           Ms          Rev          Sir the Countess 
+         757          197            2            8            1            1 
+> table(total$title, total$Survived)
+              
+                 0   1
+  Capt           1   0
+  Col            1   1
+  Don            1   0
+  Dona           0   0
+  Dr             4   3
+  Jonkheer       1   0
+  Lady           0   1
+  Major          1   1
+  Master        17  23
+  Miss          55 127
+  Mlle           0   2
+  Mme            0   1
+  Mr           436  81
+  Mrs           26  99
+  Ms             0   1
+  Rev            6   0
+  Sir            0   1
+  the Countess   0   1
+> 
+> #Combine the names into categories
+> Rare_Title <- c("Mme", "Mlle","Don" ,"Lady","Dona","Jonkheer","the Countess","Sir")
+> Profession <- c("Capt", "Col", "Dr" ,"Major", "Rev")
+> Female_title <- c("Miss", "Ms")
+> Married_Female_title <- c("Mrs")
+> Master_title <- c("Master")
+> Male_title <- c("Mr")
+> 
+> total$title[total$title %in% Rare_Title] <- "Rare_Title"
+> total$title[total$title %in% Profession] <- "Profession"
+> total$title[total$title %in% Female_title] <- "Female_title"
+> total$title[total$title %in% Married_Female_title] <- "Married_Female_title"
+> total$title[total$title %in% Master_title] <- "Master_title"
+> total$title[total$title %in% Male_title] <- "Male_title"
+> 
+> #Check again the overall structure and make title into a factor
+> str(total)
+'data.frame':	1309 obs. of  15 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  NA "C85" NA "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+ $ FamilySize : num  2 2 1 2 1 1 1 5 3 2 ...
+ $ FamilySize1: Factor w/ 4 levels "alone","large_family",..: 4 4 1 4 1 1 1 3 4 4 ...
+ $ title      : chr  "Male_title" "Married_Female_title" "Female_title" "Married_Female_title" ...
+> total$title <- factor(total$title)
+> 
+> #Check again for NAs
+> sapply(total, function(x) sum(is.na(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1        1014           2 
+ FamilySize FamilySize1       title 
+          0           0           0 
+> 
+> #I will also use Amelia as a good visual representation of the missing data
+> #Survived is based on the test data; And I will not be using Cabin 
+> library(Amelia)
+Loading required package: Rcpp
+## 
+## Amelia II: Multiple Imputation
+## (Version 1.7.6, built: 2019-11-24)
+## Copyright (C) 2005-2020 James Honaker, Gary King and Matthew Blackwell
+## Refer to http://gking.harvard.edu/amelia/ for more information
+## 
+> require(Amelia)
+> missmap(total, main="Missing Map")
+> 
+> #Apply Mice for missing data; specifically for age
+> #I am using Mice according to a tutorial based on the website Data Science Plus
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> init = mice(total, maxit=0)
+Warning message:
+Number of logged events: 4 
+> meth = init$method
+> predM = init$predictorMatrix
+> 
+> predM[, c("PassengerId","Survived","Name","Ticket","Cabin","title")]=0
+> 
+> meth[c("Survived","Cabin")]=""
+> 
+> meth[c("Pclass")]="pmm"
+> meth[c("Sex")]="logreg"
+> meth[c("SibSp")]="norm"
+> meth[c("Parch")]="norm"
+> meth[c("Fare")]="norm"
+> meth[c("Embarked")]="pmm"
+> 
+> 
+> set.seed(103)
+> imputed <- mice(total, method=meth, predictorMatrix=predM, m=5)
+
+ iter imp variable
+  1   1  Age  Fare
+  1   2  Age  Fare
+  1   3  Age  Fare
+  1   4  Age  Fare
+  1   5  Age  Fare
+  2   1  Age  Fare
+  2   2  Age  Fare
+  2   3  Age  Fare
+  2   4  Age  Fare
+  2   5  Age  Fare
+  3   1  Age  Fare
+  3   2  Age  Fare
+  3   3  Age  Fare
+  3   4  Age  Fare
+  3   5  Age  Fare
+  4   1  Age  Fare
+  4   2  Age  Fare
+  4   3  Age  Fare
+  4   4  Age  Fare
+  4   5  Age  Fare
+  5   1  Age  Fare
+  5   2  Age  Fare
+  5   3  Age  Fare
+  5   4  Age  Fare
+  5   5  Age  Fare
+Warning message:
+Number of logged events: 51 
+> 
+> imputed <- complete(imputed)
+> 
+> #Check again for missing data
+> sapply(imputed, function(x) sum(is.na(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0           0 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0        1014           2 
+ FamilySize FamilySize1       title 
+          0           0           0 
+> 
+> 
+> #Fix Embarked by just adding the most frequent embarked station which is "S"
+> table(imputed$Embarked)
+
+  C   Q   S 
+270 123 914 
+> imputed$Embarked[is.na(imputed$Embarked)] <-"S"
+> 
+> #Remove NAs from total data frame
+> Clean_data <- na.omit(total$Age)
+> 
+> # Age; Check to see if the mean of the ages between the total dataframes look similar
+> actual <- Clean_data
+> predicted <- imputed$Age
+> mean(actual)
+[1] 29.88114
+> mean(predicted)
+[1] 30.12364
+> 
+> #Create a visual representation of age to make sure everything looks alright
+> #You can see that the age has increased for some older individuals but I will keep it for now
+> hist(Clean_data, main = "Clean data for Age", xlab = "Age", col="green")
+> hist(imputed$Age, main = "Predicted Age", xlab = "Age", col = "blue")
+> 
+> #Now add Child and Adult to data frame
+> table(imputed$Age,imputed$Survived)
+      
+        0  1
+  0.17  0  0
+  0.33  0  0
+  0.42  0  1
+  0.67  0  1
+  0.75  1  2
+  0.83  0  2
+  0.92  0  1
+  1     2  7
+  2     8  3
+  3     1  5
+  4     3  7
+  5     4  5
+  6     1  2
+  7     2  1
+  8     2  2
+  9     8  2
+  10    3  0
+  11    6  1
+  11.5  0  0
+  12    0  1
+  13    1  4
+  14    3  3
+  14.5  1  0
+  15    1  5
+  16   11  6
+  17    9  8
+  18   19 18
+  18.5  1  0
+  19   16  9
+  20   12  3
+  20.5  1  0
+  21   19  5
+  22   19 11
+  22.5  0  0
+  23   15  5
+  23.5  1  0
+  24   22 18
+  24.5  1  0
+  25   18  9
+  26   32  8
+  26.5  0  0
+  27    7 14
+  28   24  7
+  28.5  2  0
+  29   12  8
+  30   21 14
+  30.5  2  0
+  31    9  8
+  32   43 13
+  32.5  2  1
+  33   10  6
+  34    9  6
+  34.5  1  0
+  35    7 11
+  36   11 11
+  36.5  1  0
+  37    5  1
+  38    8  5
+  38.5  0  0
+  39    9  5
+  40   10  7
+  40.5  2  0
+  41    4  2
+  42    7  6
+  43    4  4
+  44    6  3
+  45    8  7
+  45.5  2  0
+  46    6  4
+  47    8  3
+  48    3  6
+  49    2  4
+  50    5  5
+  51    5  2
+  52    3  3
+  53    0  1
+  54    5  3
+  55    1  1
+  55.5  1  0
+  56    2  2
+  57    2  1
+  58    2  3
+  59    2  0
+  60    2  2
+  60.5 12  1
+  61    3  0
+  62    4  2
+  63    0  3
+  64    2  0
+  65    3  0
+  66    1  0
+  67    0  0
+  70    2  0
+  70.5  1  0
+  71    2  0
+  74    1  0
+  76    0  1
+  80    0  1
+> imputed$child_adult <- "N"
+> 
+> str(imputed)
+'data.frame':	1309 obs. of  16 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 60.5 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  NA "C85" NA "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+ $ FamilySize : num  2 2 1 2 1 1 1 5 3 2 ...
+ $ FamilySize1: Factor w/ 4 levels "alone","large_family",..: 4 4 1 4 1 1 1 3 4 4 ...
+ $ title      : Factor w/ 6 levels "Female_title",..: 2 3 1 3 2 2 2 4 3 3 ...
+ $ child_adult: chr  "N" "N" "N" "N" ...
+> 
+> imputed$child_adult[imputed$Age <= 12] <- "child"
+> imputed$child_adult[imputed$Age >=13 & imputed$Age <=19] <- "teenager"
+> imputed$child_adult[imputed$Age >= 20] <- "adult"
+> 
+> 
+> table(imputed$Age)
+
+0.17 0.33 0.42 0.67 0.75 0.83 0.92    1    2    3    4    5    6    7    8    9 
+   1    1    1    1    4    3    3   14   13    7   10   10    7    4    6   12 
+  10   11 11.5   12   13   14 14.5   15   16   17   18 18.5   19   20 20.5   21 
+   5    7    1    3    8    8    3   11   19   27   53    4   29   24    1   42 
+  22 22.5   23 23.5   24 24.5   25   26 26.5   27   28 28.5   29   30 30.5   31 
+  51    1   33    1   59    1   38   60    1   34   48    3   31   55    2   23 
+  32 32.5   33   34 34.5   35   36 36.5   37   38 38.5   39   40 40.5   41   42 
+  68    6   22   16    2   23   31    3    9   20    1   20   25    3   12   18 
+  43   44   45 45.5   46   47   48   49   50   51   52   53   54   55 55.5   56 
+  12   10   25    2   14   16   15    9   15    8    6    5   10    8    1    4 
+  57   58   59   60 60.5   61   62   63   64   65   66   67   70 70.5   71   74 
+   6    6    3    7   29    5    7    5    5    3    1    1    2    1    2    1 
+  76   80 
+   2    1 
+> table(imputed$child_adult, imputed$Survived)
+          
+             0   1
+  adult    446 246
+  child     41  43
+  teenager  62  53
+> 
+> #Now make certain column into factors
+> imputed$Embarked <- factor(imputed$Embarked)
+> imputed$child_adult <- factor(imputed$child_adult)
+> 
+> 
+> #Now split imputed between train and test data
+> train1 <- imputed[1:891,]
+> test1 <- imputed[892:1309,]
+> 
+> 
+> #Split imputed data into another test and train data set
+> library(caTools)
+> set.seed(3000)
+> spl = sample.split(train1$Survived, SplitRatio = 0.7)
+> Tra = subset(train1, spl==TRUE)
+> Tst = subset(train1, spl==FALSE)
+> 
+> str(Tra)
+'data.frame':	623 obs. of  16 variables:
+ $ PassengerId: int  2 3 5 8 10 11 12 13 15 16 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 2 2 1 1 2 2 2 1 1 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 1 3 3 3 2 3 1 3 3 2 ...
+ $ Name       : chr  "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Allen, Mr. William Henry" "Palsson, Master. Gosta Leonard" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 1 1 2 2 1 1 1 2 1 1 ...
+ $ Age        : num  38 26 35 2 14 4 58 20 14 55 ...
+ $ SibSp      : int  1 0 0 3 1 1 0 0 0 0 ...
+ $ Parch      : int  0 0 0 1 0 1 0 0 0 0 ...
+ $ Ticket     : chr  "PC 17599" "STON/O2. 3101282" "373450" "349909" ...
+ $ Fare       : num  71.28 7.92 8.05 21.07 30.07 ...
+ $ Cabin      : chr  "C85" NA NA NA ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 1 3 3 3 1 3 3 3 3 3 ...
+ $ FamilySize : num  2 1 1 5 2 3 1 1 1 1 ...
+ $ FamilySize1: Factor w/ 4 levels "alone","large_family",..: 4 1 1 3 4 4 1 1 1 1 ...
+ $ title      : Factor w/ 6 levels "Female_title",..: 3 1 2 4 3 1 1 2 1 3 ...
+ $ child_adult: Factor w/ 3 levels "adult","child",..: 1 1 1 2 3 2 1 1 3 1 ...
+> str(Tst)
+'data.frame':	268 obs. of  16 variables:
+ $ PassengerId: int  1 4 6 7 9 14 18 20 37 45 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 1 1 2 1 2 2 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 2 3 3 3 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" "Moran, Mr. James" "McCarthy, Mr. Timothy J" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 2 1 2 1 ...
+ $ Age        : num  22 35 60.5 54 27 39 47 18 60.5 19 ...
+ $ SibSp      : int  1 1 0 0 0 1 0 0 0 0 ...
+ $ Parch      : int  0 0 0 0 2 5 0 0 0 0 ...
+ $ Ticket     : chr  "A/5 21171" "113803" "330877" "17463" ...
+ $ Fare       : num  7.25 53.1 8.46 51.86 11.13 ...
+ $ Cabin      : chr  NA "C123" NA "E46" ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 3 2 3 3 3 3 1 1 2 ...
+ $ FamilySize : num  2 2 1 1 3 7 1 1 1 1 ...
+ $ FamilySize1: Factor w/ 4 levels "alone","large_family",..: 4 4 1 1 4 3 1 1 1 1 ...
+ $ title      : Factor w/ 6 levels "Female_title",..: 2 3 2 2 3 2 2 3 2 1 ...
+ $ child_adult: Factor w/ 3 levels "adult","child",..: 1 1 1 1 1 1 1 3 1 3 ...
+> 
+> #Now create a model using Random Forest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> 
+> TitanicForest = randomForest(Survived ~ Pclass + Sex + Age + SibSp + Parch + child_adult + Embarked  + FamilySize + FamilySize1 + Fare + title, data = Tra, ntree=500, nodesize=25)
+> PredictForest = predict(TitanicForest, newdata = Tst)
+> 
+> 
+> #Create a confusion matrix to measure results
+> table(Tst$Survived, PredictForest)
+   PredictForest
+      0   1
+  0 151  14
+  1  35  68
+> (149+68)/(149+16+35+68)
+[1] 0.8097015
+> 
+> #Evaluate importance of variables used in model
+> importance(TitanicForest)
+            MeanDecreaseGini
+Pclass             17.073850
+Sex                41.371750
+Age                11.940736
+SibSp               2.890996
+Parch               2.234827
+child_adult         2.570953
+Embarked            4.231927
+FamilySize          7.542156
+FamilySize1         5.384545
+Fare               22.888274
+title              48.865649
+> 
+> #Create a solution based on Random Forest model
+> prediction1 <- predict(TitanicForest, test1)
+> solution <- data.frame(PassengerID = test1$PassengerId, Survived = prediction1)
+> write.csv(solution, file = 'RandomForest_mod.csv', row.names = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  1.512   0.146   1.670 

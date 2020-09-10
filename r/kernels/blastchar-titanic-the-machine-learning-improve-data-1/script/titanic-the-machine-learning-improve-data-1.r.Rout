@@ -1,0 +1,272 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> # supress anoing warnings for now
+> options(warn=-1)
+> 
+> # Necessary Libraries 
+> library(cowplot)
+
+********************************************************
+Note: As of version 1.0.0, cowplot does not change the
+  default ggplot2 theme anymore. To recover the previous
+  behavior, execute:
+  theme_set(theme_cowplot())
+********************************************************
+
+> library(ggplot2)
+> library(lattice)
+> library(caret)
+> library(MASS)
+> 
+> # load train.csv
+> DstTrain <- read.csv('../input/train.csv', stringsAsFactors = FALSE)
+> # load test.csv
+> DstTest  <- read.csv('../input/test.csv', stringsAsFactors = FALSE)
+> 
+> # check data sample 
+> head(DstTrain, n=5L)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+> 
+> # dimensions of dataset
+> dim(DstTrain)
+[1] 891  12
+> 
+> # check column type
+> sapply(DstTrain, typeof)
+PassengerId    Survived      Pclass        Name         Sex         Age 
+  "integer"   "integer"   "integer" "character" "character"    "double" 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+  "integer"   "integer" "character"    "double" "character" "character" 
+> 
+> # show dataframe info
+> str(DstTrain)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> # get the title from name
+> DstTrain$Title <- gsub('(.*, )|(\\..*)', '', DstTrain$Name)
+> DstTest$Title <- gsub('(.*, )|(\\..*)', '', DstTest$Name)
+> 
+> # histogram of Title
+> ggplot(DstTrain, aes(Title,fill = factor(Survived))) + 
++ geom_histogram(stat="count") + 
++ theme(axis.text.x = element_text(angle = 60, hjust = 1))
+> 
+> # Titles by Sex
+> table(DstTrain$Sex, DstTrain$Title)
+        
+         Capt Col Don  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs  Ms
+  female    0   0   0   1        0    1     0      0  182    2   1   0 125   1
+  male      1   2   1   6        1    0     2     40    0    0   0 517   0   0
+        
+         Rev Sir the Countess
+  female   0   0            1
+  male     6   1            0
+> 
+> # 'Mr', 'Mrs', 'Miss', 'Mme', 'Ms', 'Mlle'
+> # 'Master', 'Major', 'Capt', 'Col', 'Rev', 'Dr'
+> # 'the Countess', 'Jonkheer', 'Lady', 'Sir', 'Don', 'Dona'
+> 
+> Nobility.woman <- c('the Countess', 'Lady', 'Dona')
+> Nobility.man <- c('Jonkheer', 'Sir', 'Don')
+> Crew <- c('Master', 'Major', 'Capt', 'Col', 'Rev', 'Dr')
+> Passenger.woman <- c('Mrs', 'Miss', 'Mme', 'Ms', 'Mlle')
+> Passenger.man <- c('Mr')
+> 
+> DstTest$TitleType <- ifelse(DstTest$Title %in% Nobility.woman, 'Nobility.woman','')
+> DstTest$TitleType <- ifelse(DstTest$Title %in% Nobility.man, 'Nobility.man',DstTest$TitleType)
+> DstTest$TitleType <- ifelse(DstTest$Title %in% Crew, 'Crew',DstTest$TitleType)
+> DstTest$TitleType <- ifelse(DstTest$Title %in% Passenger.woman, 'Passenger.woman',DstTest$TitleType)
+> DstTest$TitleType <- ifelse(DstTest$Title %in% Passenger.man, 'Passenger.man',DstTest$TitleType)
+> 
+> DstTrain$TitleType <- ifelse(DstTrain$Title %in% Nobility.woman, 'Nobility.woman','')
+> DstTrain$TitleType <- ifelse(DstTrain$Title %in% Nobility.man, 'Nobility.man',DstTrain$TitleType)
+> DstTrain$TitleType <- ifelse(DstTrain$Title %in% Crew, 'Crew',DstTrain$TitleType)
+> DstTrain$TitleType <- ifelse(DstTrain$Title %in% Passenger.woman, 'Passenger.woman',DstTrain$TitleType)
+> DstTrain$TitleType <- ifelse(DstTrain$Title %in% Passenger.man, 'Passenger.man',DstTrain$TitleType)
+> 
+> # clean NA values
+> DstTrain[is.na(DstTrain)] <- 0
+> DstTest[is.na(DstTest)] <- 0
+> 
+> # histogram of SibSp
+> plot.SibSp <- ggplot(DstTrain, aes(SibSp,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # histogram of Pclass
+> plot.Pclass <- ggplot(DstTrain, aes(Pclass,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # histogram of Sex
+> plot.Sex <- ggplot(DstTrain, aes(Sex,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # histogram of Embarked
+> plot.Embarked <- ggplot(DstTrain, aes(Embarked,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # create the plot grid with all
+> plot_grid(plot.SibSp, plot.Pclass, plot.Sex, plot.Embarked )
+> 
+> # histogram of Title Type
+> ggplot(DstTrain, aes(TitleType,fill = factor(Survived))) + 
++ geom_histogram(stat="count") + 
++ theme(axis.text.x = element_text(angle = 60, hjust = 1))
+> 
+> # histogram of Age
+> ggplot(DstTrain, aes(Age,fill = factor(Survived))) + 
++ geom_histogram(bins = 40)
+> 
+> # histogram of Fare
+> ggplot(DstTrain, aes(Fare,fill = factor(Survived))) + 
++ geom_histogram(bins = 40)
+> 
+> # Run algorithms using 10-fold cross validation
+> control <- trainControl(method="cv", number=10)
+> metric <- "Accuracy"
+> 
+> # create the test dataset with only the testing columns
+> varsToKeep <- c("Survived", "Sex", "TitleType", "Age", "Pclass", "Fare", "Embarked", "SibSp")
+> DstTrainTest <- DstTrain[varsToKeep]
+> 
+> # convert Survived to factor
+> DstTrainTest$Survived <- as.factor(DstTrainTest$Survived)
+> 
+> # logistic regression
+> set.seed(7)
+> fit.glm <- train(Survived ~ ., data=DstTrainTest, method="glm", metric=metric, trControl=control)
+> 
+> # linear algorithms
+> set.seed(7)
+> fit.lda <- train(Survived ~ ., data=DstTrainTest, method="lda", metric=metric, trControl=control)
+> 
+> # CART
+> set.seed(7)
+> fit.cart <- train(Survived ~ ., data=DstTrainTest, method="rpart", metric=metric, trControl=control)
+> 
+> # kNN
+> set.seed(7)
+> fit.knn <- train(Survived ~ ., data=DstTrainTest, method="knn", metric=metric, trControl=control)
+> 
+> # SVM
+> set.seed(7)
+> fit.svm <- train(Survived ~ ., data=DstTrainTest, method="svmRadial", metric=metric, trControl=control)
+> 
+> # Random Forest
+> set.seed(7)
+> fit.rf <- train(Survived ~ ., data=DstTrainTest, method="rf", metric=metric, trControl=control)
+> 
+> 
+> # summarize accuracy of models
+> results <- resamples(list(
++     glm=fit.glm, 
++     lda=fit.lda, 
++     cart=fit.cart, 
++     knn=fit.knn, 
++     svm=fit.svm, 
++     rf=fit.rf
++ ))
+> summary(results)
+
+Call:
+summary.resamples(object = results)
+
+Models: glm, lda, cart, knn, svm, rf 
+Number of resamples: 10 
+
+Accuracy 
+          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+glm  0.7191011 0.7977528 0.8033708 0.8080482 0.8309819 0.9000000    0
+lda  0.7191011 0.7865169 0.7977528 0.8001827 0.8158836 0.8888889    0
+cart 0.7528090 0.7789837 0.7977528 0.8046510 0.8286517 0.8666667    0
+knn  0.6516854 0.6769663 0.7022472 0.7116298 0.7492509 0.7752809    0
+svm  0.7555556 0.8005618 0.8305031 0.8238035 0.8511236 0.8888889    0
+rf   0.7222222 0.8005618 0.8258427 0.8260249 0.8595506 0.9111111    0
+
+Kappa 
+          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+glm  0.3948871 0.5592411 0.5824140 0.5910001 0.6410857 0.7906977    0
+lda  0.3878955 0.5374274 0.5716578 0.5745005 0.6114595 0.7686375    0
+cart 0.4582180 0.5162950 0.5592700 0.5718823 0.6345061 0.7104558    0
+knn  0.2581339 0.3162634 0.3642885 0.3788873 0.4548260 0.5100223    0
+svm  0.4634146 0.5514755 0.6315982 0.6089533 0.6644637 0.7587131    0
+rf   0.4186047 0.5646057 0.6211882 0.6260103 0.6991617 0.8129870    0
+
+> 
+> # compare accuracy of models
+> dotplot(results)
+> 
+> # summarize Best Model
+> print(fit.rf)
+Random Forest 
+
+891 samples
+  7 predictor
+  2 classes: '0', '1' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 802, 802, 802, 802, 801, 802, ... 
+Resampling results across tuning parameters:
+
+  mtry  Accuracy   Kappa    
+   2    0.8159261  0.6010502
+   7    0.8260249  0.6260103
+  12    0.8170106  0.6096433
+
+Accuracy was used to select the optimal model using the largest value.
+The final value used for the model was mtry = 7.
+> 
+> # prediction 
+> predictedval <- predict(fit.rf, newdata=DstTrainTest)
+> 
+> # summarize results with confusion matrix
+> cm <- confusionMatrix(predictedval, DstTrain$Survived)
+Error: `data` and `reference` should be factors with the same levels.
+Execution halted

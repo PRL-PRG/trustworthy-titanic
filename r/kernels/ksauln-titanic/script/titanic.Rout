@@ -1,0 +1,372 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> 
+> # We can inspect the train data. The results of this are printed in the log tab below
+> #summary(train)
+> 
+> # Here we will plot the passenger survival by class
+> #train$Survived <- factor(train$Survived, levels=c(1,0))
+> #levels(train$Survived) <- c("Survived", "Died")
+> #train$Pclass <- as.factor(train$Pclass)
+> #levels(train$Pclass) <- c("1st Class", "2nd Class", "3rd Class")
+> 
+> #png("1_survival_by_class.png", width=800, height=600)
+> #mosaicplot(train$Pclass ~ train$Survived, main="Passenger Survival by Class",
+> #           color=c("#8dd3c7", "#fb8072"), shade=FALSE,  xlab="", ylab="",
+> #           off=c(0), cex.axis=1.4)
+> #dev.off()
+> 
+> 
+> #plotting train set
+> plot(train)
+> 
+> 
+> #http://trevorstephens.com/kaggle-titanic-tutorial/getting-started-with-r/
+> #decision trees
+> #devtools::install_github("jakesherman/packages")
+> #install.packages(c('rattle','rpart.plot','RColorBrewer'))
+> #libraries('rpart','rattle','rpart.plot','RColorBrewer')
+> library('rpart')
+> library('rattle')
+Loading required package: tibble
+Loading required package: bitops
+Rattle: A free graphical interface for data science with R.
+Version 5.4.0 Copyright (c) 2006-2020 Togaware Pty Ltd.
+Type 'rattle()' to shake, rattle, and roll your data.
+
+Attaching package: ‘rattle’
+
+The following object is masked from ‘package:randomForest’:
+
+    importance
+
+Warning messages:
+1: package ‘rattle’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+> library('rpart.plot')
+> library('RColorBrewer')
+> 
+> fit <- rpart(Survived~ Pclass +Sex+Age+SibSp+Parch+Fare+Embarked,data=train,method='class')
+> 
+> plot(fit)
+> text(fit)
+> 
+> fancyRpartPlot(fit)
+> 
+> 
+> #make prediction based on first decision tree
+> prediction <- predict(fit, test, type='class')
+> #if submiting uncomment below
+> #submit <- data.frame(PassenderId = test$PassengerId, Survived =Prediction)
+> #write.csv(sumit, file='MyFirstDecisionTree.csv', row.names=FALSE)
+> 
+> 
+> #removing limitaions of rpart decision tree, This is overfitting. Even if 100% accurate on the train data
+>     #will not be the same for the test data because the train data model has such individualized cases
+> #fit <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked,
+> #               data=train,
+> #               method="class", 
+> #               control=rpart.control(minsplit=2, cp=0))
+> # fancyRpartPlot(fit)
+> 
+> # Next step allows me to prune tree using the GUI
+> #fit <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked,
+> #               data=train,
+> #               method="class",
+> #               control=rpart.control( your controls ))
+> #               
+> #new.fit <- prp(fit,snip=TRUE)$obj
+> #fancyRpartPlot(new.fit)
+> 
+> 
+> # Feature Engineering
+> 
+> #binding the train and test set together
+> test$Survived<-NA
+> combined <- rbind(train,test)
+> 
+> #converting name back to a string, was imported as a factor
+> 
+> combined$Name <- as.character(combined$Name)
+> 
+> #splitting up the name so we only get the title
+> 
+> combined$Title <- sapply(combined$Name, FUN=function(x) {strsplit(x, split='[,.]')[[1]][2]})
+> 
+> #stripping off the leading space
+> combined$Title <- sub(' ','',combined$Title)
+> 
+> table(combined$Title)
+
+        Capt          Col          Don         Dona           Dr     Jonkheer 
+           1            4            1            1            8            1 
+        Lady        Major       Master         Miss         Mlle          Mme 
+           1            2           61          260            2            1 
+          Mr          Mrs           Ms          Rev          Sir the Countess 
+         757          197            2            8            1            1 
+> 
+> #combining a few of the titles that are super unique
+>     #%in% operator checks to see if a value is part of the vector we’re comparing it to. 
+>     #So here we are combining two titles, “Mme” and “Mlle”, into a new temporary vector using the 
+>     #c() operator and seeing if any of the existing titles in the entire Title column match either
+>     #of them. We then replace any match with “Mlle”
+> 
+> combined$Title[combined$Title %in% c('Mme','Mlle')] <- 'Mlle'
+> combined$Title[combined$Title %in% c('Capt', 'Don', 'Major', 'Sir')] <- 'Sir'
+> combined$Title[combined$Title %in% c('Dona', 'Lady', 'the Countess', 'Jonkheer')] <- 'Lady'
+> 
+> #change the title back to a factor
+> 
+> combined$Title <- factor(combined$Title)
+> 
+> #combining two factor to create family size
+> 
+> combined$FamilySize <- combined$SibSp + combined$Parch + 1
+> 
+> #combine surname with family size to hopefully be able to group the family together
+> 
+> combined$Surname <- sapply(combined$Name, FUN=function(x) {strsplit(x,split='[,.]')[[1]][1]})
+> combined$FamilyID <- paste(as.character(combined$FamilySize), combined$Surname)
+> 
+> # label any family size two or less as small
+> 
+> combined$FamilyID[combined$FamilySize <= 2] <- 'Small'
+> table(combined$FamilyID)
+
+           11 Sage           3 Abbott         3 Appleton         3 Beckwith 
+                11                  3                  1                  2 
+          3 Boulos           3 Bourke            3 Brown         3 Caldwell 
+                 3                  3                  4                  3 
+         3 Christy          3 Collyer          3 Compton          3 Cornell 
+                 2                  3                  3                  1 
+          3 Coutts           3 Crosby           3 Danbom           3 Davies 
+                 3                  3                  3                  5 
+           3 Dodge          3 Douglas             3 Drew            3 Elias 
+                 3                  1                  3                  3 
+      3 Frauenthal        3 Frolicher 3 Frolicher-Stehli        3 Goldsmith 
+                 1                  1                  2                  3 
+      3 Gustafsson       3 Hamalainen           3 Hansen             3 Hart 
+                 2                  2                  1                  3 
+            3 Hays          3 Hickman         3 Hiltunen         3 Hirvonen 
+                 2                  3                  1                  1 
+        3 Jefferys          3 Johnson             3 Kink    3 Kink-Heilmann 
+                 2                  3                  2                  2 
+          3 Klasen         3 Lahtinen           3 Mallet            3 McCoy 
+                 3                  2                  3                  3 
+         3 Minahan         3 Moubarek            3 Nakid         3 Navratil 
+                 1                  3                  3                  3 
+          3 Newell           3 Newsom         3 Nicholls          3 Peacock 
+                 1                  1                  1                  3 
+           3 Peter            3 Quick         3 Richards          3 Rosblom 
+                 3                  3                  2                  3 
+          3 Samaan        3 Sandstrom           3 Silven          3 Spedden 
+                 3                  3                  1                  3 
+           3 Strom          3 Taussig           3 Thayer           3 Thomas 
+                 1                  3                  3                  1 
+           3 Touma     3 van Billiard         3 Van Impe    3 Vander Planke 
+                 3                  3                  3                  2 
+           3 Wells             3 Wick          3 Widener          4 Allison 
+                 3                  3                  3                  4 
+       4 Backstrom          4 Baclini           4 Becker           4 Carter 
+                 1                  4                  4                  4 
+        4 Davidson             4 Dean           4 Herman          4 Hocking 
+                 1                  4                  4                  2 
+       4 Jacobsohn         4 Johnston          4 Laroche           4 Renouf 
+                 1                  4                  4                  1 
+   4 Vander Planke             4 West             5 Ford          5 Hocking 
+                 1                  4                  5                  1 
+   5 Kink-Heilmann          5 Lefebre          5 Palsson          5 Ryerson 
+                 1                  5                  5                  5 
+         6 Fortune           6 Panula             6 Rice         6 Richards 
+                 6                  6                  6                  1 
+           6 Skoog        7 Andersson          7 Asplund          8 Goodwin 
+                 6                  9                  7                  8 
+             Small 
+              1025 
+> 
+> #we see that there are still families with size 1 and 2. Need to fix
+> 
+> famIDs <- data.frame(table(combined$FamilyID))
+> famIDs <- famIDs[famIDs$Freq <=2,]           #subsets data to get familysizes 2 or less
+> 
+> combined$FamilyID[combined$FamilyID %in% famIDs$Var1] <- 'Small'      #identifies those families from famIDs in the main table and changes their label to small
+> combined$FamilyID <- factor(combined$FamilyID)     #set the column as a factor
+> 
+> #break the data back into train and test sets
+> train <- combined[1:891,]
+> test <- combined[892:1309,]
+> 
+> #Predictions for the new data
+> 
+> fit <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize + FamilyID,
++                data=train, 
++                method="class")
+> 
+> fancyRpartPlot(fit)
+> 
+> 
+> #Random Forests
+> 
+> # First need to take care of the missinga age values. Will build a function to predict them
+> summary(combined$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.17   21.00   28.00   29.88   39.00   80.00     263 
+> 
+> Agefit <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + FamilySize,
++                     data=combined[!is.na(combined$Age),], method="anova")
+> 
+> combined$Age[is.na(combined$Age)] <- predict(Agefit, combined[is.na(combined$Age),])
+> 
+> #checking summary to see if anything else stands out
+> summary(combined)
+  PassengerId      Survived          Pclass          Name          
+ Min.   :   1   Min.   :0.0000   Min.   :1.000   Length:1309       
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median : 655   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295                     
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :1309   Max.   :1.0000   Max.   :3.000                     
+                NA's   :418                                        
+     Sex           Age            SibSp            Parch            Ticket    
+ female:466   Min.   : 0.17   Min.   :0.0000   Min.   :0.000   CA. 2343:  11  
+ male  :843   1st Qu.:22.00   1st Qu.:0.0000   1st Qu.:0.000   1601    :   8  
+              Median :27.43   Median :0.0000   Median :0.000   CA 2144 :   8  
+              Mean   :29.59   Mean   :0.4989   Mean   :0.385   3101295 :   7  
+              3rd Qu.:37.00   3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7  
+              Max.   :80.00   Max.   :8.0000   Max.   :9.000   347082  :   7  
+                                                               (Other) :1261  
+      Fare                     Cabin      Embarked     Title    
+ Min.   :  0.000                  :1014    :  2    Mr     :757  
+ 1st Qu.:  7.896   C23 C25 C27    :   6   C:270    Miss   :260  
+ Median : 14.454   B57 B59 B63 B66:   5   Q:123    Mrs    :197  
+ Mean   : 33.295   G6             :   5   S:914    Master : 61  
+ 3rd Qu.: 31.275   B96 B98        :   4            Dr     :  8  
+ Max.   :512.329   C22 C26        :   4            Rev    :  8  
+ NA's   :1         (Other)        : 271            (Other): 18  
+   FamilySize       Surname                 FamilyID   
+ Min.   : 1.000   Length:1309        Small      :1074  
+ 1st Qu.: 1.000   Class :character   11 Sage    :  11  
+ Median : 1.000   Mode  :character   7 Andersson:   9  
+ Mean   : 1.884                      8 Goodwin  :   8  
+ 3rd Qu.: 2.000                      7 Asplund  :   7  
+ Max.   :11.000                      6 Fortune  :   6  
+                                     (Other)    : 194  
+> 
+> summary(combined$Embarked)
+      C   Q   S 
+  2 270 123 914 
+> 
+> # will take the 2 blanks and convert them to S since there is so many of them already
+> 
+> which(combined$Embarked =="")
+[1]  62 830
+> 
+> combined$Embarked[c(62,830)] <- "S"
+> combined$Embarked <- factor(combined$Embarked)
+> 
+> #other one was fare
+> summary(combined$Fare)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+  0.000   7.896  14.454  33.295  31.275 512.329       1 
+> 
+> which(is.na(combined$Fare))
+[1] 1044
+> 
+> combined$Fare[1044] <- median(combined$Fare, na.rm=TRUE)
+> 
+> # Random forestes can only handle factors with 32 levels. Need to adjust family id
+> 
+> combined$FamilyID2 <- as.character(combined$FamilyID) 
+> combined$FamilyID2[combined$FamilySize <= 3] <- 'Small'
+> combined$FamilyID2 <- factor(combined$FamilyID2)
+> 
+> #break the data back into train and test sets
+> train <- combined[1:891,]
+> test <- combined[892:1309,]
+> #install random forest package
+> library(randomForest)
+> 
+> #set seed so we can reproduce results
+> set.seed(415)
+> 
+> #running the model
+> #we force the model to predict our classification by temporarily changing our target variable to a factor with only two levels using as.factor(). 
+> #The importance=TRUE argument allows us to inspect variable importance as we’ll see
+> #the ntree argument specifies how many trees we want to grow
+> 
+> fit <- randomForest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize + FamilyID2,
++                       data=train, importance=TRUE, ntree=2000)
+> 
+> 
+> # looking at the important variables
+> varImpPlot(fit)
+> 
+> #using out model to predict the test set
+> prediction <- predict(fit, test)
+> 
+> submit<- data.frame(PassengerId=test$PassengerId, Survived=prediction)
+> # write.csv(submit, file="firstforest.csv", row.names=FALSE)
+> 
+> 
+> # forest of conditional inference trees
+> library(party)
+Loading required package: grid
+Loading required package: mvtnorm
+Loading required package: modeltools
+Loading required package: stats4
+Loading required package: strucchange
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: sandwich
+Warning messages:
+1: package ‘party’ was built under R version 3.6.2 
+2: package ‘zoo’ was built under R version 3.6.2 
+> 
+> set.seed(415)
+> 
+> #Inference trees can handle more factors than Random Forests
+>  fit <- cforest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize + FamilyID,
++                  data = train,  controls=cforest_unbiased(ntree=2000, mtry=3))
+> 
+> Prediction<- predict(fit, test, OOB=TRUE, type='response')
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 61.249   0.632  62.270 

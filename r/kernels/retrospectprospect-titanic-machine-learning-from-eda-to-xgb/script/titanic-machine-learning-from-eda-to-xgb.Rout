@@ -1,0 +1,638 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ----setup, include=FALSE, echo=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo=TRUE)
+> 
+> 
+> 
+> ## ----dependencies, message = FALSE, warning = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> # data wrangling
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(forcats)
+> library(stringr)
+> 
+> # data assessment/visualizations
+> library(DT)
+> library(ggplot2)
+> library(scales)
+
+Attaching package: ‘scales’
+
+The following object is masked from ‘package:purrr’:
+
+    discard
+
+The following object is masked from ‘package:readr’:
+
+    col_factor
+
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> library(grid)
+> library(gridExtra)
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> library(corrplot)
+corrplot 0.84 loaded
+> library(VIM) 
+Loading required package: colorspace
+VIM is ready to use.
+
+Suggestions and bug-reports can be submitted at: https://github.com/statistikat/VIM/issues
+
+Attaching package: ‘VIM’
+
+The following object is masked from ‘package:datasets’:
+
+    sleep
+
+> library(knitr)
+> library(vcd)
+Warning message:
+package ‘vcd’ was built under R version 3.6.2 
+> 
+> # model
+> library(xgboost)
+
+Attaching package: ‘xgboost’
+
+The following object is masked from ‘package:dplyr’:
+
+    slice
+
+Warning message:
+package ‘xgboost’ was built under R version 3.6.2 
+> library(MLmetrics)
+
+Attaching package: ‘MLmetrics’
+
+The following object is masked from ‘package:base’:
+
+    Recall
+
+> 
+> 
+> ## ----data, message=FALSE, warning=FALSE, results='hide'--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> train <- read_csv('../input/train.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test  <- read_csv('../input/test.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> train$set <- "train"
+> test$set  <- "test"
+> test$Survived <- NA
+> full <- rbind(train, test)
+> 
+> kable(head(full, 10), caption="Data Set", format="markdown")
+
+
+| PassengerId| Survived| Pclass|Name                                                |Sex    | Age| SibSp| Parch|Ticket           |    Fare|Cabin |Embarked |set   |
+|-----------:|--------:|------:|:---------------------------------------------------|:------|---:|-----:|-----:|:----------------|-------:|:-----|:--------|:-----|
+|           1|        0|      3|Braund, Mr. Owen Harris                             |male   |  22|     1|     0|A/5 21171        |  7.2500|NA    |S        |train |
+|           2|        1|      1|Cumings, Mrs. John Bradley (Florence Briggs Thayer) |female |  38|     1|     0|PC 17599         | 71.2833|C85   |C        |train |
+|           3|        1|      3|Heikkinen, Miss. Laina                              |female |  26|     0|     0|STON/O2. 3101282 |  7.9250|NA    |S        |train |
+|           4|        1|      1|Futrelle, Mrs. Jacques Heath (Lily May Peel)        |female |  35|     1|     0|113803           | 53.1000|C123  |S        |train |
+|           5|        0|      3|Allen, Mr. William Henry                            |male   |  35|     0|     0|373450           |  8.0500|NA    |S        |train |
+|           6|        0|      3|Moran, Mr. James                                    |male   |  NA|     0|     0|330877           |  8.4583|NA    |Q        |train |
+|           7|        0|      1|McCarthy, Mr. Timothy J                             |male   |  54|     0|     0|17463            | 51.8625|E46   |S        |train |
+|           8|        0|      3|Palsson, Master. Gosta Leonard                      |male   |   2|     3|     1|349909           | 21.0750|NA    |S        |train |
+|           9|        1|      3|Johnson, Mrs. Oscar W (Elisabeth Vilhelmina Berg)   |female |  27|     0|     2|347742           | 11.1333|NA    |S        |train |
+|          10|        1|      2|Nasser, Mrs. Nicholas (Adele Achem)                 |female |  14|     1|     0|237736           | 30.0708|NA    |C        |train |
+> 
+> 
+> 
+> ## ----structure, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> glimpse(full)
+Rows: 1,309
+Columns: 13
+$ PassengerId [3m[90m<dbl>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+$ Survived    [3m[90m<dbl>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+$ Pclass      [3m[90m<dbl>[39m[23m 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Braund, Mr. Owen Harris", "Cumings, Mrs. John Bradley (F…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "female", "female", "male", "male", "ma…
+$ Age         [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+$ SibSp       [3m[90m<dbl>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+$ Parch       [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "A/5 21171", "PC 17599", "STON/O2. 3101282", "113803", "3…
+$ Fare        [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+$ Cabin       [3m[90m<chr>[39m[23m NA, "C85", NA, "C123", NA, NA, "E46", NA, NA, NA, "G6", "…
+$ Embarked    [3m[90m<chr>[39m[23m "S", "C", "S", "S", "S", "Q", "S", "S", "S", "C", "S", "S…
+$ set         [3m[90m<chr>[39m[23m "train", "train", "train", "train", "train", "train", "tr…
+> 
+> 
+> 
+> ## ----missing, message=FALSE, warning=FALSE, fig.height=5, fig.width=9------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> # re-encode missing data as NA
+> full <- full %>%
++   mutate_if(is.character, funs(replace(., .=="", NA)))
+Warning message:
+`funs()` is deprecated as of dplyr 0.8.0.
+Please use a list of either functions or lambdas: 
+
+  # Simple named list: 
+  list(mean = mean, median = median)
+
+  # Auto named with `tibble::lst()`: 
+  tibble::lst(mean, median)
+
+  # Using lambdas
+  list(~ mean(., trim = .2), ~ median(., na.rm = TRUE))
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+> 
+> # visualize missing data
+> missplot <- aggr(full %>% select(-Survived), prop=FALSE, combined=TRUE, numbers=TRUE, sortVars=TRUE, sortCombs=TRUE, plot=FALSE)
+> 
+> plot(missplot)
+> 
+> 
+> ## ----age, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9---------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> full <- full %>%
++     mutate(
++       Age = ifelse(is.na(Age), mean(full$Age, na.rm=TRUE), Age),
++       `Age Group` = case_when(Age < 13 ~ "Age.0012", 
++                                  Age >= 13 & Age < 18 ~ "Age.1317",
++                                  Age >= 18 & Age < 60 ~ "Age.1859",
++                                  Age >= 60 ~ "Age.60Ov"))
+> 
+> 
+> 
+> ## ----pp_embarked, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9-------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> full$Embarked <- replace(full$Embarked, which(is.na(full$Embarked)), 'S')
+> 
+> 
+> 
+> ## ----pp_titles, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9---------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> full <- full %>%
++   mutate(Title = as.factor(str_sub(Name, str_locate(Name, ",")[, 1] + 2, str_locate(Name, "\\.")[, 1]- 1)))
+> 
+> title_tbl <- full %>%
++   group_by(Title) %>%
++   summarise(
++     N = n()
++   )
+`summarise()` ungrouping output (override with `.groups` argument)
+> 
+> 
+> 
+> ## ----pp_familygrp, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> full <- full %>%
++   mutate(`Family Size`  = as.numeric(SibSp) + as.numeric(Parch) + 1,
++          `Family Group` = case_when(
++            `Family Size`==1 ~ "single",
++            `Family Size`>1 & `Family Size` <=3 ~ "small",
++            `Family Size`>= 4 ~ "large"
++          ))
+> 
+> 
+> 
+> ## ----iv, message=FALSE, warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> full <- full %>%
++   mutate(Survived = case_when(Survived==1 ~ "Yes", 
++                               Survived==0 ~ "No"))
+> 
+> crude_summary <- full %>%
++   filter(set=="train") %>%
++   select(PassengerId, Survived) %>%
++   group_by(Survived) %>%
++   summarise(n = n()) %>%
++   mutate(freq = n / sum(n))
+`summarise()` ungrouping output (override with `.groups` argument)
+> 
+> crude_survrate <- crude_summary$freq[crude_summary$Survived=="Yes"]
+> 
+> kable(crude_summary, caption="2x2 Contingency Table on Survival.", format="markdown")
+
+
+|Survived |   n|      freq|
+|:--------|---:|---------:|
+|No       | 549| 0.6161616|
+|Yes      | 342| 0.3838384|
+> 
+> 
+> 
+> ## ----rate_pclass, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9-------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train"), aes(Pclass, fill=Survived)) +
++   geom_bar(position = "fill") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=percent) +
++   ylab("Survival Rate") +
++   geom_hline(yintercept=crude_survrate, col="white", lty=2, size=2) +
++   ggtitle("Survival Rate by Class") + 
++   theme_minimal()
+> 
+> 
+> ## ----rate_sex, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9----------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train"), aes(Sex, fill=Survived)) +
++   geom_bar(position = "fill") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=percent) +
++   ylab("Survival Rate") +
++   geom_hline(yintercept=crude_survrate, col="white", lty=2, size=2) +
++   ggtitle("Survival Rate by Sex") + 
++   theme_minimal()
+> 
+> 
+> ## ----rate_age, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9----------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> tbl_age <- full %>%
++   filter(set=="train") %>%
++   select(Age, Survived) %>%
++   group_by(Survived) %>%
++   summarise(mean.age = mean(Age, na.rm=TRUE))
+`summarise()` ungrouping output (override with `.groups` argument)
+> 
+> ggplot(full %>% filter(set=="train"), aes(Age, fill=Survived)) +
++   geom_histogram(aes(y=..density..), alpha=0.5) +
++   geom_density(alpha=.2, aes(colour=Survived)) +
++   geom_vline(data=tbl_age, aes(xintercept=mean.age, colour=Survived), lty=2, size=1) +
++   scale_fill_brewer(palette="Set1") +
++   scale_colour_brewer(palette="Set1") +
++   scale_y_continuous(labels=percent) +
++   ylab("Density") +
++   ggtitle("Survival Rate by Age") + 
++   theme_minimal()
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> 
+> ## ----rate_age_group, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9----------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train" & !is.na(Age)), aes(`Age Group`, fill=Survived)) +
++   geom_bar(position = "fill") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=percent) +
++   ylab("Survival Rate") +
++   geom_hline(yintercept=crude_survrate, col="white", lty=2, size=2) +
++   ggtitle("Survival Rate by Age Group") + 
++   theme_minimal()
+> 
+> 
+> ## ----rate_sibsp, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9--------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train"), aes(SibSp, fill=Survived)) +
++   geom_bar(position = "fill") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=percent) +
++   ylab("Survival Rate") +
++   geom_hline(yintercept=crude_survrate, col="white", lty=2, size=2) +
++   ggtitle("Survival Rate by SibSp") + 
++   theme_minimal()
+> 
+> 
+> ## ----rate_parch, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9--------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train"), aes(Parch, fill=Survived)) +
++   geom_bar(position = "fill") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=percent) +
++   ylab("Survival Rate") +
++   geom_hline(yintercept=crude_survrate, col="white", lty=2, size=2) +
++   ggtitle("Survival Rate by Parch") + 
++   theme_minimal()
+> 
+> 
+> ## ----rate_embarked, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9-----------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train"), aes(Embarked, fill=Survived)) +
++   geom_bar(position = "fill") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=percent) +
++   ylab("Survival Rate") +
++   geom_hline(yintercept=crude_survrate, col="white", lty=2, size=2) +
++   ggtitle("Survival Rate by Embarked") + 
++   theme_minimal()
+> 
+> 
+> ## ----rate_title, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9--------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train") %>% na.omit, aes(Title, fill=Survived)) +
++   geom_bar(position="fill") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=percent) +
++   ylab("Survival Rate") +
++   geom_hline(yintercept=crude_survrate, col="white", lty=2, size=2) +
++   ggtitle("Survival Rate by Title") + 
++   theme_minimal() +
++   theme(axis.text.x = element_text(angle = 90, hjust = 1))
+> 
+> 
+> 
+> ## ----rate_family, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9-------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train") %>% na.omit, aes(`Family Group`, fill=Survived)) +
++   geom_bar(position="fill") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=percent) +
++   ylab("Survival Rate") +
++   geom_hline(yintercept=crude_survrate, col="white", lty=2, size=2) +
++   ggtitle("Survival Rate by Family Group") + 
++   theme_minimal() +
++   theme(axis.text.x = element_text(angle = 90, hjust = 1))
+> 
+> 
+> ## ----freq_pclass, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9-------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train"), aes(Pclass, fill=Survived)) +
++   geom_bar(position="stack") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=comma) +
++   ylab("Passengers") +
++   ggtitle("Survived by Class") + 
++   theme_minimal()
+> 
+> 
+> ## ----freq_sex, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9----------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train"), aes(Sex, fill=Survived)) +
++   geom_bar(position="stack") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=percent) +
++   scale_y_continuous(labels=comma) +
++   ylab("Passengers") +
++   ggtitle("Survived by Sex") + 
++   theme_minimal()
+Scale for 'y' is already present. Adding another scale for 'y', which will
+replace the existing scale.
+> 
+> 
+> ## ----freq_age, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9----------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train"), aes(Age, fill=Survived)) +
++   geom_histogram(aes(y=..count..), alpha=0.5) +
++   geom_vline(data=tbl_age, aes(xintercept=mean.age, colour=Survived), lty=2, size=1) +
++   scale_fill_brewer(palette="Set1") +
++   scale_colour_brewer(palette="Set1") +
++   scale_y_continuous(labels=comma) +
++   ylab("Density") +
++   ggtitle("Survived by Age") + 
++   theme_minimal()
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> 
+> ## ----freq_age_group, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9----------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train" & !is.na(Age)), aes(`Age Group`, fill=Survived)) +
++   geom_bar(position="stack") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=comma) +
++   ylab("Passengers") +
++   ggtitle("Survived by Age Group") + 
++   theme_minimal()
+> 
+> 
+> ## ----freq_sibsp, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9--------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train"), aes(SibSp, fill=Survived)) +
++   geom_bar(position="stack") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=percent) +
++   scale_y_continuous(labels=comma) +
++   ylab("Passengers") +
++   ggtitle("Survived by SibSp") + 
++   theme_minimal()
+Scale for 'y' is already present. Adding another scale for 'y', which will
+replace the existing scale.
+> 
+> 
+> ## ----freq_parch, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9--------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train"), aes(Parch, fill=Survived)) +
++   geom_bar(position="stack") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=comma) +
++   ylab("Passengers") +
++   ggtitle("Survived by Parch") + 
++   theme_minimal()
+> 
+> 
+> ## ----freq_embarked, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9-----------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train"), aes(Embarked, fill=Survived)) +
++   geom_bar(position="stack") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=comma) +
++   ylab("Passengers") +
++   ggtitle("Survived by Embarked") + 
++   theme_minimal()
+> 
+> 
+> ## ----freq_title, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9--------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train") %>% na.omit, aes(Title, fill=Survived)) +
++   geom_bar(position="stack") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=comma) +
++   ylab("Passengers") +
++   ggtitle("Survived by Title") + 
++   theme_minimal() +
++   theme(axis.text.x = element_text(angle = 90, hjust = 1))
+> 
+> 
+> 
+> ## ----freq_family, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4.5, fig.width=9-------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ggplot(full %>% filter(set=="train") %>% na.omit, aes(`Family Group`, fill=Survived)) +
++   geom_bar(position="stack") +
++   scale_fill_brewer(palette="Set1") +
++   scale_y_continuous(labels=comma) +
++   ylab("Passengers") +
++   ggtitle("Survived by Family Group") + 
++   theme_minimal() +
++   theme(axis.text.x = element_text(angle = 90, hjust = 1))
+> 
+> 
+> ## ----corrplot, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4, fig.width=9------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> tbl_corr <- full %>%
++   filter(set=="train") %>%
++   select(-PassengerId, -SibSp, -Parch) %>%
++   select_if(is.numeric) %>%
++   cor(use="complete.obs") %>%
++   corrplot.mixed(tl.cex=0.85)
+> 
+> 
+> 
+> ## ----mosaicplot, message=FALSE, warning=FALSE, echo=TRUE, fig.height=4, fig.width=9----------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> tbl_mosaic <- full %>%
++   filter(set=="train") %>%
++   select(Survived, Pclass, Sex, AgeGroup=`Age Group`, Title, Embarked, `Family Group`) %>%
++   mutate_all(as.factor)
+> 
+> mosaic(~Pclass+Sex+Survived, data=tbl_mosaic, shade=TRUE, legend=TRUE)
+> 
+> 
+> 
+> ## ----alluvial, message=FALSE, warning=FALSE, echo=TRUE, fig.height=6, fig.width=9------------------------------------------------------------------------------------------------------------------------------------------------
+> library(alluvial)
+> 
+> tbl_summary <- full %>%
++   filter(set=="train") %>%
++   group_by(Survived, Sex, Pclass, `Age Group`, Title) %>%
++   summarise(N = n()) %>% 
++   ungroup %>%
++   na.omit
+`summarise()` regrouping output by 'Survived', 'Sex', 'Pclass', 'Age Group' (override with `.groups` argument)
+>   
+> alluvial(tbl_summary[, c(1:4)],
++          freq=tbl_summary$N, border=NA,
++          col=ifelse(tbl_summary$Survived == "Yes", "blue", "gray"),
++          cex=0.65,
++          ordering = list(
++            order(tbl_summary$Survived, tbl_summary$Pclass==1),
++            order(tbl_summary$Sex, tbl_summary$Pclass==1),
++            NULL,
++            NULL))
+> 
+> 
+> ## ----party, message=FALSE, warning=FALSE, echo=TRUE, fig.height=7, fig.width=9---------------------------------------------------------------------------------------------------------------------------------------------------
+> library(party)
+Loading required package: mvtnorm
+Loading required package: modeltools
+Loading required package: stats4
+Loading required package: strucchange
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: sandwich
+
+Attaching package: ‘strucchange’
+
+The following object is masked from ‘package:stringr’:
+
+    boundary
+
+Warning messages:
+1: package ‘party’ was built under R version 3.6.2 
+2: package ‘zoo’ was built under R version 3.6.2 
+> 
+> tbl_party <- full %>%
++   filter(set=="train") %>%
++   select(Survived, Pclass, Sex, `Age Group`, Title, Embarked, `Family Group`) %>%
++     mutate_all(as.factor) 
+> 
+> ctree_mdl <- ctree(Survived ~ ., 
++                    data=tbl_party %>% na.omit, 
++                    controls=ctree_control(testtype="Bonferroni"))
+> 
+> plot(ctree_mdl)
+> 
+> 
+> ## ----xgb, message=FALSE, warning=FALSE, echo=TRUE, fig.height=7, fig.width=9-----------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> full_2 <- full %>% 
++   select(-Name, -Ticket, -Cabin, -set) %>%
++   mutate(
++     Survived = ifelse(Survived=="Yes", 1, 0)
++   ) %>% 
++   rename(AgeGroup=`Age Group`, FamilySize=`Family Size`, FamilyGroup=`Family Group`)
+> 
+> # OHE
+> ohe_cols <- c("Pclass", "Sex", "Embarked", "Title", "AgeGroup", "FamilyGroup")
+> num_cols <- setdiff(colnames(full_2), ohe_cols)
+> 
+> full_final <- subset(full_2, select=num_cols)
+> 
+> for(var in ohe_cols) {
++   values <- unique(full_2[[var]])
++   for(j in 1:length(values)) {
++     full_final[[paste0(var,"_",values[j])]] <- (full_2[[var]] == values[j]) * 1
++   }
++ }
+> 
+> submission <- TRUE
+> 
+> data_train <- full_final %>%
++   filter(!is.na(Survived)) 
+> 
+> data_test  <- full_final %>% 
++   filter(is.na(Survived))
+> 
+> set.seed(777)
+> ids <- sample(nrow(data_train))
+> 
+> # create folds for cv
+> n_folds <- ifelse(submission, 1, 5)
+> 
+> score <- data.table()
+Error in data.table() : could not find function "data.table"
+Execution halted

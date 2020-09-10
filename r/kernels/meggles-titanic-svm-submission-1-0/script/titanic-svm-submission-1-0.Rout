@@ -1,0 +1,390 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # Load libraries
+> library("ggplot2") # data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library("caret") # multiple model training/testing functions
+Loading required package: lattice
+> library("readr") # CSV file I/O, e.g. the read_csv function
+> library("dplyr") # several Hadley Wickham data-wrangling packages
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library("mice") # imputing missing values
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library("stringr") # feature engineering
+> library("arules") # feature engineering
+Loading required package: Matrix
+
+Attaching package: ‘arules’
+
+The following object is masked from ‘package:dplyr’:
+
+    recode
+
+The following objects are masked from ‘package:base’:
+
+    abbreviate, write
+
+Warning message:
+package ‘arules’ was built under R version 3.6.2 
+> library("corrplot") # correlogram 
+corrplot 0.84 loaded
+> library("randomForest") # random forest model
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library("e1071") # support vector machine model
+> 
+> options(scipen=999)
+> 
+> # Read in train and test data
+> train <- read_csv('../input/train.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test <- read_csv('../input/test.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test_ids <- test$PassengerId
+> 
+> # Preprocessing of train and test data
+> train <- mutate(train,
++                 Cabin_Deck = str_sub(Cabin,1,1),
++                 Ticket_Digit = nchar(Ticket),
++                 Ticket_Alpha = str_detect(Ticket, '[[:alpha:]]'),
++                 Family_Size = Parch+SibSp,
++                 Name_Family = gsub(",.*$", "", Name),
++                 Title = str_sub(Name, 
++                                 str_locate(Name, ",")[ , 1] + 2, 
++                                 str_locate(Name, "\\.")[ , 1] - 1)
++                )
+>     # credit to https://www.kaggle.com/c/titanic/discussion/30733 for Title regex
+> 
+>     train_sub <- select(train,
++                           Survived,Pclass,Sex,Age,SibSp,Parch,Fare,
++                           Embarked,Cabin_Deck,Ticket_Digit,Ticket_Alpha,Name_Family,
++                           Title,Family_Size)
+> 
+>     train_mm <- model.matrix(~Pclass+Sex+Age+SibSp+Parch+Fare+
++                                Embarked+Cabin_Deck+Title+Family_Size+Ticket_Alpha,
++                                           train_sub)
+> 
+>     train_imp <- mice(train_sub, 
++                         m = 1,
++                         method = "cart",
++                         seed = 5,
++                         printFlag=F)
+Warning message:
+Number of logged events: 10 
+> 
+>     train <- complete(train_imp)
+> 
+>     train <- mutate(train, 
++                     Cabin_Deck_i = ifelse(!is.na(Cabin_Deck),
++                                     Cabin_Deck,
++                                     ifelse(Pclass == 1,# read in the data
++                                            'ABCD', 
++                                             # not including T because only one passenger
++                                             # in the training set was assigned cabin T
++                                            ifelse(Pclass == 2,
++                                                   'E',
++                                                  'F'))))
+> 
+>     train_Pclass1 <- filter(train, Pclass == 1) 
+> 
+>     cuts <- discretize(train_Pclass1$Fare,
++                        method = 'cluster',
++                        categories = 4,
++                        ordered = T,
++                        onlycuts = T)
+Warning message:
+In discretize(train_Pclass1$Fare, method = "cluster", categories = 4,  :
+  Parameter categories is deprecated. Use breaks instead! Also, the default method is now frequency!
+> 
+>     train <- mutate(train, Cabin_Deck_i2 = ifelse(Cabin_Deck_i != "ABCD",
++                                            Cabin_Deck_i,
++                                            ifelse(Fare < cuts[2],
++                                                  "D",
++                                                  ifelse(Fare < cuts[3],
++                                                        "C",
++                                                        ifelse(Fare < cuts[4],
++                                                              "B", 
++                                                              "A")))))
+>     train <- mutate(train, Cabin_Deck_i3 = ifelse(Cabin_Deck_i2 == 'A',1,
++                                     ifelse(Cabin_Deck_i2 == 'B',2,
++                                           ifelse(Cabin_Deck_i2 == 'C',3,
++                                                 ifelse(Cabin_Deck_i2 == 'D',4,
++                                                       ifelse(Cabin_Deck_i2 == 'E',5,
++                                                             ifelse(Cabin_Deck_i2 == 'F',6,
++                                                                   ifelse(Cabin_Deck_i2 == 'G',7,8))))))))
+>     train <- mutate(train, 
++                     Embarked = ifelse(is.na(Embarked),
++                                      'S', Embarked))
+> 
+> test <- mutate(test,
++                 Cabin_Deck = str_sub(Cabin,1,1),
++                 Ticket_Digit = nchar(Ticket),
++                 Ticket_Alpha = str_detect(Ticket, '[[:alpha:]]'),
++                 Family_Size = Parch+SibSp,
++                 Name_Family = gsub(",.*$", "", Name),
++                 Title = str_sub(Name, 
++                                 str_locate(Name, ",")[ , 1] + 2, 
++                                 str_locate(Name, "\\.")[ , 1] - 1)
++                )
+>     # credit to https://www.kaggle.com/c/titanic/discussion/30733 for Title regex
+>     test_sub <- select(test,
++                           Pclass,Sex,Age,SibSp,Parch,Fare,
++                           Embarked,Cabin_Deck,Ticket_Digit,Ticket_Alpha,Name_Family,
++                           Title,Family_Size)
+> 
+>     test_mm <- model.matrix(~Pclass+Sex+Age+SibSp+Parch+Fare+
++                                Embarked+Cabin_Deck+Title+Family_Size+Ticket_Alpha,
++                                           test_sub)
+> 
+>     test_imp <- mice(test_sub, 
++                         m = 1,
++                         method = "cart",
++                         seed = 5,
++                         printFlag=F)
+Warning message:
+Number of logged events: 15 
+> 
+>     test <- complete(test_imp)
+>     test <- mutate(test, 
++                     Cabin_Deck_i = ifelse(!is.na(Cabin_Deck),
++                                     Cabin_Deck,
++                                     ifelse(Pclass == 1,# read in the data
++                                            'ABCD', 
++                                             # not including T because only one passenger
++                                             # in the testing set was assigned cabin T
++                                            ifelse(Pclass == 2,
++                                                   'E',
++                                                  'F'))))
+> 
+>     test_Pclass1 <- filter(test, Pclass == 1) 
+> 
+>     cuts <- discretize(test_Pclass1$Fare,
++                        method = 'cluster',
++                        categories = 4,
++                        ordered = T,
++                        onlycuts = T)
+Warning message:
+In discretize(test_Pclass1$Fare, method = "cluster", categories = 4,  :
+  Parameter categories is deprecated. Use breaks instead! Also, the default method is now frequency!
+> 
+>     test <- mutate(test, Cabin_Deck_i2 = ifelse(Cabin_Deck_i != "ABCD",
++                                            Cabin_Deck_i,
++                                            ifelse(Fare < cuts[2],
++                                                  "D",
++                                                  ifelse(Fare < cuts[3],
++                                                        "C",
++                                                        ifelse(Fare < cuts[4],
++                                                              "B", 
++                                                              "A")))))
+>     test <- mutate(test, Cabin_Deck_i3 = ifelse(Cabin_Deck_i2 == 'A',1,
++                                     ifelse(Cabin_Deck_i2 == 'B',2,
++                                           ifelse(Cabin_Deck_i2 == 'C',3,
++                                                 ifelse(Cabin_Deck_i2 == 'D',4,
++                                                       ifelse(Cabin_Deck_i2 == 'E',5,
++                                                             ifelse(Cabin_Deck_i2 == 'F',6,
++                                                                   ifelse(Cabin_Deck_i2 == 'G',7,8))))))))
+>     test <- mutate(test, 
++                     Embarked = ifelse(is.na(Embarked),
++                                      'S', Embarked))
+> test <- mutate(test,
++                 Cabin_Deck_i2 = 
++                     ifelse(!(Cabin_Deck_i2 %in% as.character(train$Cabin_Deck_i2)),
++                         "F",
++                         Cabin_Deck_i2
++                 ),
++                 Title = 
++                     ifelse(!(Title %in% as.character(train$Title)),
++                         ifelse(Sex == "male",
++                             "Mr.",
++                             "Mrs."),
++                         Title
++                     ),
++                 Ticket_Digit = as.numeric(Ticket_Digit)
++                 )
+>                 
+> # Model train on train set
+> train_svm <- select(train,Survived,
++     Pclass,Sex,Age,SibSp,Parch,Fare,
++     Embarked,Ticket_Digit,
++     Ticket_Alpha, Family_Size) 
+>     
+> test_svm <- select(test,
++     Pclass,Sex,Age,SibSp,Parch,Fare,
++     Embarked,Ticket_Digit,
++     Ticket_Alpha,Family_Size) 
+> 
+> 
+> svm_model <- svm(Survived~.,
++            data = train_svm)
+> 
+> # Model predictions on test set
+> svm_pred <- predict(svm_model,
++                    test_svm)
+> 
+> svm_pred_complete <- as.data.frame(cbind(test_ids, svm_pred)) 
+> 
+> svm_pred_complete <- svm_pred_complete %>%
++     mutate(
++         svm_pred = ifelse(svm_pred >= 0.5, 1, 0)
++     )
+> 
+> mean(svm_pred_complete$svm_pred)
+[1] 0.3755981
+> 
+> names(svm_pred_complete) <- c("PassengerId", "Survived")
+> 
+> write.csv(svm_pred_complete, 'titanic_pred.csv',
++ row.names = F)
+> 
+> 
+> 
+> # Model train on train set
+> train_rf <- train %>% select(Survived, Pclass, Age, SibSp,
++ Parch, Family_Size, Ticket_Digit, Fare)
+> rf_model <- randomForest(Survived~Pclass + Age + SibSp +
++ Parch + Family_Size + Ticket_Digit + Fare,
++                       data=train_rf)
+Warning message:
+In randomForest.default(m, y, ...) :
+  The response has five or fewer unique values.  Are you sure you want to do regression?
+> test_rf <- test %>% select(Pclass, Age, SibSp,
++ Parch, Family_Size, Ticket_Digit, Fare)
+> # Model predictions on test set
+> rf_pred <- predict(rf_model,
++                    test_rf)
+>                    
+> rf_pred_complete <- as.data.frame(cbind(test_ids, rf_pred)) 
+> 
+> rf_pred_complete <-rf_pred_complete %>%
++     mutate(
++         rf_pred = ifelse(rf_pred >= 0.5, 1, 0)
++     )
+> 
+> mean(rf_pred_complete$rf_pred)
+[1] 0.3086124
+> 
+> names(rf_pred_complete) <- c("PassengerId", "Survived")
+> 
+> write.csv(rf_pred_complete, 'titanic_pred_rf.csv',
++ row.names = F)
+> 
+> 
+> library("xgboost")
+
+Attaching package: ‘xgboost’
+
+The following object is masked from ‘package:dplyr’:
+
+    slice
+
+Warning message:
+package ‘xgboost’ was built under R version 3.6.2 
+> 
+> # Model train on train set
+> xgb_train <- as.matrix(train_rf)
+> xgb_test <- as.matrix(test_rf)
+> xgb_model <- xgboost(data = xgb_train,
++ label = xgb_train[,1],
++ booster = "gblinear",
++ max_depth = 7,
++ eta = 0.1,
++ nthread = 2,
++ nrounds = 5,
++ objective = "binary:logistic")
+[13:35:44] WARNING: amalgamation/../src/learner.cc:516: 
+Parameters: { max_depth } might not be used.
+
+  This may not be accurate due to some parameters are only used in language bindings but
+  passed down to XGBoost core.  Or some parameters are not used but slip through this
+  verification. Please open an issue if you find above cases.
+
+
+[1]	train-error:0.086420 
+[2]	train-error:0.044893 
+[3]	train-error:0.020202 
+[4]	train-error:0.013468 
+[5]	train-error:0.008979 
+> 
+> # Model predictions on test set
+> xgb_pred <- predict(xgb_model,
++                    xgb_test)
+Error in predict.xgb.Booster(xgb_model, xgb_test) : 
+  Feature names stored in `object` and `newdata` are different!
+Calls: predict -> predict -> predict.xgb.Booster
+Execution halted

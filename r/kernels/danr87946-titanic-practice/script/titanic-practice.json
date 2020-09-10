@@ -1,0 +1,1 @@
+{"c(\"package:git2r\", \"package:timeSeries\", \"package:base\")":["as.data.frame"],"c(\"package:kernlab\", \"package:flexmix\", \"package:flexclust\", \"package:arules\", \"package:stats\")":["predict"],"package:base":["library"],"package:dplyr":["bind_rows"],"package:rpart":["rpart"],"package:utils":["read.csv","write.csv"]}

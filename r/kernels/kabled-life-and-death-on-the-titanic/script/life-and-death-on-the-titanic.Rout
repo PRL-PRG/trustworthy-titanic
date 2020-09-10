@@ -1,0 +1,345 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE)
+> 
+> 
+> ## ---- message = FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Load packages
+> library('ggplot2')      # visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library('dplyr')        # data manipulation
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library("stringr")      # string manipulation
+> library('randomForest') # classification algorithm
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> 
+> ## ---- message = FALSE, warning = FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Load data
+> train <- read.csv('../input/train.csv', stringsAsFactors = F)
+> test  <- read.csv('../input/test.csv', stringsAsFactors = F)
+> # Combine train and test sets
+> full  <- bind_rows(train, test)
+> # Look at structure of data
+> str(full)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(train, aes(x = Pclass, fill = factor(Survived))) +
++   geom_bar(position = 'dodge') +
++   labs(x = 'Pclass') +
++   ggtitle("Figure 1", subtitle = "Survival by Passenger Class")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> head(full$Name, 15)
+ [1] "Braund, Mr. Owen Harris"                            
+ [2] "Cumings, Mrs. John Bradley (Florence Briggs Thayer)"
+ [3] "Heikkinen, Miss. Laina"                             
+ [4] "Futrelle, Mrs. Jacques Heath (Lily May Peel)"       
+ [5] "Allen, Mr. William Henry"                           
+ [6] "Moran, Mr. James"                                   
+ [7] "McCarthy, Mr. Timothy J"                            
+ [8] "Palsson, Master. Gosta Leonard"                     
+ [9] "Johnson, Mrs. Oscar W (Elisabeth Vilhelmina Berg)"  
+[10] "Nasser, Mrs. Nicholas (Adele Achem)"                
+[11] "Sandstrom, Miss. Marguerite Rut"                    
+[12] "Bonnell, Miss. Elizabeth"                           
+[13] "Saundercock, Mr. William Henry"                     
+[14] "Andersson, Mr. Anders Johan"                        
+[15] "Vestrom, Miss. Hulda Amanda Adolfina"               
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> extractTitle <- function(name) {
++   name <- as.character(name)
++   
++   if (length(grep("Miss.", name)) > 0) {
++     return ("Miss.")
++   } else if (length(grep("Master.", name)) > 0) {
++     return ("Master.")
++   } else if (length(grep("Mrs.", name)) > 0) {
++     return ("Mrs.")
++   } else if (length(grep("Mr.", name)) > 0) {
++     return ("Mr.")
++   } else {
++     return ("Other")
++   } 
++ }
+> 
+> titles <- NULL
+> for (i in 1:nrow(full)) {
++   titles <- c(titles, extractTitle(full[i,"Name"]))
++ }
+> full$Title <- as.factor(titles)
+> 
+> ggplot(full[1:891,], aes(x = Title, fill = factor(Survived))) +
++   geom_bar(position = 'dodge') +
++   labs(x = 'Title') +
++   ggtitle("Figure 2", subtitle = "Survival by Title")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$Fsize <- as.factor(1 + full$SibSp + full$Parch)
+> 
+> ggplot(full[1:891,], aes(x = Fsize, fill = factor(Survived))) +
++   geom_bar(position = 'dodge') +
++   labs(x = 'Fsize') +
++   ggtitle("Figure 3", subtitle ="Survival by Family Size")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Function for extracting first digit from alpha-numeric string
+> extractT1 <- function(ticket) {
++   ticket <- as.character(ticket)
++   
++   library("stringi") # string manipulation
++   temp <- NULL
++   # Get a number from the ticket variable, else use zero
++   if (is.na(stri_extract_first_regex(ticket, "[0-9]+"))) {
++     temp <- 0
++   }
++   else {  
++     temp <- stri_extract_first_regex(ticket, "[0-9]+")
++   }
++   
++   # Take the first digit and cast it as an integer
++   temp <- as.integer(substr(temp, 1, 1))
++   return (temp)
++ }
+> 
+> tickets <- NULL
+> # For each row in ticket column, pass it through the above function
+> for (i in 1:nrow(full)) {
++   tickets <- c(tickets, extractT1(full[i,"Ticket"]))
++ }
+> # Store result in new variable
+> full$T1 <- as.factor(tickets)
+> 
+> ggplot(full[1:891,], aes(x = T1, fill = factor(Survived))) +
++   geom_bar(position = 'dodge') +
++   labs(x = 'T1') +
++   ggtitle("Figure 4", subtitle = "Survival by T1")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(full$Fare)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+  0.000   7.896  14.454  33.295  31.275 512.329       1 
+> which(is.na(full$Fare))
+[1] 1044
+> full[1044,]
+     PassengerId Survived Pclass               Name  Sex  Age SibSp Parch
+1044        1044       NA      3 Storey, Mr. Thomas male 60.5     0     0
+     Ticket Fare Cabin Embarked Title Fsize T1
+1044   3701   NA              S   Mr.     1  3
+> full$Fare[1044] <- median(full$Fare[which(full$Fsize == "1" & full$Pclass == "3" & full$Embarked == "S")], na.rm = TRUE)
+> full$Fare[1044]
+[1] 7.8958
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$Embarked <- as.factor(full$Embarked)
+> summary(full$Embarked)
+      C   Q   S 
+  2 270 123 914 
+> which(full$Embarked == "")
+[1]  62 830
+> full$Embarked[c(62, 830)] <- "S"
+> full$Embarked <- factor(full$Embarked)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rf.train.1 <- full[1:891, c("Pclass", "Title", "Fsize")]
+> 
+> rf.label <- as.factor(train$Survived)
+> 
+> set.seed(1357)
+> rf.1 <- randomForest(x = rf.train.1, y = rf.label,
++                      importance = TRUE, ntree = 1000)
+> rf.1
+
+Call:
+ randomForest(x = rf.train.1, y = rf.label, ntree = 1000, importance = TRUE) 
+               Type of random forest: classification
+                     Number of trees: 1000
+No. of variables tried at each split: 1
+
+        OOB estimate of  error rate: 18.41%
+Confusion matrix:
+    0   1 class.error
+0 487  62   0.1129326
+1 102 240   0.2982456
+> varImpPlot(rf.1)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rf.train.2 <- full[1:891, c("Pclass", "Title", "Fsize", "Embarked")]
+> 
+> set.seed(1357)
+> rf.2 <- randomForest(x = rf.train.2, y = rf.label,
++                      importance = TRUE, ntree = 1000)
+> rf.2
+
+Call:
+ randomForest(x = rf.train.2, y = rf.label, ntree = 1000, importance = TRUE) 
+               Type of random forest: classification
+                     Number of trees: 1000
+No. of variables tried at each split: 2
+
+        OOB estimate of  error rate: 19.08%
+Confusion matrix:
+    0   1 class.error
+0 503  46  0.08378871
+1 124 218  0.36257310
+> varImpPlot(rf.2)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full$Sex <- as.factor(full$Sex)
+> rf.train.3 <- full[1:891, c("Pclass", "Title", "Fsize", "Sex")]
+> 
+> set.seed(1357)
+> rf.3 <- randomForest(x = rf.train.3, y = rf.label,
++                      importance = TRUE, ntree = 1000)
+> rf.3
+
+Call:
+ randomForest(x = rf.train.3, y = rf.label, ntree = 1000, importance = TRUE) 
+               Type of random forest: classification
+                     Number of trees: 1000
+No. of variables tried at each split: 2
+
+        OOB estimate of  error rate: 16.61%
+Confusion matrix:
+    0   1 class.error
+0 491  58   0.1056466
+1  90 252   0.2631579
+> varImpPlot(rf.3)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rf.train.4 <- full[1:891, c("Pclass", "Title", "Fsize", "Sex", "T1")]
+> 
+> set.seed(1357)
+> rf.4 <- randomForest(x = rf.train.4, y = rf.label,
++                      importance = TRUE, ntree = 1000)
+> rf.4
+
+Call:
+ randomForest(x = rf.train.4, y = rf.label, ntree = 1000, importance = TRUE) 
+               Type of random forest: classification
+                     Number of trees: 1000
+No. of variables tried at each split: 2
+
+        OOB estimate of  error rate: 16.39%
+Confusion matrix:
+    0   1 class.error
+0 499  50  0.09107468
+1  96 246  0.28070175
+> varImpPlot(rf.4)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rf.train.5 <- full[1:891, c("Pclass", "Title", "Fsize", "Sex", "T1", "Fare")]
+> 
+> set.seed(1357)
+> rf.5 <- randomForest(x = rf.train.5, y = rf.label,
++                      importance = TRUE, ntree = 1000)
+> rf.5
+
+Call:
+ randomForest(x = rf.train.5, y = rf.label, ntree = 1000, importance = TRUE) 
+               Type of random forest: classification
+                     Number of trees: 1000
+No. of variables tried at each split: 2
+
+        OOB estimate of  error rate: 16.84%
+Confusion matrix:
+    0   1 class.error
+0 500  49  0.08925319
+1 101 241  0.29532164
+> varImpPlot(rf.5)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Split modified data back into train and test sets
+> train <- full[1:891,]
+> test <- full[892:1309,]
+> 
+> # Rebuild the winning model
+> set.seed(1357)
+> rfm <- randomForest(factor(Survived) ~ Pclass + Title +
++                       Fsize + Sex + T1,
++                     data=train,
++                     importance=TRUE,
++                     ntree=1000)
+> 
+> 
+> # Make a prediction on the test set and save the results to a file
+> prediction <- predict(rfm, test)
+> submit <- data.frame(PassengerID = test$PassengerId, Survived = prediction)
+> write.csv(submit, file = "titanic_rf.csv", row.names = F)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  8.705   0.211   8.987 

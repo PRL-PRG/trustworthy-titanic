@@ -1,0 +1,78 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ----setup, include=FALSE,echo=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE,results = TRUE,warning=FALSE)
+> 
+> 
+> ## ----setwd,echo=FALSE,results=FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #setwd('D://R Files//titanic set')
+> 
+> ## ----packages,results=FALSE,warning=FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #install.packages("lattice")  #for plots
+> library(lattice)
+> #install.packages("data.table")  #for data table
+> library(data.table)
+> #install.packages("ggplot2") #for beautiful plots
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> #install.packages("dplyr")  #for manipulations
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:data.table’:
+
+    between, first, last
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> #install.packages("caret")  
+> library(caret)              #for training and building different models
+> #install.packages("e1071")
+> library(e1071)              #for Naive Bayes and SVM
+> #install.packages("randomForest") 
+> library(randomForest)       #for Random Forest
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> #install.packages("fastAdaboost")  
+> library(fastAdaboost)       # for AdaBoost
+Error in library(fastAdaboost) : 
+  there is no package called ‘fastAdaboost’
+Execution halted

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>First Titanic Analysis | Kaggle</title>
+    <meta charset="utf-8" />
+    <meta name="robots" content="index, follow" />
+    <meta name="turbolinks-cache-control" content="no-cache" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0">    <meta name="theme-color" content="#008ABC" />
+    <script type="text/javascript">
+        window["initialPageLoadStartTime"] = new Date().getTime();
+    </script>
+    <link rel="dns-prefetch" href="https://www.google-analytics.com" /><link rel="dns-prefetch" href="https://stats.g.doubleclick.net" /><link rel="dns-prefetch" href="https://js.intercomcdn.com" /><link rel="dns-prefetch" href="https://storage.googleapis.com/" />
+    <link href="/static/images/favicon.ico" rel="shortcut icon" type="image/x-icon" />
+    <link rel="manifest" href="/static/json/manifest.json">
+    <link href="//fonts.googleapis.com/css?family=Open+Sans:400,300,300italic,400italic,600,600italic,700,700italic" rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Google+Material+Icons" rel="stylesheet" type='text/css'/>
+        <link rel="canonical" href="/pdxshark/first-titanic-analysis" />                    <link rel="stylesheet" type="text/css" href="/static/assets/vendor.css?v=7ea4d33f7a18" />
+        <link rel="stylesheet" type="text/css" href="/static/assets/app.css?v=f2d0c2b259f9" />
+    
+    
+ 
+        <script>
+        try{(function(a,s,y,n,c,h,i,d,e){d=s.createElement("style");
+        d.appendChild(s.createTextNode(""));s.head.appendChild(d);d=d.sheet;
+        y=y.map(x => d.insertRule(x + "{ opacity: 0 !important }"));
+        h.start=1*new Date;h.end=i=function(){y.forEach(x => x<d.cssRules.length ? d.deleteRule(x) : {})};
+        (a[n]=a[n]||[]).hide=h;setTimeout(function(){i();h.end=null},c);h.timeout=c;
+        })(window,document,['.site-header-react__nav'],'dataLayer',2000,{'GTM-52LNT9S':true});}catch{}
+    </script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'UA-12629138-1', {
+            'optimize_id': 'GTM-52LNT9S',
+            'displayFeaturesTask': null,
+            'send_page_view': false
+        });
+    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-12629138-1"></script>
+
+    
+<script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window,document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+    fbq("set", "autoConfig", "false", "136809193586742");
+    fbq('init', '136809193586742'); 
+    fbq('track', 'PageView');
+</script>
+<noscript>
+    <img height="1" width="1" src="https://www.facebook.com/tr?id=136809193586742&ev=PageView&noscript=1"/>
+</noscript>
+
+<script>window.intercomSettings = {"app_id":"koj6gxx6"};</script>        <script>(function () { var w = window; var ic = w.Intercom; if (typeof ic === "function") { ic('reattach_activator'); ic('update', intercomSettings); } else { var d = document; var i = function () { i.c(arguments) }; i.q = []; i.c = function (args) { i.q.push(args) }; w.Intercom = i; function l() { var s = d.createElement('script'); s.type = 'text/javascript'; s.async = true; s.src = 'https://widget.intercom.io/widget/koj6gxx6'; var x = d.getElementsByTagName('script')[0]; x.parentNode.insertBefore(s, x); } if (w.attachEvent) { w.attachEvent('onload', l); } else { w.addEventListener('load', l, false); } } })()</script>
+    
+    
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@kaggledatasets" />
+    <meta name="og:url" content="https://kaggle.com/pdxshark/first-titanic-analysis" />
+    <meta name="og:title" content="First Titanic Analysis" />
+    <meta name="og:description" content="Using data from Titanic: Machine Learning from Disaster" />
+    <meta name="og:image" content="https://storage.googleapis.com/kaggle-avatars/thumbnails/751315-gr.jpg" />
+
+
+    
+    
+
+    
+    
+    
+<script type="text/javascript">
+    var Kaggle = Kaggle || {};
+
+    Kaggle.Current = {
+        antiForgeryToken: 'CfDJ8LdUzqlsSWBPr4Ce3rb9VL-px3Y3MxxAZ3cmBy7bhoyQ0MsHg9DxBZCO3Hh0BPXugJdgxkFRJB4C9NmuxhMNET_-DVJMdW5pHiDZI6A1Mequv0MRyFB_4MLOZ7YhvFFRAMrKO6W__AAlx0rpeVl3JVA',
+        isAnonymous: true,
+        analyticsToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1NjM2MjAyMTEsIlVzZXJJZCI6MH0.Y9MZnXEH83V6wBCckUpF9uBuVOXChH9WwYxPRV10KzA',
+        analyticsTokenExpiry: 15,
+        internetKernelsEnabled: false,
+        
+        
+        
+        
+        
+        
+        
+        
+        mdeImageUploader: true,
+        
+        
+        
+    }
+        Kaggle.Current.log = function(){};
+        Kaggle.Current.warn = function(){};
+
+    var decodeUserDisplayName = function () {
+        var escapedUserDisplayName = Kaggle.Current.userDisplayNameEscaped || "";
+        try {
+            var textVersion = new DOMParser().parseFromString(escapedUserDisplayName, "text/html").documentElement.textContent;
+            if (textVersion) {
+                return textVersion;
+            }
+        } catch(ex) {}
+        return escapedUserDisplayName;
+    }
+    Kaggle.Current.userDisplayName = decodeUserDisplayName();
+</script>
+
+    
+
+<script type="text/javascript">
+    var Kaggle = Kaggle || {};
+    Kaggle.PageMessages = [];
+</script>
+
+    
+<script type="text/javascript">
+/* <![CDATA[ */
+goog_snippet_vars = function() {
+    var w = window;
+    w.google_conversion_id = 955616553;
+    w.google_conversion_label = "QSjvCKDksHMQqZrWxwM";
+    w.google_conversion_value = 0.00;
+    w.google_conversion_currency = "USD";
+    w.google_remarketing_only = false;
+    w.google_conversion_language = "en";
+    w.google_conversion_format = "3";
+    w.google_conversion_color = "ffffff";
+}
+// DO NOT CHANGE THE CODE BELOW.
+goog_report_conversion = function(url) {
+    goog_snippet_vars();
+    window.google_conversion_format = "3";
+    var opt = new Object();
+    opt.onload_callback = function() {
+        if (typeof(url) != 'undefined') {
+            window.location = url;
+        }
+    }
+    var conv_handler = window['google_trackConversion'];
+    if (typeof(conv_handler) == 'function') {
+        conv_handler(opt);
+    }
+}
+/* ]]> */
+</script>
+<script type="text/javascript"
+src="//www.googleadservices.com/pagead/conversion_async.js">
+</script>
+
+
+
+        <script>window['useKaggleAnalytics'] = true;</script>
+
+    <script src="/static/assets/vendor.js?v=7f1b67b62508" data-turbolinks-track="reload"></script>
+    <script src="/static/assets/app.js?v=c7ce3d5abb3d" data-turbolinks-track="reload"></script>
+        <script>
+            (function() {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register("/static/assets/service-worker.js").then(function(reg) {
+                        reg.onupdatefound = function() {
+                            var installingWorker = reg.installing;
+                            installingWorker.onstatechange = function() {
+                                switch (installingWorker.state) {
+                                case 'installed':
+                                    if (navigator.serviceWorker.controller) {
+                                        console.log('New or updated content is available.');
+                                    } else {
+                                        console.log('Content is now available offline!');
+                                    }
+                                    break;
+                                case 'redundant':
+                                    console.error('The installing service worker became redundant.');
+                                    break;
+                                }
+                            };
+                        };
+                    }).catch(function(e) {
+                      console.error('Error during service worker registration:', e);
+                    });
+                }
+            })();
+        </script>
+    <script>
+        function handleClientLoad() {
+            try {
+                gapi.load('client:auth2');
+            } catch (e) {
+                // In Opera, readystatechange is an unreliable detection of script load, causing
+                // this function to be called before gapi exists on the window. The onload callback
+                // is still called at the correct time, so the feature works as expected - it's
+                // just generating noisy errors.
+            }
+        }
+    </script>
+    <script async defer src="https://apis.google.com/js/api.js"
+            onload="this.googleApiOnLoad=function(){};handleClientLoad()"
+            onreadystatechange="if (this.readyState === 'complete') this.googleApiOnLoad()">
+    </script>
+            <script defer src="https://cdn.jsdelivr.net/npm/stackdriver-errors-js@0.7.0/dist/stackdriver-errors-concat.min.js"></script>
+        <script type="text/javascript">
+            window.addEventListener('DOMContentLoaded', function () {
+                var errorHandler = new StackdriverErrorReporter();
+                errorHandler.start({
+                    key: 'AIzaSyDANGXFHtSIVc51MIdGwg4mQFgm3oNrKoo',
+                    projectId: 'kaggle-161607',
+                    service: 'web-fe',
+                    version: 'ed96997455c95c047613615ceeeb0d4d542b4997',
+                    context: { user: '0' }
+                });
+            });
+        </script>
+</head>
+<body data-turbolinks="true">
+    <main>
+        
+
+
+
+
+
+
+<div class="site-layout">
+        <div class="site-layout__header">
+            <div data-component-name="SiteHeaderContainer" style="display: flex; flex-direction: column; flex: 1 0 auto;"></div><script>var Kaggle=window.Kaggle||{};Kaggle.State=Kaggle.State||[];Kaggle.State.push({});performance && performance.mark && performance.mark("SiteHeaderContainer.componentCouldBootstrap");</script>
+        </div>
+
+    <div class="site-layout__main-content">
+        
+
+<div data-component-name="KernelViewer" style="display: flex; flex-direction: column; flex: 1 0 auto;"></div><script>var Kaggle=window.Kaggle||{};Kaggle.State=Kaggle.State||[];Kaggle.State.push({"kernel":{"id":107443,"title":"First Titanic Analysis","forkParent":null,"currentRunId":403919,"mostRecentRunId":403919,"url":"/pdxshark/first-titanic-analysis","tags":[],"commentCount":0,"upvoteCount":0,"viewCount":45,"forkCount":0,"bestPublicScore":null,"author":{"id":751315,"displayName":"James Bradd","email":null,"editedEmail":null,"editedEmailCode":null,"userName":"pdxshark","thumbnailUrl":"https://storage.googleapis.com/kaggle-avatars/thumbnails/751315-gr.jpg","profileUrl":"/pdxshark","registerDate":"0001-01-01T00:00:00Z","lastVisitDate":"0001-01-01T00:00:00Z","statusId":0,"performanceTier":0,"userRoles":null,"userLogins":null,"groupIds":null,"duplicateUsers":null,"hasPhoneVerifications":false,"failedNerdchas":0,"hasPendingNerdcha":false,"deleteRequests":null,"userAttributes":null,"isAdmin":false,"isTvc":false,"isKaggleBot":false,"isAdminOrTvc":false,"isAnonymous":false,"canAct":false,"canBeSeen":false,"thumbnailName":null,"activationCode":"00000000-0000-0000-0000-000000000000","isPhoneVerified":false},"isPrivate":false,"updatedTime":"2016-10-19T03:19:46.64Z","selfLink":"/kernels/107443","pinnedDockerImageVersionId":null,"isLanguageTemplate":false,"medal":null,"topicId":null,"readGroupId":null,"writeGroupId":null,"slug":"first-titanic-analysis"},"kernelBlob":{"id":5027904,"settings":{"dockerImageVersionId":null,"dataSources":[{"sourceType":"Competition","sourceId":3136,"databundleVersionId":null}],"sourceType":"script","language":"r","isGpuEnabled":false,"isInternetEnabled":false},"source":"\n# This R script will run on our backend. You can write arbitrary code here!\n\n# Many standard libraries are already installed, such as randomForest\nlibrary(randomForest)\n\n# The train and test data is stored in the ../input directory\ntrain \u003c- read.csv(\u0022../input/train.csv\u0022)\ntest  \u003c- read.csv(\u0022../input/test.csv\u0022)\n\n# We can inspect the train data. The results of this are printed in the log tab below\nsummary(train)\n\n# Here we will plot the passenger survival by class\ntrain$Survived \u003c- factor(train$Survived, levels=c(1,0))\nlevels(train$Survived) \u003c- c(\u0022Survived\u0022, \u0022Died\u0022)\ntrain$Pclass \u003c- as.factor(train$Pclass)\nlevels(train$Pclass) \u003c- c(\u00221st Class\u0022, \u00222nd Class\u0022, \u00223rd Class\u0022)\n\npng(\u00221_survival_by_class.png\u0022, width=800, height=600)\nmosaicplot(train$Pclass ~ train$Survived, main=\u0022Passenger Survival by Class\u0022,\n           color=c(\u0022#8dd3c7\u0022, \u0022#fb8072\u0022), shade=FALSE,  xlab=\u0022\u0022, ylab=\u0022\u0022,\n           off=c(0), cex.axis=1.4)\ndev.off()\n","dateCreated":"2016-10-19T03:19:47.667Z"},"kernelRun":{"id":403919,"kernelId":107443,"status":"complete","type":"batch","sourceType":"script","language":"r","title":"First Titanic Analysis","dateCreated":"2016-10-19T03:19:47.667Z","dateEvaluated":"2016-10-19T03:19:46.64Z","workerContainerPort":null,"workerUptimeSeconds":261672,"workerIPAddress":"10.3.0.4       ","scriptLanguageId":1,"scriptLanguageName":"R","renderedOutputUrl":null,"commit":{"id":5027904,"settings":{"dockerImageVersionId":null,"dataSources":[{"sourceType":"Competition","sourceId":3136,"databundleVersionId":null}],"sourceType":"script","language":"r","isGpuEnabled":false,"isInternetEnabled":false},"source":"\n# This R script will run on our backend. You can write arbitrary code here!\n\n# Many standard libraries are already installed, such as randomForest\nlibrary(randomForest)\n\n# The train and test data is stored in the ../input directory\ntrain \u003c- read.csv(\u0022../input/train.csv\u0022)\ntest  \u003c- read.csv(\u0022../input/test.csv\u0022)\n\n# We can inspect the train data. The results of this are printed in the log tab below\nsummary(train)\n\n# Here we will plot the passenger survival by class\ntrain$Survived \u003c- factor(train$Survived, levels=c(1,0))\nlevels(train$Survived) \u003c- c(\u0022Survived\u0022, \u0022Died\u0022)\ntrain$Pclass \u003c- as.factor(train$Pclass)\nlevels(train$Pclass) \u003c- c(\u00221st Class\u0022, \u00222nd Class\u0022, \u00223rd Class\u0022)\n\npng(\u00221_survival_by_class.png\u0022, width=800, height=600)\nmosaicplot(train$Pclass ~ train$Survived, main=\u0022Passenger Survival by Class\u0022,\n           color=c(\u0022#8dd3c7\u0022, \u0022#fb8072\u0022), shade=FALSE,  xlab=\u0022\u0022, ylab=\u0022\u0022,\n           off=c(0), cex.axis=1.4)\ndev.off()\n","dateCreated":"2016-10-19T03:19:47.667Z"},"resources":null,"isolatorResults":"\u003cresults\u003e\u003cdisk_kb_free\u003e472832\u003c/disk_kb_free\u003e\u003cdocker_image_id\u003esha256:473228b1d1f230620c02f62ee2a323635e83efc9165323629acfaba3f2addd64\u003c/docker_image_id\u003e\u003cdocker_image_name\u003ekaggle/rstats\u003c/docker_image_name\u003e\u003cexit_code\u003e0\u003c/exit_code\u003e\u003cfailure_message /\u003e\u003cout_of_memory\u003eFalse\u003c/out_of_memory\u003e\u003crun_time_seconds\u003e1.19964673099457\u003c/run_time_seconds\u003e\u003csucceeded\u003eTrue\u003c/succeeded\u003e\u003ctimeout_exceeded\u003eFalse\u003c/timeout_exceeded\u003e\u003cused_all_space\u003eFalse\u003c/used_all_space\u003e\u003cwas_killed\u003eFalse\u003c/was_killed\u003e\u003c/results\u003e","runInfo":{"dockerfileUrl":"https://github.com/Kaggle/docker-rstats/blob/master/Dockerfile","dockerHubUrl":"https://registry.hub.docker.com/u/kaggle/rstats/","dockerImageDigest":null,"dockerImageId":"sha256:473228b1d1f230620c02f62ee2a323635e83efc9165323629acfaba3f2addd64","dockerImageName":"kaggle/rstats","diskKbFree":472832,"failureMessage":"","exitCode":0,"queuedSeconds":0,"outputSizeBytes":0,"runTimeSeconds":1.19964673099457,"usedAllSpace":false,"timeoutExceeded":false,"isValidStatus":false,"wasGpuEnabled":false,"wasInternetEnabled":false,"outOfMemory":false,"invalidPathErrors":false,"succeeded":true,"wasKilled":false},"outputFilesTotalSizeBytes":9548,"dockerImageVersionId":null,"usedCustomDockerImage":false,"dataSources":[{"sourceType":"Competition","sourceId":3136,"databundleVersionId":null}]},"author":{"id":751315,"displayName":"James Bradd","email":null,"editedEmail":null,"editedEmailCode":null,"userName":"pdxshark","thumbnailUrl":"https://storage.googleapis.com/kaggle-avatars/thumbnails/751315-gr.jpg","profileUrl":"/pdxshark","registerDate":"0001-01-01T00:00:00Z","lastVisitDate":"0001-01-01T00:00:00Z","statusId":0,"performanceTier":0,"userRoles":null,"userLogins":null,"groupIds":null,"duplicateUsers":null,"hasPhoneVerifications":false,"failedNerdchas":0,"hasPendingNerdcha":false,"deleteRequests":null,"userAttributes":null,"isAdmin":false,"isTvc":false,"isKaggleBot":false,"isAdminOrTvc":false,"isAnonymous":false,"canAct":false,"canBeSeen":false,"thumbnailName":null,"activationCode":"00000000-0000-0000-0000-000000000000","isPhoneVerified":false},"baseUrl":"/pdxshark/first-titanic-analysis","collaborators":{"owner":{"userId":751315,"groupId":null,"groupMemberCount":null,"profileUrl":"/pdxshark","thumbnailUrl":"https://storage.googleapis.com/kaggle-avatars/thumbnails/751315-gr.jpg","name":"James Bradd","slug":"pdxshark","userTier":0,"joinDate":null,"type":"owner","isUser":true,"isGroup":false},"collaborators":[]},"initialTab":null,"log":"[{\n  \u0022data\u0022: \u0022randomForest 4.6-12\\nType rfNews() to see new features/changes/bug fixes.\\n\u0022,\n  \u0022stream_name\u0022: \u0022stderr\u0022,\n  \u0022time\u0022: 0.469752185017569\n},{\n  \u0022data\u0022: \u0022  PassengerId       Survived          Pclass     \\n Min.   :  1.0   Min.   :0.0000   Min.   :1.000  \\n 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  \\n Median :446.0   Median :0.0000   Median :3.000  \\n Mean   :446.0   Mean   :0.3838   Mean   :2.309  \\n 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  \\n Max.   :891.0   Max.   :1.0000   Max.   :3.000  \\n                                                 \\n                                    Name         Sex           Age       \\n Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  \\n Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  \\n Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  \\n Abelson, Mr. Samuel                  :  1                Mean   :29.70  \\n Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  \\n Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  \\n (Other)                              :885                NA\u0027s   :177    \\n     SibSp           Parch             Ticket         Fare       \\n Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  \\n 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  \\n Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  \\n Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  \\n 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  \\n Max.   :8.000   Max.   :6.0000   CA 2144 :  6  \u0022,\n  \u0022stream_name\u0022: \u0022stdout\u0022,\n  \u0022time\u0022: 0.5005185040063225\n},{\n  \u0022data\u0022: \u0022 Max.   :512.33  \\n                                  (Other) :852                   \\n         Cabin     Embarked\\n            :687    :  2   \\n B96 B98    :  4   C:168   \\n C23 C25 C27:  4   Q: 77   \\n G6         :  4   S:644   \\n C22 C26    :  3           \\n D          :  3           \\n (Other)    :186           \\n\u0022,\n  \u0022stream_name\u0022: \u0022stdout\u0022,\n  \u0022time\u0022: 0.5041687370103318\n},{\n  \u0022data\u0022: \u0022null device \\n          1 \\n\u0022,\n  \u0022stream_name\u0022: \u0022stdout\u0022,\n  \u0022time\u0022: 1.0220990740053821\n}]","outputFiles":[{"ownerInfo":null,"kernelVersionOutputFileId":950330,"kernelVersionId":403919,"kernelId":107443,"size":0,"fullPath":"1_survival_by_class.png","previewUrl":"/kernels/preview.json/403919/d9709fd0-ef2f-281a-3937-b9227bb2919b/1_survival_by_class.png","downloadUrl":"https://www.kaggleusercontent.com/kf/403919/eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..06xE0lu4KYsjVjsZ0idHJg.azM5v-bH5phbCrbLDyNbgRrYec9CuKValUVD9Wz_BjeQQNsFybZVUj7udVXQuhY1ev-d17f1jfXHHaia5tOLptKGXon83d8lil5sFP_O5bK5mW3qdAkJtMuhVNduvDbAFLB9gIy4lhPg6LXfTFIh7Q.I_j3afW10QkI-JgpzuY8qA/1_survival_by_class.png","fileType":".png","contentLength":9548,"contentType":null,"contentMD5":null,"validationErrors":null,"type":"kernelOutputFile","collapsed":false,"info":{"metrics":null,"archiveInfo":null,"archiveInfoV2":null,"blobFileInfo":null,"convertCsvInfo":null,"kernelReference":null},"settings":{"csvSettings":null,"bigQuerySettings":null,"bigQueryMirrorSettings":null,"storageSettings":null,"remoteUrlSettings":null,"remoteGithubSettings":null},"render":null,"children":[],"firestorePath":null,"firestoreKey":null,"name":"1_survival_by_class.png","description":null}],"outputFilesCropped":false,"ouputFilesOwnerInfo":{"databundleVersionId":0,"dataset":null,"competition":null,"kernel":{"kernelId":107443,"kernelVersionId":403919,"dataviewToken":"eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..pkSQbv4V0Olq3-Sw4ogj0Q.xbw-0ySg-dJMvxoXU8vAQxPimaxF_PMU0q0AOmRloeeVvVIr8TfbInXpak9ruoNd1oqC6Y-WgCDjI0MtqQoco5czBwz7Z40bjKxWlrp6Dq9NTrfITkUC4vy195bu2uO2Ge_Lz3Y9uTnJiwh9UprLc-hHc-xoXbKNMBFTPipK9M8z22_Rr_JUALTATCDAx20EBZ8DZpFAdwBxX5K3J312cV3su-TqTfsfVrXlcLnDAoMWKlNRro5MkGBg1r7Uj1U8QRN7LmjF7wdnSHAAUec2Vq1xc5DvOJcMuYqfxJWfmlKrUdegwoMb7tQ5yZhOaMznq1lYrvpSe6AmmsL1EigVU9pDyxBoh-R2LegmrUfaAzX8U4QNQS3uLj85CYNHCPPoP5OHmHsmj9GUPS4kF7EvPxP5b0VTrB-LbYZ72Y0oG7XD-JDdFpVAkWNWuY-WRo2PjELmdX__ftopMBAcMBAn4A.vED-7nWGQ5bNGRfmDbQGww","scope":"pdxshark/first-titanic-analysis"},"previewsDisabled":false},"pageMessages":[],"dataSources":[{"imageUrl":"https://storage.googleapis.com/kaggle-competitions/kaggle/3136/logos/thumb76_76.png","sourceUrl":"/c/titanic","slug":"titanic","lastUpdated":"2012-09-28T21:13:33.55Z","overview":"Start here! Predict survival on the Titanic and get familiar with ML basics","sourceType":"competition","sourceVersionType":null,"sourceId":3136,"sourceVersionNumber":null,"maxVersionNumber":null,"descriptionMimeType":"text/html","deleted":false,"private":false,"privateButVisible":false,"ownerInfo":{"databundleVersionId":26502,"dataset":null,"competition":{"competitionId":3136,"dataviewToken":null,"scope":"c/titanic"},"kernel":null,"previewsDisabled":true},"type":"dataSource","collapsed":false,"info":{"metrics":null,"archiveInfo":null,"archiveInfoV2":null,"blobFileInfo":null,"convertCsvInfo":null,"kernelReference":null},"settings":{"csvSettings":null,"bigQuerySettings":null,"bigQueryMirrorSettings":null,"storageSettings":null,"remoteUrlSettings":null,"remoteGithubSettings":null},"render":null,"children":[{"id":63842,"blobFileId":37991,"databundleVersionId":26502,"databundleVersionObjectType":"file","url":null,"relativePath":"../input/gender_submission.csv","creationDate":"2017-02-01T01:49:18Z","isDummy":false,"size":3258,"fullPath":"../input/gender_submission.csv","previewUrl":"kernels/competition-preview/3136?relativePath=gender_submission.csv","downloadUrl":"/c/titanic/download/gender_submission.csv","fileType":".csv","contentLength":3258,"contentType":"text/csv","contentMD5":"MNEHO5ZKXYFUMexgOg3jUw==","validationErrors":null,"type":"databundleVersionObject","collapsed":false,"info":{"metrics":{"tableMetrics":{"exception":null,"rowCount":418},"columnMetrics":[]},"archiveInfo":null,"archiveInfoV2":null,"blobFileInfo":null,"convertCsvInfo":null,"kernelReference":null},"settings":{"csvSettings":{"delimiter":",","includesHeader":true},"bigQuerySettings":null,"bigQueryMirrorSettings":null,"storageSettings":null,"remoteUrlSettings":null,"remoteGithubSettings":null},"render":null,"children":[{"columns":[{"order":0,"originalType":"","type":"string","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"PassengerId","description":"892\n893\n894\n895\n896\n897\n898\n899\n900\n901\n902\n903\n904\n905\n906\n907\n908\n909\n910\n911\n912\n913\n914\n915\n916\n917\n918\n919\n920\n921\n922\n923\n924\n925\n926\n927\n928\n929\n930\n931\n932\n933\n934\n935\n936\n937\n938\n939\n940\n941\n942\n943\n944\n945\n946\n947\n948\n949\n950\n951\n952\n953\n954\n955\n956\n957\n958\n959\n960\n961\n962\n963\n964\n965\n966\n967\n968\n969\n970\n971\n972\n973\n974\n975\n976\n977\n978\n979\n980\n981\n982\n983\n984\n985\n986\n987\n988\n989\n990\n991\n992\n993\n994\n995\n996\n997\n998\n999\n1000\n1001\n1002\n1003\n1004\n1005\n1006\n1007\n1008\n1009\n1010\n1011\n1012\n1013\n1014\n1015\n1016\n1017\n1018\n1019\n1020\n1021\n1022\n1023\n1024\n1025\n1026\n1027\n1028\n1029\n1030\n1031\n1032\n1033\n1034\n1035\n1036\n1037\n1038\n1039\n1040\n1041\n1042\n1043\n1044\n1045\n1046\n1047\n1048\n1049\n1050\n1051\n1052\n1053\n1054\n1055\n1056\n1057\n1058\n1059\n1060\n1061\n1062\n1063\n1064\n1065\n1066\n1067\n1068\n1069\n1070\n1071\n1072\n1073\n1074\n1075\n1076\n1077\n1078\n1079\n1080\n1081\n1082\n1083\n1084\n1085\n1086\n1087\n1088\n1089\n1090\n1091\n1092\n1093\n1094\n1095\n1096\n1097\n1098\n1099\n1100\n1101\n1102\n1103\n1104\n1105\n1106\n1107\n1108\n1109\n1110\n1111\n1112\n1113\n1114\n1115\n1116\n1117\n1118\n1119\n1120\n1121\n1122\n1123\n1124\n1125\n1126\n1127\n1128\n1129\n1130\n1131\n1132\n1133\n1134\n1135\n1136\n1137\n1138\n1139\n1140\n1141\n1142\n1143\n1144\n1145\n1146\n1147\n1148\n1149\n1150\n1151\n1152\n1153\n1154\n1155\n1156\n1157\n1158\n1159\n1160\n1161\n1162\n1163\n1164\n1165\n1166\n1167\n1168\n1169\n1170\n1171\n1172\n1173\n1174\n1175\n1176\n1177\n1178\n1179\n1180\n1181\n1182\n1183\n1184\n1185\n1186\n1187\n1188\n1189\n1190\n1191\n1192\n1193\n1194\n1195\n1196\n1197\n1198\n1199\n1200\n1201\n1202\n1203\n1204\n1205\n1206\n1207\n1208\n1209\n1210\n1211\n1212\n1213\n1214\n1215\n1216\n1217\n1218\n1219\n1220\n1221\n1222\n1223\n1224\n1225\n1226\n1227\n1228\n1229\n1230\n1231\n1232\n1233\n1234\n1235\n1236\n1237\n1238\n1239\n1240\n1241\n1242\n1243\n1244\n1245\n1246\n1247\n1248\n1249\n1250\n1251\n1252\n1253\n1254\n1255\n1256\n1257\n1258\n1259\n1260\n1261\n1262\n1263\n1264\n1265\n1266\n1267\n1268\n1269\n1270\n1271\n1272\n1273\n1274\n1275\n1276\n1277\n1278\n1279\n1280\n1281\n1282\n1283\n1284\n1285\n1286\n1287\n1288\n1289\n1290\n1291\n1292\n1293\n1294\n1295\n1296\n1297\n1298\n1299\n1300\n1301\n1302\n1303\n1304\n1305\n1306\n1307\n1308\n1309\n"},{"order":1,"originalType":"","type":"boolean","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Survived","description":"0\n0\n0\n1\n1\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n1\n0\n0\n0\n1\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n1\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n1\n0\n1\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0\n1\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n1\n0\n0\n0\n0\n0\n0\n0\n0\n0\n0\n"}],"totalRows":null,"type":"genericTable","collapsed":true,"info":{"metrics":null,"archiveInfo":null,"archiveInfoV2":null,"blobFileInfo":null,"convertCsvInfo":null,"kernelReference":null},"settings":{"csvSettings":null,"bigQuerySettings":null,"bigQueryMirrorSettings":null,"storageSettings":null,"remoteUrlSettings":null,"remoteGithubSettings":null},"render":null,"children":[],"firestorePath":null,"firestoreKey":null,"name":"","description":null}],"firestorePath":null,"firestoreKey":null,"name":"gender_submission.csv","description":"892,0\n893,0\n894,0\n895,0\n896,0\n897,0\n898,0\n899,0\n900,0\n901,0\n902,0\n903,0\n904,1\n905,0a\n906,1\n907,0\n908,0\n909,0\n910,0\n911,0\n912,1\n913,0\n914,0\n915,0\n916,1\n917,0\n918,0\n919,0\n920,0\n921,0\n922,0\n923,0\n924,0\n925,0\n926,1\n927,0\n928,0\n929,0\n930,0\n931,1\n932,0\n933,0\n934,0\n935,0\n936,1\n937,0\n938,0\n939,0\n940,1\n941,0\n942,1\n943,0\n944,0\n945,1\n946,0\n947,0\n948,0\n949,0\n950,0\n951,1\n952,0\n953,0\n954,0\n955,0\n956,1\n957,0\n958,0\n959,0\n960,0\n961,1\n962,\n963,0\n964,0\n965,0\n966,1\n967,1\n968,0\n969,0\n970,0\n971,0\n972,0\n973,1\n974,0\n975,0\n976,0\n977,0\n978,0\n979,0\n980,0\n981,0\n982,0\n983,0\n984,0\n985,0\n986,0\n987,0\n988,1\n989,0\n990,0\n991,0\n992,1\n993,0\n994,0\n995,0\n996,0\n997,0\n998,0\n999,0\n1000,0\n1001,0\n1002,0\n1003,0\n1004,0\n1005,0\n1006,1\n1007,0\n1008,0\n1009,0\n1010,1\n1011,0\n1012,0\n1013,0\n1014,1\n1015,0\n1016,0\n1017,0\n1018,0\n1019,0\n1020,0\n1021,0\n1022,0\n1023,0\n1024,0\n1025,0\n1026,0\n1027,0\n1028,0\n1029,0\n1030,0\n1031,0\n1032,0\n1033,1\n1034,1\n1035,0\n1036,0\n1037,0\n1038,1\n1039,0\n1040,0\n1041,0\n1042,1\n1043,0\n1044,0\n1045,0\n1046,0\n1047,0\n1048,1\n1049,0\n1050,0\n1051,0\n1052,0\n1053,0\n1054,0\n1055,0\n1056,0\n1057,0\n1058,1\n1059,0\n1060,0\n1061,0\n1062,0\n1063,0\n1064,0\n1065,0\n1066,0\n1067,0\n1068,0\n1069,1\n1070,0\n1071,1\n1072,0\n1073,1\n1074,1\n1075,0\n1076,1\n1077,0\n1078,0\n1079,0\n1080,1\n1081,0\n1082,0\n1083,0\n1084,0\n1085,0\n1086,0\n1087,0\n1088,1\n1089,0\n1090,0\n1091,0\n1092,0\n1093,0\n1094,1\n1095,0\n1096,0\n1097,0\n1098,0\n1099,0\n1100,0\n1101,0\n1102,0\n1103,0\n1104,1\n1105,0\n1106,0\n1107,0\n1108,0\n1109,1\n1110,1\n1111,0\n1112,0\n1113,0\n1114,0\n1115,0\n1116,0\n1117,0\n1118,0\n1119,0\n1120,0\n1121,0\n1122,1\n1123,0\n1124,0\n1125,0\n1126,1\n1127,0\n1128,1\n1129,0\n1130,0\n1131,1\n1132,0\n1133,0\n1134,1\n1135,0\n1136,0\n1137,1\n1138,0\n1139,0\n1140,0\n1141,0\n1142,0\n1143,0\n1144,1\n1145,0\n1146,0\n1147,0\n1148,0\n1149,0\n1150,0\n1151,0\n1152,0\n1153,0\n1154,0\n1155,0\n1156,0\n1157,0\n1158,0\n1159,0\n1160,0\n1161,0\n1162,1\n1163,0\n1164,1\n1165,0\n1166,0\n1167,0\n1168,0\n1169,0\n1170,0\n1171,0\n1172,0\n1173,0\n1174,0\n1175,0\n1176,0\n1177,0\n1178,0\n1179,1\n1180,0\n1181,0\n1182,0\n1183,0\n1184,0\n1185,1\n1186,0\n1187,0\n1188,0\n1189,0\n1190,1\n1191,0\n1192,0\n1193,0\n1194,0\n1195,0\n1196,0\n1197,0\n1198,1\n1199,0\n1200,1\n1201,0\n1202,0\n1203,0\n1204,0\n1205,0\n1206,1\n1207,0\n1208,1\n1209,0\n1210,0\n1211,0\n1212,0\n1213,0\n1214,0\n1215,0\n1216,1\n1217,0\n1218,0\n1219,1\n1220,0\n1221,0\n1222,0\n1223,0\n1224,0\n1225,0\n1226,0\n1227,0\n1228,0\n1229,0\n1230,0\n1231,0\n1232,0\n1233,0\n1234,1\n1235,1\n1236,0\n1237,0\n1238,0\n1239,0\n1240,0\n1241,0\n1242,1\n1243,0\n1244,1\n1245,1\n1246,0\n1247,0\n1248,1\n1249,0\n1250,0\n1251,0\n1252,1\n1253,0\n1254,0\n1255,0\n1256,1\n1257,1\n1258,0\n1259,0\n1260,0\n1261,0\n1262,0\n1263,1\n1264,0\n1265,0\n1266,1\n1267,1\n1268,0\n1269,0\n1270,1\n1271,0\n1272,0\n1273,0\n1274,0\n1275,0\n1276,0\n1277,1\n1278,0\n1279,0\n1280,0\n1281,0\n1282,1\n1283,0\n1284,0\n1285,0\n1286,0\n1287,1\n1288,0\n1289,1\n1290,0\n1291,0\n1292,1\n1293,0\n1294,0\n1295,1\n1296,0\n1297,0\n1298,0\n1299,1\n1300,0\n1301,0\n1302,0\n1303,1\n1304,0\n1305,0\n1306,1\n1307,0\n1308,0\n1309,0"},{"id":63841,"blobFileId":2613,"databundleVersionId":26502,"databundleVersionObjectType":"file","url":null,"relativePath":"../input/test.csv","creationDate":"2013-06-28T13:40:24.227Z","isDummy":false,"size":28629,"fullPath":"../input/test.csv","previewUrl":"kernels/competition-preview/3136?relativePath=test.csv","downloadUrl":"/c/titanic/download/test.csv","fileType":".csv","contentLength":28629,"contentType":"text/csv","contentMD5":"dTO4Lq5LWCYQy9aKpjawFw==","validationErrors":null,"type":"databundleVersionObject","collapsed":false,"info":{"metrics":{"tableMetrics":{"exception":null,"rowCount":418},"columnMetrics":[]},"archiveInfo":null,"archiveInfoV2":null,"blobFileInfo":null,"convertCsvInfo":null,"kernelReference":null},"settings":{"csvSettings":{"delimiter":",","includesHeader":true},"bigQuerySettings":null,"bigQueryMirrorSettings":null,"storageSettings":null,"remoteUrlSettings":null,"remoteGithubSettings":null},"render":null,"children":[{"columns":[{"order":0,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"PassengerId","description":"1"},{"order":1,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Pclass","description":"1"},{"order":2,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Name","description":"the name of the passenger"},{"order":3,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Sex","description":null},{"order":4,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Age","description":null},{"order":5,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"SibSp","description":"of siblings / spouses aboard the Titanic"},{"order":6,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Parch","description":"of parents / children aboard the Titanic"},{"order":7,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Ticket","description":"Ticket number"},{"order":8,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Fare","description":"Passenger fare"},{"order":9,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Cabin","description":"Cabin number"},{"order":10,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Embarked","description":"Port of Embarkation"}],"totalRows":null,"type":"genericTable","collapsed":true,"info":{"metrics":null,"archiveInfo":null,"archiveInfoV2":null,"blobFileInfo":null,"convertCsvInfo":null,"kernelReference":null},"settings":{"csvSettings":null,"bigQuerySettings":null,"bigQueryMirrorSettings":null,"storageSettings":null,"remoteUrlSettings":null,"remoteGithubSettings":null},"render":null,"children":[],"firestorePath":null,"firestoreKey":null,"name":"","description":null}],"firestorePath":null,"firestoreKey":null,"name":"test.csv","description":"test data to check the accuracy of the model created\n"},{"id":63840,"blobFileId":2307,"databundleVersionId":26502,"databundleVersionObjectType":"file","url":null,"relativePath":"../input/train.csv","creationDate":"2013-06-28T13:40:25.23Z","isDummy":false,"size":61194,"fullPath":"../input/train.csv","previewUrl":"kernels/competition-preview/3136?relativePath=train.csv","downloadUrl":"/c/titanic/download/train.csv","fileType":".csv","contentLength":61194,"contentType":"text/csv","contentMD5":"IwnMXwR4Ltm7YBbZ9OOBzw==","validationErrors":null,"type":"databundleVersionObject","collapsed":false,"info":{"metrics":{"tableMetrics":{"exception":null,"rowCount":891},"columnMetrics":[]},"archiveInfo":null,"archiveInfoV2":null,"blobFileInfo":null,"convertCsvInfo":null,"kernelReference":null},"settings":{"csvSettings":{"delimiter":",","includesHeader":true},"bigQuerySettings":null,"bigQueryMirrorSettings":null,"storageSettings":null,"remoteUrlSettings":null,"remoteGithubSettings":null},"render":null,"children":[{"columns":[{"order":0,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"PassengerId","description":"type should be integers"},{"order":1,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Survived","description":"Survived or Not "},{"order":2,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Pclass","description":"Class of Travel"},{"order":3,"originalType":"","type":"string","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Name","description":"Name of Passenger"},{"order":4,"originalType":"","type":"string","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Sex","description":"Gender"},{"order":5,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Age","description":"Age of Passengers"},{"order":6,"originalType":"","type":"string","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"SibSp","description":"Number of Sibling/Spouse aboard"},{"order":7,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Parch","description":"Number of Parent/Child aboard"},{"order":8,"originalType":"","type":"string","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Ticket","description":null},{"order":9,"originalType":"","type":"numeric","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Fare","description":null},{"order":10,"originalType":"","type":"string","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Cabin","description":null},{"order":11,"originalType":"","type":"string","extendedType":null,"isNullable":false,"isPrimaryKey":false,"isLabel":false,"info":null,"firestorePath":null,"firestoreKey":null,"name":"Embarked","description":"The port in which a passenger has embarked. C - Cherbourg, S - Southampton, Q = Queenstown"}],"totalRows":null,"type":"genericTable","collapsed":true,"info":{"metrics":null,"archiveInfo":null,"archiveInfoV2":null,"blobFileInfo":null,"convertCsvInfo":null,"kernelReference":null},"settings":{"csvSettings":null,"bigQuerySettings":null,"bigQueryMirrorSettings":null,"storageSettings":null,"remoteUrlSettings":null,"remoteGithubSettings":null},"render":null,"children":[],"firestorePath":null,"firestoreKey":null,"name":"","description":null}],"firestorePath":null,"firestoreKey":null,"name":"train.csv","description":"contains data \n"}],"firestorePath":null,"firestoreKey":null,"name":"Titanic: Machine Learning from Disaster","description":"\u003ch3\u003eOverview\u003c/h3\u003e\n\u003cp\u003eThe data has been split into two groups:\u003c/p\u003e\n\u003cul\u003e\n\u003cli\u003etraining set (train.csv)\u003c/li\u003e\n\u003cli\u003etest set (test.csv)\u003c/li\u003e\n\u003c/ul\u003e\n\u003cp\u003e\u003cb\u003e The training set \u003c/b\u003eshould be used to build your machine learning models. For the training set, we provide the outcome (also known as the “ground truth”) for each passenger. Your model will be based on “features” like passengers’ gender and class. You can also use \u003ca href=\u0022https://triangleinequality.wordpress.com/2013/09/08/basic-feature-engineering-with-the-titanic-data/\u0022 target=\u0022_blank\u0022\u003e feature engineering \u003c/a\u003eto create new features.\u003c/p\u003e\n\u003cp\u003e\u003cb\u003eThe test set \u003c/b\u003eshould be used to see how well your model performs on unseen data. For the test set, we do not provide the ground truth for each passenger. It is your job to predict these outcomes. For each passenger in the test set, use the model you trained to predict whether or not they survived the sinking of the Titanic.\u003c/p\u003e\n\u003cp\u003eWe also include \u003cb\u003egender_submission.csv\u003c/b\u003e, a set of predictions that assume all and only female passengers survive, as an example of what a submission file should look like.\u003c/p\u003e\n\u003ch3\u003eData Dictionary\u003c/h3\u003e\n\u003ctable style=\u0022width: 100%;\u0022\u003e\n\u003ctbody\u003e\n\u003ctr\u003e\u003cth\u003e\u003cb\u003eVariable\u003c/b\u003e\u003c/th\u003e\u003cth\u003e\u003cb\u003eDefinition\u003c/b\u003e\u003c/th\u003e\u003cth\u003e\u003cb\u003eKey\u003c/b\u003e\u003c/th\u003e\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003esurvival\u003c/td\u003e\n\u003ctd\u003eSurvival\u003c/td\u003e\n\u003ctd\u003e0 = No, 1 = Yes\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003epclass\u003c/td\u003e\n\u003ctd\u003eTicket class\u003c/td\u003e\n\u003ctd\u003e1 = 1st, 2 = 2nd, 3 = 3rd\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003esex\u003c/td\u003e\n\u003ctd\u003eSex\u003c/td\u003e\n\u003ctd\u003e\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003eAge\u003c/td\u003e\n\u003ctd\u003eAge in years\u003c/td\u003e\n\u003ctd\u003e\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003esibsp\u003c/td\u003e\n\u003ctd\u003e# of siblings / spouses aboard the Titanic\u003c/td\u003e\n\u003ctd\u003e\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003eparch\u003c/td\u003e\n\u003ctd\u003e# of parents / children aboard the Titanic\u003c/td\u003e\n\u003ctd\u003e\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003eticket\u003c/td\u003e\n\u003ctd\u003eTicket number\u003c/td\u003e\n\u003ctd\u003e\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003efare\u003c/td\u003e\n\u003ctd\u003ePassenger fare\u003c/td\u003e\n\u003ctd\u003e\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003ecabin\u003c/td\u003e\n\u003ctd\u003eCabin number\u003c/td\u003e\n\u003ctd\u003e\u003c/td\u003e\n\u003c/tr\u003e\n\u003ctr\u003e\n\u003ctd\u003eembarked\u003c/td\u003e\n\u003ctd\u003ePort of Embarkation\u003c/td\u003e\n\u003ctd\u003eC = Cherbourg, Q = Queenstown, S = Southampton\u003c/td\u003e\n\u003c/tr\u003e\n\u003c/tbody\u003e\n\u003c/table\u003e\n\u003ch3\u003eVariable Notes\u003c/h3\u003e\n\u003cp\u003e\u003cb\u003epclass\u003c/b\u003e: A proxy for socio-economic status (SES)\u003cbr /\u003e 1st = Upper\u003cbr /\u003e 2nd = Middle\u003cbr /\u003e 3rd = Lower\u003cbr /\u003e\u003cbr /\u003e \u003cb\u003eage\u003c/b\u003e: Age is fractional if less than 1. If the age is estimated, is it in the form of xx.5\u003cbr /\u003e\u003cbr /\u003e \u003cb\u003esibsp\u003c/b\u003e: The dataset defines family relations in this way...\u003cbr /\u003e Sibling = brother, sister, stepbrother, stepsister\u003cbr /\u003e Spouse = husband, wife (mistresses and fiancés were ignored)\u003cbr /\u003e\u003cbr /\u003e \u003cb\u003eparch\u003c/b\u003e: The dataset defines family relations in this way...\u003cbr /\u003e Parent = mother, father\u003cbr /\u003e Child = daughter, son, stepdaughter, stepson\u003cbr /\u003e Some children travelled only with a nanny, therefore parch=0 for them.\u003c/p\u003e"}],"versions":[{"id":403919,"kernelVersionId":null,"isForkParent":false,"isNotebook":false,"languageName":"R","lastRunTime":"2016-10-19T03:19:47.667Z","linesChangedFromPrevious":0,"linesDeletedFromPrevious":0,"linesInsertedFromPrevious":25,"outputFilesTotalSizeBytes":0,"runInfo":{"dockerfileUrl":"https://github.com/Kaggle/docker-rstats/blob/master/Dockerfile","dockerHubUrl":"https://registry.hub.docker.com/u/kaggle/rstats/","dockerImageId":"sha256:473228b1d1f230620c02f62ee2a323635e83efc9165323629acfaba3f2addd64","dockerImageName":"kaggle/rstats","exitCode":0,"failureMessage":"","isValidStatus":true,"runTimeSeconds":1.19964673099457,"succeeded":true,"timeoutExceeded":false,"usedAllSpace":false},"status":"complete","title":"First Titanic Analysis","url":"/pdxshark/first-titanic-analysis?scriptVersionId=403919","versionNumber":1,"hasVersionNumber":true,"isRedacted":false,"versionAuthor":null}],"categories":{"categories":[],"type":"script"},"submitToCompetitionInfo":null,"downloadAllFilesUrl":"/kernels/svzip/403919","submission":null,"menuLinks":[{"href":"/pdxshark/first-titanic-analysis/code","text":"Code","title":"Code","tab":"code","count":null,"showZeroCountExplicitly":false,"reportEventCategory":null,"reportEventType":null},{"href":"/pdxshark/first-titanic-analysis/log","text":"Log","title":"Log","tab":"log","count":null,"showZeroCountExplicitly":false,"reportEventCategory":null,"reportEventType":null},{"href":"/pdxshark/first-titanic-analysis/data","text":"Data","title":"Data","tab":"data","count":1,"showZeroCountExplicitly":false,"reportEventCategory":null,"reportEventType":null},{"href":"/pdxshark/first-titanic-analysis/output","text":"Output","title":"Output","tab":"output","count":null,"showZeroCountExplicitly":false,"reportEventCategory":null,"reportEventType":null},{"href":"/pdxshark/first-titanic-analysis/comments","text":"Comments","title":"Comments","tab":"comments","count":0,"showZeroCountExplicitly":true,"reportEventCategory":null,"reportEventType":null}],"rightMenuLinks":[],"callToAction":{"href":"/kernels/fork-version/403919","text":"Fork Script","title":"Fork Script","tab":null,"count":null,"showZeroCountExplicitly":false,"reportEventCategory":"kernels","reportEventType":"anonymousKernelForkCreation"},"voteButton":{"totalVotes":0,"hasAlreadyVotedUp":false,"hasAlreadyVotedDown":false,"canUpvote":true,"canDownvote":false,"voteUpUrl":"/kernels/vote?id=107443","voteDownUrl":null,"voters":[],"currentUserInfo":null,"showVoters":true,"alwaysShowVoters":true},"parentDataSource":null,"parentName":"Titanic: Machine Learning from Disaster","parentUrl":"/c/titanic","thumbnailImageUrl":"https://storage.googleapis.com/kaggle-competitions/kaggle/3136/logos/thumb76_76.png","canWrite":false,"canAdminister":false,"datasetHidden":false,"forkParentIsRedacted":false,"forkDiffLinesChanged":0,"forkDiffLinesDeleted":0,"forkDiffLinesInserted":0,"forkDiffUrl":null,"forkParentAuthorDisplayName":null,"forkParentAuthorUrl":null,"forkParentTitle":null,"forkParentUrl":null,"canSeeDataExplorerV2":true,"canSeeRevampedViewer":true,"canSeeInnerTableOfContents":true,"simplifiedViewer":false,"kernelOutputDataset":null});performance && performance.mark && performance.mark("KernelViewer.componentCouldBootstrap");</script>
+
+<form action="/pdxshark/first-titanic-analysis" id="__AjaxAntiForgeryForm" method="post"><input name="X-XSRF-TOKEN" type="hidden" value="CfDJ8LdUzqlsSWBPr4Ce3rb9VL-px3Y3MxxAZ3cmBy7bhoyQ0MsHg9DxBZCO3Hh0BPXugJdgxkFRJB4C9NmuxhMNET_-DVJMdW5pHiDZI6A1Mequv0MRyFB_4MLOZ7YhvFFRAMrKO6W__AAlx0rpeVl3JVA" /></form>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        "HTML-CSS": {
+            preferredFont: "TeX",
+            availableFonts: ["STIX", "TeX"],
+            linebreaks: {
+                automatic: true
+            },
+            EqnChunk: (MathJax.Hub.Browser.isMobile ? 10 : 50)
+        },
+        tex2jax: {
+            inlineMath: [["\\(", "\\)"], ["\\\\(", "\\\\)"]],
+            displayMath: [["$$", "$$"], ["\\[", "\\]"]],
+            processEscapes: true,
+            ignoreClass: "tex2jax_ignore|dno"
+        },
+        TeX: {
+            noUndefined: {
+                attributes: {
+                    mathcolor: "red",
+                    mathbackground: "#FFEEEE",
+                    mathsize: "90%"
+                }
+            }
+        },
+        Macros: {
+            href: "{}"
+        },
+        skipStartupTypeset: true,
+        messageStyle: "none"
+    });
+</script>
+<script type="text/javascript" async crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+
+
+    </div>
+
+        <div class="site-layout__footer">
+            <footer class="site-footer">
+    <div class="site-footer__content">
+        <div class="site-footer__copyright">
+            <span>&copy; 2019 Kaggle Inc</span>
+        </div>
+        <nav class="site-footer__nav">
+            <a href="/team">Our Team</a>
+            <a href="/terms">Terms</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/contact">Contact/Support</a>
+        </nav>
+        <nav class="site-footer__social">
+            <div data-component-name="SocialIcons" style="display: flex; flex-direction: column; flex: 1 0 auto;"></div><script>var Kaggle=window.Kaggle||{};Kaggle.State=Kaggle.State||[];Kaggle.State.push();performance && performance.mark && performance.mark("SocialIcons.componentCouldBootstrap");</script>
+        </nav>
+    </div>
+</footer>
+
+        </div>
+</div>
+
+
+
+
+    </main>
+</body>
+</html>

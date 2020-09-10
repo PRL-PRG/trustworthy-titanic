@@ -1,0 +1,99 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> 
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> system("ls ../input")
+gender_submission.csv
+test.csv
+train.csv
+> 
+> # Any results you write to the current directory are saved as output.
+> 
+> # Reading training and test dataset
+> trainDS <- read.csv('../input/train.csv', stringsAsFactors = F)
+> testDS  <- read.csv('../input/test.csv', stringsAsFactors = F)
+> head(trainDS)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> 
+> Features = trainDS[ , c("Pclass", "Age", "Sex")]
+> head(Features)
+  Pclass Age    Sex
+1      3  22   male
+2      1  38 female
+3      3  26 female
+4      1  35 female
+5      3  35   male
+6      3  NA   male
+> 
+> meanAge = mean(Features[, "Age"], na.rm=TRUE) #29.69
+> Features$Age[is.na(Features$Age)] <- meanAge
+> 
+> dat <- data.frame(X=Features[, "Pclass"],
++                   Y=Features[, "Age"],
++                   att1=trainDS[, "Survived"],
++                   att2=trainDS[, "Sex"])
+> head(dat)
+  X        Y att1   att2
+1 3 22.00000    0   male
+2 1 38.00000    1 female
+3 3 26.00000    1 female
+4 1 35.00000    1 female
+5 3 35.00000    0   male
+6 3 29.69912    0   male
+> ggplot(dat) + geom_point(aes(x=X, y=Y, color=factor(att1),shape=att2), size=5) 
+> 
+> # 
+> 
+> proc.time()
+   user  system elapsed 
+  0.819   0.081   0.911 

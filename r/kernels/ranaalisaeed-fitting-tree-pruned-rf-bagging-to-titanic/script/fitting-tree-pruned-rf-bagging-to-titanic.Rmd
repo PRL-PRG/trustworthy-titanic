@@ -1,0 +1,320 @@
+---
+title: "Boosting Titanic"
+author: "Rana Ali Saeed"
+date: "17/12/2016"
+output: html_document
+---
+
+This is my first attempt and contribution to Kaggle. This script has scored around 76% on the public test set. Not up to the point I was hoping to hit. Please leave any comments that you find regarding room for improvement or suggestions. thanks.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction, Loading and Exploring Data
+
+## Import packages
+
+```{r message=FALSE}
+library('dplyr') # data manipulation
+library('tree') # construct classification or regression trees
+library('mice') # missing data imputation
+library('lattice') # used with mice to plot
+library('VIM') # visualisation of missing data
+library('ggplot2') # plotting
+library('ggthemes') # plotting
+library('scales') # plotting with scales
+library('randomForest')
+library('gbm')
+library('caret') # confusionMatrix to calculate accuracy
+```
+
+## Load data
+
+```{r}
+train = read.csv('../input/train.csv', header = T, stringsAsFactors = F, na.strings = "")
+test = read.csv('../input/test.csv', header = T, stringsAsFactors = F, na.strings = "")
+full = bind_rows(train, test)
+```
+
+## Inspect data
+
+```{r}
+str(full)
+```
+
+We are dealing with the following `r ncol(full)` variables. "Type" column lists the expected type of each variable. 
+
+Variable Name | Description                         | Context   | Type
+--------------|-------------------------------------|-----------|-------
+PassengerId   | ID number assigned to passenger     | Predictor | Factor
+Survived      | Survived (1) or died (0)            | Output    | Factor
+Pclass        | Passenger class                     | Predictor | Factor
+Name          | Passenger name                      | Predictor | String
+Sex           | Passenger sex                       | Predictor | Factor
+Age           | Passenger age                       | Predictor | Numeric
+SibSp         | Number of siblings/spouses aboard   | Predictor | Numeric
+Parch         | Number of parents/children aboard   | Predictor | Numeric
+Ticket        | Ticket number                       | Predictor | Numeric
+Fare          | Fare                                | Predictor | Numeric
+Cabin         | Cabin                               | Predictor | Numeric
+Embarked      | Port of embarkation                 | Predictor | Factor
+
+Compare `str()` output with above table, several variables need to re-classified as **factors**. Do that now:
+
+```{r}
+factor_vars = c('PassengerId', 'Survived', 'Pclass', 'Sex', 'Embarked')
+full[factor_vars] = lapply(full[factor_vars], function(x) as.factor(x))
+```
+
+Now run `str()` to verify the new classifications are correct
+
+```{r}
+str(full)
+```
+
+Looks good. Let's move on...
+
+# Missingness
+
+It's important to treat missing values as tree models do not treat missing values well. 
+
+## Identify what's missing
+
+First a quick check using a function to counts **NA**'s:
+
+```{r, warning=F}
+missing <- function(x){ sum(is.na(x)) }
+apply(full, 2, missing)
+```
+
+OK, so **Age**, **Fare** and **Embarked** have missing data that we should try to fix. Double checking using ``mice`` package:
+
+```{r, message=F, warning=F}
+md.pattern(full)
+aggr_plot = aggr(full, col=c('navyblue','red'), numbers=TRUE, 
+                 sortVars=TRUE, labels=names(full),
+                 cex.axis=.7, gap=3, 
+                 ylab=c("Histogram of missing data","Pattern"))
+# marginplot(full[c(10,4)])
+```
+
+Let's try to fix **Embarked** and **Fare** first as there are only a few missing values. Afterwards, we'll address the **Age** variable using ``mice`` imputation.
+
+## Fixing **Embarked**
+
+Get the rows of missing Embarked records:
+
+```{r}
+full[which(is.na(full$Embarked)),]
+```
+
+Row(s) `r which(is.na(full$Embarked))` with missing data. We'll plot a boxplot using Fare against Embarked:
+
+```{r}
+embark_fare <- full %>% filter(PassengerId != 62 & PassengerId != 830)
+ggplot(embark_fare, aes(x = Embarked, y = Fare, fill = factor(Pclass))) +
+  geom_boxplot() +
+  geom_hline(aes(yintercept=80), 
+    colour='red', linetype='dashed', lwd=2) +
+  scale_y_continuous(labels=dollar_format()) +
+  theme_few()
+```
+
+Embarkation port **C** lines up well with the Fare that these passengers paid, therefore its safe to assume these two passengers embarked at C.
+
+```{r}
+full$Embarked[c(62, 830)] <- 'C'
+```
+
+## Fixing **Fare**
+
+Get the row of missing Fare record:
+
+```{r}
+full[which(is.na(full$Fare)),]
+```
+
+Plotting density plot of Fare paid by other passengers in the same passenger class **Pclass** and **Embarked** at the same location.
+
+```{r}
+ggplot(full[full$Pclass == '3' & full$Embarked == 'S', ], 
+  aes(x = Fare)) +
+  geom_density(fill = '#99d6ff', alpha=0.4) + 
+  geom_vline(aes(xintercept=median(Fare, na.rm=T)),
+    colour='red', linetype='dashed', lwd=1) +
+  scale_x_continuous(labels=dollar_format()) +
+  theme_few()
+```
+
+Seems sensible to substitude the median fare to this pessenger!
+
+```{r}
+full$Fare[1044] <- median(full[full$Pclass == '3' & full$Embarked == 'S', ]$Fare, na.rm = TRUE)
+```
+
+## Fixing "Age"
+
+```{r, message=F, warning=F}
+set.seed(1)
+mice_vars = c('Pclass','Sex','Age','SibSp','Parch','Fare','Embarked')
+# try different method of available 25 methods ``methods(mice)``
+# mice_mod = mice(full[, names(full) %in% mice_vars], m=5, maxit=5, method = 'pmm', seed=500); 
+mice_mod = mice(full[, names(full) %in% mice_vars], method = 'pmm'); 
+# summary(mice_mod)
+# mice_mod$imp$Age
+# mice_mod$meth
+mice_output = complete(mice_mod)
+```
+
+Sanity checks to ensure mice has not introduced any bias or skewness.
+
+```{r, echo=F, message=F, warning=F}
+# xyplot(mice_mod, Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked, pchisq=18, cex=1)
+# densityplot(mice_mod)
+stripplot(mice_mod, pch = 20, cex = 0.2)
+
+par(mfrow=c(1,2))
+hist(full$Age, freq=F, main='Age: Original Data', col='darkgreen', ylim=c(0,0.04))
+hist(mice_output$Age, freq=F, main='Age: MICE Output', col='lightgreen', ylim=c(0,0.04))
+par(mfrow=c(1,1))
+```
+
+Seems alright - imputated points merge well with the original data. Now we add the imputated values back to our data.
+
+```{r}
+full$Age <- mice_output$Age
+```
+
+
+# Model fit & Predictions
+
+First, split the completed dataset in to *train*, *validate* and *test* sets
+```{r}
+train = full[1:500,]
+validate = full[501:891,]
+test = full[892:1309,]
+```
+
+## Fit classification tree
+
+```{r}
+set.seed(2)
+tree_mod = tree(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, data=train)
+summary(tree_mod)
+```
+
+Plot the classification tree
+
+```{r, message=F, warning=F}
+plot(tree_mod)
+text(tree_mod, pretty = 0)
+#train_tree
+```
+
+#### Classification tree results
+Predict output from the classification tree
+
+```{r, message=F, warning=F}
+predictions = predict(tree_mod, validate, type = "class")
+# table(predictions, validate$Survived)
+confusionMatrix(predictions, validate$Survived)
+# create a cross validation set
+```
+
+Check whether pruning will lead to improved results
+
+```{r, message=F, warning=F}
+set.seed(3)
+cv_mod = cv.tree(tree_mod, FUN = prune.misclass)
+# names(cv_train)
+cv_mod
+par(mfrow =c(1,2))
+plot(cv_mod$size, cv_mod$dev, type="b")
+plot(cv_mod$k, cv_mod$dev, type="b")
+par(mfrow =c(1,1))
+```
+
+Prune the tree with lowest error:
+
+```{r}
+pruned_tree = prune.misclass(tree_mod, best = 6)
+plot(pruned_tree)
+text(pruned_tree, pretty = 0)
+```
+
+#### Prune classification tree results
+
+```{r, message=F, warning=F}
+predictions = predict(pruned_tree, validate, type = "class")
+confusionMatrix(predictions, validate$Survived)
+## add cross validation data
+```
+
+## Fit Bagging
+
+```{r, message=F, warning=F}
+set.seed(122)
+bag_mod = randomForest(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, data = train, mtry=13, importance=T)
+#bag_mod
+plot(bag_mod, ylim=c(0,0.36))
+legend('topright', colnames(bag_mod$err.rate), col=1:3, fill=1:3)
+```
+
+#### Bagging results
+
+```{r}
+predictions = predict(bag_mod, validate, type = "class")
+confusionMatrix(predictions, validate$Survived)
+```
+
+## Fit Random Forest
+
+```{r}
+set.seed(111)
+rf_mod = randomForest(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, data = train, mtry=6, importance=T)
+rf_mod
+plot(rf_mod, ylim=c(0,0.36))
+legend('topright', colnames(rf_mod$err.rate), col=1:3, fill=1:3)
+```
+
+#### Random Forest results
+
+```{r}
+predictions = predict(rf_mod, validate, type = "class")
+confusionMatrix(predictions, validate$Survived)
+```
+
+### Extract Importance
+
+```{r}
+importance(rf_mod)
+
+importance    <- importance(rf_mod)
+varImportance <- data.frame(Variables = row.names(importance), 
+                            Importance = round(importance[ ,'MeanDecreaseGini'],2))
+
+# Create a rank variable based on importance
+rankImportance <- varImportance %>%
+  mutate(Rank = paste0('#',dense_rank(desc(Importance))))
+
+# Use ggplot2 to visualize the relative importance of variables
+ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
+    y = Importance, fill = Importance)) +
+  geom_bar(stat='identity') + 
+  geom_text(aes(x = Variables, y = 0.5, label = Rank),
+    hjust=0, vjust=0.55, size = 4, colour = 'red') +
+  labs(x = 'Variables') +
+  coord_flip() + 
+  theme_few()
+```
+
+# Final Prediction and submission
+
+```{r}
+predictions <- predict(pruned_tree, test, type="class")
+solution <- data.frame(PassengerID = test$PassengerId, Survived = predictions)
+write.csv(solution, file = 'rana_pruned_Solution.csv', row.names = F)
+```
+
+

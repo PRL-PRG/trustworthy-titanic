@@ -1,0 +1,125 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> library('ggplot2') # visualization
+
+Attaching package: ‘ggplot2’
+
+The following object is masked from ‘package:randomForest’:
+
+    margin
+
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library('ggthemes') # visualization
+> library('scales') # visualization
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> library('dplyr') # data manipulation
+
+Attaching package: ‘dplyr’
+
+The following object is masked from ‘package:randomForest’:
+
+    combine
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library('mice') # imputation
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> 
+> full <- bind_rows(train, test)
+> str(full)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+> 
+> rare_title <- c('Capt', 'Col', 'Don', 'Dona', 'Dr', 'Jonkheer',
++                 'Lady', 'Major', 'Rev', 'Sir', 'the Countess')
+> 
+> full$Title[full$Title == 'Mlle']        <- 'Miss' 
+> full$Title[full$Title == 'Ms'] <- 'Miss'
+> full$Title[full$Title == 'Mme'] <- 'Mrs'
+> full$Title[full$Title %in% rare_title] <- 'Rare Title'
+> 
+> # Show title counts by sex
+> table(full$Sex, full$Title)
+        
+         Master Miss  Mr Mrs Rare Title
+  female      0  264   0 198          4
+  male       61    0 757   0         25
+> 
+> # We can inspect the train data. The results of this are printed in the log tab below
+> #summary(train)
+> 
+> # Here we will plot the passenger survival by class
+> #train$Survived <- factor(train$Survived, levels=c(1,0))
+> #levels(train$Survived) <- c("Survived", "Died")
+> #train$Pclass <- as.factor(train$Pclass)
+> #levels(train$Pclass) <- c("1st Class", "2nd Class", "3rd Class")
+> 
+> #png("1_survival_by_class.png", width=800, height=600)
+> #mosaicplot(train$Pclass ~ train$Survived, main="Passenger Survival by Class",
+> #           color=c("#8dd3c7", "#fb8072"), shade=FALSE,  xlab="", ylab="",
+> #           off=c(0), cex.axis=1.4)
+> #dev.off()
+> 
+> proc.time()
+   user  system elapsed 
+  0.700   0.083   0.781 

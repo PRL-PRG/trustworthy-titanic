@@ -1,0 +1,252 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # Author: Liz Pund (lizpund@gmail.com)
+> # Date: January 20, 2018
+> # Purpose: Kaggle-Titanic Dataset Competition
+> 
+> # Set working directory and import datafiles
+> train <- read.csv("../input/train.csv")
+> test <- read.csv("../input/test.csv")
+> 
+> # ATTEMPT 1
+> # BEGIN by using the target variable as the predictor:
+> 
+> # Get a preliminary understanding of the Survived results in the train file
+> # Display as a table
+> table(train$Survived)
+
+  0   1 
+549 342 
+> 
+> # Calclate the the Survived results as proportions by inputting the previous calculation
+> # Display as a table
+> prop.table(table(train$Survived))
+
+        0         1 
+0.6161616 0.3838384 
+> 
+> # Make prediction in Test file
+> test$Survived <- rep(0, 418)
+> 
+> # Create output file to submit to Kaggle
+> # Two columns only: PassengerID and Survived predictions
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+> write.csv(submit, file = "theyallperish.csv", row.names = FALSE)
+> 
+> # This prediction generated an accuracy score of .62678 (Prediction Attempt #1)
+> # This makes sense given the proportions of Survived we see in the Train file
+> # However, this puts us near the bottom of the entries - not close to accurate!
+> 
+> # ATTEMPT 2
+> # IMPROVE your prediction by using other variables
+> 
+> # Calculate the count of passengers by sex
+> summary(train$Sex)
+female   male 
+   314    577 
+> 
+> # Display the count of passengers by sex as a proportion
+> prop.table(summary(train$Sex))
+  female     male 
+0.352413 0.647587 
+> 
+> # Use a table to display a two-way comparison of Sex and Survived (propotions)
+> # The first variable is rows, the second variable is columns
+> prop.table(table(train$Sex, train$Survived))
+        
+                  0          1
+  female 0.09090909 0.26150393
+  male   0.52525253 0.12233446
+> 
+> # This looks messy because by default, the proportion table command takes each entry
+> # in the table and divides by the total number of passengers.
+> # What we want to see is the row-wise proportion, ie, the proportion of each sex that 
+> # survived, as separate groups.
+> # Use a 1 for proportions across rows; you would us a 2 for columns.
+> prop.table(table(train$Sex, train$Survived), 1)
+        
+                 0         1
+  female 0.2579618 0.7420382
+  male   0.8110919 0.1889081
+> 
+> # We see that about most women survived and most men did not survive. 
+> # In our first attempt we predicted that 100% did not survive. 
+> # So, let's update our prediction based on this information.
+> 
+> # Create (overwrite) the Survived prediction column in the Test file
+> # Assign 0 to the whole column (this has the same effect as the rep method we used last time)
+> test$Survived <- 0
+> 
+> # Mark all women as having survived
+> # The square brackets create a subset of the total dataframe and apply the 1
+> # only to that subset.
+> # Here, the double equals sign is a boolean equivalency. It doesn't assign a value.
+> test$Survived[test$Sex == 'female'] <- 1
+> 
+> # Create output file to submit to Kaggle
+> # Two columns only: PassengerID and Survived predictions
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+> write.csv(submit, file = "allmenperish.csv", row.names = FALSE)
+> 
+> # This prediction generated an accuracy score of .76555 (Prediction Attempt #2)
+> # Better! But could be better.
+> 
+> # ATTEMPT 3.a
+> # IMPROVE your prediction by using other variables
+> 
+> # Calculate the count of passengers by age
+> summary(train$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.42   20.12   28.00   29.70   38.00   80.00     177 
+> 
+> # Since Age is a continuous variable, we can't easily run proportions on it
+> # Instead, create a new column, Child, to indicate if the passenger is under 18
+> train$Child <- 0
+> train$Child[train$Age < 18] <- 1 
+> 
+> # Create a table with Sex and Age to see the survival proportions for different subsets.
+> # Proportion table won't work, so use aggregate instead.
+> # This will display the sum of people of each sex/age combination that survived
+> # But, it doesn't tell us how many people of each sex/age there were total (survivors and nonsurvivors)
+> aggregate(Survived ~ Child + Sex, data=train, FUN=sum)
+  Child    Sex Survived
+1     0 female      195
+2     1 female       38
+3     0   male       86
+4     1   male       23
+> 
+> # Display the total number of people of each sex/age combination
+> aggregate(Survived ~ Child + Sex, data=train, FUN=length)
+  Child    Sex Survived
+1     0 female      259
+2     1 female       55
+3     0   male      519
+4     1   male       58
+> 
+> # To generate the proportion (which is what we're after) we need to use this formula
+> # This formula takes the subset vector as input and applies both the sum and length commands to it, 
+> # and then does the division to give us a proportion.
+> aggregate(Survived ~ Child + Sex, data=train, FUN=function(x) {sum(x)/length(x)})
+  Child    Sex  Survived
+1     0 female 0.7528958
+2     1 female 0.6909091
+3     0   male 0.1657033
+4     1   male 0.3965517
+> 
+> # It appears that, still, most females survived and most males did not, regardless of age, so there is not 
+> # something to change in our predictions based on this.
+> 
+> # ATTEMPT 3.b
+> # Since sex did not give us a different prediction, let's look at other variables
+> 
+> # Using the ticket price
+> # It is a continuous variable, so let's bin it into manageable categories
+> train$Fare2 <- '30+'
+> train$Fare2[train$Fare < 30 & train$Fare >= 20] <- '20-30'
+> train$Fare2[train$Fare < 20 & train$Fare >= 10] <- '10-20'
+> train$Fare2[train$Fare < 10] <- '<10'
+> 
+> # Run a longer aggregate function to see if there’s anything interesting to work with here
+> aggregate(Survived ~ Fare2 + Pclass + Sex, data=train, FUN=(function(x) {sum(x)/length(x)}))
+   Fare2 Pclass    Sex  Survived
+1  20-30      1 female 0.8333333
+2    30+      1 female 0.9772727
+3  10-20      2 female 0.9142857
+4  20-30      2 female 0.9000000
+5    30+      2 female 1.0000000
+6    <10      3 female 0.5937500
+7  10-20      3 female 0.5813953
+8  20-30      3 female 0.3333333
+9    30+      3 female 0.1250000
+10   <10      1   male 0.0000000
+11 20-30      1   male 0.4000000
+12   30+      1   male 0.3837209
+13   <10      2   male 0.0000000
+14 10-20      2   male 0.1587302
+15 20-30      2   male 0.1600000
+16   30+      2   male 0.2142857
+17   <10      3   male 0.1115385
+18 10-20      3   male 0.2368421
+19 20-30      3   male 0.1250000
+20   30+      3   male 0.2400000
+> 
+> # We see that in all combinations, men mostly do not survive and most women do survive.
+> # What stands out is that 3rd class women who paid more than $20 for their ticket mostly did NOT survive.
+> # Update our prediction to reflect this.
+> 
+> test$Survived <- 0
+> test$Survived[test$Sex == 'female'] <- 1
+> test$Survived[test$Sex == 'female' & test$Pclass == 3 & test$Fare > 20] <- 0
+> 
+> # Submit the output to Kaggle and see if we did any better.
+> 
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+> write.csv(submit, file = "allmenandsomewomenperish.csv", row.names = FALSE)
+> 
+> # That did better, with an accuracy score of .77990. 
+> # It's only a 1.5% score increase but I moved up around 3,000 spots on the leaderboard.
+> 
+> # ATTEMPT 4: Decision Trees - Use machine learning to do the heavy lifting for us
+> # We will use rpart package
+> 
+> # Import rpart package
+> library(rpart)
+> 
+> # Build my first model with rpart
+> fit <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, 
++              data=train, 
++              method="class")
+> 
+> # Examine the tree
+> plot(fit)
+> text(fit)
+> 
+> # Not very insightful or easy to understand
+> # Install packages to get more useful and visually appealing graphics
+> 
+> 
+> # install.packages('rattle')
+> install.packages('rpart.plot')
+trying URL 'https://cran.rstudio.com/bin/macosx/el-capitan/contrib/3.6/rpart.plot_3.0.8.tgz'
+Content type 'application/x-gzip' length 1058208 bytes (1.0 MB)
+==================================================
+downloaded 1.0 MB
+
+
+The downloaded binary packages are in
+	/var/folders/z8/75snmrgn3n3cyk89jxrwc4dc0000gn/T//RtmpuYDG0e/downloaded_packages
+> install.packages('RColorBrewer')
+trying URL 'https://cran.rstudio.com/bin/macosx/el-capitan/contrib/3.6/RColorBrewer_1.1-2.tgz'
+Content type 'application/x-gzip' length 53161 bytes (51 KB)
+==================================================
+downloaded 51 KB
+
+
+The downloaded binary packages are in
+	/var/folders/z8/75snmrgn3n3cyk89jxrwc4dc0000gn/T//RtmpuYDG0e/downloaded_packages
+> # library(rattle)
+> library(rpart.plot)
+> library(RColorBrewer)
+> 
+> # Now, render the tree with a nicer look
+> 
+> fancyRpartPlot(fit)
+Error in fancyRpartPlot(fit) : could not find function "fancyRpartPlot"
+Execution halted

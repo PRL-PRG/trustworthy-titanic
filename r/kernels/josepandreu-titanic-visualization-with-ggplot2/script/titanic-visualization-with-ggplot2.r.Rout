@@ -1,0 +1,75 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> if(!require(ggplot2)){
++     install.packages('ggplot2', repos='http://cran.es.r-project.org') 
++     require(ggplot2)
++ }
+Loading required package: ggplot2
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> if(!require(reshape2)){
++     install.packages('reshape2', repos='http://cran.es.r-project.org') 
++     require(reshape2)
++ }
+Loading required package: reshape2
+Warning message:
+package ‘reshape2’ was built under R version 3.6.2 
+> 
+> train_titanic <- read.csv("../input/train.csv", sep=",", header=T)
+> test_titanic <- read.csv("../input/test.csv", sep=",", header=T)
+> 
+> g1 <- data.frame(Age=train_titanic$Age, Cabin=train_titanic$Cabin, SibSp=train_titanic$Age, Parch=train_titanic$Parch, Sex=train_titanic$Sex, Pclass=train_titanic$Pclass, Survived=train_titanic$Survived)
+> g2 <- data.frame(Age=test_titanic$Age, Cabin=test_titanic$Cabin, SibSp=test_titanic$Age, Parch=test_titanic$Parch, Sex=test_titanic$Sex, Pclass=test_titanic$Pclass)
+> 
+> head(g1)
+  Age Cabin SibSp Parch    Sex Pclass Survived
+1  22          22     0   male      3        0
+2  38   C85    38     0 female      1        1
+3  26          26     0 female      3        1
+4  35  C123    35     0 female      1        1
+5  35          35     0   male      3        0
+6  NA          NA     0   male      3        0
+> ggplot() +
++     geom_jitter(data=g1, aes(Pclass, Age, colour = factor(Survived))) + 
++     facet_grid(Sex ~ .) + 
++     theme_light()
+Warning message:
+Removed 177 rows containing missing values (geom_point). 
+> 
+> 
+> 
+> 
+> ggplot() +
++     geom_jitter(data=g2, aes(Pclass, Age), size=0.1, colour="green") + 
++     geom_jitter(data=g1, aes(Pclass, Age, colour = factor(Survived))) + 
++     #scale_fill_brewer(palette = "Greens") +
++     facet_grid(Sex ~ .) + 
++     theme_dark()
+Warning messages:
+1: Removed 86 rows containing missing values (geom_point). 
+2: Removed 177 rows containing missing values (geom_point). 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  1.153   0.128   1.356 

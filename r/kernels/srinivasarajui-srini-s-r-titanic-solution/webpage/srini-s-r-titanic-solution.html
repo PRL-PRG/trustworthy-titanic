@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Srini&#x27;s R -Titanic Solution | Kaggle</title>
+    <meta charset="utf-8" />
+    <meta name="robots" content="index, follow" />
+    <meta name="turbolinks-cache-control" content="no-cache" />
+                <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=1.0">    <meta name="theme-color" content="#008ABC" />
+    <script type="text/javascript">
+        window["initialPageLoadStartTime"] = new Date().getTime();
+    </script>
+    <link rel="dns-prefetch" href="https://www.google-analytics.com" /><link rel="dns-prefetch" href="https://stats.g.doubleclick.net" /><link rel="dns-prefetch" href="https://js.intercomcdn.com" /><link rel="dns-prefetch" href="https://storage.googleapis.com/" />
+    <link href="/static/images/favicon.ico" rel="shortcut icon" type="image/x-icon" />
+    <link rel="manifest" href="/static/json/manifest.json">
+    <link href="//fonts.googleapis.com/css?family=Open+Sans:400,300,300italic,400italic,600,600italic,700,700italic" rel='stylesheet' type='text/css'>
+    <link href="https://fonts.googleapis.com/icon?family=Google+Material+Icons" rel="stylesheet" type='text/css'/>
+        <link rel="canonical" href="/srinivasarajui/srini-s-r-titanic-solution" />                    <link rel="stylesheet" type="text/css" href="/static/assets/vendor.css?v=7ea4d33f7a18" />
+        <link rel="stylesheet" type="text/css" href="/static/assets/app.css?v=f2d0c2b259f9" />
+    
+    
+ 
+        <script>
+        try{(function(a,s,y,n,c,h,i,d,e){d=s.createElement("style");
+        d.appendChild(s.createTextNode(""));s.head.appendChild(d);d=d.sheet;
+        y=y.map(x => d.insertRule(x + "{ opacity: 0 !important }"));
+        h.start=1*new Date;h.end=i=function(){y.forEach(x => x<d.cssRules.length ? d.deleteRule(x) : {})};
+        (a[n]=a[n]||[]).hide=h;setTimeout(function(){i();h.end=null},c);h.timeout=c;
+        })(window,document,['.site-header-react__nav'],'dataLayer',2000,{'GTM-52LNT9S':true});}catch{}
+    </script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+        gtag('config', 'UA-12629138-1', {
+            'optimize_id': 'GTM-52LNT9S',
+            'displayFeaturesTask': null,
+            'send_page_view': false
+        });
+    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-12629138-1"></script>
+
+    
+<script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window,document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+    fbq("set", "autoConfig", "false", "136809193586742");
+    fbq('init', '136809193586742'); 
+    fbq('track', 'PageView');
+</script>
+<noscript>
+    <img height="1" width="1" src="https://www.facebook.com/tr?id=136809193586742&ev=PageView&noscript=1"/>
+</noscript>
+
+<script>window.intercomSettings = {"app_id":"koj6gxx6"};</script>        <script>(function () { var w = window; var ic = w.Intercom; if (typeof ic === "function") { ic('reattach_activator'); ic('update', intercomSettings); } else { var d = document; var i = function () { i.c(arguments) }; i.q = []; i.c = function (args) { i.q.push(args) }; w.Intercom = i; function l() { var s = d.createElement('script'); s.type = 'text/javascript'; s.async = true; s.src = 'https://widget.intercom.io/widget/koj6gxx6'; var x = d.getElementsByTagName('script')[0]; x.parentNode.insertBefore(s, x); } if (w.attachEvent) { w.attachEvent('onload', l); } else { w.addEventListener('load', l, false); } } })()</script>
+    
+    
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:site" content="@kaggledatasets" />
+    <meta name="og:url" content="https://kaggle.com/srinivasarajui/srini-s-r-titanic-solution" />
+    <meta name="og:title" content="Srini&#x27;s R -Titanic Solution" />
+    <meta name="og:description" content="Using data from Introducing Kaggle Scripts" />
+    <meta name="og:image" content="https://storage.googleapis.com/kaggle-avatars/thumbnails/776462-gp.jpg" />
+
+
+    
+    
+
+    
+    
+    
+<script type="text/javascript">
+    var Kaggle = Kaggle || {};
+
+    Kaggle.Current = {
+        antiForgeryToken: 'CfDJ8LdUzqlsSWBPr4Ce3rb9VL_jaVikcPOqHSB3o-3tHxseV8P43p96BCQASAUqIDVD2eWag1miIdb48WkfqlRCUShOYVRMq1yPNkc3KJP7Am4VJ9-iJkcF7XBXL5brGPG1D8Mro1GwswrRMoCtSbOFk9E',
+        isAnonymous: true,
+        analyticsToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE1NjM2MTgyNzAsIlVzZXJJZCI6MH0.eiYv0t6QqCnvMTXMKZj7_PpNILkjew51e9-oj5qssYQ',
+        analyticsTokenExpiry: 15,
+        internetKernelsEnabled: false,
+        
+        
+        
+        
+        
+        
+        
+        
+        mdeImageUploader: true,
+        
+        
+        
+    }
+        Kaggle.Current.log = function(){};
+        Kaggle.Current.warn = function(){};
+
+    var decodeUserDisplayName = function () {
+        var escapedUserDisplayName = Kaggle.Current.userDisplayNameEscaped || "";
+        try {
+            var textVersion = new DOMParser().parseFromString(escapedUserDisplayName, "text/html").documentElement.textContent;
+            if (textVersion) {
+                return textVersion;
+            }
+        } catch(ex) {}
+        return escapedUserDisplayName;
+    }
+    Kaggle.Current.userDisplayName = decodeUserDisplayName();
+</script>
+
+    
+
+<script type="text/javascript">
+    var Kaggle = Kaggle || {};
+    Kaggle.PageMessages = [];
+</script>
+
+    
+<script type="text/javascript">
+/* <![CDATA[ */
+goog_snippet_vars = function() {
+    var w = window;
+    w.google_conversion_id = 955616553;
+    w.google_conversion_label = "QSjvCKDksHMQqZrWxwM";
+    w.google_conversion_value = 0.00;
+    w.google_conversion_currency = "USD";
+    w.google_remarketing_only = false;
+    w.google_conversion_language = "en";
+    w.google_conversion_format = "3";
+    w.google_conversion_color = "ffffff";
+}
+// DO NOT CHANGE THE CODE BELOW.
+goog_report_conversion = function(url) {
+    goog_snippet_vars();
+    window.google_conversion_format = "3";
+    var opt = new Object();
+    opt.onload_callback = function() {
+        if (typeof(url) != 'undefined') {
+            window.location = url;
+        }
+    }
+    var conv_handler = window['google_trackConversion'];
+    if (typeof(conv_handler) == 'function') {
+        conv_handler(opt);
+    }
+}
+/* ]]> */
+</script>
+<script type="text/javascript"
+src="//www.googleadservices.com/pagead/conversion_async.js">
+</script>
+
+
+
+        <script>window['useKaggleAnalytics'] = true;</script>
+
+    <script src="/static/assets/vendor.js?v=7f1b67b62508" data-turbolinks-track="reload"></script>
+    <script src="/static/assets/app.js?v=c7ce3d5abb3d" data-turbolinks-track="reload"></script>
+        <script>
+            (function() {
+                if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.register("/static/assets/service-worker.js").then(function(reg) {
+                        reg.onupdatefound = function() {
+                            var installingWorker = reg.installing;
+                            installingWorker.onstatechange = function() {
+                                switch (installingWorker.state) {
+                                case 'installed':
+                                    if (navigator.serviceWorker.controller) {
+                                        console.log('New or updated content is available.');
+                                    } else {
+                                        console.log('Content is now available offline!');
+                                    }
+                                    break;
+                                case 'redundant':
+                                    console.error('The installing service worker became redundant.');
+                                    break;
+                                }
+                            };
+                        };
+                    }).catch(function(e) {
+                      console.error('Error during service worker registration:', e);
+                    });
+                }
+            })();
+        </script>
+    <script>
+        function handleClientLoad() {
+            try {
+                gapi.load('client:auth2');
+            } catch (e) {
+                // In Opera, readystatechange is an unreliable detection of script load, causing
+                // this function to be called before gapi exists on the window. The onload callback
+                // is still called at the correct time, so the feature works as expected - it's
+                // just generating noisy errors.
+            }
+        }
+    </script>
+    <script async defer src="https://apis.google.com/js/api.js"
+            onload="this.googleApiOnLoad=function(){};handleClientLoad()"
+            onreadystatechange="if (this.readyState === 'complete') this.googleApiOnLoad()">
+    </script>
+            <script defer src="https://cdn.jsdelivr.net/npm/stackdriver-errors-js@0.7.0/dist/stackdriver-errors-concat.min.js"></script>
+        <script type="text/javascript">
+            window.addEventListener('DOMContentLoaded', function () {
+                var errorHandler = new StackdriverErrorReporter();
+                errorHandler.start({
+                    key: 'AIzaSyDANGXFHtSIVc51MIdGwg4mQFgm3oNrKoo',
+                    projectId: 'kaggle-161607',
+                    service: 'web-fe',
+                    version: 'ed96997455c95c047613615ceeeb0d4d542b4997',
+                    context: { user: '0' }
+                });
+            });
+        </script>
+</head>
+<body data-turbolinks="true">
+    <main>
+        
+
+
+
+
+
+
+<div class="site-layout">
+        <div class="site-layout__header">
+            <div data-component-name="SiteHeaderContainer" style="display: flex; flex-direction: column; flex: 1 0 auto;"></div><script>var Kaggle=window.Kaggle||{};Kaggle.State=Kaggle.State||[];Kaggle.State.push({});performance && performance.mark && performance.mark("SiteHeaderContainer.componentCouldBootstrap");</script>
+        </div>
+
+    <div class="site-layout__main-content">
+        
+
+<div data-component-name="KernelViewer" style="display: flex; flex-direction: column; flex: 1 0 auto;"></div><script>var Kaggle=window.Kaggle||{};Kaggle.State=Kaggle.State||[];Kaggle.State.push({"kernel":{"id":112743,"title":"Srini\u0027s R -Titanic Solution","forkParent":null,"currentRunId":424329,"mostRecentRunId":424329,"url":"/srinivasarajui/srini-s-r-titanic-solution","tags":[],"commentCount":0,"upvoteCount":0,"viewCount":647,"forkCount":0,"bestPublicScore":null,"author":{"id":776462,"displayName":"Srinivasa Raju Indukuri","email":null,"editedEmail":null,"editedEmailCode":null,"userName":"srinivasarajui","thumbnailUrl":"https://storage.googleapis.com/kaggle-avatars/thumbnails/776462-gp.jpg","profileUrl":"/srinivasarajui","registerDate":"0001-01-01T00:00:00Z","lastVisitDate":"0001-01-01T00:00:00Z","statusId":0,"performanceTier":1,"userRoles":null,"userLogins":null,"groupIds":null,"duplicateUsers":null,"hasPhoneVerifications":false,"failedNerdchas":0,"hasPendingNerdcha":false,"deleteRequests":null,"userAttributes":null,"isAdmin":false,"isTvc":false,"isKaggleBot":false,"isAdminOrTvc":false,"isAnonymous":false,"canAct":false,"canBeSeen":false,"thumbnailName":null,"activationCode":"00000000-0000-0000-0000-000000000000","isPhoneVerified":false},"isPrivate":false,"updatedTime":"2016-11-03T02:49:33.7966667Z","selfLink":"/kernels/112743","pinnedDockerImageVersionId":null,"isLanguageTemplate":false,"medal":null,"topicId":25051,"readGroupId":null,"writeGroupId":null,"slug":"srini-s-r-titanic-solution"},"kernelBlob":{"id":7152791,"settings":{"dockerImageVersionId":null,"dataSources":[{"sourceType":"Competition","sourceId":4459,"databundleVersionId":null}],"sourceType":"script","language":"r","isGpuEnabled":false,"isInternetEnabled":false},"source":"# Import the training set: train\r\ntrain_url \u003c- \u0022http://s3.amazonaws.com/assets.datacamp.com/course/Kaggle/train.csv\u0022\r\ntrain \u003c- read.csv(train_url)\r\n  \r\n# Import the testing set: test\r\ntest_url \u003c- \u0022http://s3.amazonaws.com/assets.datacamp.com/course/Kaggle/test.csv\u0022\r\ntest \u003c- read.csv(test_url)\r\n  \r\n# Print train and test to the console\r\ntrain\r\ntest\r\n\r\n# Your train and test set are still loaded\r\nstr(train)\r\nstr(test)\r\n\r\n# Survival rates in absolute numbers\r\n table(train$Survived) \r\n\r\n# Survival rates in proportions\r\nprop.table(table(train$Survived))\r\n  \r\n# Two-way comparison: Sex and Survived\r\ntable(train$Sex, train$Survived)\r\n\r\n# Two-way comparison: row-wise proportions\r\nprop.table(table(train$Sex, train$Survived),margin =1)\r\n\r\n# Two-way comparison: column-wise proportions\r\nprop.table(table(train$Sex, train$Survived),margin =2)\r\n\r\n\r\n# Your train and test set are still loaded in\r\nstr(train)\r\nstr(test)\r\n\r\n# Create the column child, and indicate whether child or no child\r\ntrain$Child \u003c- NA\r\ntrain$Child[train$Age \u003c 18] \u003c- \u0022Child\u0022\r\ntrain$Child[train$Age \u003e= 18] \u003c- \u0022Adult\u0022\r\n\r\n# Two-way comparison\r\nprop.table(table(train$Child, train$Survived),margin =1)\r\n\r\n\r\n# Your train and test set are still loaded in\r\nstr(train)\r\nstr(test)\r\n\r\n# Copy of test\r\ntest_one \u003c- test\r\n\r\n# Initialize a Survived column to 0\r\ntest_one$Survived \u003c- 0\r\n\r\n# Set Survived to 1 if Sex equals \u0022female\u0022\r\ntest_one$Survived[test_one$Sex==\u0022female\u0022] \u003c- 1\r\n\r\n# Load in the R package  \r\nlibrary(rpart)\r\n\r\n\r\n# Your train and test set are still loaded in\r\nstr(train)\r\nstr(test)\r\n\r\n# Build the decision tree\r\nmy_tree_two \u003c- rpart(Survived  ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, data = train, method = \u0022class\u0022)\r\n\r\n# Visualize the decision tree using plot() and text()\r\nplot(my_tree_two)\r\ntext(my_tree_two)\r\n\r\n# Load in the packages to build a fancy plot\r\nlibrary(rattle)\r\nlibrary(rpart.plot)\r\nlibrary(RColorBrewer)\r\n\r\n# Time to plot your fancy tree\r\nfancyRpartPlot(my_tree_two)\r\n\r\n\r\n# my_tree_two and test are available in the workspace\r\n\r\n# Make predictions on the test set\r\nmy_prediction \u003c- predict(my_tree_two, test, type = \u0022class\u0022)\r\n\r\n# Finish the data.frame() call\r\nmy_solution \u003c- data.frame(PassengerId = test$PassengerId, Survived = my_prediction)\r\n\r\n# Use nrow() on my_solution\r\nnrow(my_solution)\r\n\r\n# Finish the write.csv() call\r\nwrite.csv(my_solution, file = \u0022my_solution.csv\u0022, row.names = FALSE)\r\n\r\n\r\n# Your train and test set are still loaded in\r\n\r\n# Change this command\r\nmy_tree_three \u003c- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, \r\n                     data = train, method = \u0022class\u0022, control = rpart.control(minsplit = 50, cp = 0))\r\n  \r\n# Visualize my_tree_three\r\nfancyRpartPlot(my_tree_three)\r\n\r\n\r\n# train and test are available\r\n\r\n# Create train_two\r\ntrain_two \u003c- train\r\ntrain_two$family_size \u003c- train_two$SibSp + train_two$Parch + 1\r\n\r\n# Finish the command\r\nmy_tree_four \u003c- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + family_size, \r\n                      data = train_two, method = \u0022class\u0022)\r\n\r\n# Visualize your new decision tree\r\nfancyRpartPlot(my_tree_four)\r\n\r\n# train_new and test_new are available in the workspace\r\n\r\n# Finish the command\r\nmy_tree_five \u003c- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title , \r\n                      data = train_new, method = \u0022class\u0022)\r\n\r\n# Visualize my_tree_five\r\nfancyRpartPlot(my_tree_five)\r\n\r\n# Make prediction\r\nmy_prediction \u003c- predict(my_tree_five, test_new, type = \u0022class\u0022)\r\n\r\n# Make results ready for submission\r\nmy_solution \u003c- data.frame(PassengerId = test_new$PassengerId, Survived = my_prediction)\r\nwrite.csv(my_solution, file = \u0022my_solution.csv\u0022, row.names = FALSE)\r\n\r\n# All data, both training and test set\r\nall_data\r\n\r\n# Passenger on row 62 and 830 do not have a value for embarkment.\r\n# Since many passengers embarked at Southampton, we give them the value S.\r\nall_data$Embarked[c(62, 830)] \u003c- \u0022S\u0022\r\n\r\n# Factorize embarkment codes.\r\nall_data$Embarked \u003c- factor(all_data$Embarked)\r\n\r\n# Passenger on row 1044 has an NA Fare value. Let\u0027s replace it with the median fare value.\r\nall_data$Fare[1044] \u003c- median(all_data$Fare, na.rm = TRUE)\r\n\r\n# How to fill in missing Age values?\r\n# We make a prediction of a passengers Age using the other variables and a decision tree model.\r\n# This time you give method = \u0022anova\u0022 since you are predicting a continuous variable.\r\nlibrary(rpart)\r\npredicted_age \u003c- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + family_size,\r\n                       data = all_data[!is.na(all_data$Age),], method = \u0022anova\u0022)\r\nall_data$Age[is.na(all_data$Age)] \u003c- predict(predicted_age, all_data[is.na(all_data$Age),])\r\n\r\n# Split the data back into a train set and a test set\r\ntrain \u003c- all_data[1:891,]\r\ntest \u003c- all_data[892:1309,]\r\n\r\n\r\n# train and test are available in the workspace\r\nstr(train)\r\nstr(test)\r\n\r\n# Load in the package\r\nlibrary(randomForest)\r\n\r\n# Train set and test set\r\nstr(train)\r\nstr(test)\r\n\r\n# Set seed for reproducibility\r\nset.seed(111)\r\n\r\n# Apply the Random Forest Algorithm\r\nmy_forest \u003c- randomForest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title,\r\n                          data = train, importance = TRUE, ntree = 1000)\r\n\r\n# Make your prediction using the test set\r\nmy_prediction \u003c- predict(my_forest, test)\r\n\r\n# Create a data frame with two columns: PassengerId \u0026 Survived. Survived contains your predictions\r\nmy_solution \u003c- data.frame(PassengerId = test$PassengerId, Survived = my_prediction)\r\n\r\n# Write your solution away to a csv file with the name my_solution.csv\r\nwrite.csv(my_solution, file = \u0022my_solution2.csv\u0022, row.names = FALSE)","dateCreated":"2016-11-03T02:49:35.387Z"},"kernelRun":{"id":424329,"kernelId":112743,"status":"error","type":"batch","sourceType":"script","language":"r","title":"Srini\u0027s R -Titanic Solution","dateCreated":"2016-11-03T02:49:35.387Z","dateEvaluated":"2016-11-03T02:49:33.797Z","workerContainerPort":null,"workerUptimeSeconds":1555859,"workerIPAddress":"10.3.0.4       ","scriptLanguageId":1,"scriptLanguageName":"R","renderedOutputUrl":null,"commit":{"id":7152791,"settings":{"dockerImageVersionId":null,"dataSources":[{"sourceType":"Competition","sourceId":4459,"databundleVersionId":null}],"sourceType":"script","language":"r","isGpuEnabled":false,"isInternetEnabled":false},"source":"# Import the training set: train\r\ntrain_url \u003c- \u0022http://s3.amazonaws.com/assets.datacamp.com/course/Kaggle/train.csv\u0022\r\ntrain \u003c- read.csv(train_url)\r\n  \r\n# Import the testing set: test\r\ntest_url \u003c- \u0022http://s3.amazonaws.com/assets.datacamp.com/course/Kaggle/test.csv\u0022\r\ntest \u003c- read.csv(test_url)\r\n  \r\n# Print train and test to the console\r\ntrain\r\ntest\r\n\r\n# Your train and test set are still loaded\r\nstr(train)\r\nstr(test)\r\n\r\n# Survival rates in absolute numbers\r\n table(train$Survived) \r\n\r\n# Survival rates in proportions\r\nprop.table(table(train$Survived))\r\n  \r\n# Two-way comparison: Sex and Survived\r\ntable(train$Sex, train$Survived)\r\n\r\n# Two-way comparison: row-wise proportions\r\nprop.table(table(train$Sex, train$Survived),margin =1)\r\n\r\n# Two-way comparison: column-wise proportions\r\nprop.table(table(train$Sex, train$Survived),margin =2)\r\n\r\n\r\n# Your train and test set are still loaded in\r\nstr(train)\r\nstr(test)\r\n\r\n# Create the column child, and indicate whether child or no child\r\ntrain$Child \u003c- NA\r\ntrain$Child[train$Age \u003c 18] \u003c- \u0022Child\u0022\r\ntrain$Child[train$Age \u003e= 18] \u003c- \u0022Adult\u0022\r\n\r\n# Two-way comparison\r\nprop.table(table(train$Child, train$Survived),margin =1)\r\n\r\n\r\n# Your train and test set are still loaded in\r\nstr(train)\r\nstr(test)\r\n\r\n# Copy of test\r\ntest_one \u003c- test\r\n\r\n# Initialize a Survived column to 0\r\ntest_one$Survived \u003c- 0\r\n\r\n# Set Survived to 1 if Sex equals \u0022female\u0022\r\ntest_one$Survived[test_one$Sex==\u0022female\u0022] \u003c- 1\r\n\r\n# Load in the R package  \r\nlibrary(rpart)\r\n\r\n\r\n# Your train and test set are still loaded in\r\nstr(train)\r\nstr(test)\r\n\r\n# Build the decision tree\r\nmy_tree_two \u003c- rpart(Survived  ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, data = train, method = \u0022class\u0022)\r\n\r\n# Visualize the decision tree using plot() and text()\r\nplot(my_tree_two)\r\ntext(my_tree_two)\r\n\r\n# Load in the packages to build a fancy plot\r\nlibrary(rattle)\r\nlibrary(rpart.plot)\r\nlibrary(RColorBrewer)\r\n\r\n# Time to plot your fancy tree\r\nfancyRpartPlot(my_tree_two)\r\n\r\n\r\n# my_tree_two and test are available in the workspace\r\n\r\n# Make predictions on the test set\r\nmy_prediction \u003c- predict(my_tree_two, test, type = \u0022class\u0022)\r\n\r\n# Finish the data.frame() call\r\nmy_solution \u003c- data.frame(PassengerId = test$PassengerId, Survived = my_prediction)\r\n\r\n# Use nrow() on my_solution\r\nnrow(my_solution)\r\n\r\n# Finish the write.csv() call\r\nwrite.csv(my_solution, file = \u0022my_solution.csv\u0022, row.names = FALSE)\r\n\r\n\r\n# Your train and test set are still loaded in\r\n\r\n# Change this command\r\nmy_tree_three \u003c- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, \r\n                     data = train, method = \u0022class\u0022, control = rpart.control(minsplit = 50, cp = 0))\r\n  \r\n# Visualize my_tree_three\r\nfancyRpartPlot(my_tree_three)\r\n\r\n\r\n# train and test are available\r\n\r\n# Create train_two\r\ntrain_two \u003c- train\r\ntrain_two$family_size \u003c- train_two$SibSp + train_two$Parch + 1\r\n\r\n# Finish the command\r\nmy_tree_four \u003c- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + family_size, \r\n                      data = train_two, method = \u0022class\u0022)\r\n\r\n# Visualize your new decision tree\r\nfancyRpartPlot(my_tree_four)\r\n\r\n# train_new and test_new are available in the workspace\r\n\r\n# Finish the command\r\nmy_tree_five \u003c- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title , \r\n                      data = train_new, method = \u0022class\u0022)\r\n\r\n# Visualize my_tree_five\r\nfancyRpartPlot(my_tree_five)\r\n\r\n# Make prediction\r\nmy_prediction \u003c- predict(my_tree_five, test_new, type = \u0022class\u0022)\r\n\r\n# Make results ready for submission\r\nmy_solution \u003c- data.frame(PassengerId = test_new$PassengerId, Survived = my_prediction)\r\nwrite.csv(my_solution, file = \u0022my_solution.csv\u0022, row.names = FALSE)\r\n\r\n# All data, both training and test set\r\nall_data\r\n\r\n# Passenger on row 62 and 830 do not have a value for embarkment.\r\n# Since many passengers embarked at Southampton, we give them the value S.\r\nall_data$Embarked[c(62, 830)] \u003c- \u0022S\u0022\r\n\r\n# Factorize embarkment codes.\r\nall_data$Embarked \u003c- factor(all_data$Embarked)\r\n\r\n# Passenger on row 1044 has an NA Fare value. Let\u0027s replace it with the median fare value.\r\nall_data$Fare[1044] \u003c- median(all_data$Fare, na.rm = TRUE)\r\n\r\n# How to fill in missing Age values?\r\n# We make a prediction of a passengers Age using the other variables and a decision tree model.\r\n# This time you give method = \u0022anova\u0022 since you are predicting a continuous variable.\r\nlibrary(rpart)\r\npredicted_age \u003c- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + family_size,\r\n                       data = all_data[!is.na(all_data$Age),], method = \u0022anova\u0022)\r\nall_data$Age[is.na(all_data$Age)] \u003c- predict(predicted_age, all_data[is.na(all_data$Age),])\r\n\r\n# Split the data back into a train set and a test set\r\ntrain \u003c- all_data[1:891,]\r\ntest \u003c- all_data[892:1309,]\r\n\r\n\r\n# train and test are available in the workspace\r\nstr(train)\r\nstr(test)\r\n\r\n# Load in the package\r\nlibrary(randomForest)\r\n\r\n# Train set and test set\r\nstr(train)\r\nstr(test)\r\n\r\n# Set seed for reproducibility\r\nset.seed(111)\r\n\r\n# Apply the Random Forest Algorithm\r\nmy_forest \u003c- randomForest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title,\r\n                          data = train, importance = TRUE, ntree = 1000)\r\n\r\n# Make your prediction using the test set\r\nmy_prediction \u003c- predict(my_forest, test)\r\n\r\n# Create a data frame with two columns: PassengerId \u0026 Survived. Survived contains your predictions\r\nmy_solution \u003c- data.frame(PassengerId = test$PassengerId, Survived = my_prediction)\r\n\r\n# Write your solution away to a csv file with the name my_solution.csv\r\nwrite.csv(my_solution, file = \u0022my_solution2.csv\u0022, row.names = FALSE)","dateCreated":"2016-11-03T02:49:35.387Z"},"resources":null,"isolatorResults":"\u003cresults\u003e\u003cdisk_kb_free\u003e473000\u003c/disk_kb_free\u003e\u003cdocker_image_id\u003esha256:92620e15455dd3b7ce2d9759bd97b9a88d7aea6e68000ee7fbc6b55dc1ea0029\u003c/docker_image_id\u003e\u003cdocker_image_name\u003ekaggle/rstats\u003c/docker_image_name\u003e\u003cexit_code\u003e1\u003c/exit_code\u003e\u003cfailure_message\u003eThe kernel returned an unsuccessful exit code (1).\u003c/failure_message\u003e\u003cout_of_memory\u003eFalse\u003c/out_of_memory\u003e\u003crun_time_seconds\u003e1.29464339208789\u003c/run_time_seconds\u003e\u003csucceeded\u003eFalse\u003c/succeeded\u003e\u003ctimeout_exceeded\u003eFalse\u003c/timeout_exceeded\u003e\u003cused_all_space\u003eFalse\u003c/used_all_space\u003e\u003cwas_killed\u003eFalse\u003c/was_killed\u003e\u003c/results\u003e","runInfo":{"dockerfileUrl":"https://github.com/Kaggle/docker-rstats/blob/master/Dockerfile","dockerHubUrl":"https://registry.hub.docker.com/u/kaggle/rstats/","dockerImageDigest":null,"dockerImageId":"sha256:92620e15455dd3b7ce2d9759bd97b9a88d7aea6e68000ee7fbc6b55dc1ea0029","dockerImageName":"kaggle/rstats","diskKbFree":473000,"failureMessage":"The kernel returned an unsuccessful exit code (1).","exitCode":1,"queuedSeconds":0,"outputSizeBytes":0,"runTimeSeconds":1.29464339208789,"usedAllSpace":false,"timeoutExceeded":false,"isValidStatus":false,"wasGpuEnabled":false,"wasInternetEnabled":false,"outOfMemory":false,"invalidPathErrors":false,"succeeded":false,"wasKilled":false},"outputFilesTotalSizeBytes":0,"dockerImageVersionId":null,"usedCustomDockerImage":false,"dataSources":[{"sourceType":"Competition","sourceId":4459,"databundleVersionId":null}]},"author":{"id":776462,"displayName":"Srinivasa Raju Indukuri","email":null,"editedEmail":null,"editedEmailCode":null,"userName":"srinivasarajui","thumbnailUrl":"https://storage.googleapis.com/kaggle-avatars/thumbnails/776462-gp.jpg","profileUrl":"/srinivasarajui","registerDate":"0001-01-01T00:00:00Z","lastVisitDate":"0001-01-01T00:00:00Z","statusId":0,"performanceTier":1,"userRoles":null,"userLogins":null,"groupIds":null,"duplicateUsers":null,"hasPhoneVerifications":false,"failedNerdchas":0,"hasPendingNerdcha":false,"deleteRequests":null,"userAttributes":null,"isAdmin":false,"isTvc":false,"isKaggleBot":false,"isAdminOrTvc":false,"isAnonymous":false,"canAct":false,"canBeSeen":false,"thumbnailName":null,"activationCode":"00000000-0000-0000-0000-000000000000","isPhoneVerified":false},"baseUrl":"/srinivasarajui/srini-s-r-titanic-solution","collaborators":{"owner":{"userId":776462,"groupId":null,"groupMemberCount":null,"profileUrl":"/srinivasarajui","thumbnailUrl":"https://storage.googleapis.com/kaggle-avatars/thumbnails/776462-gp.jpg","name":"Srinivasa Raju Indukuri","slug":"srinivasarajui","userTier":1,"joinDate":null,"type":"owner","isUser":true,"isGroup":false},"collaborators":[]},"initialTab":null,"log":"[{\n  \u0022data\u0022: \u0022Error in file(file, \\\u0022rt\\\u0022) : cannot open the connection\\nCalls: read.csv -\u003e read.table -\u003e file\\nIn addition: Warning message:\\nIn file(file, \\\u0022rt\\\u0022) : unable to resolve \u0027s3.amazonaws.com\u0027\\nExecution halted\\n\u0022,\n  \u0022stream_name\u0022: \u0022stderr\u0022,\n  \u0022time\u0022: 1.112246260046959\n}]","outputFiles":[],"outputFilesCropped":false,"ouputFilesOwnerInfo":{"databundleVersionId":0,"dataset":null,"competition":null,"kernel":{"kernelId":112743,"kernelVersionId":424329,"dataviewToken":"eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..272plelpUOSyXkjCZ7L2Cw.KdbSkZKmmT___vPLmgh2trhdin2twW2cd72E6opGUsOr7QY4ctblW4AO2QW154YPQHmNQsVIABbvBiPPh2XhmpxlLjxOkC24yh4VeQV-65uCVr2lIiCaOvRDhryricm0cESyNw1v_Skj5U68jcySIvs40gh_I3uHBoOtnCS3gT7cSTO53otgtsMhkr8m0oqMvB5bDsGqZJSHjQ2WDt8qXFqX9qlD_zdH4CGAOnoKeaZtoqOCjuTjpf0NFq1SoxJKyM6oPLOGN6AbV1g3HSnERW4Kby7204suQt4hPYePr_asShM53V_KxzK3VB--UodV92Mh1avkyl_8siIpzL6xBEEfLPj-cVWUpm4sRDm9CF4WC2t-C5mKprelC01Yhjxrd3Q_wC6_87l3gaEChF2-90akQw3CNEoSlxQdrXMWupzizYAvWfIe3FwKOf3wKvlzuvYEZ5ClFXoSlu5KlqKOOHM7hdEtoWA7CsXwTJXjS2A.lGEi9b0mcqo65qP_EnD4Yg","scope":"srinivasarajui/srini-s-r-titanic-solution"},"previewsDisabled":false},"pageMessages":[],"dataSources":[{"imageUrl":null,"sourceUrl":"/c/introducing-kaggle-scripts","slug":"introducing-kaggle-scripts","lastUpdated":"2015-07-07T20:56:25.547Z","overview":"Your code deserves better","sourceType":"competition","sourceVersionType":null,"sourceId":4459,"sourceVersionNumber":null,"maxVersionNumber":null,"descriptionMimeType":"","deleted":false,"private":false,"privateButVisible":false,"ownerInfo":{"databundleVersionId":34323,"dataset":null,"competition":{"competitionId":4459,"dataviewToken":null,"scope":"c/introducing-kaggle-scripts"},"kernel":null,"previewsDisabled":true},"type":"dataSource","collapsed":false,"info":{"metrics":null,"archiveInfo":null,"archiveInfoV2":null,"blobFileInfo":null,"convertCsvInfo":null,"kernelReference":null},"settings":{"csvSettings":null,"bigQuerySettings":null,"bigQueryMirrorSettings":null,"storageSettings":null,"remoteUrlSettings":null,"remoteGithubSettings":null},"render":null,"children":[{"id":83286,"blobFileId":15656,"databundleVersionId":34323,"databundleVersionObjectType":"file","url":null,"relativePath":"../input/datascience.png","creationDate":"2015-06-11T15:39:59Z","isDummy":false,"size":108017,"fullPath":"../input/datascience.png","previewUrl":"kernels/competition-preview/4459?relativePath=datascience.png","downloadUrl":"/c/introducing-kaggle-scripts/download/datascience.png","fileType":".png","contentLength":108017,"contentType":"image/png","contentMD5":"RIyOrWFOeXWBlq2nwJdw2g==","validationErrors":null,"type":"databundleVersionObject","collapsed":false,"info":{"metrics":null,"archiveInfo":null,"archiveInfoV2":null,"blobFileInfo":null,"convertCsvInfo":null,"kernelReference":null},"settings":{"csvSettings":null,"bigQuerySettings":null,"bigQueryMirrorSettings":null,"storageSettings":null,"remoteUrlSettings":null,"remoteGithubSettings":null},"render":null,"children":[],"firestorePath":null,"firestoreKey":null,"name":"datascience.png","description":""}],"firestorePath":null,"firestoreKey":null,"name":"Introducing Kaggle Scripts","description":"\u003cp\u003eLooking to try scripts with real data? Load the \u003ca href=\u0022https://www.kaggle.com/wcukierski/introducing-kaggle-scripts/r-datasets\u0022\u003eR datasets package\u003c/a\u003e or view the \u003ca href=\u0022https://www.kaggle.com/benhamner/introducing-kaggle-scripts/rdatasets-on-julia\u0022\u003esame menu with Julia\u003c/a\u003e. \u003c/p\u003e"}],"versions":[{"id":424329,"kernelVersionId":null,"isForkParent":false,"isNotebook":false,"languageName":"R","lastRunTime":"2016-11-03T02:49:35.387Z","linesChangedFromPrevious":0,"linesDeletedFromPrevious":0,"linesInsertedFromPrevious":188,"outputFilesTotalSizeBytes":0,"runInfo":{"dockerfileUrl":"https://github.com/Kaggle/docker-rstats/blob/master/Dockerfile","dockerHubUrl":"https://registry.hub.docker.com/u/kaggle/rstats/","dockerImageId":"sha256:92620e15455dd3b7ce2d9759bd97b9a88d7aea6e68000ee7fbc6b55dc1ea0029","dockerImageName":"kaggle/rstats","exitCode":1,"failureMessage":"The kernel returned an unsuccessful exit code (1).","isValidStatus":true,"runTimeSeconds":1.29464339208789,"succeeded":false,"timeoutExceeded":false,"usedAllSpace":false},"status":"error","title":"Srini\u0027s R -Titanic Solution","url":"/srinivasarajui/srini-s-r-titanic-solution?scriptVersionId=424329","versionNumber":1,"hasVersionNumber":true,"isRedacted":false,"versionAuthor":null}],"categories":{"categories":[],"type":"script"},"submitToCompetitionInfo":null,"downloadAllFilesUrl":"/kernels/svzip/424329","submission":null,"menuLinks":[{"href":"/srinivasarajui/srini-s-r-titanic-solution/code","text":"Code","title":"Code","tab":"code","count":null,"showZeroCountExplicitly":false,"reportEventCategory":null,"reportEventType":null},{"href":"/srinivasarajui/srini-s-r-titanic-solution/log","text":"Log","title":"Log","tab":"log","count":null,"showZeroCountExplicitly":false,"reportEventCategory":null,"reportEventType":null},{"href":"/srinivasarajui/srini-s-r-titanic-solution/data","text":"Data","title":"Data","tab":"data","count":1,"showZeroCountExplicitly":false,"reportEventCategory":null,"reportEventType":null},{"href":"/srinivasarajui/srini-s-r-titanic-solution/comments","text":"Comments","title":"Comments","tab":"comments","count":1,"showZeroCountExplicitly":true,"reportEventCategory":null,"reportEventType":null}],"rightMenuLinks":[],"callToAction":{"href":"/kernels/fork-version/424329","text":"Fork Script","title":"Fork Script","tab":null,"count":null,"showZeroCountExplicitly":false,"reportEventCategory":"kernels","reportEventType":"anonymousKernelForkCreation"},"voteButton":{"totalVotes":0,"hasAlreadyVotedUp":false,"hasAlreadyVotedDown":false,"canUpvote":true,"canDownvote":false,"voteUpUrl":"/kernels/vote?id=112743","voteDownUrl":null,"voters":[],"currentUserInfo":null,"showVoters":true,"alwaysShowVoters":true},"parentDataSource":null,"parentName":"Introducing Kaggle Scripts","parentUrl":"/c/introducing-kaggle-scripts","thumbnailImageUrl":null,"canWrite":false,"canAdminister":false,"datasetHidden":false,"forkParentIsRedacted":false,"forkDiffLinesChanged":0,"forkDiffLinesDeleted":0,"forkDiffLinesInserted":0,"forkDiffUrl":null,"forkParentAuthorDisplayName":null,"forkParentAuthorUrl":null,"forkParentTitle":null,"forkParentUrl":null,"canSeeDataExplorerV2":true,"canSeeRevampedViewer":true,"canSeeInnerTableOfContents":true,"simplifiedViewer":false,"kernelOutputDataset":null});performance && performance.mark && performance.mark("KernelViewer.componentCouldBootstrap");</script>
+
+<form action="/srinivasarajui/srini-s-r-titanic-solution" id="__AjaxAntiForgeryForm" method="post"><input name="X-XSRF-TOKEN" type="hidden" value="CfDJ8LdUzqlsSWBPr4Ce3rb9VL_jaVikcPOqHSB3o-3tHxseV8P43p96BCQASAUqIDVD2eWag1miIdb48WkfqlRCUShOYVRMq1yPNkc3KJP7Am4VJ9-iJkcF7XBXL5brGPG1D8Mro1GwswrRMoCtSbOFk9E" /></form>
+
+<script type="text/x-mathjax-config">
+    MathJax.Hub.Config({
+        "HTML-CSS": {
+            preferredFont: "TeX",
+            availableFonts: ["STIX", "TeX"],
+            linebreaks: {
+                automatic: true
+            },
+            EqnChunk: (MathJax.Hub.Browser.isMobile ? 10 : 50)
+        },
+        tex2jax: {
+            inlineMath: [["\\(", "\\)"], ["\\\\(", "\\\\)"]],
+            displayMath: [["$$", "$$"], ["\\[", "\\]"]],
+            processEscapes: true,
+            ignoreClass: "tex2jax_ignore|dno"
+        },
+        TeX: {
+            noUndefined: {
+                attributes: {
+                    mathcolor: "red",
+                    mathbackground: "#FFEEEE",
+                    mathsize: "90%"
+                }
+            }
+        },
+        Macros: {
+            href: "{}"
+        },
+        skipStartupTypeset: true,
+        messageStyle: "none"
+    });
+</script>
+<script type="text/javascript" async crossorigin="anonymous" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.0/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+
+
+    </div>
+
+        <div class="site-layout__footer">
+            <footer class="site-footer">
+    <div class="site-footer__content">
+        <div class="site-footer__copyright">
+            <span>&copy; 2019 Kaggle Inc</span>
+        </div>
+        <nav class="site-footer__nav">
+            <a href="/team">Our Team</a>
+            <a href="/terms">Terms</a>
+            <a href="/privacy">Privacy</a>
+            <a href="/contact">Contact/Support</a>
+        </nav>
+        <nav class="site-footer__social">
+            <div data-component-name="SocialIcons" style="display: flex; flex-direction: column; flex: 1 0 auto;"></div><script>var Kaggle=window.Kaggle||{};Kaggle.State=Kaggle.State||[];Kaggle.State.push();performance && performance.mark && performance.mark("SocialIcons.componentCouldBootstrap");</script>
+        </nav>
+    </div>
+</footer>
+
+        </div>
+</div>
+
+
+
+
+    </main>
+</body>
+</html>

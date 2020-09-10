@@ -1,0 +1,246 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> train <- read.csv('../input/train.csv', stringsAsFactors = F)
+> test <- read.csv('../input/test.csv', stringsAsFactors = F)
+> 
+> train$isTrain <- T
+> test$isTrain <- F
+> 
+> full <- bind_rows(train, test)
+> glimpse(full)
+Rows: 1,309
+Columns: 13
+$ PassengerId [3m[90m<int>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+$ Survived    [3m[90m<int>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+$ Pclass      [3m[90m<int>[39m[23m 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Braund, Mr. Owen Harris", "Cumings, Mrs. John Bradley (F…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "female", "female", "male", "male", "ma…
+$ Age         [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+$ SibSp       [3m[90m<int>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+$ Parch       [3m[90m<int>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "A/5 21171", "PC 17599", "STON/O2. 3101282", "113803", "3…
+$ Fare        [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+$ Cabin       [3m[90m<chr>[39m[23m "", "C85", "", "C123", "", "", "E46", "", "", "", "G6", "…
+$ Embarked    [3m[90m<chr>[39m[23m "S", "C", "S", "S", "S", "Q", "S", "S", "S", "C", "S", "S…
+$ isTrain     [3m[90m<lgl>[39m[23m TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRU…
+> 
+> summary(full)
+  PassengerId      Survived          Pclass          Name          
+ Min.   :   1   Min.   :0.0000   Min.   :1.000   Length:1309       
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median : 655   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295                     
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :1309   Max.   :1.0000   Max.   :3.000                     
+                NA's   :418                                        
+     Sex                 Age            SibSp            Parch      
+ Length:1309        Min.   : 0.17   Min.   :0.0000   Min.   :0.000  
+ Class :character   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000  
+ Mode  :character   Median :28.00   Median :0.0000   Median :0.000  
+                    Mean   :29.88   Mean   :0.4989   Mean   :0.385  
+                    3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000  
+                    Max.   :80.00   Max.   :8.0000   Max.   :9.000  
+                    NA's   :263                                     
+    Ticket               Fare            Cabin             Embarked        
+ Length:1309        Min.   :  0.000   Length:1309        Length:1309       
+ Class :character   1st Qu.:  7.896   Class :character   Class :character  
+ Mode  :character   Median : 14.454   Mode  :character   Mode  :character  
+                    Mean   : 33.295                                        
+                    3rd Qu.: 31.275                                        
+                    Max.   :512.329                                        
+                    NA's   :1                                              
+  isTrain       
+ Mode :logical  
+ FALSE:418      
+ TRUE :891      
+                
+                
+                
+                
+> 
+> full$isFemale <- F
+> full$isFemale[full$Sex == "female"] <- T
+> 
+> ggplot(full[full$isTrain,], aes(x = isFemale, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge')
+> 
+> full$underTen <- F
+> full$underTen[full$Age > 0 & full$Age < 10 ] <- T
+> 
+> ggplot(full[full$isTrain,], aes(x = underTen, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge')
+> 
+> full$Fare <- round(full$Fare)
+> 
+> full[full$isTrain,] %>%
++   group_by(Survived) %>%
++   summarise(TotalFare = sum(Fare), count = n(), Mean = mean(Fare))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 2 x 4[39m
+  Survived TotalFare count  Mean
+     [3m[90m<int>[39m[23m     [3m[90m<dbl>[39m[23m [3m[90m<int>[39m[23m [3m[90m<dbl>[39m[23m
+[90m1[39m        0     [4m1[24m[4m2[24m153   549  22.1
+[90m2[39m        1     [4m1[24m[4m6[24m550   342  48.4
+> 
+> full$FamilySize <- full$SibSp + full$Parch + 1
+> 
+> ggplot(full[full$isTrain,], aes(x = FamilySize, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge')
+> 
+> full$FamilySizeFactor[full$FamilySize == 1] <- 'alone'
+> full$FamilySizeFactor[full$FamilySize < 5 & full$FamilySize > 1] <- 'small'
+> full$FamilySizeFactor[full$FamilySize > 4] <- 'large'
+> 
+> full$FamilySizeFactor <- factor(full$FamilySizeFactor)
+> 
+> ggplot(full[full$isTrain,], aes(x = Pclass, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge')
+> 
+> full$Pclass <- factor(full$Pclass)
+> 
+> full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+> 
+> rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
++                 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+> 
+> # Also reassign mlle, ms, and mme accordingly
+> full$Title[full$Title == 'Mlle']        <- 'Miss' 
+> full$Title[full$Title == 'Ms']          <- 'Miss'
+> full$Title[full$Title == 'Mme']         <- 'Mrs' 
+> full$Title[full$Title %in% rare_title]  <- 'Rare Title'
+> 
+> # Show title counts by sex again
+> table(full$Sex, full$Title)
+        
+         Master Miss  Mr Mrs Rare Title
+  female      0  264   0 198          4
+  male       61    0 757   0         25
+> 
+> full <-
++   full %>%
++   select(PassengerId, Survived, Title, Pclass, FamilySizeFactor, Fare, underTen, isFemale, isTrain)
+> 
+> full$Fare[is.na(full$Fare)] <- 14
+> full$Title <- factor(full$Title)
+> summary(full)
+  PassengerId      Survived             Title     Pclass  FamilySizeFactor
+ Min.   :   1   Min.   :0.0000   Master    : 61   1:323   alone:790       
+ 1st Qu.: 328   1st Qu.:0.0000   Miss      :264   2:277   large: 82       
+ Median : 655   Median :0.0000   Mr        :757   3:709   small:437       
+ Mean   : 655   Mean   :0.3838   Mrs       :198                           
+ 3rd Qu.: 982   3rd Qu.:1.0000   Rare Title: 29                           
+ Max.   :1309   Max.   :1.0000                                            
+                NA's   :418                                               
+      Fare        underTen        isFemale        isTrain       
+ Min.   :  0.0   Mode :logical   Mode :logical   Mode :logical  
+ 1st Qu.:  8.0   FALSE:1227      FALSE:843       FALSE:418      
+ Median : 14.0   TRUE :82        TRUE :466       TRUE :891      
+ Mean   : 33.3                                                  
+ 3rd Qu.: 31.0                                                  
+ Max.   :512.0                                                  
+                                                                
+> 
+> set.seed(42)
+> 
+> totalrows <- nrow(full[full$isTrain,])
+> trainrows <- sample(c(T,F), totalrows, replace = T, prob = c(0.8, 0.2))
+> 
+> trainningSet <- full[full$isTrain,][trainrows,]
+> testingSet <- full[full$isTrain,][!trainrows,]
+> 
+> model <- randomForest(factor(Survived) ~ Title + Pclass + FamilySizeFactor 
++                       + Fare + underTen + isFemale, 
++                       data = trainningSet,
++                       ntree = 50)
+> 
+> 
+> importance(model)
+                 MeanDecreaseGini
+Title                   67.250215
+Pclass                  23.656261
+FamilySizeFactor        17.598747
+Fare                    34.187154
+underTen                 4.310386
+isFemale                34.090620
+> 
+> predicted <- predict(model, testingSet)
+> 
+> glimpse(predicted)
+ Factor w/ 2 levels "0","1": 1 2 2 1 2 1 1 2 1 1 ...
+ - attr(*, "names")= chr [1:178] "1" "2" "4" "13" ...
+> 
+> confusion_matrix <- table(testingSet$Survived, predicted)
+> confusion_matrix
+   predicted
+     0  1
+  0 97 10
+  1 18 53
+> 
+> TP <- confusion_matrix[2, 2]
+> TN <- confusion_matrix[1, 1]
+> 
+> acc <- (TP + TN) / (nrow(testingSet))
+> acc
+[1] 0.8426966
+> 
+> final <- predict(model, full[!full$isTrain,])
+> 
+> solution <- data.frame(PassengerId = full[!full$isTrain,]$PassengerId, Survived = final)
+> 
+> write.csv(solution, file = 'out.csv', row.names = F)
+> 
+> proc.time()
+   user  system elapsed 
+  1.332   0.101   1.446 

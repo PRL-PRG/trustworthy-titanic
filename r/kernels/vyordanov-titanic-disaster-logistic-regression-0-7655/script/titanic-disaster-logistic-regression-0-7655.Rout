@@ -1,0 +1,490 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE)
+> 
+> 
+> ## ----datasets--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train = read.csv("../input/train.csv", stringsAsFactors = F)
+> test = read.csv("../input/test.csv", stringsAsFactors = F)
+> 
+> 
+> ## ----structure train-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train$Survived = as.factor(as.character(train$Survived))
+> train$Pclass = as.factor(as.character(train$Pclass))
+> train$Sex = as.factor(as.character(train$Sex))
+> train$Embarked = as.factor(as.character(train$Embarked))
+> 
+> test$Pclass = as.factor(as.character(test$Pclass))
+> test$Sex = as.factor(as.character(test$Sex))
+> test$Embarked = as.factor(as.character(test$Embarked))
+> 
+> 
+> ## ----summary train---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(train)
+  PassengerId    Survived Pclass      Name               Sex     
+ Min.   :  1.0   0:549    1:216   Length:891         female:314  
+ 1st Qu.:223.5   1:342    2:184   Class :character   male  :577  
+ Median :446.0            3:491   Mode  :character               
+ Mean   :446.0                                                   
+ 3rd Qu.:668.5                                                   
+ Max.   :891.0                                                   
+                                                                 
+      Age            SibSp           Parch           Ticket         
+ Min.   : 0.42   Min.   :0.000   Min.   :0.0000   Length:891        
+ 1st Qu.:20.12   1st Qu.:0.000   1st Qu.:0.0000   Class :character  
+ Median :28.00   Median :0.000   Median :0.0000   Mode  :character  
+ Mean   :29.70   Mean   :0.523   Mean   :0.3816                     
+ 3rd Qu.:38.00   3rd Qu.:1.000   3rd Qu.:0.0000                     
+ Max.   :80.00   Max.   :8.000   Max.   :6.0000                     
+ NA's   :177                                                        
+      Fare           Cabin           Embarked
+ Min.   :  0.00   Length:891          :  2   
+ 1st Qu.:  7.91   Class :character   C:168   
+ Median : 14.45   Mode  :character   Q: 77   
+ Mean   : 32.20                      S:644   
+ 3rd Qu.: 31.00                              
+ Max.   :512.33                              
+                                             
+> 
+> 
+> ## ----subset with missing Age-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> missing = subset(train, is.na(Age))
+> summary(missing)
+  PassengerId    Survived Pclass      Name               Sex           Age     
+ Min.   :  6.0   0:125    1: 30   Length:177         female: 53   Min.   : NA  
+ 1st Qu.:230.0   1: 52    2: 11   Class :character   male  :124   1st Qu.: NA  
+ Median :452.0            3:136   Mode  :character                Median : NA  
+ Mean   :435.6                                                    Mean   :NaN  
+ 3rd Qu.:634.0                                                    3rd Qu.: NA  
+ Max.   :889.0                                                    Max.   : NA  
+                                                                  NA's   :177  
+     SibSp           Parch           Ticket               Fare       
+ Min.   :0.000   Min.   :0.0000   Length:177         Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   Class :character   1st Qu.:  7.75  
+ Median :0.000   Median :0.0000   Mode  :character   Median :  8.05  
+ Mean   :0.565   Mean   :0.1808                      Mean   : 22.16  
+ 3rd Qu.:0.000   3rd Qu.:0.0000                      3rd Qu.: 24.15  
+ Max.   :8.000   Max.   :2.0000                      Max.   :227.53  
+                                                                     
+    Cabin           Embarked
+ Length:177          : 0    
+ Class :character   C:38    
+ Mode  :character   Q:49    
+                    S:90    
+                            
+                            
+                            
+> 
+> 
+> ## ----histogram 1-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> 
+> ggplot() + 
++     geom_histogram(data = train, mapping = aes(x = Fare), fill = "blue", bins = 5) +
++     geom_histogram(data = missing, mapping = aes(x = Fare), fill = "red", bins = 5) + 
++     facet_grid(.~ Pclass)
+> 
+> 
+> ## ----Pclass table for missing----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(missing$Pclass, missing$Sex)
+   
+    female male
+  1      9   21
+  2      2    9
+  3     42   94
+> 
+> 
+> ## ----imputation, message=FALSE, warning=FALSE, results='hide'--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> imputed = complete(mice(train,m=5,maxit=50,meth='pmm',seed=500))
+
+ iter imp variable
+  1   1  Age
+  1   2  Age
+  1   3  Age
+  1   4  Age
+  1   5  Age
+  2   1  Age
+  2   2  Age
+  2   3  Age
+  2   4  Age
+  2   5  Age
+  3   1  Age
+  3   2  Age
+  3   3  Age
+  3   4  Age
+  3   5  Age
+  4   1  Age
+  4   2  Age
+  4   3  Age
+  4   4  Age
+  4   5  Age
+  5   1  Age
+  5   2  Age
+  5   3  Age
+  5   4  Age
+  5   5  Age
+  6   1  Age
+  6   2  Age
+  6   3  Age
+  6   4  Age
+  6   5  Age
+  7   1  Age
+  7   2  Age
+  7   3  Age
+  7   4  Age
+  7   5  Age
+  8   1  Age
+  8   2  Age
+  8   3  Age
+  8   4  Age
+  8   5  Age
+  9   1  Age
+  9   2  Age
+  9   3  Age
+  9   4  Age
+  9   5  Age
+  10   1  Age
+  10   2  Age
+  10   3  Age
+  10   4  Age
+  10   5  Age
+  11   1  Age
+  11   2  Age
+  11   3  Age
+  11   4  Age
+  11   5  Age
+  12   1  Age
+  12   2  Age
+  12   3  Age
+  12   4  Age
+  12   5  Age
+  13   1  Age
+  13   2  Age
+  13   3  Age
+  13   4  Age
+  13   5  Age
+  14   1  Age
+  14   2  Age
+  14   3  Age
+  14   4  Age
+  14   5  Age
+  15   1  Age
+  15   2  Age
+  15   3  Age
+  15   4  Age
+  15   5  Age
+  16   1  Age
+  16   2  Age
+  16   3  Age
+  16   4  Age
+  16   5  Age
+  17   1  Age
+  17   2  Age
+  17   3  Age
+  17   4  Age
+  17   5  Age
+  18   1  Age
+  18   2  Age
+  18   3  Age
+  18   4  Age
+  18   5  Age
+  19   1  Age
+  19   2  Age
+  19   3  Age
+  19   4  Age
+  19   5  Age
+  20   1  Age
+  20   2  Age
+  20   3  Age
+  20   4  Age
+  20   5  Age
+  21   1  Age
+  21   2  Age
+  21   3  Age
+  21   4  Age
+  21   5  Age
+  22   1  Age
+  22   2  Age
+  22   3  Age
+  22   4  Age
+  22   5  Age
+  23   1  Age
+  23   2  Age
+  23   3  Age
+  23   4  Age
+  23   5  Age
+  24   1  Age
+  24   2  Age
+  24   3  Age
+  24   4  Age
+  24   5  Age
+  25   1  Age
+  25   2  Age
+  25   3  Age
+  25   4  Age
+  25   5  Age
+  26   1  Age
+  26   2  Age
+  26   3  Age
+  26   4  Age
+  26   5  Age
+  27   1  Age
+  27   2  Age
+  27   3  Age
+  27   4  Age
+  27   5  Age
+  28   1  Age
+  28   2  Age
+  28   3  Age
+  28   4  Age
+  28   5  Age
+  29   1  Age
+  29   2  Age
+  29   3  Age
+  29   4  Age
+  29   5  Age
+  30   1  Age
+  30   2  Age
+  30   3  Age
+  30   4  Age
+  30   5  Age
+  31   1  Age
+  31   2  Age
+  31   3  Age
+  31   4  Age
+  31   5  Age
+  32   1  Age
+  32   2  Age
+  32   3  Age
+  32   4  Age
+  32   5  Age
+  33   1  Age
+  33   2  Age
+  33   3  Age
+  33   4  Age
+  33   5  Age
+  34   1  Age
+  34   2  Age
+  34   3  Age
+  34   4  Age
+  34   5  Age
+  35   1  Age
+  35   2  Age
+  35   3  Age
+  35   4  Age
+  35   5  Age
+  36   1  Age
+  36   2  Age
+  36   3  Age
+  36   4  Age
+  36   5  Age
+  37   1  Age
+  37   2  Age
+  37   3  Age
+  37   4  Age
+  37   5  Age
+  38   1  Age
+  38   2  Age
+  38   3  Age
+  38   4  Age
+  38   5  Age
+  39   1  Age
+  39   2  Age
+  39   3  Age
+  39   4  Age
+  39   5  Age
+  40   1  Age
+  40   2  Age
+  40   3  Age
+  40   4  Age
+  40   5  Age
+  41   1  Age
+  41   2  Age
+  41   3  Age
+  41   4  Age
+  41   5  Age
+  42   1  Age
+  42   2  Age
+  42   3  Age
+  42   4  Age
+  42   5  Age
+  43   1  Age
+  43   2  Age
+  43   3  Age
+  43   4  Age
+  43   5  Age
+  44   1  Age
+  44   2  Age
+  44   3  Age
+  44   4  Age
+  44   5  Age
+  45   1  Age
+  45   2  Age
+  45   3  Age
+  45   4  Age
+  45   5  Age
+  46   1  Age
+  46   2  Age
+  46   3  Age
+  46   4  Age
+  46   5  Age
+  47   1  Age
+  47   2  Age
+  47   3  Age
+  47   4  Age
+  47   5  Age
+  48   1  Age
+  48   2  Age
+  48   3  Age
+  48   4  Age
+  48   5  Age
+  49   1  Age
+  49   2  Age
+  49   3  Age
+  49   4  Age
+  49   5  Age
+  50   1  Age
+  50   2  Age
+  50   3  Age
+  50   4  Age
+  50   5  Age
+Warning message:
+Number of logged events: 3 
+> 
+> 
+> ## ----Age distribution after imputation, warning=FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot() +
++     geom_histogram(data = imputed, mapping = aes(x = Age), fill = "red", bins = 10) +
++     geom_histogram(data = train, mapping = aes(x = Age), fill = "black", bins = 10, alpha = 0.4) +
++     facet_grid(. ~ Sex)
+Warning message:
+Removed 177 rows containing non-finite values (stat_bin). 
+> 
+> 
+> ## ----dummy model-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> table(train$Survived)
+
+  0   1 
+549 342 
+> 
+> 
+> ## ----exploratory 1, warning=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot() +
++     geom_histogram(data = imputed, mapping = aes(x = Survived, fill = factor(Sex)), alpha = 0.8, stat="count")
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> 
+> ## ----exploratory 2---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot() +
++     geom_histogram(data = imputed, mapping = aes(x = Age, fill = factor(Survived)), bins = 10) +
++     facet_grid(. ~ Sex)
+> 
+> 
+> ## ----exploratory 3, warning=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot() +
++     geom_histogram(data = imputed, mapping = aes(x = Pclass, fill = factor(Survived)), stat="count") +
++     facet_grid(. ~ Sex)
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> 
+> ## ----exploratory 4, warning=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot() +
++     geom_histogram(data = imputed, mapping = aes(x = SibSp, fill = factor(Survived)), stat="count") +
++     facet_grid(. ~ Sex)
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> 
+> ## ----exploratory 5, warning=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot() +
++     geom_histogram(data = imputed, mapping = aes(x = Parch, fill = factor(Survived)), stat="count") +
++     facet_grid(. ~ Sex)
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> 
+> ## ----exploratory 6, warning=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot() +
++     geom_histogram(data = imputed, mapping = aes(x = Embarked, fill = factor(Survived)), stat="count") +
++     facet_grid(. ~ Sex)
+Warning message:
+Ignoring unknown parameters: binwidth, bins, pad 
+> 
+> 
+> ## ----model1 training, warnings=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> imputed = subset(imputed, select = -c(PassengerId))
+> model1 = glm(Survived ~ Sex + Pclass + Embarked + SibSp, data = imputed, family=binomial)
+> predict1 = predict(model1, type="response")
+> 
+> a = table(imputed$Survived, predict1 >= 0.5)
+> 
+> TP = a[2,2] # true positives
+> TN = a[1,1] # true negatives
+> FP = a[1,2] # false positives
+> FN = a[2,1] # false negatives
+> 
+> sensitivity = TP/(TP+FN)
+> specificity = TN/(TN+FN)
+> accuracy = (TN + TP)/(TN + TP + FP + FN)
+> 
+> 
+> ## ----model1 testing, warnings=FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> prediction <- predict(model1, newdata=test, type = "response")
+> solution <- data.frame(PassengerID = test$PassengerId, Survived = round(prediction, 0))
+> write.csv(solution, file = 'model1_Solution.csv', row.names = F)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  4.155   0.259   4.468 

@@ -1,0 +1,245 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> library('rpart')
+> library('randomForest')
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> library('party')
+Loading required package: grid
+Loading required package: mvtnorm
+Loading required package: modeltools
+Loading required package: stats4
+Loading required package: strucchange
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: sandwich
+Warning messages:
+1: package ‘party’ was built under R version 3.6.2 
+2: package ‘zoo’ was built under R version 3.6.2 
+> library('ggplot2')
+
+Attaching package: ‘ggplot2’
+
+The following object is masked from ‘package:randomForest’:
+
+    margin
+
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library('ggthemes') 
+> library('scales') 
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> library('mice')
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library('randomForest') 
+> library('magrittr')
+> 
+> train <- read.csv("../input/train.csv")
+> test <- read.csv("../input/test.csv")
+> 
+> test$Survived <- NA
+> fullComb <- rbind(train, test)
+> 
+> str(fullComb)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> fullComb$Name <- as.character(fullComb$Name)
+> 
+> fullComb$Title <- sapply(fullComb$Name, FUN=function(x) {strsplit(x, split='[,.]')[[1]][2]})
+> fullComb$Title <- sub(' ', '', fullComb$Title)
+> 
+> fullComb$Title[fullComb$Title %in% c('Mme', 'Mlle')] <- 'Mlle'
+> fullComb$Title[fullComb$Title %in% c('Capt', 'Don', 'Major', 'Sir')] <- 'Sir'
+> fullComb$Title[fullComb$Title %in% c('Dona', 'Lady', 'the Countess', 'Jonkheer')] <- 'Lady'
+> 
+> fullComb$Title <- factor(fullComb$Title)
+> 
+> fullComb$FamilySize <- fullComb$SibSp + fullComb$Parch + 1
+> 
+> ggplot(fullComb[1:891,], aes(x = FamilySize, fill = factor(Survived))) +
++   geom_bar(stat='count', position='dodge') +
++   scale_x_continuous(breaks=c(1:11)) +
++   labs(x = 'Family Size') +
++   theme_few()
+> 
+> fullComb$FsizeD[fullComb$FamilySize == 1] <- 'singleton'
+> fullComb$FsizeD[fullComb$FamilySize < 5 & fullComb$Fsize > 1] <- 'small'
+> fullComb$FsizeD[fullComb$FamilySize > 4] <- 'large'
+> 
+> fullComb$Surname <- sapply(fullComb$Name, FUN=function(x) {strsplit(x, split='[,.]')[[1]][1]})
+> fullComb$FamilyID <- paste(as.character(fullComb$FamilySize), fullComb$Surname, sep="")
+> fullComb$FamilyID[fullComb$FamilySize <= 2] <- 'Small'
+> 
+> famIDs <- data.frame(table(fullComb$FamilyID))
+> famIDs <- famIDs[famIDs$Freq <= 2,]
+> fullComb$FamilyID[fullComb$FamilyID %in% famIDs$Var1] <- 'Small'
+> 
+> fullComb$FamilyID <- factor(fullComb$FamilyID)
+> 
+> summary(fullComb$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.17   21.00   28.00   29.88   39.00   80.00     263 
+> Agefit <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + FamilySize, 
++                 data=fullComb[!is.na(fullComb$Age),], method="anova")
+> fullComb$Age[is.na(fullComb$Age)] <- predict(Agefit, fullComb[is.na(fullComb$Age),])
+> 
+> summary(fullComb)
+  PassengerId      Survived          Pclass          Name          
+ Min.   :   1   Min.   :0.0000   Min.   :1.000   Length:1309       
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median : 655   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295                     
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :1309   Max.   :1.0000   Max.   :3.000                     
+                NA's   :418                                        
+     Sex           Age            SibSp            Parch            Ticket    
+ female:466   Min.   : 0.17   Min.   :0.0000   Min.   :0.000   CA. 2343:  11  
+ male  :843   1st Qu.:22.00   1st Qu.:0.0000   1st Qu.:0.000   1601    :   8  
+              Median :28.86   Median :0.0000   Median :0.000   CA 2144 :   8  
+              Mean   :29.70   Mean   :0.4989   Mean   :0.385   3101295 :   7  
+              3rd Qu.:36.50   3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7  
+              Max.   :80.00   Max.   :8.0000   Max.   :9.000   347082  :   7  
+                                                               (Other) :1261  
+      Fare                     Cabin      Embarked     Title    
+ Min.   :  0.000                  :1014    :  2    Mr     :757  
+ 1st Qu.:  7.896   C23 C25 C27    :   6   C:270    Miss   :260  
+ Median : 14.454   B57 B59 B63 B66:   5   Q:123    Mrs    :197  
+ Mean   : 33.295   G6             :   5   S:914    Master : 61  
+ 3rd Qu.: 31.275   B96 B98        :   4            Dr     :  8  
+ Max.   :512.329   C22 C26        :   4            Rev    :  8  
+ NA's   :1         (Other)        : 271            (Other): 18  
+   FamilySize        FsizeD            Surname                FamilyID   
+ Min.   : 1.000   Length:1309        Length:1309        Small     :1074  
+ 1st Qu.: 1.000   Class :character   Class :character   11Sage    :  11  
+ Median : 1.000   Mode  :character   Mode  :character   7Andersson:   9  
+ Mean   : 1.884                                         8Goodwin  :   8  
+ 3rd Qu.: 2.000                                         7Asplund  :   7  
+ Max.   :11.000                                         6Fortune  :   6  
+                                                        (Other)   : 194  
+> 
+> summary(fullComb$Embarked)
+      C   Q   S 
+  2 270 123 914 
+> which(fullComb$Embarked == '')
+[1]  62 830
+> 
+> fullComb$Embarked[c(62,830)] = "S"
+> 
+> summary(fullComb$Fare)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+  0.000   7.896  14.454  33.295  31.275 512.329       1 
+> which(is.na(fullComb$Fare))
+[1] 1044
+> fullComb$Fare[1044] <- median(fullComb$Fare, na.rm=TRUE)
+> 
+> ggplot(fullComb[fullComb$Pclass == '3' & fullComb$Embarked == 'S', ], 
++        aes(x = Fare)) +
++   geom_density(fill = '#99d6ff', alpha=0.4) + 
++   geom_vline(aes(xintercept=median(Fare, na.rm=T)),
++              colour='red', linetype='dashed', lwd=1) +
++   scale_x_continuous(labels=dollar_format()) +
++   theme_few()
+> 
+> fullComb$FamilyID2 <- fullComb$FamilyID
+> 
+> fullComb$FamilyID2 <- as.character(fullComb$FamilyID2)
+> fullComb$FamilyID2[fullComb$FamilySize <= 3] <- 'Small'
+> 
+> fullComb$FamilyID2 <- factor(fullComb$FamilyID2)
+> 
+> ggplot(fullComb[1:891,], aes(Age, fill = factor(Survived))) + 
++   geom_histogram() + 
++   facet_grid(.~Sex) + 
++   theme_few()
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+> 
+> fullComb$Child[fullComb$Age < 16] <- 'Child'
+> fullComb$Child[fullComb$Age >= 16] <- 'Adult'
+> 
+> table(fullComb$Child, fullComb$Survived)
+       
+          0   1
+  Adult 509 290
+  Child  40  52
+> 
+> fullComb$Child  <- factor(fullComb$Child)
+> md.pattern(fullComb)
+    PassengerId Pclass Name Sex Age SibSp Parch Ticket Fare Cabin Embarked
+599           1      1    1   1   1     1     1      1    1     1        1
+292           1      1    1   1   1     1     1      1    1     1        1
+273           1      1    1   1   1     1     1      1    1     1        1
+145           1      1    1   1   1     1     1      1    1     1        1
+              0      0    0   0   0     0     0      0    0     0        0
+    Title FamilySize Surname FamilyID FamilyID2 Child Survived FsizeD    
+599     1          1       1        1         1     1        1      1   0
+292     1          1       1        1         1     1        1      0   1
+273     1          1       1        1         1     1        0      1   1
+145     1          1       1        1         1     1        0      0   2
+        0          0       0        0         0     0      418    437 855
+> 
+> train <- fullComb[1:891,]
+> test <- fullComb[892:1309,]
+> 
+> set.seed(2501)
+> fit <- randomForest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize + FamilyID2,
++                     data=train, importance=TRUE, ntree=2000)
+> 
+> varImpPlot(fit)
+> 
+> Prediction <- predict(fit, test)
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+> write.csv(submit, file = "one.csv", row.names = FALSE)
+> 
+> set.seed(2501)
+> fit <- cforest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize + FamilyID,
++                data = train, controls=cforest_unbiased(ntree=2000, mtry=3)) 
+> Prediction <- predict(fit, test, OOB=TRUE, type = "response")
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+Error in data.frame(PassengerId = test$PassengerId, Survived = Prediction) : 
+  arguments imply differing number of rows: 418, 891
+Execution halted

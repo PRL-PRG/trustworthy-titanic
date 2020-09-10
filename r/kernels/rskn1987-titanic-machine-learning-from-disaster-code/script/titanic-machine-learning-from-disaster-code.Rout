@@ -1,0 +1,73 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> Train <- read.csv("../input/train.csv")
+> Test <- read.csv("../input/test.csv")
+> 
+> Train$TYPE <- 1
+> Test$TYPE <- 0
+> 
+> Survive <- as.data.frame(Train[,2])
+> colnames(Survive)[1] <- "Survived"
+> 
+> Train <- Train[-2]
+> 
+> Data <- rbind(Train,Test)
+> 
+> levels(Data$Embarked)[1] <- "S"
+> Data[Data$Embarked=='',"Embarked"] <- "S"
+> 
+> Data$Name <- as.character(Data$Name)
+> 
+> Data$Title <- gsub('(.*, )|(\\..*)', '', Data$Name)
+> 
+> officer <- c("Capt", "Col", "Don", "Dr", "Major", "Rev")
+> royalty <- c("Dona", "Lady", "the Countess","Sir", "Jonkheer")
+> 
+> Data$Title[Data$Title == "Mlle"]        <- "Miss" 
+> Data$Title[Data$Title == "Ms"]          <- "Miss"
+> Data$Title[Data$Title == "Mme"]         <- "Mrs" 
+> Data$Title[Data$Title %in% royalty]  <- "Royalty"
+> Data$Title[Data$Title %in% officer]  <- "Officer"
+> 
+> Data$Surname <- sapply(Data$Name, function(x) strsplit(x, split = '[,.]')[[1]][1])
+> 
+> Data$FamilySize <- Data$SibSp + Data$Parch + 1
+> 
+> Data$Family <- paste(Data$Surname, Data$FamilySize, sep='_')
+> 
+> Data$FamilySizeD[Data$FamilySize == 1] <- "Singleton"
+> Data$FamilySizeD[Data$FamilySize < 5 & Data$FamilySize > 1] <- "Small"
+> Data$FamilySizeD[Data$FamilySize > 4] <- "Large"
+> 
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> 
+> F_Data_M <- mice(Data, m = 1)
+
+ iter imp variable
+  1   1  Age*  Fare

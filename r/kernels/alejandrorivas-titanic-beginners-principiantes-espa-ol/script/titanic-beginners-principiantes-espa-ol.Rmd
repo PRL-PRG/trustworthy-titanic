@@ -1,0 +1,477 @@
+---
+title: "Titanic Español"
+author: "Alejandro Rivas"
+date: "2 de septiembre de 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=F, warning=F, fig.width=9.475, fig.height=5)
+```
+
+## Supervivencia en el Titanic en Español para principiantes en R
+
+Introduccion para aprender R y predicciones
+
+```{r 1}
+#Directorio de trabajo para que siempre sea en la misma carpeta.
+#setwd(".../Kaggle Titanic")
+```
+
+
+```{r 2}
+#Importamos los data set que nos hemos descargado de Kaggle.
+train <- read.csv("../input/train.csv")
+test <- read.csv("../input/test.csv")
+```
+
+```{r 3}
+#Si necesitamos visualizarlos:
+#View(train)
+#View(test)
+```
+
+```{r 4}
+#Conocer la estructura de los datos.
+str(train)
+```
+
+```{r 5}
+#Pasar la información que está en Factor a Texto Strings.
+#train <- read.csv("train.csv", stringsAsFactors=FALSE)
+```
+
+```{r 6}
+#Resumen basico sobre una columna podemos usar.
+table(train$Survived)
+```
+
+```{r 7}
+#Obtener la proporción.
+prop.table(table(train$Survived))
+```
+
+```{r 8}
+#Para añadir algo podemos usar <-.
+#En este caso añadiremos que todo el mundo muere. 
+#Usando rep(valor a añadir, numero de veces)
+test$Survived <- rep(0, 418)
+```
+
+```{r 9}
+#Creamos un fichero para el envio de la información demandada.
+#Creamos el dataframe.
+submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+#Escrivimos el csv.
+write.csv(submit, file = "theyallperish.csv", row.names = FALSE)
+```
+
+## Parte 2
+Limpiamos los dataframe para comenzar de nuevo.
+
+```{r 10}
+#Directorio de trabajo para que siempre sea en la misma carpeta.
+#setwd(".../Kaggle Titanic")
+```
+
+```{r 11}
+#Importamos los data set que nos hemos descargado de Kaggle.
+train <- read.csv("../input/train.csv")
+test <- read.csv("../input/test.csv")
+```
+
+```{r 12}
+#Usamos otro Resumen con Summary.
+summary(train$Sex)
+```
+
+```{r 13}
+#Sacamos el % e incluimos la variable de supervivientes.
+prop.table(table(train$Sex, train$Survived))
+```
+
+```{r 14}
+#Si ponemos un 1 al final nos dará el % por filas, 2 por Columnas.
+prop.table(table(train$Sex, train$Survived),1)
+```
+
+```{r 15}
+#Cargamos esta nueva prediccion indicando que las mujeres sobreviven.
+test$Survived <- 0
+test$Survived[test$Sex == 'female'] <- 1
+```
+
+```{r 16}
+#Generamos el fichero para subirlo a kaggle.
+submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+write.csv(submit, file = "theyallperish.csv", row.names = FALSE)
+```
+
+## Parte 3
+
+```{r 17}
+#Miramos la variable edad en su resumen.
+summary(train$Age)
+#Cuidado con los NA, asumiremos que están dentro de la edad media.
+```
+
+```{r 18}
+#Creamos la variable NIÑOS con edad <18 años.
+#Creamos la columna.
+train$Child <- 0
+#Añadimos la variable.
+train$Child[train$Age < 18] <- 1
+```
+
+```{r 19}
+#Vemos el numero de supervivientes según estas condiciones.
+#aggragate(Variableobjetivo ~ variable1 + variable2, data=dataframe buscado, FUN=sumar) )
+aggregate(Survived ~ Child + Sex, data=train, FUN=sum)
+```
+
+```{r 20}
+#Sacamos el %.
+#Añadimos a la parte final de la funcion, la suma de los casos entre el total.
+aggregate(Survived ~ Child + Sex, data=train, FUN=function(x) {sum(x)/length(x)})
+```
+
+```{r 21}
+#Vamos a revisar la variable Clase.
+#La dividimos en 4 clases <10, 10-20, 20-30, >30. e introducimos una nueva columna.
+#Creamos la nueva columna y decimos que todos están por encima.
+train$Fare2 <- '30+'
+#Ajustamos segun las categorias indicadas.
+train$Fare2[train$Fare < 30 & train$Fare >= 20] <- '20-30'
+train$Fare2[train$Fare < 20 & train$Fare >= 10] <- '10-20'
+train$Fare2[train$Fare < 10] <- '<10'
+```
+
+```{r 22}
+#Vemos el resumen en %, añadiendo esta nueva variable en lugar de NIÑO.
+aggregate(Survived ~ Fare2 + Pclass + Sex, data=train, FUN=function(x) {sum(x)/length(x)})
+```
+
+```{r 23}
+#Hacemos una nueva predicción.
+#Pongo los supervivientes a 0 (nadie sobrevive).
+test$Survived <- 0
+#Indico que las muejeres sobreviven.
+test$Survived[test$Sex == 'female'] <- 1
+#Indico que las mujeres de Clase 3 con gasto <20 NO sobrevien.
+test$Survived[test$Sex == 'female' & test$Pclass == 3 & test$Fare >= 20] <- 0
+```
+
+```{r 24}
+#Creo el fichero para subirlo a Kaggle.
+submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+write.csv(submit, file = "theyallperish.csv", row.names = FALSE)
+```
+
+## Parte 4
+
+Arboles de decisión (DECISION TREES)
+
+```{r 25}
+#Importamos los ficheros originales, sin modificaciones.
+#setwd(".../Kaggle Titanic")
+train <- read.csv("../input/train.csv")
+test <- read.csv("../input/test.csv")
+```
+
+```{r 26}
+#Para realizar los arboles tenemos que importar la libreria rpart.
+library(rpart)
+```
+
+```{r 27}
+#Filtramos la tabla para obtener las columnas que nos resulten utiles para el arbol.
+#(Los datos como el nombre no afectarán por ello los exluimos).
+#El comando rport es similar a aggregate. Ponemos la variable de interes y el resto de variables.
+#Usamos el metodo "class" ya que es más apropiado al incluir decimales.
+fit <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, data=train, method="class")
+```
+
+```{r 28}
+#Examinamos el arbol.
+plot(fit)
+text(fit)
+```
+
+```{r 29}
+#Instalamos paquetes de visualización mejores.
+#install.packages('rattle')
+#install.packages('rpart.plot')
+#install.packages('RColorBrewer')
+#library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+```
+
+```{r 30}
+#Generamos el arbol con el nuevo paquete descargado y revisamos.
+#fancyRpartPlot(fit)
+```
+
+```{r 31}
+#Preparamos el fichero para subir a kaggle con esta prediccion.
+#Sacamos la variable predica del arbol de decision.
+Prediction <- predict(fit, test, type = "class")
+```
+
+```{r 32}
+#Generamos los ficheros.
+#submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+#write.csv(submit, file = "myfirstdtree.csv", row.names = FALSE)
+```
+
+## Parte 5
+
+
+
+```{r 33}
+train <- read.csv("../input/train.csv")
+test <- read.csv("../input/test.csv")
+```
+
+```{r 34}
+#Vamos a buscar nuevas variables que nos puedan ayudar a predecir.
+#Por ejemplo miramos el nombre nos podran indicar por ej si es señora o señorita - Está casada o es soltero.
+train$Name[1]
+```
+
+```{r 35}
+#Antes de unir el test y train con rbind, éstos deben ser iguales. (Más información para el algoritmo)
+#Añadimos la columna Survive en el test para que sean iguales.
+test$Survived <- NA
+#Las unimos.
+combi <- rbind(train, test)
+```
+
+```{r 36}
+#Ponemos los textos como texto y no como factor como vimos al princio.
+combi$Name <- as.character(combi$Name)
+combi$Name[1]
+```
+
+```{r 37}
+#Separamos la información relevante del nombre, Hay que identificar el sufijo y el nombre.
+#Separamos el string por coma y punto.
+strsplit(combi$Name[1], split='[,.]')
+```
+
+```{r 38}
+#Quitamos el indice [[1]] que aparece al princio.
+strsplit(combi$Name[1], split='[,.]')[[1]]
+```
+
+```{r 39}
+#Ajustamos el comando para que nos estraiga justamente el segundo bloque que contiene el titulo del nombre.
+strsplit(combi$Name[1], split='[,.]')[[1]][2]
+```
+
+```{r 40}
+#Para aplicar este comando a todos los datos usaremos sapply y lo introducimos como una nueva columna.
+combi$Title <- sapply(combi$Name, FUN=function(x) {strsplit(x, split='[,.]')[[1]][2]})
+
+```
+
+```{r 41}
+#Quitamos el espacio que aparece al seleccionar el titulo que acabamos de hacer.
+combi$Title <- sub(' ', '', combi$Title)
+```
+
+```{r 42}
+#Resumen de los titulos que aparecen.
+table(combi$Title)
+```
+
+```{r 43}
+#Aparecen algunos extraños y otros que son muy parecidos por ello vamos a unificarlos para tener menos.
+combi$Title[combi$Title %in% c('Mme', 'Mlle')] <- 'Mlle'
+```
+
+```{r 44}
+#Miramos si hay más redundancias.
+combi$Title[combi$Title %in% c('Capt', 'Don', 'Major', 'Sir')] <- 'Sir'
+combi$Title[combi$Title %in% c('Dona', 'Lady', 'the Countess', 'Jonkheer')] <- 'Lady'
+```
+
+```{r 45}
+#Ahora pasaremos esta columna a factor para que lo recozca el algoritmo.
+combi$Title <- factor(combi$Title)
+```
+
+```{r 46}
+#Revisamos otras variables disponibles en el dataset como numero de familiares que viajan juntos.
+combi$FamilySize <- combi$SibSp + combi$Parch + 1
+```
+
+```{r 47}
+#Revisamos y extraemos los apellidos para conocer si las familias con el mismo apellido sobrevivieron.
+#Hay que tener en cuenta que en ingles solo usan un apellido por lo que pueden existir viajeros solos.
+combi$Surname <- sapply(combi$Name, FUN=function(x) {strsplit(x, split='[,.]')[[1]][1]})
+```
+
+```{r 48}
+#Para poder trabajar con esta informacion debemos pasarla a strig temporalmente.
+combi$FamilyID <- paste(as.character(combi$FamilySize), combi$Surname, sep="")
+```
+
+```{r 49}
+#Por el momento categorizamos las familias de un o dos miembros a small.
+combi$FamilyID[combi$FamilySize <= 2] <- 'Small'
+```
+
+```{r 50}
+#Revisamos esta variable.
+table(combi$FamilyID)
+```
+
+```{r 51}
+#Vamos a revisar estos datos para limpiarlos un poco. Muchas de una persona.
+famIDs <- data.frame(table(combi$FamilyID))
+```
+
+```{r 52}
+#Para analizarlo mejor nos centramos en las familias pequeñas.
+famIDs <- famIDs[famIDs$Freq <= 2,]
+```
+
+```{r 53}
+#Las convertimos en small usando esa tabla con nuestra tabla Combi.
+combi$FamilyID[combi$FamilyID %in% famIDs$Var1] <- 'Small'
+#Volvemos a ponerlo como factor.
+combi$FamilyID <- factor(combi$FamilyID)
+```
+
+```{r 54}
+#Volvemos a separar el train y test de nustro Combi para el algoritmo con el mismo numero de objetos.
+train <- combi[1:891,]
+test <- combi[892:1309,]
+```
+
+```{r 55}
+#Con las nuevas variables realizamos el Arbol al igual que hicimos antes. Sin ajustes especiales.
+fit <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize + FamilyID,
+             data=train, method="class")
+```
+
+```{r 56}
+#Lo vemos.
+#fancyRpartPlot(fit)
+```
+
+```{r 57}
+#Generamos el csv para Kaggle.
+#Prediction <- predict(fit, test, type = "class")
+#submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+#write.csv(submit, file = "myfirstdtree.csv", row.names = FALSE)
+```
+
+## Parte 6
+
+RANDOM FORESTS
+
+```{r 58}
+#R's Random Forest algorithm
+sample(1:10, replace = TRUE)
+```
+
+```{r 59}
+summary(combi$Age)
+```
+
+```{r 60}
+Agefit <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + FamilySize,
+                data=combi[!is.na(combi$Age),], method="anova")
+
+combi$Age[is.na(combi$Age)] <- predict(Agefit, combi[is.na(combi$Age),])
+
+```
+
+```{r 61}
+summary(combi)
+```
+
+```{r 62}
+summary(combi$Embarked)
+```
+
+```{r 63}
+which(combi$Embarked == '')
+```
+
+```{r 64}
+combi$Embarked[c(62,830)] = "S"
+#Lo ponemos como factor again.
+combi$Embarked <- factor(combi$Embarked)
+```
+
+```{r 65}
+summary(combi$Fare)
+```
+
+```{r 66}
+which(is.na(combi$Fare))
+```
+
+```{r 67}
+combi$Fare[1044] <- median(combi$Fare, na.rm=TRUE)
+```
+
+```{r 68}
+#Incrementamos las small familias a 2 o 3 personas.
+combi$FamilyID2 <- combi$FamilyID
+combi$FamilyID2 <- as.character(combi$FamilyID2)
+combi$FamilyID2[combi$FamilySize <= 3] <- 'Small'
+combi$FamilyID2 <- factor(combi$FamilyID2)
+```
+
+```{r 69}
+#Separamos el contenido
+train <- combi[1:891,]
+test <- combi[892:1309,]
+```
+
+```{r 70}
+#Insamos y activamos el paquete.
+#install.packages('randomForest')
+library(randomForest)
+```
+
+```{r 71}
+set.seed(415)
+```
+
+```{r 72}
+fit <- randomForest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize +
+                      FamilyID2, data=train, importance=TRUE, ntree=2000)
+```
+
+```{r 73}
+varImpPlot(fit)
+```
+
+```{r 74}
+Prediction <- predict(fit, test)
+submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+write.csv(submit, file = "firstforest.csv", row.names = FALSE)
+```
+
+```{r 75}
+#install.packages('party')
+library(party)
+```
+
+```{r 76}
+set.seed(415)
+fit <- cforest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize + FamilyID,
+               data = train, controls=cforest_unbiased(ntree=2000, mtry=3))
+```
+
+```{r 77}
+Prediction <- predict(fit, test, OOB=TRUE, type = "response")
+submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+write.csv(submit, file = "firstforest2.csv", row.names = FALSE)
+
+```

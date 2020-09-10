@@ -1,0 +1,160 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> require(dplyr)
+Loading required package: dplyr
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> require(caret)
+Loading required package: caret
+Loading required package: lattice
+Loading required package: ggplot2
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> require(mice)
+Loading required package: mice
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> require(ggplot2)
+> 
+> # Read the data and put it in a single dataframe
+> train <- read.csv("../input/train.csv", stringsAsFactors = FALSE)
+> test <- read.csv("../input/test.csv", stringsAsFactors = FALSE)
+> full <- bind_rows(train,test)
+> 
+> # Clean up missing data
+> # What's missing?
+> sapply(names(full), function(x) sum(is.na(full[[x]]))) # Age, Fare
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1           0           0 
+> sapply(names(full), function(x) sum(full[[x]] == "")) # Cabin, Embarked
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0          NA           0           0           0          NA 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0          NA        1014           2 
+> 
+> # Age
+> full[is.na(full$Age),]$Age <- -1
+> 
+> # Embarked
+> full %>% filter(Embarked == "") %>% select(Embarked, Fare)
+  Embarked Fare
+1            80
+2            80
+> ggplot(full %>% filter(Pclass==1, Embarked != "")) + 
++   geom_boxplot(aes(Embarked, Fare, fill=Embarked)) + 
++   geom_hline(yintercept=80, color="red")
+> # It looks most likely that an 80 fare indicates embarking in Cherbourg
+> full[full$Embarked=="",]$Embarked <- "C"
+> 
+> # Fare
+> full %>% filter(is.na(Fare)) %>% select(Embarked, Pclass, Sex)
+  Embarked Pclass  Sex
+1        S      3 male
+> full %>% filter(Embarked=="S", Pclass==3, Sex=="male") %>% select(Fare) %>% 
++   summarize(usual_fare=median(Fare, na.rm = TRUE))
+  usual_fare
+1       8.05
+> full[is.na(full$Fare),]$Fare <- 8.05
+> 
+> # Get titles and last names
+> full <- full %>% 
++   mutate(Title=gsub(x=Name, pattern="^[^,]+, ([^ .]+)[\\. ].*$", replacement="\\1")) %>%
++   mutate(Surname=gsub(x=full$Name, pattern="^([^,]+),.*$", replacement="\\1")) %>%
++   mutate(Family_size=SibSp+Parch)
+> 
+> # Fix unusual titles
+> full[grep(x=full$Title, pattern="Mr|Miss|Mrs|Master", invert=TRUE),]$Title <- "Unusual"
+> 
+> 
+> full$Sex <- factor(full$Sex)
+> full$Embarked <- factor(full$Embarked)
+> full$Title <- factor(full$Title)
+> 
+> # Split it back up
+> train.clean <- full[1:891,]
+> test.clean <- full[892:1309,]
+> 
+> # Now we can do some random forest stuff
+> set.seed(42)
+> require(randomForest)
+Loading required package: randomForest
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> rf <- randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch +
++                      Fare + Embarked + Title + 
++                      Family_size, data=train.clean)
+> 
+> plot(rf)
+> 
+> # What's important?
+> imp <- importance(rf)
+> imp
+            MeanDecreaseGini
+Pclass             32.149100
+Sex                56.943108
+Age                52.272270
+SibSp              12.315253
+Parch               8.280285
+Fare               70.010737
+Embarked           10.224399
+Title              78.143096
+Family_size        22.081104
+> 
+> test.clean$Survived <- predict(rf, test.clean)
+> # View(test.clean)
+> submission <- test.clean %>% select(PassengerId, Survived)
+> write.csv(submission, "submission.csv", row.names = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  2.223   0.146   2.370 

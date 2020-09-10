@@ -1,0 +1,1506 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # Training Set
+> df <- read.csv('../input/train.csv',
++                        row.names = 1,
++                        header = TRUE)
+> 
+> # Kaggle Validation Set
+> vdf <- read.csv('../input/test.csv',  # Survived column doesn't exist in test
++                        header = TRUE)
+> 
+> 
+> 
+> df$Pclass <- factor(df$Pclass, labels = "class")
+> vdf$Pclass <- factor(vdf$Pclass, labels = "class")
+> 
+> # important to get 1 and 0 as a classification
+> df$Survived <- factor(df$Survived, labels = c('No', 'Yes'))
+> 
+> summary(df[, c('Pclass', 'Survived')])
+    Pclass    Survived 
+ class1:216   No :549  
+ class2:184   Yes:342  
+ class3:491            
+> 
+> library(caret)
+Loading required package: lattice
+Loading required package: ggplot2
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> 
+> resampledataPart <- createDataPartition(df$Survived, list = FALSE)
+> trainTable <- df[resampledataPart,]
+> trainTable
+    Survived Pclass
+3        Yes class3
+6         No class3
+9        Yes class3
+10       Yes class2
+13        No class3
+15        No class3
+21        No class2
+22       Yes class2
+24       Yes class1
+27        No class3
+30        No class3
+32       Yes class1
+33       Yes class3
+34        No class2
+36        No class1
+38        No class3
+41        No class3
+43        No class3
+46        No class3
+48       Yes class3
+50        No class3
+52        No class3
+53       Yes class1
+55        No class1
+57       Yes class2
+58        No class3
+59       Yes class2
+60        No class3
+61        No class3
+62       Yes class1
+68        No class3
+73        No class2
+75       Yes class3
+77        No class3
+78        No class3
+81        No class3
+86       Yes class3
+88        No class3
+91        No class3
+92        No class3
+93        No class1
+94        No class3
+97        No class1
+98       Yes class1
+99       Yes class2
+100       No class2
+101       No class3
+102       No class3
+103       No class1
+105       No class3
+106       No class3
+107      Yes class3
+109       No class3
+110      Yes class3
+111       No class1
+114       No class3
+115       No class3
+117       No class3
+122       No class3
+124      Yes class2
+125       No class1
+126      Yes class3
+128      Yes class3
+132       No class3
+134      Yes class2
+135       No class2
+136       No class2
+139       No class3
+140       No class1
+141       No class3
+143      Yes class3
+146       No class2
+149       No class2
+151       No class2
+152      Yes class1
+153       No class3
+159       No class3
+160       No class3
+161       No class3
+162      Yes class2
+163       No class3
+164       No class3
+169       No class1
+173      Yes class3
+174       No class3
+175       No class1
+178       No class1
+179       No class2
+182       No class2
+183       No class3
+184      Yes class2
+185      Yes class3
+187      Yes class3
+191      Yes class2
+193      Yes class3
+194      Yes class2
+196      Yes class1
+197       No class3
+198       No class3
+199      Yes class3
+201       No class3
+202       No class3
+203       No class3
+206       No class3
+208      Yes class3
+210      Yes class1
+211       No class3
+214       No class2
+215       No class3
+216      Yes class1
+218       No class2
+219      Yes class1
+222       No class2
+223       No class3
+225      Yes class1
+227      Yes class2
+229       No class2
+231      Yes class1
+233       No class2
+234      Yes class3
+237       No class2
+238      Yes class2
+239       No class2
+240       No class2
+241       No class3
+243       No class2
+244       No class3
+245       No class3
+246       No class1
+248      Yes class2
+251       No class3
+252       No class3
+253       No class1
+255       No class3
+256      Yes class3
+257      Yes class1
+259      Yes class1
+260      Yes class2
+264       No class1
+265       No class3
+266       No class2
+267       No class3
+268      Yes class3
+272      Yes class3
+273      Yes class2
+279       No class3
+281       No class3
+283       No class3
+284      Yes class3
+287      Yes class3
+289      Yes class2
+290      Yes class3
+293       No class2
+294       No class3
+295       No class3
+296       No class1
+297       No class3
+299      Yes class1
+300      Yes class1
+302      Yes class3
+307      Yes class1
+309       No class2
+311      Yes class1
+312      Yes class1
+316      Yes class3
+317      Yes class2
+318       No class2
+320      Yes class1
+322       No class3
+323      Yes class2
+328      Yes class2
+330      Yes class1
+334       No class3
+336       No class3
+338      Yes class1
+339      Yes class3
+340       No class1
+341      Yes class2
+342      Yes class1
+343       No class2
+348      Yes class3
+349      Yes class3
+350       No class3
+351       No class3
+353       No class3
+356       No class3
+357      Yes class1
+358       No class2
+360      Yes class3
+361       No class3
+362       No class2
+366       No class3
+367      Yes class1
+370      Yes class1
+371      Yes class1
+372       No class3
+374       No class1
+376      Yes class1
+377      Yes class3
+378       No class1
+379       No class3
+380       No class3
+381      Yes class1
+383       No class3
+386       No class2
+387       No class3
+388      Yes class2
+394      Yes class1
+396       No class3
+397       No class3
+399       No class2
+401      Yes class3
+403       No class3
+404       No class3
+405       No class3
+406       No class2
+408      Yes class2
+411       No class3
+412       No class3
+413      Yes class1
+417      Yes class2
+418      Yes class2
+419       No class2
+420       No class3
+421       No class3
+422       No class3
+425       No class3
+426       No class3
+427      Yes class2
+432      Yes class3
+433      Yes class2
+436      Yes class1
+437       No class3
+441      Yes class2
+443       No class3
+447      Yes class2
+449      Yes class3
+451       No class2
+453       No class1
+454      Yes class1
+456      Yes class3
+458      Yes class1
+460       No class3
+461      Yes class1
+462       No class3
+464       No class2
+465       No class3
+467       No class2
+469       No class3
+471       No class3
+478       No class3
+479       No class3
+481       No class3
+485      Yes class1
+488       No class1
+490      Yes class3
+492       No class3
+493       No class1
+495       No class3
+496       No class3
+498       No class3
+502       No class3
+503       No class3
+505      Yes class1
+506       No class1
+508      Yes class1
+512       No class3
+513      Yes class1
+514      Yes class1
+515       No class3
+518       No class3
+519      Yes class2
+520       No class3
+526       No class3
+527      Yes class2
+530       No class2
+531      Yes class2
+533       No class3
+537       No class1
+538      Yes class1
+545       No class1
+547      Yes class2
+548      Yes class2
+549       No class3
+550      Yes class2
+553       No class3
+554      Yes class3
+555      Yes class3
+561       No class3
+562       No class3
+563       No class2
+564       No class3
+565       No class3
+567       No class3
+568       No class3
+570      Yes class3
+571      Yes class2
+577      Yes class2
+579       No class3
+583       No class2
+585       No class3
+588      Yes class1
+592      Yes class1
+596       No class3
+597      Yes class2
+603       No class1
+604       No class3
+608      Yes class1
+609      Yes class2
+610      Yes class1
+613      Yes class3
+614       No class3
+618       No class3
+621       No class3
+625       No class3
+627       No class2
+628      Yes class1
+629       No class3
+630       No class3
+631      Yes class1
+634       No class1
+636      Yes class2
+637       No class3
+640       No class3
+641       No class3
+643       No class3
+644      Yes class3
+645      Yes class3
+646      Yes class1
+647       No class3
+649       No class3
+651       No class3
+657       No class3
+658       No class3
+661      Yes class1
+663       No class1
+666       No class2
+671      Yes class2
+674      Yes class2
+675       No class2
+678      Yes class3
+683       No class3
+684       No class3
+687       No class3
+688       No class3
+689       No class3
+690      Yes class1
+692      Yes class3
+694       No class3
+695       No class1
+696       No class2
+697       No class3
+698      Yes class3
+703       No class3
+704       No class3
+705       No class3
+706       No class2
+711      Yes class1
+713      Yes class1
+714       No class3
+716       No class3
+720       No class3
+723       No class2
+724       No class2
+726       No class3
+728      Yes class3
+731      Yes class1
+732       No class3
+733       No class2
+735       No class2
+737       No class3
+739       No class3
+740       No class3
+741      Yes class1
+742       No class1
+743      Yes class1
+744       No class3
+745      Yes class3
+746       No class1
+747       No class3
+748      Yes class2
+749       No class1
+750       No class3
+752      Yes class3
+758       No class2
+760      Yes class1
+761       No class3
+762       No class3
+763      Yes class3
+769       No class3
+770       No class3
+771       No class3
+772       No class3
+773       No class2
+774       No class3
+775      Yes class2
+782      Yes class1
+783       No class1
+784       No class3
+785       No class3
+788       No class3
+793       No class3
+797      Yes class1
+798      Yes class3
+803      Yes class1
+804      Yes class3
+806       No class3
+809       No class2
+811       No class3
+816       No class1
+817       No class3
+818       No class2
+820       No class3
+821      Yes class1
+824      Yes class3
+825       No class3
+826       No class3
+827       No class3
+828      Yes class2
+829      Yes class3
+830      Yes class1
+838       No class3
+839      Yes class3
+845       No class3
+846       No class3
+847       No class3
+853       No class3
+854      Yes class1
+856      Yes class3
+857      Yes class1
+864       No class3
+865       No class2
+866      Yes class2
+867      Yes class2
+870      Yes class3
+872      Yes class1
+874       No class3
+875      Yes class2
+878       No class3
+880      Yes class1
+884       No class2
+885       No class3
+886       No class3
+887       No class2
+888      Yes class1
+890      Yes class1
+                                                             Name    Sex   Age
+3                                          Heikkinen, Miss. Laina female 26.00
+6                                                Moran, Mr. James   male    NA
+9               Johnson, Mrs. Oscar W (Elisabeth Vilhelmina Berg) female 27.00
+10                            Nasser, Mrs. Nicholas (Adele Achem) female 14.00
+13                                 Saundercock, Mr. William Henry   male 20.00
+15                           Vestrom, Miss. Hulda Amanda Adolfina female 14.00
+21                                           Fynney, Mr. Joseph J   male 35.00
+22                                          Beesley, Mr. Lawrence   male 34.00
+24                                   Sloper, Mr. William Thompson   male 28.00
+27                                        Emir, Mr. Farred Chehab   male    NA
+30                                            Todoroff, Mr. Lalio   male    NA
+32                 Spencer, Mrs. William Augustus (Marie Eugenie) female    NA
+33                                       Glynn, Miss. Mary Agatha female    NA
+34                                          Wheadon, Mr. Edward H   male 66.00
+36                                 Holverson, Mr. Alexander Oskar   male 42.00
+38                                       Cann, Mr. Ernest Charles   male 21.00
+41                 Ahlin, Mrs. Johan (Johanna Persdotter Larsson) female 40.00
+43                                            Kraeff, Mr. Theodor   male    NA
+46                                       Rogers, Mr. William John   male    NA
+48                                      O'Driscoll, Miss. Bridget female    NA
+50                  Arnold-Franchi, Mrs. Josef (Josefine Franchi) female 18.00
+52                                   Nosworthy, Mr. Richard Cater   male 21.00
+53                       Harper, Mrs. Henry Sleeper (Myna Haxtun) female 49.00
+55                                 Ostby, Mr. Engelhart Cornelius   male 65.00
+57                                              Rugg, Miss. Emily female 21.00
+58                                            Novel, Mr. Mansouer   male 28.50
+59                                   West, Miss. Constance Mirium female  5.00
+60                             Goodwin, Master. William Frederick   male 11.00
+61                                          Sirayanian, Mr. Orsen   male 22.00
+62                                            Icard, Miss. Amelie female 38.00
+68                                       Crease, Mr. Ernest James   male 19.00
+73                                           Hood, Mr. Ambrose Jr   male 21.00
+75                                                  Bing, Mr. Lee   male 32.00
+77                                              Staneff, Mr. Ivan   male    NA
+78                                       Moutal, Mr. Rahamin Haim   male    NA
+81                                           Waelens, Mr. Achille   male 22.00
+86        Backstrom, Mrs. Karl Alfred (Maria Mathilda Gustafsson) female 33.00
+88                                  Slocovski, Mr. Selman Francis   male    NA
+91                                           Christmann, Mr. Emil   male 29.00
+92                                     Andreasson, Mr. Paul Edvin   male 20.00
+93                                    Chaffee, Mr. Herbert Fuller   male 46.00
+94                                        Dean, Mr. Bertram Frank   male 26.00
+97                                      Goldschmidt, Mr. George B   male 71.00
+98                                Greenfield, Mr. William Bertram   male 23.00
+99                           Doling, Mrs. John T (Ada Julia Bone) female 34.00
+100                                             Kantor, Mr. Sinai   male 34.00
+101                                       Petranec, Miss. Matilda female 28.00
+102                              Petroff, Mr. Pastcho ("Pentcho")   male    NA
+103                                     White, Mr. Richard Frasar   male 21.00
+105                                Gustafsson, Mr. Anders Vilhelm   male 37.00
+106                                         Mionoff, Mr. Stoytcho   male 28.00
+107                              Salkjelsvik, Miss. Anna Kristine female 21.00
+109                                               Rekic, Mr. Tido   male 38.00
+110                                           Moran, Miss. Bertha female    NA
+111                                Porter, Mr. Walter Chamberlain   male 47.00
+114                                       Jussila, Miss. Katriina female 20.00
+115                                         Attalah, Miss. Malake female 17.00
+117                                          Connors, Mr. Patrick   male 70.50
+122                                    Moore, Mr. Leonard Charles   male    NA
+124                                           Webber, Miss. Susan female 32.50
+125                                   White, Mr. Percival Wayland   male 54.00
+126                                  Nicola-Yarred, Master. Elias   male 12.00
+128                                     Madsen, Mr. Fridtjof Arne   male 24.00
+132                                Coelho, Mr. Domingos Fernandeo   male 20.00
+134                 Weisz, Mrs. Leopold (Mathilde Francoise Pede) female 29.00
+135                                Sobey, Mr. Samuel James Hayden   male 25.00
+136                                            Richard, Mr. Emile   male 23.00
+139                                           Osen, Mr. Olaf Elon   male 16.00
+140                                            Giglio, Mr. Victor   male 24.00
+141                                 Boulos, Mrs. Joseph (Sultana) female    NA
+143          Hakkarainen, Mrs. Pekka Pietari (Elin Matilda Dolck) female 24.00
+146                                  Nicholls, Mr. Joseph Charles   male 19.00
+149                      Navratil, Mr. Michel ("Louis M Hoffman")   male 36.50
+151                                    Bateman, Rev. Robert James   male 51.00
+152                             Pears, Mrs. Thomas (Edith Wearne) female 22.00
+153                                              Meo, Mr. Alfonzo   male 55.50
+159                                           Smiljanic, Mr. Mile   male    NA
+160                                    Sage, Master. Thomas Henry   male    NA
+161                                      Cribb, Mr. John Hatfield   male 44.00
+162            Watt, Mrs. James (Elizabeth "Bessie" Inglis Milne) female 40.00
+163                                    Bengtsson, Mr. John Viktor   male 26.00
+164                                               Calic, Mr. Jovo   male 17.00
+169                                           Baumann, Mr. John D   male    NA
+173                                  Johnson, Miss. Eleanor Ileen female  1.00
+174                                     Sivola, Mr. Antti Wilhelm   male 21.00
+175                                       Smith, Mr. James Clinch   male 56.00
+178                                    Isham, Miss. Ann Elizabeth female 50.00
+179                                            Hale, Mr. Reginald   male 30.00
+182                                              Pernot, Mr. Rene   male    NA
+183                         Asplund, Master. Clarence Gustaf Hugo   male  9.00
+184                                     Becker, Master. Richard F   male  1.00
+185                           Kink-Heilmann, Miss. Luise Gretchen female  4.00
+187               O'Brien, Mrs. Thomas (Johanna "Hannah" Godfrey) female    NA
+191                                           Pinsky, Mrs. (Rosa) female 32.00
+193               Andersen-Jensen, Miss. Carla Christine Nielsine female 19.00
+194                                    Navratil, Master. Michel M   male  3.00
+196                                          Lurette, Miss. Elise female 58.00
+197                                           Mernagh, Mr. Robert   male    NA
+198                              Olsen, Mr. Karl Siegwart Andreas   male 42.00
+199                              Madigan, Miss. Margaret "Maggie" female    NA
+201                                Vande Walle, Mr. Nestor Cyriel   male 28.00
+202                                           Sage, Mr. Frederick   male    NA
+203                                    Johanson, Mr. Jakob Alfred   male 34.00
+206                                    Strom, Miss. Telma Matilda female  2.00
+208                                   Albimona, Mr. Nassef Cassem   male 26.00
+210                                              Blank, Mr. Henry   male 40.00
+211                                                Ali, Mr. Ahmed   male 24.00
+214                                   Givard, Mr. Hans Kristensen   male 30.00
+215                                           Kiernan, Mr. Philip   male    NA
+216                                       Newell, Miss. Madeleine female 31.00
+218                                  Jacobsohn, Mr. Sidney Samuel   male 42.00
+219                                         Bazzani, Miss. Albina female 32.00
+222                                          Bracken, Mr. James H   male 27.00
+223                                       Green, Mr. George Henry   male 51.00
+225                                  Hoyt, Mr. Frederick Maxfield   male 38.00
+227                                     Mellors, Mr. William John   male 19.00
+229                                     Fahlstrom, Mr. Arne Jonas   male 18.00
+231                  Harris, Mrs. Henry Birkhardt (Irene Wallach) female 35.00
+233                                     Sjostedt, Mr. Ernst Adolf   male 59.00
+234                                Asplund, Miss. Lillian Gertrud female  5.00
+237                                             Hold, Mr. Stephen   male 44.00
+238                              Collyer, Miss. Marjorie "Lottie" female  8.00
+239                               Pengelly, Mr. Frederick William   male 19.00
+240                                        Hunt, Mr. George Henry   male 33.00
+241                                         Zabour, Miss. Thamine female    NA
+243                               Coleridge, Mr. Reginald Charles   male 29.00
+244                                 Maenpaa, Mr. Matti Alexanteri   male 22.00
+245                                          Attalah, Mr. Sleiman   male 30.00
+246                                   Minahan, Dr. William Edward   male 44.00
+248                               Hamalainen, Mrs. William (Anna) female 24.00
+251                                        Reed, Mr. James George   male    NA
+252                    Strom, Mrs. Wilhelm (Elna Matilda Persson) female 29.00
+253                                     Stead, Mr. William Thomas   male 62.00
+255                      Rosblom, Mrs. Viktor (Helena Wilhelmina) female 41.00
+256                       Touma, Mrs. Darwis (Hanne Youssef Razi) female 29.00
+257                                Thorne, Mrs. Gertrude Maybelle female    NA
+259                                              Ward, Miss. Anna female 35.00
+260                                   Parrish, Mrs. (Lutie Davis) female 50.00
+264                                         Harrison, Mr. William   male 40.00
+265                                            Henry, Miss. Delia female    NA
+266                                             Reeves, Mr. David   male 36.00
+267                                     Panula, Mr. Ernesti Arvid   male 16.00
+268                                      Persson, Mr. Ernst Ulrik   male 25.00
+272                                  Tornquist, Mr. William Henry   male 25.00
+273                     Mellinger, Mrs. (Elizabeth Anne Maidment) female 41.00
+279                                            Rice, Master. Eric   male  7.00
+281                                              Duane, Mr. Frank   male 65.00
+283                                     de Pelsmaeker, Mr. Alfons   male 16.00
+284                                    Dorking, Mr. Edward Arthur   male 19.00
+287                                       de Mulder, Mr. Theodore   male 30.00
+289                                          Hosono, Mr. Masabumi   male 42.00
+290                                          Connolly, Miss. Kate female 22.00
+293                                        Levy, Mr. Rene Jacques   male 36.00
+294                                           Haas, Miss. Aloisia female 24.00
+295                                              Mineff, Mr. Ivan   male 24.00
+296                                             Lewy, Mr. Ervin G   male    NA
+297                                            Hanna, Mr. Mansour   male 23.50
+299                                         Saalfeld, Mr. Adolphe   male    NA
+300               Baxter, Mrs. James (Helene DeLaudeniere Chaput) female 50.00
+302                                            McCoy, Mr. Bernard   male    NA
+307                                       Fleming, Miss. Margaret female    NA
+309                                           Abelson, Mr. Samuel   male 30.00
+311                                Hays, Miss. Margaret Bechstein female 24.00
+312                                    Ryerson, Miss. Emily Borie female 18.00
+316                               Nilsson, Miss. Helmina Josefina female 26.00
+317                           Kantor, Mrs. Sinai (Miriam Sternin) female 24.00
+318                                          Moraweck, Dr. Ernest   male 54.00
+320      Spedden, Mrs. Frederic Oakley (Margaretta Corning Stone) female 40.00
+322                                              Danoff, Mr. Yoto   male 27.00
+323                                     Slayter, Miss. Hilda Mary female 30.00
+328                                       Ball, Mrs. (Ada E Hall) female 36.00
+330                                  Hippach, Miss. Jean Gertrude female 16.00
+334                               Vander Planke, Mr. Leo Edmondus   male 16.00
+336                                            Denkoff, Mr. Mitto   male    NA
+338                               Burns, Miss. Elizabeth Margaret female 41.00
+339                                         Dahl, Mr. Karl Edwart   male 45.00
+340                                  Blackwell, Mr. Stephen Weart   male 45.00
+341                                Navratil, Master. Edmond Roger   male  2.00
+342                                Fortune, Miss. Alice Elizabeth female 24.00
+343                                    Collander, Mr. Erik Gustaf   male 28.00
+348                     Davison, Mrs. Thomas Henry (Mary E Finck) female    NA
+349                        Coutts, Master. William Loch "William"   male  3.00
+350                                              Dimic, Mr. Jovan   male 42.00
+351                                        Odahl, Mr. Nils Martin   male 23.00
+353                                            Elias, Mr. Tannous   male 15.00
+356                                   Vanden Steen, Mr. Leo Peter   male 28.00
+357                                   Bowerman, Miss. Elsie Edith female 22.00
+358                                     Funk, Miss. Annie Clemmer female 38.00
+360                             Mockler, Miss. Helen Mary "Ellie" female    NA
+361                                            Skoog, Mr. Wilhelm   male 40.00
+362                                     del Carlo, Mr. Sebastiano   male 29.00
+366                                Adahl, Mr. Mauritz Nils Martin   male 30.00
+367              Warren, Mrs. Frank Manley (Anna Sophia Atkinson) female 60.00
+370                                 Aubart, Mme. Leontine Pauline female 24.00
+371                                   Harder, Mr. George Achilles   male 25.00
+372                                     Wiklund, Mr. Jakob Alfred   male 18.00
+374                                           Ringhini, Mr. Sante   male 22.00
+376                         Meyer, Mrs. Edgar Joseph (Leila Saks) female    NA
+377                               Landergren, Miss. Aurora Adelia female 22.00
+378                                     Widener, Mr. Harry Elkins   male 27.00
+379                                           Betros, Mr. Tannous   male 20.00
+380                                   Gustafsson, Mr. Karl Gideon   male 19.00
+381                                         Bidois, Miss. Rosalie female 42.00
+383                                            Tikkanen, Mr. Juho   male 32.00
+386                                     Davies, Mr. Charles Henry   male 18.00
+387                               Goodwin, Master. Sidney Leonard   male  1.00
+388                                              Buss, Miss. Kate female 36.00
+394                                        Newell, Miss. Marjorie female 23.00
+396                                           Johansson, Mr. Erik   male 22.00
+397                                           Olsson, Miss. Elina female 31.00
+399                                              Pain, Dr. Alfred   male 23.00
+401                                            Niskanen, Mr. Juha   male 39.00
+403                                      Jussila, Miss. Mari Aina female 21.00
+404                                Hakkarainen, Mr. Pekka Pietari   male 28.00
+405                                       Oreskovic, Miss. Marija female 20.00
+406                                            Gale, Mr. Shadrach   male 34.00
+408                                Richards, Master. William Rowe   male  3.00
+411                                            Sdycoff, Mr. Todor   male    NA
+412                                               Hart, Mr. Henry   male    NA
+413                                        Minahan, Miss. Daisy E female 33.00
+417               Drew, Mrs. James Vivian (Lulu Thorne Christian) female 34.00
+418                                 Silven, Miss. Lyyli Karoliina female 18.00
+419                                    Matthews, Mr. William John   male 30.00
+420                                     Van Impe, Miss. Catharina female 10.00
+421                                        Gheorgheff, Mr. Stanio   male    NA
+422                                           Charters, Mr. David   male 21.00
+425                                   Rosblom, Mr. Viktor Richard   male 18.00
+426                                        Wiseman, Mr. Phillippe   male    NA
+427                   Clarke, Mrs. Charles V (Ada Maria Winfield) female 28.00
+432             Thorneycroft, Mrs. Percival (Florence Kate White) female    NA
+433           Louch, Mrs. Charles Alexander (Alice Adelaide Slow) female 42.00
+436                                     Carter, Miss. Lucile Polk female 14.00
+437                          Ford, Miss. Doolina Margaret "Daisy" female 21.00
+441                   Hart, Mrs. Benjamin (Esther Ada Bloomfield) female 45.00
+443                                     Petterson, Mr. Johan Emil   male 25.00
+447                             Mellinger, Miss. Madeleine Violet female 13.00
+449                                Baclini, Miss. Marie Catherine female  5.00
+451                                         West, Mr. Edwy Arthur   male 36.00
+453                               Foreman, Mr. Benjamin Laventall   male 30.00
+454                                      Goldenberg, Mr. Samuel L   male 49.00
+456                                            Jalsevac, Mr. Ivan   male 29.00
+458                             Kenyon, Mrs. Frederick R (Marion) female    NA
+460                                         O'Connor, Mr. Maurice   male    NA
+461                                           Anderson, Mr. Harry   male 48.00
+462                                           Morley, Mr. William   male 34.00
+464                                  Milling, Mr. Jacob Christian   male 48.00
+465                                            Maisner, Mr. Simon   male    NA
+467                                         Campbell, Mr. William   male    NA
+469                                            Scanlan, Mr. James   male    NA
+471                                             Keefe, Mr. Arthur   male    NA
+478                                     Braund, Mr. Lewis Richard   male 29.00
+479                                     Karlsson, Mr. Nils August   male 22.00
+481                                Goodwin, Master. Harold Victor   male  9.00
+485                                       Bishop, Mr. Dickinson H   male 25.00
+488                                       Kent, Mr. Edward Austin   male 58.00
+490                         Coutts, Master. Eden Leslie "Neville"   male  9.00
+492                                           Windelov, Mr. Einar   male 21.00
+493                                    Molson, Mr. Harry Markland   male 55.00
+495                                    Stanley, Mr. Edward Roland   male 21.00
+496                                         Yousseff, Mr. Gerious   male    NA
+498                               Shellard, Mr. Frederick William   male    NA
+502                                           Canavan, Miss. Mary female 21.00
+503                                O'Sullivan, Miss. Bridget Mary female    NA
+505                                         Maioni, Miss. Roberta female 16.00
+506                    Penasco y Castellana, Mr. Victor de Satode   male 18.00
+508                 Bradley, Mr. George ("George Arthur Brayton")   male    NA
+512                                             Webber, Mr. James   male    NA
+513                                     McGough, Mr. James Robert   male 36.00
+514                Rothschild, Mrs. Martin (Elizabeth L. Barrett) female 54.00
+515                                             Coleff, Mr. Satio   male 24.00
+518                                             Ryan, Mr. Patrick   male    NA
+519          Angle, Mrs. William A (Florence "Mary" Agnes Hughes) female 36.00
+520                                           Pavlovic, Mr. Stefo   male 32.00
+526                                            Farrell, Mr. James   male 40.50
+527                                          Ridsdale, Miss. Lucy female 50.00
+530                                   Hocking, Mr. Richard George   male 23.00
+531                                      Quick, Miss. Phyllis May female  2.00
+533                                          Elias, Mr. Joseph Jr   male 17.00
+537                             Butt, Major. Archibald Willingham   male 45.00
+538                                           LeRoy, Miss. Bertha female 30.00
+545                                    Douglas, Mr. Walter Donald   male 50.00
+547                             Beane, Mrs. Edward (Ethel Clarke) female 19.00
+548                                    Padro y Manent, Mr. Julian   male    NA
+549                                     Goldsmith, Mr. Frank John   male 33.00
+550                                Davies, Master. John Morgan Jr   male  8.00
+553                                          O'Brien, Mr. Timothy   male    NA
+554                             Leeni, Mr. Fahim ("Philip Zenni")   male 22.00
+555                                            Ohman, Miss. Velin female 22.00
+561                                      Morrow, Mr. Thomas Rowan   male    NA
+562                                             Sivic, Mr. Husein   male 40.00
+563                                    Norman, Mr. Robert Douglas   male 28.00
+564                                             Simmons, Mr. John   male    NA
+565                                Meanwell, Miss. (Marion Ogden) female    NA
+567                                          Stoytcheff, Mr. Ilia   male 19.00
+568                   Palsson, Mrs. Nils (Alma Cornelia Berglund) female 29.00
+570                                             Jonsson, Mr. Carl   male 32.00
+571                                            Harris, Mr. George   male 62.00
+577                                          Garside, Miss. Ethel female 34.00
+579                              Caram, Mrs. Joseph (Maria Elias) female    NA
+583                                    Downton, Mr. William James   male 54.00
+585                                           Paulner, Mr. Uscher   male    NA
+588                              Frolicher-Stehli, Mr. Maxmillian   male 60.00
+592               Stephenson, Mrs. Walter Bertram (Martha Eustis) female 52.00
+596                                   Van Impe, Mr. Jean Baptiste   male 36.00
+597                                    Leitch, Miss. Jessie Wills female    NA
+603                                     Harrington, Mr. Charles H   male    NA
+604                                     Torber, Mr. Ernst William   male 44.00
+608                                   Daniel, Mr. Robert Williams   male 27.00
+609         Laroche, Mrs. Joseph (Juliette Marie Louise Lafargue) female 22.00
+610                                     Shutes, Miss. Elizabeth W female 40.00
+613                                   Murphy, Miss. Margaret Jane female    NA
+614                                              Horgan, Mr. John   male    NA
+618               Lobb, Mrs. William Arthur (Cordelia K Stanlick) female 26.00
+621                                           Yasbeck, Mr. Antoni   male 27.00
+625                                   Bowen, Mr. David John "Dai"   male 21.00
+627                                Kirkland, Rev. Charles Leonard   male 57.00
+628                                 Longley, Miss. Gretchen Fiske female 21.00
+629                                     Bostandyeff, Mr. Guentcho   male 26.00
+630                                      O'Connell, Mr. Patrick D   male    NA
+631                          Barkworth, Mr. Algernon Henry Wilson   male 80.00
+634                                 Parr, Mr. William Henry Marsh   male    NA
+636                                             Davis, Miss. Mary female 28.00
+637                                    Leinonen, Mr. Antti Gustaf   male 32.00
+640                                    Thorneycroft, Mr. Percival   male    NA
+641                                        Jensen, Mr. Hans Peder   male 20.00
+643                                 Skoog, Miss. Margit Elizabeth female  2.00
+644                                               Foo, Mr. Choong   male    NA
+645                                        Baclini, Miss. Eugenie female  0.75
+646                                     Harper, Mr. Henry Sleeper   male 48.00
+647                                             Cor, Mr. Liudevit   male 19.00
+649                                            Willey, Mr. Edward   male    NA
+651                                             Mitkoff, Mr. Mito   male    NA
+657                                         Radeff, Mr. Alexander   male    NA
+658                                 Bourke, Mrs. John (Catherine) female 32.00
+661                                 Frauenthal, Dr. Henry William   male 50.00
+663                                    Colley, Mr. Edward Pomeroy   male 47.00
+666                                            Hickman, Mr. Lewis   male 32.00
+671 Brown, Mrs. Thomas William Solomon (Elizabeth Catherine Ford) female 40.00
+674                                         Wilhelms, Mr. Charles   male 31.00
+675                                    Watson, Mr. Ennis Hastings   male    NA
+678                                       Turja, Miss. Anna Sofia female 18.00
+683                                   Olsvigen, Mr. Thor Anderson   male 20.00
+684                                   Goodwin, Mr. Charles Edward   male 14.00
+687                                      Panula, Mr. Jaako Arnold   male 14.00
+688                                             Dakic, Mr. Branko   male 19.00
+689                               Fischer, Mr. Eberhard Thelander   male 18.00
+690                             Madill, Miss. Georgette Alexandra female 15.00
+692                                            Karun, Miss. Manca female  4.00
+694                                              Saad, Mr. Khalil   male 25.00
+695                                               Weir, Col. John   male 60.00
+696                                    Chapman, Mr. Charles Henry   male 52.00
+697                                              Kelly, Mr. James   male 44.00
+698                              Mullens, Miss. Katherine "Katie" female    NA
+703                                         Barbara, Miss. Saiide female 18.00
+704                                         Gallagher, Mr. Martin   male 25.00
+705                                       Hansen, Mr. Henrik Juul   male 26.00
+706                Morley, Mr. Henry Samuel ("Mr Henry Marshall")   male 39.00
+711              Mayne, Mlle. Berthe Antonine ("Mrs de Villiers") female 24.00
+713                                      Taylor, Mr. Elmer Zebley   male 48.00
+714                                    Larsson, Mr. August Viktor   male 29.00
+716                    Soholt, Mr. Peter Andreas Lauritz Andersen   male 19.00
+720                                  Johnson, Mr. Malkolm Joackim   male 33.00
+723                                  Gillespie, Mr. William Henry   male 34.00
+724                                       Hodges, Mr. Henry Price   male 50.00
+726                                           Oreskovic, Mr. Luka   male 20.00
+728                                      Mannion, Miss. Margareth female    NA
+731                                 Allen, Miss. Elisabeth Walton female 29.00
+732                                      Hassan, Mr. Houssein G N   male 11.00
+733                                          Knight, Mr. Robert J   male    NA
+735                                  Troupiansky, Mr. Moses Aaron   male 23.00
+737                       Ford, Mrs. Edward (Margaret Ann Watson) female 48.00
+739                                            Ivanoff, Mr. Kanio   male    NA
+740                                            Nankoff, Mr. Minko   male    NA
+741                                   Hawksford, Mr. Walter James   male    NA
+742                                 Cavendish, Mr. Tyrell William   male 36.00
+743                         Ryerson, Miss. Susan Parker "Suzette" female 21.00
+744                                             McNamee, Mr. Neal   male 24.00
+745                                            Stranden, Mr. Juho   male 31.00
+746                                  Crosby, Capt. Edward Gifford   male 70.00
+747                                   Abbott, Mr. Rossmore Edward   male 16.00
+748                                         Sinkkonen, Miss. Anna female 30.00
+749                                     Marvin, Mr. Daniel Warner   male 19.00
+750                                       Connaghton, Mr. Michael   male 31.00
+752                                           Moor, Master. Meier   male  6.00
+758                                      Bailey, Mr. Percy Andrew   male 18.00
+760      Rothes, the Countess. of (Lucy Noel Martha Dyer-Edwards) female 33.00
+761                                            Garfirth, Mr. John   male    NA
+762                                Nirva, Mr. Iisakki Antino Aijo   male 41.00
+763                                         Barah, Mr. Hanna Assi   male 20.00
+769                                           Moran, Mr. Daniel J   male    NA
+770                              Gronnestad, Mr. Daniel Danielsen   male 32.00
+771                                        Lievens, Mr. Rene Aime   male 24.00
+772                                       Jensen, Mr. Niels Peder   male 48.00
+773                                             Mack, Mrs. (Mary) female 57.00
+774                                               Elias, Mr. Dibo   male    NA
+775                         Hocking, Mrs. Elizabeth (Eliza Needs) female 54.00
+782                     Dick, Mrs. Albert Adrian (Vera Gillespie) female 17.00
+783                                        Long, Mr. Milton Clyde   male 29.00
+784                                        Johnston, Mr. Andrew G   male    NA
+785                                              Ali, Mr. William   male 25.00
+788                                     Rice, Master. George Hugh   male  8.00
+793                                       Sage, Miss. Stella Anna female    NA
+797                                   Leader, Dr. Alice (Farnham) female 49.00
+798                                              Osman, Mrs. Mara female 31.00
+803                           Carter, Master. William Thornton II   male 11.00
+804                               Thomas, Master. Assad Alexander   male  0.42
+806                                     Johansson, Mr. Karl Johan   male 31.00
+809                                             Meyer, Mr. August   male 39.00
+811                                        Alexander, Mr. William   male 26.00
+816                                              Fry, Mr. Richard   male    NA
+817                                  Heininen, Miss. Wendla Maria female 23.00
+818                                            Mallet, Mr. Albert   male 31.00
+820                                  Skoog, Master. Karl Thorsten   male 10.00
+821            Hays, Mrs. Charles Melville (Clara Jennings Gregg) female 52.00
+824                                            Moor, Mrs. (Beila) female 27.00
+825                                  Panula, Master. Urho Abraham   male  2.00
+826                                               Flynn, Mr. John   male    NA
+827                                                  Lam, Mr. Len   male    NA
+828                                         Mallet, Master. Andre   male  1.00
+829                                  McCormack, Mr. Thomas Joseph   male    NA
+830                     Stone, Mrs. George Nelson (Martha Evelyn) female 62.00
+838                                           Sirota, Mr. Maurice   male    NA
+839                                               Chip, Mr. Chang   male 32.00
+845                                           Culumovic, Mr. Jeso   male 17.00
+846                                           Abbing, Mr. Anthony   male 42.00
+847                                      Sage, Mr. Douglas Bullen   male    NA
+853                                       Boulos, Miss. Nourelain female  9.00
+854                                     Lines, Miss. Mary Conover female 16.00
+856                                    Aks, Mrs. Sam (Leah Rosen) female 18.00
+857                    Wick, Mrs. George Dennick (Mary Hitchcock) female 45.00
+864                             Sage, Miss. Dorothy Edith "Dolly" female    NA
+865                                        Gill, Mr. John William   male 24.00
+866                                      Bystrom, Mrs. (Karolina) female 42.00
+867                                  Duran y More, Miss. Asuncion female 27.00
+870                               Johnson, Master. Harold Theodor   male  4.00
+872              Beckwith, Mrs. Richard Leonard (Sallie Monypeny) female 47.00
+874                                   Vander Cruyssen, Mr. Victor   male 47.00
+875                         Abelson, Mrs. Samuel (Hannah Wizosky) female 28.00
+878                                          Petroff, Mr. Nedelio   male 19.00
+880                 Potter, Mrs. Thomas Jr (Lily Alexenia Wilson) female 56.00
+884                                 Banfield, Mr. Frederick James   male 28.00
+885                                        Sutehall, Mr. Henry Jr   male 25.00
+886                          Rice, Mrs. William (Margaret Norton) female 39.00
+887                                         Montvila, Rev. Juozas   male 27.00
+888                                  Graham, Miss. Margaret Edith female 19.00
+890                                         Behr, Mr. Karl Howell   male 26.00
+    SibSp Parch             Ticket     Fare           Cabin Embarked
+3       0     0   STON/O2. 3101282   7.9250                        S
+6       0     0             330877   8.4583                        Q
+9       0     2             347742  11.1333                        S
+10      1     0             237736  30.0708                        C
+13      0     0          A/5. 2151   8.0500                        S
+15      0     0             350406   7.8542                        S
+21      0     0             239865  26.0000                        S
+22      0     0             248698  13.0000             D56        S
+24      0     0             113788  35.5000              A6        S
+27      0     0               2631   7.2250                        C
+30      0     0             349216   7.8958                        S
+32      1     0           PC 17569 146.5208             B78        C
+33      0     0             335677   7.7500                        Q
+34      0     0         C.A. 24579  10.5000                        S
+36      1     0             113789  52.0000                        S
+38      0     0         A./5. 2152   8.0500                        S
+41      1     0               7546   9.4750                        S
+43      0     0             349253   7.8958                        C
+46      0     0    S.C./A.4. 23567   8.0500                        S
+48      0     0              14311   7.7500                        Q
+50      1     0             349237  17.8000                        S
+52      0     0         A/4. 39886   7.8000                        S
+53      1     0           PC 17572  76.7292             D33        C
+55      0     1             113509  61.9792             B30        C
+57      0     0         C.A. 31026  10.5000                        S
+58      0     0               2697   7.2292                        C
+59      1     2         C.A. 34651  27.7500                        S
+60      5     2            CA 2144  46.9000                        S
+61      0     0               2669   7.2292                        C
+62      0     0             113572  80.0000             B28         
+68      0     0          S.P. 3464   8.1583                        S
+73      0     0       S.O.C. 14879  73.5000                        S
+75      0     0               1601  56.4958                        S
+77      0     0             349208   7.8958                        S
+78      0     0             374746   8.0500                        S
+81      0     0             345767   9.0000                        S
+86      3     0            3101278  15.8500                        S
+88      0     0    SOTON/OQ 392086   8.0500                        S
+91      0     0             343276   8.0500                        S
+92      0     0             347466   7.8542                        S
+93      1     0        W.E.P. 5734  61.1750             E31        S
+94      1     2          C.A. 2315  20.5750                        S
+97      0     0           PC 17754  34.6542              A5        C
+98      0     1           PC 17759  63.3583         D10 D12        C
+99      0     1             231919  23.0000                        S
+100     1     0             244367  26.0000                        S
+101     0     0             349245   7.8958                        S
+102     0     0             349215   7.8958                        S
+103     0     1              35281  77.2875             D26        S
+105     2     0            3101276   7.9250                        S
+106     0     0             349207   7.8958                        S
+107     0     0             343120   7.6500                        S
+109     0     0             349249   7.8958                        S
+110     1     0             371110  24.1500                        Q
+111     0     0             110465  52.0000            C110        S
+114     1     0               4136   9.8250                        S
+115     0     0               2627  14.4583                        C
+117     0     0             370369   7.7500                        Q
+122     0     0          A4. 54510   8.0500                        S
+124     0     0              27267  13.0000            E101        S
+125     0     1              35281  77.2875             D26        S
+126     1     0               2651  11.2417                        C
+128     0     0            C 17369   7.1417                        S
+132     0     0 SOTON/O.Q. 3101307   7.0500                        S
+134     1     0             228414  26.0000                        S
+135     0     0         C.A. 29178  13.0000                        S
+136     0     0      SC/PARIS 2133  15.0458                        C
+139     0     0               7534   9.2167                        S
+140     0     0           PC 17593  79.2000             B86        C
+141     0     2               2678  15.2458                        C
+143     1     0   STON/O2. 3101279  15.8500                        S
+146     1     1         C.A. 33112  36.7500                        S
+149     0     2             230080  26.0000              F2        S
+151     0     0        S.O.P. 1166  12.5250                        S
+152     1     0             113776  66.6000              C2        S
+153     0     0         A.5. 11206   8.0500                        S
+159     0     0             315037   8.6625                        S
+160     8     2           CA. 2343  69.5500                        S
+161     0     1             371362  16.1000                        S
+162     0     0         C.A. 33595  15.7500                        S
+163     0     0             347068   7.7750                        S
+164     0     0             315093   8.6625                        S
+169     0     0           PC 17318  25.9250                        S
+173     1     1             347742  11.1333                        S
+174     0     0  STON/O 2. 3101280   7.9250                        S
+175     0     0              17764  30.6958              A7        C
+178     0     0           PC 17595  28.7125             C49        C
+179     0     0             250653  13.0000                        S
+182     0     0      SC/PARIS 2131  15.0500                        C
+183     4     2             347077  31.3875                        S
+184     2     1             230136  39.0000              F4        S
+185     0     2             315153  22.0250                        S
+187     1     0             370365  15.5000                        Q
+191     0     0             234604  13.0000                        S
+193     1     0             350046   7.8542                        S
+194     1     1             230080  26.0000              F2        S
+196     0     0           PC 17569 146.5208             B80        C
+197     0     0             368703   7.7500                        Q
+198     0     1               4579   8.4042                        S
+199     0     0             370370   7.7500                        Q
+201     0     0             345770   9.5000                        S
+202     8     2           CA. 2343  69.5500                        S
+203     0     0            3101264   6.4958                        S
+206     0     1             347054  10.4625              G6        S
+208     0     0               2699  18.7875                        C
+210     0     0             112277  31.0000             A31        C
+211     0     0 SOTON/O.Q. 3101311   7.0500                        S
+214     0     0             250646  13.0000                        S
+215     1     0             367229   7.7500                        Q
+216     1     0              35273 113.2750             D36        C
+218     1     0             243847  27.0000                        S
+219     0     0              11813  76.2917             D15        C
+222     0     0             220367  13.0000                        S
+223     0     0              21440   8.0500                        S
+225     1     0              19943  90.0000             C93        S
+227     0     0          SW/PP 751  10.5000                        S
+229     0     0             236171  13.0000                        S
+231     1     0              36973  83.4750             C83        S
+233     0     0             237442  13.5000                        S
+234     4     2             347077  31.3875                        S
+237     1     0              26707  26.0000                        S
+238     0     2         C.A. 31921  26.2500                        S
+239     0     0              28665  10.5000                        S
+240     0     0         SCO/W 1585  12.2750                        S
+241     1     0               2665  14.4542                        C
+243     0     0        W./C. 14263  10.5000                        S
+244     0     0  STON/O 2. 3101275   7.1250                        S
+245     0     0               2694   7.2250                        C
+246     2     0              19928  90.0000             C78        Q
+248     0     2             250649  14.5000                        S
+251     0     0             362316   7.2500                        S
+252     1     1             347054  10.4625              G6        S
+253     0     0             113514  26.5500             C87        S
+255     0     2             370129  20.2125                        S
+256     0     2               2650  15.2458                        C
+257     0     0           PC 17585  79.2000                        C
+259     0     0           PC 17755 512.3292                        C
+260     0     1             230433  26.0000                        S
+264     0     0             112059   0.0000             B94        S
+265     0     0             382649   7.7500                        Q
+266     0     0         C.A. 17248  10.5000                        S
+267     4     1            3101295  39.6875                        S
+268     1     0             347083   7.7750                        S
+272     0     0               LINE   0.0000                        S
+273     0     1             250644  19.5000                        S
+279     4     1             382652  29.1250                        Q
+281     0     0             336439   7.7500                        Q
+283     0     0             345778   9.5000                        S
+284     0     0         A/5. 10482   8.0500                        S
+287     0     0             345774   9.5000                        S
+289     0     0             237798  13.0000                        S
+290     0     0             370373   7.7500                        Q
+293     0     0      SC/Paris 2163  12.8750               D        C
+294     0     0             349236   8.8500                        S
+295     0     0             349233   7.8958                        S
+296     0     0           PC 17612  27.7208                        C
+297     0     0               2693   7.2292                        C
+299     0     0              19988  30.5000            C106        S
+300     0     1           PC 17558 247.5208         B58 B60        C
+302     2     0             367226  23.2500                        Q
+307     0     0              17421 110.8833                        C
+309     1     0          P/PP 3381  24.0000                        C
+311     0     0              11767  83.1583             C54        C
+312     2     2           PC 17608 262.3750 B57 B59 B63 B66        C
+316     0     0             347470   7.8542                        S
+317     1     0             244367  26.0000                        S
+318     0     0              29011  14.0000                        S
+320     1     1              16966 134.5000             E34        C
+322     0     0             349219   7.8958                        S
+323     0     0             234818  12.3500                        Q
+328     0     0              28551  13.0000               D        S
+330     0     1             111361  57.9792             B18        C
+334     2     0             345764  18.0000                        S
+336     0     0             349225   7.8958                        S
+338     0     0              16966 134.5000             E40        C
+339     0     0               7598   8.0500                        S
+340     0     0             113784  35.5000               T        S
+341     1     1             230080  26.0000              F2        S
+342     3     2              19950 263.0000     C23 C25 C27        S
+343     0     0             248740  13.0000                        S
+348     1     0             386525  16.1000                        S
+349     1     1         C.A. 37671  15.9000                        S
+350     0     0             315088   8.6625                        S
+351     0     0               7267   9.2250                        S
+353     1     1               2695   7.2292                        C
+356     0     0             345783   9.5000                        S
+357     0     1             113505  55.0000             E33        S
+358     0     0             237671  13.0000                        S
+360     0     0             330980   7.8792                        Q
+361     1     4             347088  27.9000                        S
+362     1     0      SC/PARIS 2167  27.7208                        C
+366     0     0             C 7076   7.2500                        S
+367     1     0             110813  75.2500             D37        C
+370     0     0           PC 17477  69.3000             B35        C
+371     1     0              11765  55.4417             E50        C
+372     1     0            3101267   6.4958                        S
+374     0     0           PC 17760 135.6333                        C
+376     1     0           PC 17604  82.1708                        C
+377     0     0             C 7077   7.2500                        S
+378     0     2             113503 211.5000             C82        C
+379     0     0               2648   4.0125                        C
+380     0     0             347069   7.7750                        S
+381     0     0           PC 17757 227.5250                        C
+383     0     0  STON/O 2. 3101293   7.9250                        S
+386     0     0       S.O.C. 14879  73.5000                        S
+387     5     2            CA 2144  46.9000                        S
+388     0     0              27849  13.0000                        S
+394     1     0              35273 113.2750             D36        C
+396     0     0             350052   7.7958                        S
+397     0     0             350407   7.8542                        S
+399     0     0             244278  10.5000                        S
+401     0     0  STON/O 2. 3101289   7.9250                        S
+403     1     0               4137   9.8250                        S
+404     1     0   STON/O2. 3101279  15.8500                        S
+405     0     0             315096   8.6625                        S
+406     1     0              28664  21.0000                        S
+408     1     1              29106  18.7500                        S
+411     0     0             349222   7.8958                        S
+412     0     0             394140   6.8583                        Q
+413     1     0              19928  90.0000             C78        Q
+417     1     1              28220  32.5000                        S
+418     0     2             250652  13.0000                        S
+419     0     0              28228  13.0000                        S
+420     0     2             345773  24.1500                        S
+421     0     0             349254   7.8958                        C
+422     0     0         A/5. 13032   7.7333                        Q
+425     1     1             370129  20.2125                        S
+426     0     0         A/4. 34244   7.2500                        S
+427     1     0               2003  26.0000                        S
+432     1     0             376564  16.1000                        S
+433     1     0         SC/AH 3085  26.0000                        S
+436     1     2             113760 120.0000         B96 B98        S
+437     2     2         W./C. 6608  34.3750                        S
+441     1     1       F.C.C. 13529  26.2500                        S
+443     1     0             347076   7.7750                        S
+447     0     1             250644  19.5000                        S
+449     2     1               2666  19.2583                        C
+451     1     2         C.A. 34651  27.7500                        S
+453     0     0             113051  27.7500            C111        C
+454     1     0              17453  89.1042             C92        C
+456     0     0             349240   7.8958                        C
+458     1     0              17464  51.8625             D21        S
+460     0     0             371060   7.7500                        Q
+461     0     0              19952  26.5500             E12        S
+462     0     0             364506   8.0500                        S
+464     0     0             234360  13.0000                        S
+465     0     0           A/S 2816   8.0500                        S
+467     0     0             239853   0.0000                        S
+469     0     0              36209   7.7250                        Q
+471     0     0             323592   7.2500                        S
+478     1     0               3460   7.0458                        S
+479     0     0             350060   7.5208                        S
+481     5     2            CA 2144  46.9000                        S
+485     1     0              11967  91.0792             B49        C
+488     0     0              11771  29.7000             B37        C
+490     1     1         C.A. 37671  15.9000                        S
+492     0     0   SOTON/OQ 3101317   7.2500                        S
+493     0     0             113787  30.5000             C30        S
+495     0     0          A/4 45380   8.0500                        S
+496     0     0               2627  14.4583                        C
+498     0     0          C.A. 6212  15.1000                        S
+502     0     0             364846   7.7500                        Q
+503     0     0             330909   7.6292                        Q
+505     0     0             110152  86.5000             B79        S
+506     1     0           PC 17758 108.9000             C65        C
+508     0     0             111427  26.5500                        S
+512     0     0   SOTON/OQ 3101316   8.0500                        S
+513     0     0           PC 17473  26.2875             E25        S
+514     1     0           PC 17603  59.4000                        C
+515     0     0             349209   7.4958                        S
+518     0     0             371110  24.1500                        Q
+519     1     0             226875  26.0000                        S
+520     0     0             349242   7.8958                        S
+526     0     0             367232   7.7500                        Q
+527     0     0        W./C. 14258  10.5000                        S
+530     2     1              29104  11.5000                        S
+531     1     1              26360  26.0000                        S
+533     1     1               2690   7.2292                        C
+537     0     0             113050  26.5500             B38        S
+538     0     0           PC 17761 106.4250                        C
+545     1     0           PC 17761 106.4250             C86        C
+547     1     0               2908  26.0000                        S
+548     0     0      SC/PARIS 2146  13.8625                        C
+549     1     1             363291  20.5250                        S
+550     1     1         C.A. 33112  36.7500                        S
+553     0     0             330979   7.8292                        Q
+554     0     0               2620   7.2250                        C
+555     0     0             347085   7.7750                        S
+561     0     0             372622   7.7500                        Q
+562     0     0             349251   7.8958                        S
+563     0     0             218629  13.5000                        S
+564     0     0    SOTON/OQ 392082   8.0500                        S
+565     0     0  SOTON/O.Q. 392087   8.0500                        S
+567     0     0             349205   7.8958                        S
+568     0     4             349909  21.0750                        S
+570     0     0             350417   7.8542                        S
+571     0     0        S.W./PP 752  10.5000                        S
+577     0     0             243880  13.0000                        S
+579     1     0               2689  14.4583                        C
+583     0     0              28403  26.0000                        S
+585     0     0               3411   8.7125                        C
+588     1     1              13567  79.2000             B41        C
+592     1     0              36947  78.2667             D20        C
+596     1     1             345773  24.1500                        S
+597     0     0             248727  33.0000                        S
+603     0     0             113796  42.4000                        S
+604     0     0             364511   8.0500                        S
+608     0     0             113804  30.5000                        S
+609     1     2      SC/Paris 2123  41.5792                        C
+610     0     0           PC 17582 153.4625            C125        S
+613     1     0             367230  15.5000                        Q
+614     0     0             370377   7.7500                        Q
+618     1     0          A/5. 3336  16.1000                        S
+621     1     0               2659  14.4542                        C
+625     0     0              54636  16.1000                        S
+627     0     0             219533  12.3500                        Q
+628     0     0              13502  77.9583              D9        S
+629     0     0             349224   7.8958                        S
+630     0     0             334912   7.7333                        Q
+631     0     0              27042  30.0000             A23        S
+634     0     0             112052   0.0000                        S
+636     0     0             237668  13.0000                        S
+637     0     0  STON/O 2. 3101292   7.9250                        S
+640     1     0             376564  16.1000                        S
+641     0     0             350050   7.8542                        S
+643     3     2             347088  27.9000                        S
+644     0     0               1601  56.4958                        S
+645     2     1               2666  19.2583                        C
+646     1     0           PC 17572  76.7292             D33        C
+647     0     0             349231   7.8958                        S
+649     0     0      S.O./P.P. 751   7.5500                        S
+651     0     0             349221   7.8958                        S
+657     0     0             349223   7.8958                        S
+658     1     1             364849  15.5000                        Q
+661     2     0           PC 17611 133.6500                        S
+663     0     0               5727  25.5875             E58        S
+666     2     0       S.O.C. 14879  73.5000                        S
+671     1     1              29750  39.0000                        S
+674     0     0             244270  13.0000                        S
+675     0     0             239856   0.0000                        S
+678     0     0               4138   9.8417                        S
+683     0     0               6563   9.2250                        S
+684     5     2            CA 2144  46.9000                        S
+687     4     1            3101295  39.6875                        S
+688     0     0             349228  10.1708                        S
+689     0     0             350036   7.7958                        S
+690     0     1              24160 211.3375              B5        S
+692     0     1             349256  13.4167                        C
+694     0     0               2672   7.2250                        C
+695     0     0             113800  26.5500                        S
+696     0     0             248731  13.5000                        S
+697     0     0             363592   8.0500                        S
+698     0     0              35852   7.7333                        Q
+703     0     1               2691  14.4542                        C
+704     0     0              36864   7.7417                        Q
+705     1     0             350025   7.8542                        S
+706     0     0             250655  26.0000                        S
+711     0     0           PC 17482  49.5042             C90        C
+713     1     0              19996  52.0000            C126        S
+714     0     0               7545   9.4833                        S
+716     0     0             348124   7.6500           F G73        S
+720     0     0             347062   7.7750                        S
+723     0     0              12233  13.0000                        S
+724     0     0             250643  13.0000                        S
+726     0     0             315094   8.6625                        S
+728     0     0              36866   7.7375                        Q
+731     0     0              24160 211.3375              B5        S
+732     0     0               2699  18.7875                        C
+733     0     0             239855   0.0000                        S
+735     0     0             233639  13.0000                        S
+737     1     3         W./C. 6608  34.3750                        S
+739     0     0             349201   7.8958                        S
+740     0     0             349218   7.8958                        S
+741     0     0              16988  30.0000             D45        S
+742     1     0              19877  78.8500             C46        S
+743     2     2           PC 17608 262.3750 B57 B59 B63 B66        C
+744     1     0             376566  16.1000                        S
+745     0     0  STON/O 2. 3101288   7.9250                        S
+746     1     1          WE/P 5735  71.0000             B22        S
+747     1     1          C.A. 2673  20.2500                        S
+748     0     0             250648  13.0000                        S
+749     1     0             113773  53.1000             D30        S
+750     0     0             335097   7.7500                        Q
+752     0     1             392096  12.4750            E121        S
+758     0     0              29108  11.5000                        S
+760     0     0             110152  86.5000             B77        S
+761     0     0             358585  14.5000                        S
+762     0     0   SOTON/O2 3101272   7.1250                        S
+763     0     0               2663   7.2292                        C
+769     1     0             371110  24.1500                        Q
+770     0     0               8471   8.3625                        S
+771     0     0             345781   9.5000                        S
+772     0     0             350047   7.8542                        S
+773     0     0        S.O./P.P. 3  10.5000             E77        S
+774     0     0               2674   7.2250                        C
+775     1     3              29105  23.0000                        S
+782     1     0              17474  57.0000             B20        S
+783     0     0             113501  30.0000              D6        S
+784     1     2         W./C. 6607  23.4500                        S
+785     0     0 SOTON/O.Q. 3101312   7.0500                        S
+788     4     1             382652  29.1250                        Q
+793     8     2           CA. 2343  69.5500                        S
+797     0     0              17465  25.9292             D17        S
+798     0     0             349244   8.6833                        S
+803     1     2             113760 120.0000         B96 B98        S
+804     0     1               2625   8.5167                        C
+806     0     0             347063   7.7750                        S
+809     0     0             248723  13.0000                        S
+811     0     0               3474   7.8875                        S
+816     0     0             112058   0.0000            B102        S
+817     0     0   STON/O2. 3101290   7.9250                        S
+818     1     1    S.C./PARIS 2079  37.0042                        C
+820     3     2             347088  27.9000                        S
+821     1     1              12749  93.5000             B69        S
+824     0     1             392096  12.4750            E121        S
+825     4     1            3101295  39.6875                        S
+826     0     0             368323   6.9500                        Q
+827     0     0               1601  56.4958                        S
+828     0     2    S.C./PARIS 2079  37.0042                        C
+829     0     0             367228   7.7500                        Q
+830     0     0             113572  80.0000             B28         
+838     0     0             392092   8.0500                        S
+839     0     0               1601  56.4958                        S
+845     0     0             315090   8.6625                        S
+846     0     0          C.A. 5547   7.5500                        S
+847     8     2           CA. 2343  69.5500                        S
+853     1     1               2678  15.2458                        C
+854     0     1           PC 17592  39.4000             D28        S
+856     0     1             392091   9.3500                        S
+857     1     1              36928 164.8667                        S
+864     8     2           CA. 2343  69.5500                        S
+865     0     0             233866  13.0000                        S
+866     0     0             236852  13.0000                        S
+867     1     0      SC/PARIS 2149  13.8583                        C
+870     1     1             347742  11.1333                        S
+872     1     1              11751  52.5542             D35        S
+874     0     0             345765   9.0000                        S
+875     1     0          P/PP 3381  24.0000                        C
+878     0     0             349212   7.8958                        S
+880     0     1              11767  83.1583             C50        C
+884     0     0   C.A./SOTON 34068  10.5000                        S
+885     0     0    SOTON/OQ 392076   7.0500                        S
+886     0     5             382652  29.1250                        Q
+887     0     0             211536  13.0000                        S
+888     0     0             112053  30.0000             B42        S
+890     0     0             111369  30.0000            C148        C
+> 
+> # train Serviced column BASED on the Sex column
+> model <- train(Survived ~ Sex, 
++               data = trainTable,
++                method = "glm")
+> model
+Generalized Linear Model 
+
+446 samples
+  1 predictor
+  2 classes: 'No', 'Yes' 
+
+No pre-processing
+Resampling: Bootstrapped (25 reps) 
+Summary of sample sizes: 446, 446, 446, 446, 446, 446, ... 
+Resampling results:
+
+  Accuracy   Kappa    
+  0.7899139  0.5502161
+
+> 
+> 
+> 
+> val <- df[-resampledataPart,]
+> val_results <- predict(model, val)
+> 
+> val_results
+  [1] No  Yes Yes No  No  No  Yes Yes No  Yes No  No  Yes Yes Yes Yes Yes No 
+ [19] Yes No  No  No  Yes Yes Yes Yes Yes No  No  No  Yes No  No  No  No  No 
+ [37] Yes Yes No  No  Yes No  No  No  Yes No  Yes No  Yes No  Yes No  No  No 
+ [55] No  No  Yes No  No  No  No  Yes No  No  No  Yes No  No  Yes Yes No  Yes
+ [73] No  No  No  Yes No  No  No  No  Yes No  No  No  Yes Yes No  No  No  No 
+ [91] No  No  Yes No  No  No  No  No  Yes Yes No  No  No  Yes Yes No  Yes No 
+[109] No  No  No  No  Yes No  No  Yes Yes Yes No  No  No  Yes No  No  No  Yes
+[127] Yes No  No  Yes Yes Yes No  Yes No  No  No  No  Yes Yes Yes Yes No  Yes
+[145] No  No  Yes Yes Yes No  No  Yes No  Yes No  Yes No  Yes Yes No  No  Yes
+[163] No  No  No  Yes Yes No  No  No  Yes Yes No  No  Yes Yes No  Yes Yes Yes
+[181] No  No  Yes No  No  No  Yes No  Yes No  No  No  Yes No  No  Yes No  Yes
+[199] Yes No  No  No  No  No  Yes No  No  No  Yes No  No  No  No  No  No  No 
+[217] Yes No  No  No  Yes No  Yes Yes Yes No  No  Yes No  No  Yes Yes Yes No 
+[235] No  No  Yes Yes No  No  Yes Yes No  No  No  No  Yes Yes No  No  Yes No 
+[253] No  No  No  Yes Yes Yes No  Yes Yes Yes Yes No  No  No  No  No  Yes No 
+[271] Yes Yes No  No  Yes No  Yes No  No  Yes No  Yes Yes No  Yes No  No  No 
+[289] No  No  Yes No  No  No  No  Yes No  No  No  No  Yes No  No  Yes No  Yes
+[307] No  No  No  No  No  No  No  Yes No  Yes Yes No  Yes Yes No  Yes Yes No 
+[325] No  No  No  No  No  No  No  No  Yes No  No  No  No  Yes No  Yes No  No 
+[343] No  No  No  No  No  Yes No  Yes No  Yes No  No  No  Yes Yes No  Yes No 
+[361] No  Yes No  Yes No  No  No  Yes No  No  Yes No  No  No  Yes No  Yes No 
+[379] Yes No  No  Yes No  Yes Yes No  Yes No  No  No  No  No  No  No  No  Yes
+[397] No  Yes No  No  Yes Yes No  No  Yes No  No  No  No  Yes No  No  No  No 
+[415] Yes No  No  No  No  Yes No  No  No  Yes No  No  Yes No  Yes No  No  No 
+[433] Yes No  No  No  No  Yes No  No  Yes No  Yes Yes No 
+Levels: No Yes
+> 
+> cm <- confusionMatrix(val_results, val$Survived, positive = 'Yes')
+> cm$byClass[['F1']]
+[1] 0.7065868
+> 
+> 
+> 
+> cm
+Confusion Matrix and Statistics
+
+          Reference
+Prediction  No Yes
+       No  229  53
+       Yes  45 118
+                                          
+               Accuracy : 0.7798          
+                 95% CI : (0.7384, 0.8174)
+    No Information Rate : 0.6157          
+    P-Value [Acc > NIR] : 1.034e-13       
+                                          
+                  Kappa : 0.5305          
+                                          
+ Mcnemar's Test P-Value : 0.4795          
+                                          
+            Sensitivity : 0.6901          
+            Specificity : 0.8358          
+         Pos Pred Value : 0.7239          
+         Neg Pred Value : 0.8121          
+             Prevalence : 0.3843          
+         Detection Rate : 0.2652          
+   Detection Prevalence : 0.3663          
+      Balanced Accuracy : 0.7629          
+                                          
+       'Positive' Class : Yes             
+                                          
+> 
+> vdf$Survived <- predict(model, vdf, na.action = na.pass)
+> vdf$Survived <- ifelse(vdf$Survived == 'Yes', 1, 0)
+> vdf$Survived
+  [1] 0 1 0 0 1 0 1 0 1 0 0 0 1 0 1 1 0 0 1 1 0 0 1 0 1 0 1 0 0 0 0 0 1 1 0 0 1
+ [38] 1 0 0 0 0 0 1 1 0 0 0 1 1 0 0 1 1 0 0 0 0 0 1 0 0 0 1 0 1 1 0 0 1 1 0 1 0
+ [75] 1 0 0 1 0 1 0 0 0 0 0 0 1 1 1 0 1 0 1 0 0 0 1 0 1 0 1 0 0 0 1 0 0 0 0 0 0
+[112] 1 1 1 1 0 0 1 0 1 1 0 1 0 0 1 0 1 0 0 0 0 1 0 0 0 0 0 1 0 1 1 0 0 0 0 0 0
+[149] 0 0 1 0 0 1 0 0 1 1 0 1 1 0 1 0 0 1 0 0 1 1 0 0 0 0 0 1 1 0 1 1 0 0 1 0 1
+[186] 0 1 0 1 0 0 0 0 0 0 0 0 1 0 1 1 0 0 1 0 0 1 0 1 0 0 0 0 1 1 0 1 0 1 0 1 0
+[223] 1 0 1 1 0 1 0 0 0 1 0 0 0 0 0 0 1 1 1 1 0 0 0 0 1 0 1 1 1 0 0 0 0 0 0 0 1
+[260] 0 0 0 1 1 0 0 0 0 1 0 0 0 1 1 0 1 0 0 0 0 1 0 1 1 1 0 0 0 0 0 0 1 0 0 0 0
+[297] 1 0 0 0 0 0 0 0 1 1 0 0 0 1 0 0 0 1 1 1 0 0 0 0 0 0 0 0 1 0 1 0 0 0 1 0 0
+[334] 1 0 0 0 0 0 0 0 0 0 1 0 1 0 1 0 1 1 0 0 0 1 0 1 0 0 1 0 1 1 0 1 1 0 1 1 0
+[371] 0 1 0 0 1 1 1 0 0 0 0 0 1 1 0 1 0 0 0 0 0 1 0 0 0 1 0 1 0 0 1 0 1 0 0 0 0
+[408] 0 1 1 1 1 1 0 1 0 0 0
+> 
+> write.csv(vdf[, c('PassengerId', 'Survived')], file = 'submission.csv', row.names = FALSE)
+> Sys.sleep(1)
+> 
+> proc.time()
+   user  system elapsed 
+  2.133   0.158   3.297 

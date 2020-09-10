@@ -1,0 +1,102 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # Librairies
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> # Init random
+> set.seed(69)
+> # Read the files 
+> train <- read.csv("../input/train.csv", stringsAsFactors=FALSE)
+> test  <- read.csv("../input/test.csv",  stringsAsFactors=FALSE)
+> 
+> extractFeatures <- function(data) {
++   features <- c("Pclass",
++                 "Age",
++                 "Sex",
++                 "Parch",
++                 "SibSp",
++                 "Fare",
++                 "Embarked")
++   fea <- data[,features]
++   fea$Age[is.na(fea$Age)] <- median(fea$Age, na.rm=TRUE)
++   fea$Fare[is.na(fea$Fare)] <- median(fea$Fare, na.rm=TRUE)
++   fea$Embarked[fea$Embarked==""] = "S"
++   fea$Sex      <- as.factor(fea$Sex)
++   fea$Embarked <- as.factor(fea$Embarked)
++   return(fea)
++ }
+> 
+> rf <- randomForest(extractFeatures(train), as.factor(train$Survived), ntree=5000, mtry=4 ,  importance=TRUE)
+> 
+> print(rf)
+
+Call:
+ randomForest(x = extractFeatures(train), y = as.factor(train$Survived),      ntree = 5000, mtry = 4, importance = TRUE) 
+               Type of random forest: classification
+                     Number of trees: 5000
+No. of variables tried at each split: 4
+
+        OOB estimate of  error rate: 16.95%
+Confusion matrix:
+    0   1 class.error
+0 488  61   0.1111111
+1  90 252   0.2631579
+> varImpPlot(rf)
+> rf$importance
+                   0           1 MeanDecreaseAccuracy MeanDecreaseGini
+Pclass   0.031240226 0.140421971          0.073070663         38.04948
+Age      0.036161336 0.059984414          0.045279205         90.17493
+Sex      0.108393726 0.215679010          0.149370573        115.22338
+Parch    0.007002168 0.011184766          0.008596113         12.37474
+SibSp    0.021179414 0.003371203          0.014325073         18.65264
+Fare     0.033873568 0.089813871          0.055316177         99.26613
+Embarked 0.008087198 0.025033616          0.014603825         12.52814
+> 
+> rf$importance[order(rf$importance[, 1], decreasing = TRUE), ]
+                   0           1 MeanDecreaseAccuracy MeanDecreaseGini
+Sex      0.108393726 0.215679010          0.149370573        115.22338
+Age      0.036161336 0.059984414          0.045279205         90.17493
+Fare     0.033873568 0.089813871          0.055316177         99.26613
+Pclass   0.031240226 0.140421971          0.073070663         38.04948
+SibSp    0.021179414 0.003371203          0.014325073         18.65264
+Embarked 0.008087198 0.025033616          0.014603825         12.52814
+Parch    0.007002168 0.011184766          0.008596113         12.37474
+> 
+> 
+> submission <- data.frame(PassengerId = test$PassengerId)
+> submission$Survived <- predict(rf, extractFeatures(test))
+> write.csv(submission, file = "1_random_forest_r_submission.csv", row.names=FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  6.118   0.194   6.321 

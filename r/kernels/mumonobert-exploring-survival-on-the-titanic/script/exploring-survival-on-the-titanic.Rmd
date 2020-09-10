@@ -1,0 +1,61 @@
+
+
+library(caret)
+library(plyr)
+             
+train <- read.csv("C:/Users/WayoPC/Downloads/train.csv")
+test<-read.csv("C:/Users/WayoPC/Downloads/test.csv")
+test.WithID <- read.csv("C:/Users/WayoPC/Downloads/test WithID.csv")
+
+train$PassengerId<-NULL; train$Ticket<- NULL;train$Cabin<- NULL;train$Name<- NULL
+test$PassengerId<-NULL;test$Ticket<- NULL;train$Cabin<- NULL;test$Name<- NULL
+ 
+train$Survived[train$Survived==0] <- "Died"
+train$Survived[train$Survived==1] <- "Survived"
+
+
+ 
+ 
+train$Age[is.na(train$Age)] <- median(train$Age, na.rm=TRUE)
+test$Age[is.na(test$Age)] <- median(test$Age, na.rm=TRUE)
+
+train$Fare[is.na(train$Fare)] <- median(train$Fare, na.rm=TRUE)
+test$Fare[is.na(test$Fare)] <- median(test$Fare, na.rm=TRUE)
+
+train$Embarked[train$Embarked==""] = "S"
+test$Embarked[test$Embarked==""] = "S"
+
+
+train$Sex<- as.factor(train$Sex)
+test$Sex<- as.factor(test$Sex)
+
+
+train$Embarked <- as.factor(train$Embarked)
+test$Embarked <- as.factor(test$Embarked)
+ 
+ 
+
+ctrl <- trainControl(method = "repeatedcv", 
+                     number = 5, repeats = 3, classProbs = TRUE, summaryFunction = twoClassSummary)
+
+
+#Random Forest Training
+rf_fit <- train(Survived ~., data =train, method = "rf", trControl = ctrl,metric = "ROC", type = "Classification")
+
+plot(rf_fit)
+ 
+ 
+rf_class <- predict(rf_fit, newdata = test) # classification outcome required for the confusion matrix
+rf_pred <- predict(rf_fit, newdata = test, type = "prob") # predicted data required for ROC curve
+ 
+ClassDF<- as.data.frame(rf_class);colnames(ClassDF)<-"Survived"
+
+
+revalue(ClassDF$Survived, c("Died" = 0)) -> ClassDF$Survived
+revalue(ClassDF$Survived, c("Survived" = 1)) -> ClassDF$Survived
+
+Merged<-merge(test.WithID,ClassDF,by="row.names")
+
+FinalDF<- subset(Merged,select=c(PassengerId,Survived))
+
+write.csv(FinalDF, file = "FinalDF.csv",row.names=FALSE)

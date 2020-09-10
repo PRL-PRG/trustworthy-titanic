@@ -1,0 +1,162 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> ## Importing packages
+> 
+> # This R environment comes with all of CRAN and many other helpful packages preinstalled.
+> # You can see which packages are installed by checking out the kaggle/rstats docker image: 
+> # https://github.com/kaggle/docker-rstats
+> 
+> library(tidyverse) # metapackage with lots of helpful functions
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(dplyr)
+> library(ggplot2)
+> library(tibble)
+> ## Running code
+> 
+> # In a notebook, you can run a single code cell by clicking in the cell and then hitting 
+> # the blue arrow to the left, or by clicking in the cell and pressing Shift+Enter. In a script, 
+> # you can run code by highlighting the code you want to run and then clicking the blue arrow
+> # at the bottom of this window.
+> 
+> ## Reading in files
+> 
+> # You can access files from datasets you've added to this kernel in the "../input/" directory.
+> # You can see the files added to this kernel by running the code below. 
+> 
+> list.files(path = "../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> 
+> ## Saving data
+> 
+> # If you save any files or images, these will be put in the "output" directory. You 
+> # can see the output directory by committing and running your kernel (using the 
+> # Commit & Run button) and then checking out the compiled version of your kernel.
+> 
+> train <- read.csv("../input/train.csv")
+> 
+> head(train)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> 
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> train <- as.tibble(train)
+Warning message:
+`as.tibble()` is deprecated as of tibble 2.0.0.
+Please use `as_tibble()` instead.
+The signature and semantics have changed, see `?as_tibble`.
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+> 
+> test <- read.csv("../input/test.csv")
+> 
+> name <-train %>% select(Name,SibSp)%>%group_by(SibSp)%>%arrange()
+> 
+> 
+> 
+> tckt_fare <- train %>% select(Ticket,Fare) %>% arrange()%>%group_by(Ticket)
+> count(tckt_fare)
+[90m# A tibble: 681 x 2[39m
+[90m# Groups:   Ticket [681][39m
+   Ticket     n
+   [3m[90m<fct>[39m[23m  [3m[90m<int>[39m[23m
+[90m 1[39m 110152     3
+[90m 2[39m 110413     3
+[90m 3[39m 110465     2
+[90m 4[39m 110564     1
+[90m 5[39m 110813     1
+[90m 6[39m 111240     1
+[90m 7[39m 111320     1
+[90m 8[39m 111361     2
+[90m 9[39m 111369     1
+[90m10[39m 111426     1
+[90m# … with 671 more rows[39m
+> 
+> 
+> tckt_fare <- tckt_fare%>%distinct(Ticket)
+> tckt_fare
+[90m# A tibble: 681 x 1[39m
+[90m# Groups:   Ticket [681][39m
+   Ticket          
+   [3m[90m<fct>[39m[23m           
+[90m 1[39m A/5 21171       
+[90m 2[39m PC 17599        
+[90m 3[39m STON/O2. 3101282
+[90m 4[39m 113803          
+[90m 5[39m 373450          
+[90m 6[39m 330877          
+[90m 7[39m 17463           
+[90m 8[39m 349909          
+[90m 9[39m 347742          
+[90m10[39m 237736          
+[90m# … with 671 more rows[39m
+> dim(tckt_fare)
+[1] 681   1
+> 
+> nm_cls <- train %>% select(Name,Pclass)%>%unite(sep = " ")%>%arrange()
+Error in is_string(expr) : argument "expr" is missing, with no default
+Calls: %>% ... unite.data.frame -> as_string -> is_string -> ensym2 -> is_string
+Execution halted

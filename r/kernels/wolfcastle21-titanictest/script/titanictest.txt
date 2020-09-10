@@ -1,0 +1,54 @@
+
+
+# This R script will run on our backend. You can write arbitrary code here!
+
+# Many standard libraries are already installed, such as randomForest
+library(randomForest)
+library(rpart)
+# The train and test data is stored in the ../input directory
+train <- read.csv("../input/train.csv")
+test  <- read.csv("../input/test.csv")
+
+# We can inspect the train data. The results of this are printed in the log tab below
+summary(train)
+test$Survived <- NA
+all_data <- rbind (train,test)
+all_data$family_size <- all_data$SibSp + all_data$Parch + 1
+all_data$Name <- as.character(all_data$Name)
+all_data$Title <- sapply(all_data$Name, FUN=function(x) {strsplit(x, split='[,.]')[[1]][2]})
+all_data$Title <- sub(' ', '', all_data$Title)
+all_data$Title[all_data$Title %in% c('Mme', 'Mlle')] <- 'Mlle'
+all_data$Title[all_data$Title %in% c('Capt', 'Don', 'Major', 'Sir')] <- 'Sir'
+all_data$Title[all_data$Title %in% c('Dona', 'Lady', 'the Countess', 'Jonkheer')] <- 'Lady'
+all_data$Title <- factor(all_data$Title)
+
+predicted_embarkment <- rpart(Embarked ~ Age + Pclass + Name + Sex + Age + family_size + Ticket + Fare +
+    Cabin, data = all_data[!is.na(all_data$Embarked),], method = "class")
+all_data$Embarked[c(62, 830)] <- predict(predicted_embarkment, all_data[c(62, 830)]
+all_data$Embarked <- factor(all_data$Embarked)
+
+
+
+predicted_fare <- rpart(Fare ~ Embarked + Age + Pclass + Name + Sex + family_size + Parch + Ticket + 
+    Cabin, data = all_data[!is.na(all_data$Fare),], method = "anova")
+all_data$Fare[is.na(all_data$Fare)] <- predict(predicted_fare, all_data[is.na(all_data$Fare),])
+predicted_age <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + family_size,
+                       data = all_data[!is.na(all_data$Age),], method = "anova")
+all_data$Age[is.na(all_data$Age)] <- predict(predicted_age, all_data[is.na(all_data$Age),])
+
+# Split the data back into a train set and a test set
+train <- all_data[1:891,]
+test <- all_data[892:1309,]
+set.seed(100)
+my_forest <- randomForest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title, data = train, importance = TRUE, ntree= 2000)
+# Make your prediction using the test set
+my_prediction <- predict(my_forest, test)
+
+# Create a data frame with two columns: PassengerId & Survived. Survived contains your predictions
+my_solution <- data.frame(test$PassengerId, Survived = my_prediction)
+
+# Write your solution away to a csv file with the name my_solution.csv
+write.csv(my_solution, file = "my_solution.csv", row.names = FALSE)
+varImpPlot(my_forest)
+dev.off()
+

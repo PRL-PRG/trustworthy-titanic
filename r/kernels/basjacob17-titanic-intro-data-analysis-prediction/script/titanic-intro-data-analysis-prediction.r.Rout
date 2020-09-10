@@ -1,0 +1,226 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> library(tidyverse) # metapackage with lots of helpful functions
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(ggplot2) # package that makes nice looking graphics
+> library(sqldf) # data processing and data analysis using SQL on dataframes
+Loading required package: gsubfn
+Loading required package: proto
+Loading required package: RSQLite
+> library(dplyr)
+> library(gridExtra)
+
+Attaching package: ‘gridExtra’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> 
+> list.files(path = "../input") # shows all of the files that are available in the directory
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> 
+> train_data = read.csv("../input/train.csv", stringsAsFactors = FALSE, header = TRUE) # importing in the training data set
+> test_data = read.csv("../input/test.csv", stringsAsFactors = FALSE, header = TRUE) # importing in the testing data set
+> 
+> head(train_data)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> 
+> train_data$Survived <- as.factor(train_data$Survived)
+> train_data$Pclass <- as.factor(train_data$Pclass)
+> train_data$Sex <- as.factor(train_data$Sex)
+> train_data$SibSp <- as.factor(train_data$SibSp)
+> train_data$Parch <- as.factor(train_data$Parch)
+> 
+> summary(train_data)
+  PassengerId    Survived Pclass      Name               Sex     
+ Min.   :  1.0   0:549    1:216   Length:891         female:314  
+ 1st Qu.:223.5   1:342    2:184   Class :character   male  :577  
+ Median :446.0            3:491   Mode  :character               
+ Mean   :446.0                                                   
+ 3rd Qu.:668.5                                                   
+ Max.   :891.0                                                   
+                                                                 
+      Age        SibSp   Parch      Ticket               Fare       
+ Min.   : 0.42   0:608   0:678   Length:891         Min.   :  0.00  
+ 1st Qu.:20.12   1:209   1:118   Class :character   1st Qu.:  7.91  
+ Median :28.00   2: 28   2: 80   Mode  :character   Median : 14.45  
+ Mean   :29.70   3: 16   3:  5                      Mean   : 32.20  
+ 3rd Qu.:38.00   4: 18   4:  4                      3rd Qu.: 31.00  
+ Max.   :80.00   5:  5   5:  5                      Max.   :512.33  
+ NA's   :177     8:  7   6:  1                                      
+    Cabin             Embarked        
+ Length:891         Length:891        
+ Class :character   Class :character  
+ Mode  :character   Mode  :character  
+                                      
+                                      
+                                      
+                                      
+> 
+> g <- ggplot(data = train_data, aes(x = Sex))
+> 
+> p1 <- g + geom_bar(aes(fill = Survived)) +
++     labs(title = "Survival Rates By Sex", subtitle = "Colored by Survival", y = "Counts", x = "Sex")
+> 
+> p2 <- g + geom_bar(aes(fill = Survived), position = "fill") +
++     labs(title = "Survival Rates By Sex", subtitle = "Colored by Survival; Normalized using Percents", y = "Counts", x = "Sex")
+> 
+> grid.arrange(p1, p2)
+> 
+> sex_survived1 = sqldf("SELECT Survived, Sex, COUNT(Survived) AS Counts
++                       FROM train_data 
++                       GROUP BY Sex, Survived")
+> 
+> sex_survived2 = sqldf("SELECT Sex, COUNT(Sex) AS TotalCounts
++                       FROM train_data 
++                       GROUP BY Sex")
+> 
+> sex_survived = sqldf("SELECT sex_survived1.Survived, sex_survived1.Sex, sex_survived1.Counts, sex_survived2.TotalCounts
++                        FROM sex_survived1
++                        INNER JOIN sex_survived2 ON sex_survived1.Sex=sex_survived2.Sex")
+> 
+> sex_survived$Percents = round((sex_survived$Counts / sex_survived$TotalCounts)*100, 2)
+> 
+> sex_survived
+  Survived    Sex Counts TotalCounts Percents
+1        0 female     81         314    25.80
+2        1 female    233         314    74.20
+3        0   male    468         577    81.11
+4        1   male    109         577    18.89
+> 
+> g <- ggplot(data = train_data, aes(x = Pclass))
+> 
+> p1 <- g + geom_bar(aes(fill = Survived)) +
++     labs(title = "Survival Rates By Class", subtitle = "Colored by Survival", y = "Counts", x = "Pclass")
+> 
+> p2 <- g + geom_bar(aes(fill = Survived), position = "fill") +
++     labs(title = "Survival Rates By Class", subtitle = "Colored by Survival; Normalized using Percents", y = "Counts", x = "Pclass")
+> 
+> grid.arrange(p1, p2)
+> 
+> pclass_survived1 = sqldf("SELECT Survived, Pclass, COUNT(Survived) AS Counts
++                       FROM train_data 
++                       GROUP BY Pclass, Survived")
+> 
+> pclass_survived2 = sqldf("SELECT Pclass, COUNT(Pclass) AS TotalCounts
++                       FROM train_data 
++                       GROUP BY Pclass")
+> 
+> pclass_survived = sqldf("SELECT pclass_survived1.Survived, pclass_survived1.Pclass, pclass_survived1.Counts, pclass_survived2.TotalCounts
++                        FROM pclass_survived1
++                        INNER JOIN pclass_survived2 ON pclass_survived1.Pclass = pclass_survived2.Pclass
++                        ORDER BY pclass_survived1.Pclass, Survived")
+> 
+> pclass_survived$Percents = round((pclass_survived$Counts / pclass_survived$TotalCounts)*100, 2)
+> 
+> pclass_survived
+  Survived Pclass Counts TotalCounts Percents
+1        0      1     80         216    37.04
+2        1      1    136         216    62.96
+3        0      2     97         184    52.72
+4        1      2     87         184    47.28
+5        0      3    372         491    75.76
+6        1      3    119         491    24.24
+> 
+> g <- ggplot(data = train_data, aes(x = Sex))
+> 
+> p1 <- g + geom_bar(aes(fill = Survived)) +
++     labs(title = "Survival Rates By Sex", subtitle = "Colored by Survival; Split by Pclass", y = "Counts", x = "Sex")+
++     facet_wrap(~ Pclass)
+> 
+> p2 <- g + geom_bar(aes(fill = Survived), position = "fill") +
++     labs(title = "Survival Rates By Sex", subtitle = "Colored by Survival; Split by Pclass; Normalized Using Percents", y = "Counts", x = "Sex")+
++     facet_wrap(~ Pclass)
+> 
+> grid.arrange(p1, p2)
+> 
+> sex_pclass_survived1 = sqldf("SELECT Survived, Sex, Pclass, COUNT(Survived) AS Counts
++                       FROM train_data 
++                       GROUP BY Sex, Pclass, Survived")
+> 
+> sex_pclass_survived2 = sqldf("SELECT Sex, Pclass, COUNT(Pclass) AS TotalCounts
++                       FROM train_data 
++                       GROUP BY Sex, Pclass")
+> 
+> sex_pclass_survived = sqldf("SELECT sex_pclass_survived1.Survived, sex_pclass_survived1.Pclass,
++                                     sex_pclass_survived1.Sex, sex_pclass_survived1.Counts, sex_pclass_survived2.TotalCounts
++                        FROM sex_pclass_survived1
++                        INNER JOIN sex_pclass_survived2 
++                            ON (sex_pclass_survived1.Pclass = sex_pclass_survived2.Pclass) AND (sex_pclass_survived1.Sex = sex_pclass_survived2.Sex)
++                        ORDER BY sex_pclass_survived1.Pclass, sex_pclass_survived1.Sex, Survived")
+> 
+> sex_pclass_survived$Percents = round((sex_pclass_survived$Counts / sex_pclass_survived$TotalCounts) * 100, 2)
+> 
+> 
+> sex_pclass_survived
+   Survived Pclass    Sex Counts TotalCounts Percents
+1         0      1 female      3          94     3.19
+2         1      1 female     91          94    96.81
+3         0      1   male     77         122    63.11
+4         1      1   male     45         122    36.89
+5         0      2 female      6          76     7.89
+6         1      2 female     70          76    92.11
+7         0      2   male     91         108    84.26
+8         1      2   male     17         108    15.74
+9         0      3 female     72         144    50.00
+10        1      3 female     72         144    50.00
+11        0      3   male    300         347    86.46
+12        1      3   male     47         347    13.54
+> 
+> proc.time()
+   user  system elapsed 
+  3.071   0.427   3.862 

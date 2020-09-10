@@ -1,0 +1,203 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # Name: Matheus Brizolla
+> # Date: 04/22/18
+> # Dataset: Titanic
+> 
+> # Loading our library / Carregando nossa biblioteca
+> library(MASS)
+> 
+> # Loading our train data and test data  / Carregando nossas bases de treino e teste
+> test <- read.csv("../input/test.csv")
+> train <- read.csv("../input/train.csv")
+> 
+> # Checking if our data is ok / Verifica se os dados estão de acordo com o esperado
+> head (train)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+6           6        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+6                                    Moran, Mr. James   male  NA     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+6           330877  8.4583              Q
+> 
+> # Checking the type of each column / Verifica o tipo das colunas
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> # Summarize our data / Traz as principais informações para a nossa primeira análise
+> summary (train)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked
+            :687    :  2   
+ B96 B98    :  4   C:168   
+ C23 C25 C27:  4   Q: 77   
+ G6         :  4   S:644   
+ C22 C26    :  3           
+ D          :  3           
+ (Other)    :186           
+> 
+> # Telling to our model what variables are factors / Avisa ao nosso modelo quais são as variáveis categóricas
+> train$Pclass <- factor(train$Pclass)
+> train$Survived <- factor(train$Survived)
+> 
+> test$Pclass <- factor(test$Pclass)
+> 
+> # Checking if our train data have missing values / Verificando se há algum campo em vazio
+> NAvalue_train <- sapply(train, function(x) sum(is.na(x)))
+> MissingNA_train <- data.frame(index = names(train), Missing_Values = NAvalue_train)
+> MissingNA_train[MissingNA_train$Missing_Values > 0,]
+    index Missing_Values
+Age   Age            177
+>                   
+> # Checking if our test data have missing values / Verificando se há algum campo em vazio
+> NAvalue_test <- sapply(test, function(x) sum(is.na(x)))
+> MissingNA_test <- data.frame(index = names(test), Missing_Values = NAvalue_test)
+> MissingNA_test[MissingNA_test$Missing_Values > 0,]
+     index Missing_Values
+Age    Age             86
+Fare  Fare              1
+> 
+> # Handling our missing values / Cuidando dos valores NA
+> train$Age [is.na(train$Age)] <- median(train$Age, na.rm=TRUE)
+> 
+> test$Fare [is.na(test$Fare)] <- median(test$Fare, na.rm=TRUE)
+> test$Age [is.na(test$Age)] <- median(train$Age, na.rm=TRUE)
+> 
+> # Logistic Regression / Regressão logística
+> rl <- glm(Survived ~ Sex + Pclass + Age + SibSp, data = train, family = "binomial")
+> 
+> # Summarizing our model / Verificando nosso modelo
+> summary (rl)
+
+Call:
+glm(formula = Survived ~ Sex + Pclass + Age + SibSp, family = "binomial", 
+    data = train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6824  -0.6019  -0.4152   0.6164   2.4325  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  4.003495   0.397214  10.079  < 2e-16 ***
+Sexmale     -2.739590   0.194053 -14.118  < 2e-16 ***
+Pclass2     -1.180514   0.261362  -4.517 6.28e-06 ***
+Pclass3     -2.352135   0.243384  -9.664  < 2e-16 ***
+Age         -0.039568   0.007795  -5.076 3.86e-07 ***
+SibSp       -0.354559   0.103566  -3.424 0.000618 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  791.23  on 885  degrees of freedom
+AIC: 803.23
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> # Predicting / Predição
+> previsto <- ifelse(predict(rl, newdata = train, type = "response")>0.5,1,0)
+> 
+> # Setting our result in a new column / Colocando o nosso resultado em uma nova coluna
+> train$Previsao <- previsto
+> 
+> # Visualizing our prediction / Vizualizando nossa predição
+> tb <- table(train$Previsao >= 0.5, train$Survived)
+> tb
+       
+          0   1
+  FALSE 459  99
+  TRUE   90 243
+> cat("Accuracy: ", (tb[1,1] + tb[2,2])/ nrow(train)*100, "/ Taxa de acerto:", (tb[1,1] + tb[2,2])/ nrow(train)*100)
+Accuracy:  78.78788 / Taxa de acerto: 78.78788> 
+> # Now we are doing the same to test data / Repetindo as ações mas na base de treino
+> predictTest <- predict(rl, newdata = test, type = "response")
+> test$Survived <- as.numeric(predictTest >= 0.5)
+> table(test$Survived)
+
+  0   1 
+257 161 
+> 
+> # Creating the file to submit / Criando o arquivo para envio
+> subm<-data.frame(test$PassengerId)
+> names(subm)[1]<-"PassengerId"
+> 
+> subm$Survived<-test$Survived
+> 
+> write.csv(subm, file = "titanic_logr_submission.csv", row.names=FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  0.199   0.040   0.231 

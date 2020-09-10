@@ -1,0 +1,204 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> 
+> library(tidyverse) # metapackage with lots of helpful functions
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> library(class)
+> list.files(path = "../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> # write.csv(evl,"test_scored.csv")
+> 
+> rm(list=ls())
+> t1 <- read.csv('../input/test.csv',  as.is = T)
+> t2 <- read.csv('../input/train.csv', as.is = T)
+> all <-  bind_rows(t2,t1)
+> 
+> # Predict missing ages.
+> colSums(is.na(all))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1           0           0 
+> # female=1 male=0
+> all$Sex <- gsub('female','1',all$Sex)
+> all$Sex <- gsub('male','0',all$Sex)
+> # make all$Sex numeric
+> all$Sex <- as.numeric(all$Sex)
+> missing.a <- all[which(is.na(all$Age)),] # I want to predict these  missing values
+> train <- all[which(!is.na(all$Age)),] # For training the model I want to use data w/no missing values
+> 
+> # Train the model
+> model <- lm(Age ~ Pclass+Sex, data = train)
+> # predict
+> pred <- predict(model, missing.a)
+> pred <- as.data.frame(pred)
+> # Fill in the missing values
+> # There maybe an easier way to do this.
+> count <- 0
+> for (i in which(is.na(all$Age))) {
++ count <- count + 1
++   all$Age[i] <- pred$pred[count]
++ }
+> colSums(is.na(all))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0           0 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1           0           0 
+> 
+> # Some of the fares are zero so I'll turn those cells to NA
+> all$Fare[all$Fare==0] <- NA
+> all$Embarked[which(all$Embarked=='')] <- 'S'
+> # Change to numeric type.
+> all$Fare <- as.numeric(all$Fare)
+> colSums(is.na(all))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0           0 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0          18           0           0 
+> # str(all)
+> 
+> all$Fare[which(is.na(all$Fare))] <- median(all$Fare, na.rm = T)
+> colSums(is.na(all))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0           0 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0           0           0 
+> 
+> data.frame(num=1:length(names(all)),names=names(all) ) 
+   num       names
+1    1 PassengerId
+2    2    Survived
+3    3      Pclass
+4    4        Name
+5    5         Sex
+6    6         Age
+7    7       SibSp
+8    8       Parch
+9    9      Ticket
+10  10        Fare
+11  11       Cabin
+12  12    Embarked
+> 
+> # Remove some columns
+> df <- all[-c(1,4,9,11)]
+> head(df)
+  Survived Pclass Sex      Age SibSp Parch    Fare Embarked
+1        0      3   0 22.00000     1     0  7.2500        S
+2        1      1   1 38.00000     1     0 71.2833        C
+3        1      3   1 26.00000     0     0  7.9250        S
+4        1      1   1 35.00000     1     0 53.1000        S
+5        0      3   0 35.00000     0     0  8.0500        S
+6        0      3   0 25.48133     0     0  8.4583        Q
+> 
+> # Make df$Survived a factor.
+> df$Survived <- as.factor(df$Survived)
+> # Change Embarked to mumbers.
+> df$Embarked[which(df$Embarked=='C')] <- 0
+> df$Embarked[which(df$Embarked=='Q')] <- 1
+> df$Embarked[which(df$Embarked=='S')] <- 2
+> # make embarek numeric
+> df$Embarked <- as.numeric(df$Embarked)
+> 
+> ###### Normalize data
+> norm <- function(x){return( (x-min(x))/(max(x)-min(x)) )}
+> 
+> train_target <- df[1:579,1]
+> test_target <- df[580:891,1]
+> df_z <- df # I'll use df_z later for z-score standardization
+> # # Leave the target comumn out.
+> df <- as.data.frame(lapply(df[,c(2:8)],norm))
+> x <- df # x will be used to predict survival.
+> 
+> df<- df[1:891,]
+> train <- df[1:579,]
+> test <- df[580:891,]
+> # I'll start with k to be a square root of train observations.
+> k <- as.integer(sqrt(579))
+> 
+> # Train model
+> model <- knn(train = train,
++              test = test,    
++              cl = train_target,
++              k=k )
+> 
+> t <- table(test_target,model)
+> t
+           model
+test_target   0   1
+          0 185  13
+          1  49  65
+> accuracy <- 100-((t[2]+t[3])/length(model))*100
+> cat('\n')
+
+> cat('accuracy = ',accuracy,'%')
+accuracy =  80.12821 %> 
+> df_z1 <- as.data.frame(scale(df_z[-c(1)]))
+> 
+> df_z1_train <- df_z1[1:579,]
+> df_z1_test <- df_z1[580:891,]
+> df_z1_train_target <- df_z[1:579,1]
+> df_z1_test_target <- df_z[580:891,1]
+> 
+> k <- 5
+> model <- knn(train = df_z1_train,
++              test = df_z1_test,
++              cl = df_z1_train_target,
++              k=k )
+> 
+> t <- table(df_z1_test_target,model)
+> t
+                 model
+df_z1_test_target   0   1
+                0 182  16
+                1  39  75
+> accuracy <- 100-((t[2]+t[3])/length(model))*100
+> cat('\n')
+
+> cat('accuracy = ',accuracy,'%')
+accuracy =  82.37179 %> 
+> k <- 5
+> model <- knn(train = df_z1_train,
++              test = x[892:1309,], #df_z1_test, 
++              cl = df_z1_train_target,
++              k=k )
+> # write.csv(evl,"test_scored.csv")
+> 
+> submit <- data.frame(PassengerId=892:1309,Survived=model)
+> write.csv(submit,file = 'score.csv', row.names = F)
+> 
+> proc.time()
+   user  system elapsed 
+  1.186   0.105   1.286 

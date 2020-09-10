@@ -1,0 +1,95 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(class)
+> #library(randomForest)
+> #library(party)
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> train <- train[-1]
+> test <- test[-1]
+> 
+> 
+> ###################Binomial regression
+>   model <- glm(formula=Survived~Pclass+Sex+SibSp,data=train, family = binomial)
+>   test_pred <- predict(model,test, type="response")
+>    test_pred <- ifelse(test_pred>0.5,1,0)
+>    table(test_pred)
+test_pred
+  0   1 
+269 149 
+> 
+> 
+> #   Died                Survived
+> #   0                   1 
+> #   269 (Total:266)     149 (Total:152) 
+> # Accuracy: 149/152 = ~98%
+> 
+> ##############################
+> 
+> ###################Random Forest
+> 
+> #  model <- randomForest(Survived~Pclass+Sex+SibSp,data=train,ntree=500, importance=TRUE)
+> #  test_pred <- predict(model,test, type="response")
+> #   test_pred <- ifelse(test_pred>0.5,1,0)
+> #   table(test_pred)
+> 
+> 
+> #   Died                Survived
+> #   0                   1 
+> #   269 (Total:266)     149 (Total:152) 
+> # Accuracy: 149/152 = ~98%
+> 
+> ##############################
+> 
+> ###################Conditional Tree
+> 
+> #  model <- ctree(Survived~Pclass+Sex+SibSp,data=train)
+>  #test_pred <- predict(model,test, type="response")
+>   # test_pred <- ifelse(test_pred>0.5,1,0)
+>   # table(test_pred)
+> 
+> 
+> #   Died                Survived
+> #   0                   1 
+> #   269 (Total:266)     149 (Total:152) 
+> # Accuracy: 149/152 = ~98%
+> 
+> ##############################
+> 
+> 
+> png("1_survival_by_Sex.png", width=800, height=600)
+> mosaicplot(test$Sex ~ test_pred, main="Passenger Survival by Sex",
++           color=c("#8dd3c7", "#fb8072"), shade=FALSE,  xlab="", ylab="",
++            off=c(0), cex.axis=1.4)
+> dev.off()
+null device 
+          1 
+> 
+> proc.time()
+   user  system elapsed 
+  0.160   0.037   0.372 

@@ -1,0 +1,63 @@
+
+# This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+# The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+# For example, here's several helpful packages to load in 
+
+library(ggplot2) # Data visualization
+library(readr) # CSV file I/O, e.g. the read_csv function
+library(pipeR)
+library(stringr)
+library(rpart)
+
+
+# Input data files are available in the "../input/" directory.
+# For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+
+dir("../input")
+
+# Any results you write to the current directory are saved as output.
+
+train <- read_csv("../input/train.csv")
+test <- read_csv("../input/test.csv")
+
+str(train)
+
+str(test)
+
+table(str_extract(train$Name, "[a-zA-Z]+\\."))
+
+test$Survived <- NA
+d.all <- rbind(train, test)
+
+d.all$Title <- str_extract(d.all$Name, "[a-zA-Z]+\\.") %>>% str_replace("\\.", "")
+
+table(d.all$Title)
+
+d.all$Title[d.all$Title %in% c('Mme', 'Mlle')] <- 'Mlle'
+d.all$Title[d.all$Title %in% c('Capt', 'Don', 'Major', 'Sir')] <- 'Sir'
+d.all$Title[d.all$Title %in% c('Dona', 'Lady', 'Countess', 'Jonkheer')] <- 'Lady'
+d.all$Title <- factor(d.all$Title)
+
+table(d.all$Title)
+
+nrow(train)
+
+nrow(d.all)
+
+train <- d.all[1:891,]
+test <- d.all[892:1309,]
+
+table(train$Title)
+
+my_tree <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + 
+    Title, data = train, method = "class")
+
+library(rpart.plot)
+
+rpart.plot(my_tree, type = 1, uniform = TRUE, extra = 1, under = 1, faclen = 0)
+
+pred <- predict(my_tree, newdata = test, type = "class")
+
+solution <- data.frame(PassengerId = test$PassengerId, Survived = pred)
+
+write_csv(solution, path = "solution.csv")

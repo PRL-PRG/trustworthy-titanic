@@ -1,0 +1,114 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> library(rpart)
+> library(rpart.plot)
+> library(RColorBrewer)
+> 
+> # The titanic and test data is stored in the ../input directory
+> titanic <- read.csv("../input/train.csv")
+> test  <- read.csv("../input/test.csv")
+> 
+> # We can inspect the titanic data. The results of this are printed in the log tab below
+> str(titanic)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> # Add variable Survived with NA Values to test
+> test$Survived <- NA
+> 
+> # Combine the 2 datasets
+> all_data <- rbind(titanic,test)
+> 
+> # Convert Name to a character variable and take out the interesting data
+> all_data$Name <- as.character(all_data$Name)
+> 
+> # First: the title
+> all_data$Title <- sapply(all_data$Name,FUN=function(x){strsplit(x,split="[,.]")[[1]][2]})
+> all_data$Title <- sub(" ","",all_data$Title)
+> all_data$Title[all_data$Title %in% c('Capt', 'Col', 'Don', 'Dr', 'Jonkheer', 'Major', 
++                                     'Master', 'Rev', 'Sir')] <- 'Honorific_male'
+> all_data$Title[all_data$Title %in% c('Dona', 'Lady', 'the Countess')]  <- 'Honorific_female'
+> all_data$Title[all_data$Title %in% c('Miss', 'Mlle', 'Mme', 'Mrs', 'Ms')] <- 'Non_Honorific_female'
+> all_data$Title[all_data$Title %in% c('Mr')] <- 'Non_Honorific_male'
+> all_data$Title <- factor(all_data$Title)
+> 
+> # New variable for Cabin Group
+> all_data$CabinGroup <- sapply(all_data$Cabin, FUN= function(x){substr(x,1,1)})
+> all_data$CabinGroup[all_data$CabinGroup==''] <- 'no_data'
+> all_data$CabinGroup <- factor(all_data$CabinGroup)
+> 
+> titanic <- all_data[1:891,]
+> test <- all_data[892:1309,]
+> 
+> prop.table(table(titanic$CabinGroup, titanic$Survived),1)
+         
+                  0         1
+  A       0.5333333 0.4666667
+  B       0.2553191 0.7446809
+  C       0.4067797 0.5932203
+  D       0.2424242 0.7575758
+  E       0.2500000 0.7500000
+  F       0.3846154 0.6153846
+  G       0.5000000 0.5000000
+  no_data 0.7001456 0.2998544
+  T       1.0000000 0.0000000
+> 
+> tree <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + CabinGroup, 
++             data=titanic, method = "class", control=rpart.control(minsplit = 5))
+> 
+> #plot(tree)
+> #text(tree)
+> 
+> # Visualisation of the tree
+> png("1_Visualisation_Tree_Titanic.png")
+> prp(tree)
+> dev.off()
+null device 
+          1 
+> 
+> # Use this tree to predict the outcome of the test data
+> my_prediction <- predict(tree, test, type="class")
+> 
+> # Create the csv file for submission
+> submission <- data.frame(PassengerId = test$PassengerId, Survived = my_prediction)
+> write.csv(submission, file="titanic_submission.csv", row.names=FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  0.327   0.065   0.434 

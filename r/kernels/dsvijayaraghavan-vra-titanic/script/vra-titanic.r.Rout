@@ -1,0 +1,386 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> ## Importing packages
+> 
+> # This R environment comes with all of CRAN and many other helpful packages preinstalled.
+> # You can see which packages are installed by checking out the kaggle/rstats docker image: 
+> # https://github.com/kaggle/docker-rstats
+> 
+> library(tidyverse) # metapackage with lots of helpful functions
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> 
+> ## Running code
+> 
+> # In a notebook, you can run a single code cell by clicking in the cell and then hitting 
+> # the blue arrow to the left, or by clicking in the cell and pressing Shift+Enter. In a script, 
+> # you can run code by highlighting the code you want to run and then clicking the blue arrow
+> # at the bottom of this window.
+> 
+> ## Reading in files
+> 
+> # You can access files from datasets you've added to this kernel in the "../input/" directory.
+> # You can see the files added to this kernel by running the code below. 
+> 
+> list.files(path = "../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> 
+> ## Saving data
+> 
+> # If you save any files or images, these will be put in the "output" directory. You 
+> # can see the output directory by committing and running your kernel (using the 
+> # Commit & Run button) and then checking out the compiled version of your kernel.
+> 
+> library(ggplot2)
+> library(dplyr)
+> library(GGally)
+Registered S3 method overwritten by 'GGally':
+  method from   
+  +.gg   ggplot2
+Warning message:
+package ‘GGally’ was built under R version 3.6.2 
+> library(rpart)
+> library(rpart.plot)
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> test <- read.csv("../input/test.csv",stringsAsFactors = FALSE)
+> train <- read.csv("../input/train.csv", stringsAsFactors = FALSE)
+> 
+> LT=dim(train)[1]
+> 
+> #bind the rows without considering the columns as constraint
+> full <- bind_rows(train,test)
+> 
+> #checking the NA values
+> colSums(is.na(full)) #SURVIVED, Age and Fare having NA VALUES with count
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1           0           0 
+> 
+> colSums(full=="") #also helped to know oly NA values and empty string, 
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0          NA           0           0           0          NA 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0          NA        1014           2 
+>                   #Embarked  and cabin having empty values
+> 
+> #feed values in the embarked column 
+> full$Embarked[full$Embarked == ""] <- "S" #s Has a lot values in the list
+> 
+> # Let's see how many features we can move to factors
+> 
+> apply(full,2, function(x) length(unique(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+       1309           3           3        1307           2          99 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          7           8         929         282         187           3 
+> 
+> 
+> factor_variables <- c("Survived","Pclass","Sex","Embarked")
+> 
+> for (i in factor_variables) {
++   full[,i] <- as.factor(full[,i])
++ }
+> 
+> str(full)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+> 
+> #analysis by graph
+> #sex vs survived with train dataset, sex vs survival
+> ggplot(data=full[1:LT,],aes(x=Sex,fill=Survived))+geom_bar()
+> 
+> #embarked vs survival
+> ggplot(data = full[1:LT,],aes(x=Embarked,fill=Survived))+
++   geom_bar(position="fill")+ylab("Frequency")
+> 
+> t<-table(full[1:LT,]$Embarked,full[1:LT,]$Survived)
+> for (i in 1:dim(t)[1]){
++   t[i,]<-t[i,]/sum(t[i,])*100
++ }
+> t
+   
+           0        1
+  C 44.64286 55.35714
+  Q 61.03896 38.96104
+  S 66.09907 33.90093
+> 
+> #Pclass vs survival
+> ggplot(data = full[1:LT,],aes(x=Pclass,fill=Survived))+
++   geom_bar(position="fill")+ylab("Frequency")
+> 
+> #embarked vs survival, facet_wrap with Pclass
+> ggplot(data = full[1:LT,],aes(x=Embarked,fill=Survived))+
++   geom_bar(position="fill")+facet_wrap(~Pclass)
+> 
+> #sibsp vs survival
+> ggplot(data = full[1:LT,],aes(x=SibSp,fill=Survived))+geom_bar()
+> 
+> #Parch vs survival
+> ggplot(data = full[1:LT,],aes(x=Parch,fill=Survived))+geom_bar()
+> 
+> 
+> #age vs survival, in histogram
+> ggplot(data = full[!(is.na(full[1:LT,]$Age)),],aes(x=Age,fill=Survived))+geom_histogram(binwidth =3)
+Warning message:
+Removed 70 rows containing non-finite values (stat_bin). 
+> 
+> #Fare vs survival, in histogram
+> ggplot(data = full[1:LT,],aes(x=Fare,fill=Survived))+geom_histogram(binwidth =20, position="fill")
+Warning message:
+Removed 28 rows containing missing values (geom_bar). 
+> 
+> #Add the mean value of Fare in the NA values
+> full$Fare[is.na(full$Fare)] <- mean(full$Fare,na.rm=T)
+> 
+> sum(is.na(full$Age))
+[1] 263
+> 
+> #Add the mean value of age in the NA values
+> #full$Age[is.na(full$Age)] <- mean(full$Age,na.rm=T)
+> predicted_age <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked,
++                        data = full[!is.na(full$Age),], method = "anova")
+> 
+> full$Age[is.na(full$Age)] <- predict(predicted_age, full[is.na(full$Age),])
+> 
+> 
+> 
+> 
+> #Title column generated from the name
+> full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+> full$Title[full$Title == 'Mlle']<- 'Miss' 
+> full$Title[full$Title == 'Ms']<- 'Miss'
+> full$Title[full$Title == 'Mme']<- 'Mrs' 
+> full$Title[full$Title == 'Lady']<- 'Miss'
+> full$Title[full$Title == 'Dona']<- 'Miss'
+> 
+> #changed the other column values as officer
+> officer<- c('Capt','Col','Don','Dr','Jonkheer','Major','Rev','Sir','the Countess')
+> full$Title[full$Title %in% officer]<-'Officer'
+> 
+> full$Title<- as.factor(full$Title)
+> 
+> #Title vs Survival
+> ggplot(data = full[1:LT,],aes(x=Title,fill=Survived))+geom_bar(position="fill")+ylab("Frequency")
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> #Model Prediction 
+> train_im<- full[1:LT,c("Survived","Pclass","Sex","Age","Fare","SibSp","Parch","Title")]
+> ind<-sample(1:dim(train_im)[1],500) # Sample of 500 out of 891
+> train1<-train_im[ind,] # The train set of the model
+> train2<-train_im[-ind,] # The test set of the model
+> 
+> # Let's try to run a logistic regression
+> model <- glm(Survived ~.,family=binomial(link='logit'),data=train1)
+> summary(model)
+
+Call:
+glm(formula = Survived ~ ., family = binomial(link = "logit"), 
+    data = train1)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.5747  -0.6303  -0.3337   0.4904   2.7351  
+
+Coefficients:
+               Estimate Std. Error z value Pr(>|z|)    
+(Intercept)   18.727273 882.743970   0.021  0.98307    
+Pclass2       -0.935145   0.433130  -2.159  0.03085 *  
+Pclass3       -2.380475   0.447677  -5.317 1.05e-07 ***
+Sexmale      -14.309095 882.743632  -0.016  0.98707    
+Age           -0.030233   0.013088  -2.310  0.02089 *  
+Fare           0.005110   0.003888   1.314  0.18879    
+SibSp         -0.507806   0.161573  -3.143  0.00167 ** 
+Parch         -0.210431   0.176086  -1.195  0.23207    
+TitleMiss    -15.235151 882.743927  -0.017  0.98623    
+TitleMr       -4.027814   0.773687  -5.206 1.93e-07 ***
+TitleMrs     -14.616655 882.744050  -0.017  0.98679    
+TitleOfficer  -3.605508   1.025833  -3.515  0.00044 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 658.96  on 499  degrees of freedom
+Residual deviance: 392.98  on 488  degrees of freedom
+AIC: 416.98
+
+Number of Fisher Scoring iterations: 13
+
+> 
+> glm(formula = Survived ~ ., family = binomial(link = "logit"),data = train1)
+
+Call:  glm(formula = Survived ~ ., family = binomial(link = "logit"), 
+    data = train1)
+
+Coefficients:
+ (Intercept)       Pclass2       Pclass3       Sexmale           Age  
+    18.72727      -0.93514      -2.38047     -14.30910      -0.03023  
+        Fare         SibSp         Parch     TitleMiss       TitleMr  
+     0.00511      -0.50781      -0.21043     -15.23515      -4.02781  
+    TitleMrs  TitleOfficer  
+   -14.61665      -3.60551  
+
+Degrees of Freedom: 499 Total (i.e. Null);  488 Residual
+Null Deviance:	    659 
+Residual Deviance: 393 	AIC: 417
+> 
+> #Survival Prediction
+> pred.train <- predict(model,train2)
+> pred.train <- ifelse(pred.train > 0.5,1,0)
+> 
+> mean(pred.train==train2$Survived)
+[1] 0.8081841
+> 
+> #Precision and recall the model
+> t1<-table(pred.train,train2$Survived)
+> presicion<- t1[1,1]/(sum(t1[1,]))
+> recall<- t1[1,1]/(sum(t1[,1]))
+> 
+> presicion
+[1] 0.7731959
+> 
+> 
+> recall
+[1] 0.9615385
+> 
+> #F1 Score
+> F1<- 2*presicion*recall/(presicion+recall)
+> 
+> 
+> # F1 score on the initial test set is 0.871. This pretty good.
+> 
+> # Let's run it on the test set:
+> 
+> test_im <- full[LT+1:1309,c("Pclass","Sex","Age","SibSp","Parch","Fare","Title")]
+> 
+> pred.test <- predict(model,test_im)[1:418]
+> pred.test <- ifelse(pred.test > 0.5,1,0)
+> res<- data.frame(test$PassengerId,pred.test)
+> names(res)<-c("PassengerId","Survived")
+> 
+> 
+> #Decision Tree Model
+> model_dt<- rpart(Survived ~.,data=train1, method="class")
+> rpart.plot(model_dt)
+> 
+> #predicting the test data
+> pred.train.dt <- predict(model_dt,train2,type = "class")
+> mean(pred.train.dt==train2$Survived)
+[1] 0.8132992
+> 
+> 
+> t2<-table(pred.train.dt,train2$Survived)
+> 
+> presicion_dt<- t2[1,1]/(sum(t2[1,]))
+> recall_dt<- t2[1,1]/(sum(t2[,1]))
+> presicion_dt
+[1] 0.8108108
+> 
+> recall_dt
+[1] 0.8974359
+> 
+> 
+> F1_dt<- 2*presicion_dt*recall_dt/(presicion_dt+recall_dt)
+> F1_dt
+[1] 0.851927
+> 
+> pred.test.dt <- predict(model_dt,test_im,type="class")[1:418]
+> res_dt<- data.frame(test$PassengerId,pred.test.dt)
+> names(res_dt)<-c("PassengerId","Survived")
+> 
+> 
+> write.csv(res_dt,file="gender_submission.csv",row.names = F)
+> 
+> model_rf<-randomForest(Survived~.,data=train1)
+> plot(model_rf)
+> 
+> #prediction based on random forest
+> pred.train.rf <- predict(model_rf,train2)
+> mean(pred.train.rf==train2$Survived)
+[1] 0.8158568
+> 
+> 
+> t1<-table(pred.train.rf,train2$Survived)
+> presicion<- t1[1,1]/(sum(t1[1,]))
+> recall<- t1[1,1]/(sum(t1[,1]))
+> presicion
+[1] 0.8068182
+> 
+> recall
+[1] 0.9102564
+> 
+> F1<- 2*presicion*recall/(presicion+recall)
+> F1
+[1] 0.8554217
+> 
+> pred.test.rf <- predict(model_rf,test_im)[1:418]
+> res_rf<- data.frame(test$PassengerId,pred.test.rf)
+> names(res_rf)<-c("PassengerId","Survived")
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  3.022   0.157   3.188 

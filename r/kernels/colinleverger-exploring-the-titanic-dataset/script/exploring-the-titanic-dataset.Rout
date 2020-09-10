@@ -1,0 +1,36 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> #### Explore Titanic dataset #####
+> 
+> # IMPORTANT NOTE: followed the excellent tutorials at the following addresses:
+> # https://www.kaggle.com/mrisdal/titanic/exploring-survival-on-the-titanic
+> # https://github.com/wehrley/wehrley.github.io/blob/master/SOUPTONUTS.md
+> 
+> #### General setups ####
+> # Packages managemement
+> #install.packages("dataQualityR")
+> #install.packages("ggplot2")
+> #install.packages("vcd")
+> #install.packages("reshape2")
+> #install.packages('randomForest')
+> library(dataQualityR)
+Error in library(dataQualityR) : 
+  there is no package called ‘dataQualityR’
+Execution halted

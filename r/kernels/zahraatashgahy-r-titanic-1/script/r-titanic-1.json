@@ -1,0 +1,1 @@
+{"c(\"package:kernlab\", \"package:flexmix\", \"package:flexclust\", \"package:arules\", \"package:stats\")":["predict"],"package:base":["c","data.frame","factor","library"],"package:rpart":["rpart","rpart.control"],"package:utils":["read.csv","write.csv"]}

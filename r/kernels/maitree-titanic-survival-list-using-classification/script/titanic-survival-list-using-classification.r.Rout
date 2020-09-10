@@ -1,0 +1,193 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> 
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> system("ls ../input")
+gender_submission.csv
+test.csv
+train.csv
+> 
+> # Any results you write to the current directory are saved as output.
+> 
+> train <- read.csv('../input/train.csv')
+> test  <- read.csv('../input/test.csv')
+> 
+> ## find the NA fields in the dataset
+> 
+> sapply(train,function(x) sum(is.na(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0         177 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0           0           0 
+> 
+> sapply(train,function(x) summary(is.na(x)))
+$PassengerId
+   Mode   FALSE 
+logical     891 
+
+$Survived
+   Mode   FALSE 
+logical     891 
+
+$Pclass
+   Mode   FALSE 
+logical     891 
+
+$Name
+   Mode   FALSE 
+logical     891 
+
+$Sex
+   Mode   FALSE 
+logical     891 
+
+$Age
+   Mode   FALSE    TRUE 
+logical     714     177 
+
+$SibSp
+   Mode   FALSE 
+logical     891 
+
+$Parch
+   Mode   FALSE 
+logical     891 
+
+$Ticket
+   Mode   FALSE 
+logical     891 
+
+$Fare
+   Mode   FALSE 
+logical     891 
+
+$Cabin
+   Mode   FALSE 
+logical     891 
+
+$Embarked
+   Mode   FALSE 
+logical     891 
+
+>        ## There is one value in Fare which is NA and many values in Age which has NA values
+> 
+> ## getting a backup of train dataset
+> 
+> train1 <- train 
+> 
+> ## since some of the data are missing, lets combine the two datasets to apply my logic to get values
+> ## for the NA fields
+> 
+> train$Survived<-NULL
+> 
+> ## join the two datasets to get a new combined dataset
+> 
+> combo<-rbind(train,test)
+> 
+> ## I will generate a function to get the missing values. 
+> 
+> ## to get the age values, lets do some analysis on age column
+> 
+> ## age vs Class
+> 
+> library(ggplot2)
+> 
+> ggplot(data=combo,aes(x=factor(Pclass),y=Age,fill=factor(Pclass)))+
++   geom_bar(stat="identity",position = position_dodge())
+Warning message:
+Removed 263 rows containing missing values (geom_bar). 
+> 
+> ## age vs Class grouped dodge
+> 
+> ggplot(combo,aes(Age,fill=factor(Pclass)))+
++   geom_bar(binwidth=1,position = position_dodge())
+Warning messages:
+1: Ignoring unknown parameters: binwidth 
+2: Removed 263 rows containing non-finite values (stat_count). 
+3: position_dodge requires non-overlapping x intervals 
+> 
+> ## the plot shows the class depend on different age group people. we will generate the 
+> ## NA age columns as depending on the class
+> ## Function to get the mean of the age for the Pclass
+> ## for a missing age, get the Pclass and get the mean of age for that Pclass and replace this 
+> ## mean value for the missing age
+> 
+> 
+> mean_class <- function(class){
++   classvec<-subset(combo,Pclass==class)
++   mean_age<-mean(classvec$Age,na.rm=TRUE)
++   return(mean_age)
++ }
+> 
+> l_age <- length(combo$Age)
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> 
+> i<-1
+> for(i in 1:l_age) {
++   if (is.na(combo$Age[i])==TRUE){
++     class_value<-combo$Pclass[i]
++     combo$Age[i]<-mean_class(class_value)
++   }
++ 
++   }
+> 
+> ## Class vs fare
+>   
+>   ggplot(combo,aes(Fare,fill=factor(Pclass)))+
++     geom_bar(stat = "identity",position = position_dodge(),binwidth = 5)
+Error: geom_bar requires the following missing aesthetics: y
+Backtrace:
+[90m    [39m█
+[90m 1. [39m├─(function (x, ...) ...
+[90m 2. [39m└─ggplot2:::print.ggplot(x)
+[90m 3. [39m  ├─ggplot2::ggplot_build(x)
+[90m 4. [39m  └─ggplot2:::ggplot_build.ggplot(x)
+[90m 5. [39m    └─ggplot2:::by_layer(function(l, d) l$compute_geom_1(d))
+[90m 6. [39m      └─ggplot2:::f(l = layers[[i]], d = data[[i]])
+[90m 7. [39m        └─l$compute_geom_1(d)
+[90m 8. [39m          └─ggplot2:::f(..., self = self)
+[90m 9. [39m            └─ggplot2:::check_required_aesthetics(...)
+In addition: Warning message:
+Ignoring unknown parameters: binwidth 
+Execution halted

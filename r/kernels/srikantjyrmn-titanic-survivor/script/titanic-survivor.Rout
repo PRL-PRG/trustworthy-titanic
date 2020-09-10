@@ -1,0 +1,483 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> rm(list = ls())
+> knitr::opts_chunk$set(echo = TRUE)
+> 
+> 
+> 
+> ## ---- echo=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(caret)
+Loading required package: lattice
+> library(stringr)
+> library(mice)
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+> library(caretEnsemble)
+
+Attaching package: ‘caretEnsemble’
+
+The following object is masked from ‘package:ggplot2’:
+
+    autoplot
+
+> library('ggthemes')
+> library('scales') 
+Warning message:
+package ‘scales’ was built under R version 3.6.2 
+> 
+> 
+> ## ---- echo=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train_data <- read.csv("../input/train.csv", stringsAsFactors = F)
+> test_data <- read.csv("../input/test.csv", stringsAsFactors = F)
+> 
+> full_data <- bind_rows(train_data, test_data)
+> str(full_data)
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> full_data$Title <- (gsub('(.*, )|(\\..*)', '', full_data$Name))
+> 
+> # Show title counts by sex
+> table(full_data$Sex, full_data$Title)
+        
+         Capt Col Don Dona  Dr Jonkheer Lady Major Master Miss Mlle Mme  Mr Mrs
+  female    0   0   0    1   1        0    1     0      0  260    2   1   0 197
+  male      1   4   1    0   7        1    0     2     61    0    0   0 757   0
+        
+          Ms Rev Sir the Countess
+  female   2   0   0            1
+  male     0   8   1            0
+> 
+> # Titles with very low cell counts to be combined to "rare" level
+> rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
++                 'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+> 
+> # Also reassign mlle, ms, and mme accordingly
+> full_data$Title[full_data$Title == 'Mlle']        <- 'Miss' 
+> full_data$Title[full_data$Title == 'Ms']          <- 'Miss'
+> full_data$Title[full_data$Title == 'Mme']         <- 'Mrs' 
+> full_data$Title[full_data$Title %in% rare_title]  <- 'Rare Title'
+> 
+> # Show title counts by sex again
+> table(full_data$Sex, full_data$Title)
+        
+         Master Miss  Mr Mrs Rare Title
+  female      0  264   0 198          4
+  male       61    0 757   0         25
+> 
+> full_data$Title <- as.factor(full_data$Title)
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data$Surname <- sapply(full_data$Name,  
++                             function(x) strsplit(x, split = '[,.]')[[1]][1])
+> 
+> full_data$Surname <- as.factor(full_data$Surname)
+> str(full_data)
+'data.frame':	1309 obs. of  14 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+ $ Title      : Factor w/ 5 levels "Master","Miss",..: 3 4 2 4 3 3 3 1 4 4 ...
+ $ Surname    : Factor w/ 875 levels "Abbing","Abbott",..: 101 183 335 273 16 544 506 614 388 565 ...
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> full_data$family_size <- full_data$SibSp + full_data$Parch + 1
+> 
+> # Create a family variable 
+> full_data$Family <- as.factor(paste(full_data$Surname, full_data$family_size, sep='_'))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(full_data[1:891,], aes(x = family_size, fill = factor(Survived))) +
++   geom_bar(position='fill') +
++   scale_x_continuous(breaks=c(1:11)) +
++   labs(x = 'Family Size') +
++   theme_few()
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> # full_data$family_size_group[full_data$family_size == 1] <- 'single'
+> # full_data$family_size_group[full_data$family_size %in% 2:4] <- 'two_to_four'
+> # full_data$family_size_group[full_data$family_size %in% 5:7] <- 'five_to_seven'
+> # full_data$family_size_group[full_data$family_size >= 8] <- 'gt_eight'
+> 
+> 
+> full_data$family_size_group[full_data$family_size == 1] <- 'singleton'
+> full_data$family_size_group[full_data$family_size < 5 & full_data$family_size > 1] <- 'small'
+> full_data$family_size_group[full_data$family_size > 4] <- 'large'
+> table(full_data$family_size_group)
+
+    large singleton     small 
+       82       790       437 
+> # Factorize Family Size Group Variable 
+> 
+> full_data$family_size_group <- as.factor(full_data$family_size_group)
+> #levels(full_data$family_size_group) = c('single', 'two_to_four', 'five_to_seven', 'gt_eight')
+> levels(full_data$family_size_group) = c('single', 'medium', 'large')
+> 
+> # Now plot survival
+> full_data %>% filter(!is.na(Survived)) %>% ggplot(aes(x = family_size, fill = factor(Survived))) +
++   geom_bar(position='fill') +
++   scale_x_continuous(breaks=c(1:11)) +
++   labs(x = 'Family Size') +
++   theme_few()
+> 
+> mosaicplot(table(full_data$family_size_group, full_data$Survived), main='Family Size by Survival', shade=TRUE)
+> 
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> full_data$Cabin_letter <- as.factor(str_extract(full_data$Cabin, boundary("character")))
+> full_data$Cabin_letter_length <- str_length(full_data$Cabin)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(full_data)
+  PassengerId      Survived          Pclass          Name          
+ Min.   :   1   Min.   :0.0000   Min.   :1.000   Length:1309       
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median : 655   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295                     
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :1309   Max.   :1.0000   Max.   :3.000                     
+                NA's   :418                                        
+     Sex                 Age            SibSp            Parch      
+ Length:1309        Min.   : 0.17   Min.   :0.0000   Min.   :0.000  
+ Class :character   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000  
+ Mode  :character   Median :28.00   Median :0.0000   Median :0.000  
+                    Mean   :29.88   Mean   :0.4989   Mean   :0.385  
+                    3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000  
+                    Max.   :80.00   Max.   :8.0000   Max.   :9.000  
+                    NA's   :263                                     
+    Ticket               Fare            Cabin             Embarked        
+ Length:1309        Min.   :  0.000   Length:1309        Length:1309       
+ Class :character   1st Qu.:  7.896   Class :character   Class :character  
+ Mode  :character   Median : 14.454   Mode  :character   Mode  :character  
+                    Mean   : 33.295                                        
+                    3rd Qu.: 31.275                                        
+                    Max.   :512.329                                        
+                    NA's   :1                                              
+        Title          Surname      family_size             Family    
+ Master    : 61   Andersson:  11   Min.   : 1.000   Sage_11    :  11  
+ Miss      :264   Sage     :  11   1st Qu.: 1.000   Andersson_7:   9  
+ Mr        :757   Asplund  :   8   Median : 1.000   Goodwin_8  :   8  
+ Mrs       :198   Goodwin  :   8   Mean   : 1.884   Asplund_7  :   7  
+ Rare Title: 29   Davies   :   7   3rd Qu.: 2.000   Fortune_6  :   6  
+                  Brown    :   6   Max.   :11.000   Panula_6   :   6  
+                  (Other)  :1258                    (Other)    :1262  
+ family_size_group  Cabin_letter  Cabin_letter_length
+ single: 82        C      :  94   Min.   : 0.0000    
+ medium:790        B      :  65   1st Qu.: 0.0000    
+ large :437        D      :  46   Median : 0.0000    
+                   E      :  41   Mean   : 0.8426    
+                   A      :  22   3rd Qu.: 0.0000    
+                   (Other):  27   Max.   :15.0000    
+                   NA's   :1014                      
+> 
+> full_data %>% filter(Pclass == 3) %>% ggplot(aes(x = Fare)) + geom_density()
+Warning message:
+Removed 1 rows containing non-finite values (stat_density). 
+> 
+> full_data$Fare[is.na(full_data$Fare)] <- median(full_data$Fare[full_data$Pclass == 3 & full_data$Embarked == "S"], na.rm = TRUE)
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> embark_fare <- full_data %>%
++   filter(PassengerId != 62 & PassengerId != 830)
+> 
+> # Use ggplot2 to visualize embarkment, passenger class, & median fare
+> ggplot(embark_fare, aes(x = Embarked, y = Fare, fill = factor(Pclass))) +
++   geom_boxplot() +
++   geom_hline(aes(yintercept=80), 
++              colour='red', linetype='dashed', lwd=2) +
++   scale_y_continuous(labels=dollar_format()) +
++   theme_few()
+> 
+> full_data$Embarked[c(62, 830)] <- "C"
+> 
+> full_data$Sex <- as.factor(full_data$Sex)
+> full_data$Embarked <- as.factor(full_data$Embarked)
+> full_data$PassengerId <- as.factor(full_data$PassengerId)
+> full_data$Pclass <- as.factor(full_data$Pclass)
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # summary(full_data)
+> # sapply(full_data, class)
+> 
+> # Set a random seed
+> set.seed(129)
+> 
+> # Perform mice imputation, excluding certain less-than-useful variables:
+> mice_mod <- mice(full_data[, !names(full_data) %in% c('PassengerId','Name','Ticket','Cabin','Family','Surname','Survived', 'Cabin_letter_length')], method='rf')
+
+ iter imp variable
+  1   1  Age  Cabin_letter
+  1   2  Age  Cabin_letter
+  1   3  Age  Cabin_letter
+  1   4  Age  Cabin_letter
+  1   5  Age  Cabin_letter
+  2   1  Age  Cabin_letter
+  2   2  Age  Cabin_letter
+  2   3  Age  Cabin_letter
+  2   4  Age  Cabin_letter
+  2   5  Age  Cabin_letter
+  3   1  Age  Cabin_letter
+  3   2  Age  Cabin_letter
+  3   3  Age  Cabin_letter
+  3   4  Age  Cabin_letter
+  3   5  Age  Cabin_letter
+  4   1  Age  Cabin_letter
+  4   2  Age  Cabin_letter
+  4   3  Age  Cabin_letter
+  4   4  Age  Cabin_letter
+  4   5  Age  Cabin_letter
+  5   1  Age  Cabin_letter
+  5   2  Age  Cabin_letter
+  5   3  Age  Cabin_letter
+  5   4  Age  Cabin_letter
+  5   5  Age  Cabin_letter
+Warning message:
+Number of logged events: 50 
+> 
+> mice_output <- complete(mice_mod)
+> 
+> # Repalce Age and Cabin_letter with imputed values
+> full_data$Age <- mice_output$Age
+> #full_data$Cabin_letter <- as.factor(mice_output$Cabin_letter)
+> 
+> # Look at Mice output
+> par(mfrow = c(1, 1))
+> hist(mice_output$Age)
+> hist(full_data$Age)
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> full_data$Child[full_data$Age < 18] <- 'Child'
+> full_data$Child[full_data$Age >= 18] <- 'Adult'
+> 
+> # Show counts
+> table(full_data$Child, full_data$Survived)
+       
+          0   1
+  Adult 482 274
+  Child  67  68
+> 
+> # Adding Mother variable
+> full_data$Mother <- 'Not Mother'
+> full_data$Mother[full_data$Sex == 'female' & full_data$Parch > 0 & full_data$Age > 18 & full_data$Title != 'Miss'] <- 'Mother'
+> 
+> # Show counts
+> table(full_data$Mother, full_data$Survived)
+            
+               0   1
+  Mother      16  39
+  Not Mother 533 303
+> 
+> full_data$Child <- as.factor(full_data$Child)
+> full_data$Mother <- as.factor(full_data$Mother)
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> full_data$Fare_bin <- (full_data$Fare - min(full_data$Fare))/(max(full_data$Fare)-min(full_data$Fare))
+> full_data$num_people_with_ticket <- sapply(full_data$Ticket, function(x){sum(full_data$Ticket == x)})
+> 
+> full_data$party_size[full_data$num_people_with_ticket == 1] <- "singleton"
+> full_data$party_size[full_data$num_people_with_ticket %in% 2:4] <- "two_to_four"
+> full_data$party_size[full_data$num_people_with_ticket %in% 5:8] <- "five_to_eight"
+> full_data$party_size[full_data$num_people_with_ticket > 8] <- "gt_eight"
+> 
+> full_data$party_size <- as.factor(full_data$party_size)
+> 
+> 
+> # full_data$num_survivors_in_ticket 
+> # 
+> # a <- sapply(full_data$Ticket[3], function(x){(sum(full_data$Survived[full_data$Ticket == x & full_data$PassengerId != full_data$PassengerId[full_data$Ticket]] == 1, na.rm = TRUE)) })
+> 
+> surviving_tickets <- unique(full_data$Ticket[full_data$Survived == 1 & !is.na(full_data$Survived) &full_data$party_size != "singleton"])
+> 
+> full_data$surviving_ticket <- sapply(full_data$Ticket, function(x){x %in% surviving_tickets})
+> 
+> 
+> # Show that people survive or die together 
+> full_data %>% 
++   filter(!is.na(Survived)) %>% 
++   ggplot(aes(x = surviving_ticket, 
++              fill = factor(Survived))) + geom_bar(position = "fill")
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> train <- full_data[1:891,]
+> test <- full_data[892:1309,]
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Set a random seed
+> set.seed(754)
+> 
+> # Build the model (note: not all possible variables are used)
+> rf_model <- randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + 
++                            Fare_bin + party_size + surviving_ticket+Embarked + Title + family_size_group + Child + Mother,
++                          data = train)
+> 
+> 
+> sapply(full_data, class)
+           PassengerId               Survived                 Pclass 
+              "factor"              "integer"               "factor" 
+                  Name                    Sex                    Age 
+           "character"               "factor"              "numeric" 
+                 SibSp                  Parch                 Ticket 
+             "integer"              "integer"            "character" 
+                  Fare                  Cabin               Embarked 
+             "numeric"            "character"               "factor" 
+                 Title                Surname            family_size 
+              "factor"               "factor"              "numeric" 
+                Family      family_size_group           Cabin_letter 
+              "factor"               "factor"               "factor" 
+   Cabin_letter_length                  Child                 Mother 
+             "integer"               "factor"               "factor" 
+              Fare_bin num_people_with_ticket             party_size 
+             "numeric"              "integer"               "factor" 
+      surviving_ticket 
+             "logical" 
+> 
+> # Show model error
+> plot(rf_model, ylim=c(0,0.36))
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> importance    <- importance(rf_model)
+> varImportance <- data.frame(Variables = row.names(importance), 
++                             Importance = round(importance[ ,'MeanDecreaseGini'],2))
+> 
+> # Create a rank variable based on importance
+> rankImportance <- varImportance %>%
++   mutate(Rank = paste0('#',dense_rank(desc(Importance))))
+> 
+> # Use ggplot2 to visualize the relative importance of variables
+> ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
++                            y = Importance, fill = Importance)) +
++   geom_bar(stat='identity') + 
++   geom_text(aes(x = Variables, y = 0.5, label = Rank),
++             hjust=0, vjust=0.55, size = 4, colour = 'red') +
++   labs(x = 'Variables') +
++   coord_flip() + 
++   theme_few()
+> 
+> 
+> 
+> 
+> ## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> p <- predict(rf_model, test)
+> results <- data.frame(PassengerId = test_data$PassengerId, Survived = p)
+> 
+> write.csv(results, file = "submit_results.csv", row.names = FALSE)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 24.237   0.589  24.986 

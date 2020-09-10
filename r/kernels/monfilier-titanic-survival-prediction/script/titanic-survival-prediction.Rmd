@@ -1,0 +1,288 @@
+---
+title: "Titanic Survival"
+author: "Rodolfo Monfilier Peres"
+output:
+  html_document:
+    number_sections: true
+    toc: true
+    fig_width: 7
+    fig_height: 4.5
+    theme: readable
+    highlight: tango
+---
+
+#Introduction
+
+This is my first project on Kaggle. First I will analyse the Titanic dataset, focusing on doing some illustrative data visualizations and fixing some data issues (i.e. missing values). After that, I will create a machine learning model predicting survival on Titanic.
+
+I spent some time on Kaggle, reading and understanding others scripts of the Titanic's competition after creating my own project. This project was higly inspired by the projects of [Megan Risdal](https://www.kaggle.com/mrisdal/exploring-survival-on-the-titanic/notebook) and [AmberThomas](https://www.kaggle.com/amberthomas/predicting-survival-on-the-titanic/notebook).
+
+In this project I will use the tidyverse R package, which encompasses ggplot2, dplyr and other important packages created by Hadley Wickham. In this way, I can load one package instead of loading a series of packages. Check [here](http://tidyverse.org) for more information about tidyverse.
+
+I am new to machine learning and feedback is highly appreciated. 
+
+## Loading necessary packages and importing data
+
+```{r, echo=TRUE}
+suppressWarnings(suppressMessages(library(tidyverse))) 
+suppressWarnings(suppressMessages(library(caret))) #for machine learning
+suppressWarnings(suppressMessages(library(mice))) #for imputation
+suppressWarnings(suppressMessages(library(Amelia))) #for imputation
+suppressWarnings(suppressMessages(library(randomForest))) #For prediction
+```
+
+
+```{r}
+#Use na.strings to replace blank spaces by NAs
+train <- read.csv('../input/train.csv', header = TRUE, stringsAsFactors = FALSE, na.strings=c("","NA"))
+
+test <- read.csv('../input/test.csv', header = TRUE, stringsAsFactors = FALSE, na.strings=c("","NA"))
+```
+
+First, I will combine the two datasets to analyse them. The column *Dataset* was created to differentiate the training and the test datasets after combining them. 
+
+```{r}
+train$Dataset <- "train"
+
+test$Dataset <- "test"
+
+full_data <- bind_rows(train, test)
+glimpse(full_data)
+```
+
+Several variables should be reclassified as factors
+
+```{r}
+fctr <- c("PassengerId", "Survived", "Pclass", "Sex", "Embarked", "Dataset")
+full_data[fctr] <- lapply(full_data[fctr], function(x) as.factor(x))
+``` 
+
+We have 1309 observations and 13 variables. The first 12 variables are from the training and test datasets while the 13th variable was added by me.
+
+```{r}
+dim(full_data)
+```
+
+To make things more clear, we can check what each variable represents in our data:
+
+Variable      | Description
+--------------|-------------
+PassengerId   | Passenger's ID
+Survived      | Survived (1) or died (0)
+Pclass        | Passenger's ticket class (1 = 1st, 2 = 2nd, 3 = 3rd)
+Name          | Passenger's name
+Sex           | Passenger's sex
+Age           | Passenger's age
+SibSp         | Number of siblings/spouses aboard
+Parch         | Number of parents/children aboard
+Ticket        | Passenger's ticket number
+Fare          | Fare payed by the passenger
+Cabin         | Cabin's number
+Embarked      | Port of embarkation  (C = Cherbourg, Q = Queenstown, S = Southampton)
+Dataset       | Train or test datasets
+
+#Feature engineering
+
+##Names and titles
+
+At first glance, the variable *Name* does not seem to be important. But notice that it contains the title of each passenger, which could an interesting variable for the model. Let's use the gsub function to extract the passenger's titles.
+
+```{r, fig.width=9, fig.height=8}
+#grep titles and add it to another variable
+full_data$Title <- gsub("(.*, )|(\\..*)", "", full_data$Name)
+
+#Plot titles
+ggplot(full_data, aes(Title)) + geom_bar() + ylab("Number of times a title appears in the dataset") + xlab("Title") + ggtitle("Titles in Titanic data")
+
+#Show titles by sex
+table(full_data$Sex, full_data$Title)
+```
+
+As we can see from the table and chart above, fell titles appear frequently and so we can combine them.
+
+```{r}
+#Combining less frequent titles
+others <- c("Jonkheer", "Sir", "Major", "Dr", "Dona", "Lady", "the Countess", "Capt", "Col", "Don", "Rev")
+
+#Reassign 
+full_data$Title[full_data$Title == "Mme"]    <- "Mrs"
+full_data$Title[full_data$Title == "Ms"]     <- "Miss"
+full_data$Title[full_data$Title == "Mlle"]   <- "Miss"
+full_data$Title[full_data$Title %in% others] <- "Other"
+
+#Show titles by sex again
+table(full_data$Sex, full_data$Title)
+
+#Convert to factor
+full_data$Title <- as.factor(full_data$Title)
+```
+
+##Missing data
+
+In this project I am going to model the Titanic's survivals and missing data imposes a problem on this task. We can see from the missingness map bellow that the variable *Cabin* is almost completely missing. Unfortunately, as it has several missing observations, we cannot estimate it to replace the missing values and it will be excluded from our future model.
+
+On the other hand, *Age* has some missing observations but they can be estimated. In this way, our model will also be able to use it as a predictor. The variables *Fare* and *Embarked* have only fill missing observations which does not represent a big deal. 
+
+Note that the missing observations for the variable *Survived* are from the test dataset.
+
+```{r, fig.width=9, fig.height=8}
+missmap(full_data, col=c("wheat", "darkred"), y.cex = 0.4, x.cex = 0.8, legend = TRUE, rank.order = TRUE)
+```
+
+##Fare
+
+By the missingness map we can see that the *Fare* variable has some missing values. Let's check it estimate some value to them.
+
+```{r  warning=FALSE}
+full_data %>% filter(is.na(Fare))
+```
+
+Only PassengerId 1044 has a missing fare. He embarked at Southampton Port as a 3rd class passenger. Let's see how much people with these caracteristics payed. The dotted red line is the median.
+
+```{r echo=FALSE, warning=FALSE}
+ggplot(full_data[full_data$Pclass == '3' & full_data$Embarked == 'S', ], 
+  aes(x = Fare)) +
+  geom_density(fill = 'lightblue', alpha = 0.5) + 
+  geom_vline(aes(xintercept = median(Fare, na.rm = TRUE)),
+    colour = 'red', linetype = 'dashed', lwd = 1) +
+  geom_text(aes(x=median(Fare, na.rm = TRUE), y=-0.005, label=round(median(Fare, na.rm = TRUE),       digits = 2)), hjust=-0.3, size=6)  +    
+  scale_x_continuous() +
+  ggtitle(label = "Median for passengers who embarked \n in Southampton as 3rd class") +
+  theme(panel.grid.major = element_blank(), plot.title = element_text(hjust = 0.5, face = "bold", size = 15))
+```
+
+According to the graph, the median value seems to be a good estimative for the value payed by passenger 1044. 
+
+Let's replace the NA for this value.
+
+```{r}
+full_data$Fare[full_data$PassengerId[1044]] <- 8.05
+```
+
+##Embarked
+
+Again, by the missingness map we can see that the *Embarked* variable has some missing values. Let's check it.
+
+```{r  warning=FALSE}
+full_data %>% filter(is.na(Embarked))
+```
+
+Passengers 62 and 830 have an NA value assigned to the *Embarked* variable. It's interesting to note that they both have the same ticket number and stayed in the same cabin.
+
+We can see that they payed $80 in their ticket and they embarked as 1st class passengers. We can try to estimate the port of embarkment from the fare payed by them.
+
+```{r warning=FALSE}
+full_data %>%
+  group_by(Embarked, Pclass) %>%
+  filter(Pclass == "1") %>%
+  summarise(median = median(Fare))
+```
+
+As we can see, the median for port "C" is close to the $80 payed by the passengers. Let's replace the NA value for C.
+
+```{r}
+full_data$Embarked[full_data$PassengerId[c(62, 830)]] <- "C"
+```
+
+##Age
+
+There are values in the variable *Age* and we are going to create a model predicting ages based on other variables of the dataset. MICE R package will be used for this task. Multiple Imputation by Chained Equations (MICE) is one of the principal methods used to deal with missing data. More information cam be found [here](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3074241/), [here](http://www.jstatsoft.org/article/view/v045i03/v45i03.pdf) and [here](https://datascienceplus.com/imputing-missing-data-with-r-mice-package/).
+
+Let's perform MICE imputation.
+
+```{r}
+#set seed
+set.seed(123)
+
+#Perform MICE imputation, keeping only useful variables
+full_data_mice <- mice(full_data[, !names(full_data) %in% c('PassengerId','Name','Ticket','Cabin','Family','Surname','Survived')], method = "rf")
+```
+
+After estimating age values we can compare them to the original ones. The red lines represent the estimatives (five lines, one for each iteration) and the blue line represents the original data. We can see that our estimation is similar to the original data.
+```{r}
+#Create a density plot to compare the estimate values and the original ones.
+densityplot(full_data_mice)
+```
+
+I created two density plots just to see if it's everything OK with the final predicted data when compared to our original data. The red density plot is the original data and the yellow is the final predicted MICE imputation. The orange part of the chart is the superposition between the two plots.
+```{r warning=FALSE}
+#Save the complete output
+mice_output <- complete(full_data_mice)
+
+#Create a chart comparing the original data and the new imputed data
+plot <- ggplot() + 
+geom_density(aes(x=full_data$Age, y=..density..), fill = "red", alpha=.5) + geom_density(aes(x=mice_output$Age, y=..density..), fill = "yellow",alpha=.5) + theme(panel.background = element_rect(fill = 'white', colour = 'white')) + ggtitle("Comparison between original and imputed data") + theme(plot.title = element_text(hjust = 0.5)) + xlab("Age") + ylab("Density")
+
+plot
+```
+
+The difference is really small. So let's replace the variable *Age* for the predicted in our original dataset.
+
+```{r}
+full_data$Age <- mice_output$Age
+```
+
+Check it the are any missing values.
+```{r}
+sum(is.na(full_data$Age))
+```
+
+No missing values! Let's move further to the prediction.
+
+#Prediction
+
+In this project, our goal is to predict who will die and who will survive on Titanic. To do that we're going to use Random Forests algorithm.
+
+First, we need to split data back into train and test sets. We select all variables except the Dataset variable.
+```{r}
+train <- full_data %>% filter(Dataset=="train") %>% select(everything(), -Dataset)
+test <- full_data %>% filter(Dataset=="test") %>% select(everything(), -Dataset)
+```
+
+Now we can build our model.
+```{r}
+set.seed(123)
+
+rf_model <- randomForest(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title, data=train)
+```
+
+After building our model we can check it's error rate. Let's plot a line chart and check it.
+```{r}
+plot(rf_model, ylim=c(0,0.36))
+legend('topright', colnames(rf_model$err.rate), col=1:3, fill=1:3)
+```
+
+Our error rate is higher when predicting survivals than when predicting deaths. This seems to be obvious when we consider that approximately 60% of the observations of the train dataset are composed from people who died in Titanic. Also, 70% of people died in this disaster [(source)](http://www.titanicfacts.net/titanic-victims.html) and so we expect that modelling deaths to be much more accurate than modelling survivals.
+
+```{r}
+summary(train$Survived)
+```
+
+Let's check how important is each variable in our model. 
+```{r}
+dotplot(rf_model$importance)
+```
+
+We can see that *Title* has the highest relative importance in this model. Glad to have made it! Also, *Age* is ranked as the 4th most important variable in our prediction, out of 8 variables. This is a good position for a variable that had a lot of missing observations and I had to estimate using MICE.
+
+Finally, let's predict on the test dataset.
+```{r}
+prediction <- predict(rf_model, test)
+
+# Save the solution to a dataframe with two columns: PassengerId and Survived (prediction)
+solution <- data.frame(PassengerID = test$PassengerId, Survived = prediction)
+
+# Write the solution to file
+write.csv(solution, file = 'rf_mod_Solution.csv', row.names = F)
+```
+
+#Conclusions
+
+It was my first model using machine learning and it scored 0.78947 on Kaggle. Not that bad!
+
+I believe that it is not that easy to improve the score with this model without overfitting it. However, I'd like to try to improve it's accuracy in the near future.
+
+Maybe the variable *Age* can be better explored, creating some categories to it. Like child, adult, elderly, etc. The *Cabin* variable wasn't used in my model as it has a lot of missing values but maybe something can be use from it for better prediction.
+
+Again, feedback is highly appreciated and ideas in how to improve the model too.
+

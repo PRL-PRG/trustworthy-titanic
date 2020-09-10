@@ -1,0 +1,358 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> 
+> 
+> ## I have read many tutorial for predicting survival in Titanic. In my opinion, the most favourite /best tutorial is from Ozan Aygun https://www.kaggle.com/dataygun/let-s-run  (I am a newbie, and I am sorry that I do not know how to put the name with the link ) . However, this is my own practice based on what I understand from the data.
+> 
+> # The Titanic analysis is progressing in 3 steps:
+> 
+>  #1) Reading Data : This step shows " train & test " data , and types of variables in data. From there, I explore what should I do with specific variable in data.
+> 
+>  # 2) Data pre-processing
+> 
+> # 2a. Missing value : all features need to be imputed before feature engineering
+> 
+> # 2b. Feature engineering with Name and Ticket variables
+> 
+> # 2c. Checking the relationship of all features with "Survived"
+> 
+> # 2d. Checking continuous variables
+>  
+> # 3) Modeling
+> 
+> ## 1 Reading Data
+> 
+> library(party)
+Loading required package: grid
+Loading required package: mvtnorm
+Loading required package: modeltools
+Loading required package: stats4
+Loading required package: strucchange
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: sandwich
+Warning messages:
+1: package ‘party’ was built under R version 3.6.2 
+2: package ‘zoo’ was built under R version 3.6.2 
+> library(arules)
+Loading required package: Matrix
+
+Attaching package: ‘arules’
+
+The following object is masked from ‘package:modeltools’:
+
+    info
+
+The following objects are masked from ‘package:base’:
+
+    abbreviate, write
+
+Warning message:
+package ‘arules’ was built under R version 3.6.2 
+> library(arulesViz)
+Registered S3 method overwritten by 'seriation':
+  method         from 
+  reorder.hclust gclus
+> library(e1071)
+> training <- read.csv('../input/train.csv', stringsAsFactors = F)
+> testing  <- read.csv('../input/test.csv', stringsAsFactors = F)
+> dim(training)
+[1] 891  12
+> names(training)
+ [1] "PassengerId" "Survived"    "Pclass"      "Name"        "Sex"        
+ [6] "Age"         "SibSp"       "Parch"       "Ticket"      "Fare"       
+[11] "Cabin"       "Embarked"   
+> dim(testing)
+[1] 418  11
+> names(testing)# There is no "Survived" in testing data
+ [1] "PassengerId" "Pclass"      "Name"        "Sex"         "Age"        
+ [6] "SibSp"       "Parch"       "Ticket"      "Fare"        "Cabin"      
+[11] "Embarked"   
+> testing$Survived <- NA
+> 
+> combi <- rbind(training, testing)
+> str(combi) # The structure is not good - there are not any factor variables.
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> combi[sapply(combi, is.character)] <- lapply(combi[sapply(combi, is.character)], as.factor) # convert character to factor
+> combi[sapply(combi, is.integer)] <- lapply(combi[sapply(combi, is.integer)], as.factor) # convert integer to factor
+> str(combi) # Now the type of all variable look better
+'data.frame':	1309 obs. of  12 variables:
+ $ PassengerId: Factor w/ 1309 levels "1","2","3","4",..: 1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass     : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 156 287 531 430 23 826 775 922 613 855 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : Factor w/ 7 levels "0","1","2","3",..: 2 2 1 2 1 1 1 4 1 2 ...
+ $ Parch      : Factor w/ 8 levels "0","1","2","3",..: 1 1 1 1 1 1 1 2 3 1 ...
+ $ Ticket     : Factor w/ 929 levels "110152","110413",..: 721 817 915 66 650 374 110 542 478 175 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 187 levels "","A10","A11",..: 1 108 1 72 1 1 165 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> 
+> ## 2 Data Exploring
+> #a. Missing value
+> 
+> summary(combi)# There are 3 variables need to be imputed : Age, Embarked, and Fare. The feature "Cabin" is dropped, because the amount of missing value is bigger than 50% of the total.
+  PassengerId   Survived   Pclass                                Name     
+ 1      :   1   0   :549   1:323   Connolly, Miss. Kate            :   2  
+ 2      :   1   1   :342   2:277   Kelly, Mr. James                :   2  
+ 3      :   1   NA's:418   3:709   Abbing, Mr. Anthony             :   1  
+ 4      :   1                      Abbott, Master. Eugene Joseph   :   1  
+ 5      :   1                      Abbott, Mr. Rossmore Edward     :   1  
+ 6      :   1                      Abbott, Mrs. Stanton (Rosa Hunt):   1  
+ (Other):1303                      (Other)                         :1301  
+     Sex           Age        SibSp       Parch           Ticket    
+ female:466   Min.   : 0.17   0:891   0      :1002   CA. 2343:  11  
+ male  :843   1st Qu.:21.00   1:319   1      : 170   1601    :   8  
+              Median :28.00   2: 42   2      : 113   CA 2144 :   8  
+              Mean   :29.88   3: 20   3      :   8   3101295 :   7  
+              3rd Qu.:39.00   4: 22   4      :   6   347077  :   7  
+              Max.   :80.00   5:  6   5      :   6   347082  :   7  
+              NA's   :263     8:  9   (Other):   4   (Other) :1261  
+      Fare                     Cabin      Embarked
+ Min.   :  0.000                  :1014    :  2   
+ 1st Qu.:  7.896   C23 C25 C27    :   6   C:270   
+ Median : 14.454   B57 B59 B63 B66:   5   Q:123   
+ Mean   : 33.295   G6             :   5   S:914   
+ 3rd Qu.: 31.275   B96 B98        :   4           
+ Max.   :512.329   C22 C26        :   4           
+ NA's   :1         (Other)        : 271           
+> 
+> ## Imputing Age & Fare by using mean & median
+> Age <- mean(combi$Age[!is.na(combi$Age)])
+> combi$Age[is.na(combi$Age)] <- Age
+> 
+> which(is.na(combi$Fare))
+[1] 1044
+> combi$Fare[1044] <- median(combi$Fare, na.rm=TRUE)
+> 
+> ## "Embarked" is a factor variable, so it will be imputed by the most frequency factor
+> summary(combi$Embarked)
+      C   Q   S 
+  2 270 123 914 
+> which(combi$Embarked == '') 
+[1]  62 830
+> combi$Embarked[c(62,830)] = "S" # replace those two with "S"
+> summary(combi)
+  PassengerId   Survived   Pclass                                Name     
+ 1      :   1   0   :549   1:323   Connolly, Miss. Kate            :   2  
+ 2      :   1   1   :342   2:277   Kelly, Mr. James                :   2  
+ 3      :   1   NA's:418   3:709   Abbing, Mr. Anthony             :   1  
+ 4      :   1                      Abbott, Master. Eugene Joseph   :   1  
+ 5      :   1                      Abbott, Mr. Rossmore Edward     :   1  
+ 6      :   1                      Abbott, Mrs. Stanton (Rosa Hunt):   1  
+ (Other):1303                      (Other)                         :1301  
+     Sex           Age        SibSp       Parch           Ticket    
+ female:466   Min.   : 0.17   0:891   0      :1002   CA. 2343:  11  
+ male  :843   1st Qu.:22.00   1:319   1      : 170   1601    :   8  
+              Median :29.88   2: 42   2      : 113   CA 2144 :   8  
+              Mean   :29.88   3: 20   3      :   8   3101295 :   7  
+              3rd Qu.:35.00   4: 22   4      :   6   347077  :   7  
+              Max.   :80.00   5:  6   5      :   6   347082  :   7  
+                              8:  9   (Other):   4   (Other) :1261  
+      Fare                     Cabin      Embarked
+ Min.   :  0.000                  :1014    :  0   
+ 1st Qu.:  7.896   C23 C25 C27    :   6   C:270   
+ Median : 14.454   B57 B59 B63 B66:   5   Q:123   
+ Mean   : 33.281   G6             :   5   S:916   
+ 3rd Qu.: 31.275   B96 B98        :   4           
+ Max.   :512.329   C22 C26        :   4           
+                   (Other)        : 271           
+> 
+> 
+> ## 2b.Feature engineering with Name and Ticket variables.
+> #The "Name" variable has strings, which are not good for my model, as well as, the "Ticket" also has both of number and character.
+>    
+> Name <- as.character(combi$Name)
+> combi$Title<-sapply(Name,FUN=function(x) {strsplit(x,split='[,.]')[[1]][2]}) # just take a gender of "Name"
+> 
+> table(combi$Title)# there are a few titles, that could not make the model to work well, so let's combine a few of the most unusual ones.
+
+         Capt           Col           Don          Dona            Dr 
+            1             4             1             1             8 
+     Jonkheer          Lady         Major        Master          Miss 
+            1             1             2            61           260 
+         Mlle           Mme            Mr           Mrs            Ms 
+            2             1           757           197             2 
+          Rev           Sir  the Countess 
+            8             1             1 
+> 
+> combi$Title[combi$Title %in%c('Mme', 'Mlle')] <- 'Mlle'
+> combi$Title[combi$Title %in% c('Capt', 'Don', 'Major', 'Sir')] <- 'Sir' 
+> combi$Title[combi$Title %in% c('Dona', 'Lady', 'the Countess', 'Jonkheer')] <- 'Lady'
+> combi$Title <- factor(combi$Title)# Finally, change the variable to factor
+> combi<-combi[,!(colnames(combi) %in% c("Name","Cabin"))]# drop "Name" & "Cabin"
+> ## "Ticket"
+> summary(combi$Ticket) # This feature is so complicated for me, because the most frequency factor is "Other": 947, and the frequency others look not too much. So, before dropping this feature, I decide to use Market Basket Analysis to emphasis How important of "Ticket".
+          CA. 2343               1601            CA 2144            3101295 
+                11                  8                  8                  7 
+            347077             347082           PC 17608       S.O.C. 14879 
+                 7                  7                  7                  7 
+            113781              19950             347088             382652 
+                 6                  6                  6                  6 
+            113503              16966             220845             349909 
+                 5                  5                  5                  5 
+              4133           PC 17757         W./C. 6608             113760 
+                 5                  5                  5                  4 
+             12749              17421             230136              24160 
+                 4                  4                  4                  4 
+              2666              36928          C.A. 2315         C.A. 33112 
+                 4                  4                  4                  4 
+        C.A. 34651               LINE           PC 17483           PC 17755 
+                 4                  4                  4                  4 
+          PC 17760      SC/Paris 2123         W./C. 6607             110152 
+                 4                  4                  4                  3 
+            110413              11767              13502              19877 
+                 3                  3                  3                  3 
+             19928             230080             239853             248727 
+                 3                  3                  3                  3 
+            248738              26360               2650               2653 
+                 3                  3                  3                  3 
+              2661               2662               2668               2678 
+                 3                  3                  3                  3 
+             28220              29103              29106              29750 
+                 3                  3                  3                  3 
+            315153              33638             345773             347080 
+                 3                  3                  3                  3 
+            347742              35273             363291             367226 
+                 3                  3                  3                  3 
+            370129             371110          A/4 48871           A/5. 851 
+                 3                  3                  3                  3 
+            C 4001          C.A. 2673         C.A. 31029         C.A. 31921 
+                 3                  3                  3                  3 
+        C.A. 37671       F.C.C. 13529           PC 17558           PC 17569 
+                 3                  3                  3                  3 
+          PC 17572           PC 17582           PC 17756           PC 17758 
+                 3                  3                  3                  3 
+          PC 17761            PP 9549    S.C./PARIS 2079 SOTON/O.Q. 3101315 
+                 3                  3                  3                  3 
+            110465             110813             111361             112058 
+                 2                  2                  2                  2 
+            112378             113059             113505             113509 
+                 2                  2                  2                  2 
+            113572             113773             113776             113789 
+                 2                  2                  2                  2 
+            113796             113798             113803            (Other) 
+                 2                  2                  2                947 
+> 
+> ## 2c. Checking the relationship of all featuers with Survived
+> 
+> trans <- combi[1:891,-1]
+> trans$Age <-discretize(trans$Age, method = "frequency", 3) # Continuous variables need to be binned / discretized
+> trans$Fare <- discretize(trans$Fare, method = "frequency", 3)
+> 
+> str(trans)
+'data.frame':	891 obs. of  10 variables:
+ $ Survived: Factor w/ 2 levels "0","1": 1 2 2 2 1 1 1 1 2 2 ...
+ $ Pclass  : Factor w/ 3 levels "1","2","3": 3 1 3 1 3 3 1 3 3 2 ...
+ $ Sex     : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age     : Factor w/ 3 levels "[0.42,25)","[25,31)",..: 1 3 2 3 3 2 3 1 2 1 ...
+  ..- attr(*, "discretized:breaks")= num  0.42 25 31 80
+  ..- attr(*, "discretized:method")= chr "frequency"
+ $ SibSp   : Factor w/ 7 levels "0","1","2","3",..: 2 2 1 2 1 1 1 4 1 2 ...
+ $ Parch   : Factor w/ 8 levels "0","1","2","3",..: 1 1 1 1 1 1 1 2 3 1 ...
+ $ Ticket  : Factor w/ 929 levels "110152","110413",..: 721 817 915 66 650 374 110 542 478 175 ...
+ $ Fare    : Factor w/ 3 levels "[0,8.66)","[8.66,26)",..: 1 3 1 3 1 1 3 2 2 3 ...
+  ..- attr(*, "discretized:breaks")= num  0 8.66 26 512.33
+  ..- attr(*, "discretized:method")= chr "frequency"
+ $ Embarked: Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+ $ Title   : Factor w/ 18 levels " Capt"," Col",..: 13 14 10 14 13 13 13 9 14 14 ...
+> transf<- as(trans,"transactions")
+> itemFrequencyPlot(transf, topN=25,  cex.names=.5)
+> 
+> rules <- apriori(transf,parameter = list(minlen=2, supp=0.005, conf=0.8),appearance = list(rhs=c("Survived=0", "Survived=1"),default="lhs"),control = list(verbose=F))
+> rules.sorted <- sort(rules, by="lift")
+> # find redundant rules
+> subset.matrix <- is.subset(rules.sorted, rules.sorted)
+> subset.matrix[lower.tri(subset.matrix, diag=T)] <- NA
+Warning message:
+In `[<-`(`*tmp*`, as.vector(i), value = NA) :
+  x[.] <- val: x is “ngTMatrix”, val not in {TRUE, FALSE} is coerced; NA |--> TRUE.
+> redundant <- colSums(subset.matrix, na.rm=T) >= 1
+> # remove redundant rules
+> rules.pruned <- rules.sorted[!redundant]
+> inspect(rules.pruned)
+> # In conclusion of stage 2c, the "Ticket" can be dropped
+> 
+> ## 2d.Checking continuous variables
+> hist(combi$Age) # it seems like there is a small skew here
+> summary(combi$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.17   22.00   29.88   29.88   35.00   80.00 
+> skewness(combi$Age)# the skew is acceptable
+[1] 0.4548794
+> 
+> hist(combi$Fare) # very skew
+> summary(combi$Fare)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+  0.000   7.896  14.454  33.281  31.275 512.329 
+> skewness(combi$Fare)# a clear positive skew
+[1] 4.3595
+> kurtosis(combi$Fare)
+[1] 26.89615
+> Fare<-combi$Fare
+> combi$Fare<-log10(Fare+1) # solving skewness
+> summary(combi$Fare)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ 0.0000  0.9492  1.1890  1.2939  1.5089  2.7104 
+> hist(combi$Fare)
+> skewness(combi$Fare)
+[1] 0.5413742
+> kurtosis(combi$Fare) 
+[1] 0.8429798
+> 
+> ## 3 Modeling
+> # combi<-combi[,!(colnames(combi) %in% c("Ticket"))]
+> # train <- combi[1:891,]
+> # test <- combi[892:1309,]
+> # set.seed(123)
+> # fit <- cforest(Survived~ .-PassengerId,data = train,controls=cforest_unbiased(ntree=2000, mtry=3))
+> # Prediction <- predict(fit, test, OOB=TRUE, type = "response")
+> # submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  4.565   0.547   5.545 

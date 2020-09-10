@@ -1,0 +1,1823 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Many standard libraries are already installed, such as randomForest
+> library('stringr')
+> library('rpart')
+> library('ggplot2')
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library('dplyr')
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library('randomForest')
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library('caret')
+Loading required package: lattice
+> library('purrr')
+
+Attaching package: ‘purrr’
+
+The following object is masked from ‘package:caret’:
+
+    lift
+
+Warning message:
+package ‘purrr’ was built under R version 3.6.2 
+> library('mice')
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library('tidyr')
+Warning message:
+package ‘tidyr’ was built under R version 3.6.2 
+> 
+> # The train and test data is stored in the ../input directory
+> train_raw <- read.csv("../input/train.csv", stringsAsFactors = FALSE)
+> test_raw  <- read.csv("../input/test.csv", stringsAsFactors = FALSE)
+> test_raw$Survived <- NA
+> 
+> # Stack the training and testing dataset to handle missing values
+> all <- rbind(train_raw, test_raw)
+> all[all == ''] <- NA
+> 
+> # Set factor variables
+> all$Pclass <- as.factor(all$Pclass)
+> 
+> all$Sex <- as.factor(all$Sex)
+> 
+> 
+> # Compute the family size
+> Family_size <- all$SibSp + all$Parch + 1
+> table(Family_size)
+Family_size
+  1   2   3   4   5   6   7   8  11 
+790 235 159  43  22  25  16   8  11 
+> all$Family[Family_size==1] <- 'Single'
+> all$Family[Family_size>1 & Family_size<=4] <- 'Small'
+> all$Family[Family_size>=5] <- 'Big'
+> 
+> 
+> 
+> # Create a title variable
+> all$Title <- gsub(pattern = '.*,\\s|\\..*','',all$Name)
+> names(table(all$Title)[table(all$Title) < 20])
+ [1] "Capt"         "Col"          "Don"          "Dona"         "Dr"          
+ [6] "Jonkheer"     "Lady"         "Major"        "Mlle"         "Mme"         
+[11] "Ms"           "Rev"          "Sir"          "the Countess"
+> #Male Rare title: 
+> all$Title[all$Title %in% 
++                c('Capt', 'Don', 'Major', 'Sir', 'Col', 'Jonkheer', 'Rev', 'Dr')] <- 'Mr'
+> 
+> #Female Rare title:
+> all$Title[all$Title %in% c('Mlle', 'Mme', 'Ms')] <- 'Miss'
+> all$Title[all$Title %in% c('the Countess', 'Lady', 'Dona')] <- 'Mrs'
+> 
+> 
+> 
+> # Make character variables factors
+> fac_var <- c('PassengerId', 'Name', 'Ticket', 'Cabin', 'Embarked', 'Title', 'Family',
++              'Survived')
+> all[,fac_var] <- all[,fac_var] %>%
++      map_df(as.factor)
+> 
+> 
+> 
+> # Find which variables have missing value
+> apply(all, 2, function(x) {sum(is.na(x))}) # Age, Fare, Cabin, Embarked
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1        1014           2 
+     Family       Title 
+          0           0 
+> 
+> 
+> #impute using mice()
+> all_rf <- all[,-c(1,2,4,7,8,9,11)] %>%
++      mice(method = 'rf') %>%
++      mice::complete()
+
+ iter imp variable
+  1   1  Age  Fare  Embarked
+  1   2  Age  Fare  Embarked
+  1   3  Age  Fare  Embarked
+  1   4  Age  Fare  Embarked
+  1   5  Age  Fare  Embarked
+  2   1  Age  Fare  Embarked
+  2   2  Age  Fare  Embarked
+  2   3  Age  Fare  Embarked
+  2   4  Age  Fare  Embarked
+  2   5  Age  Fare  Embarked
+  3   1  Age  Fare  Embarked
+  3   2  Age  Fare  Embarked
+  3   3  Age  Fare  Embarked
+  3   4  Age  Fare  Embarked
+  3   5  Age  Fare  Embarked
+  4   1  Age  Fare  Embarked
+  4   2  Age  Fare  Embarked
+  4   3  Age  Fare  Embarked
+  4   4  Age  Fare  Embarked
+  4   5  Age  Fare  Embarked
+  5   1  Age  Fare  Embarked
+  5   2  Age  Fare  Embarked
+  5   3  Age  Fare  Embarked
+  5   4  Age  Fare  Embarked
+  5   5  Age  Fare  Embarked
+> 
+> all_cart <- all[,-c(1,2,4,7,8,9,11)] %>%
++      mice(method = 'cart') %>%
++      mice::complete()
+
+ iter imp variable
+  1   1  Age  Fare  Embarked
+  1   2  Age  Fare  Embarked
+  1   3  Age  Fare  Embarked
+  1   4  Age  Fare  Embarked
+  1   5  Age  Fare  Embarked
+  2   1  Age  Fare  Embarked
+  2   2  Age  Fare  Embarked
+  2   3  Age  Fare  Embarked
+  2   4  Age  Fare  Embarked
+  2   5  Age  Fare  Embarked
+  3   1  Age  Fare  Embarked
+  3   2  Age  Fare  Embarked
+  3   3  Age  Fare  Embarked
+  3   4  Age  Fare  Embarked
+  3   5  Age  Fare  Embarked
+  4   1  Age  Fare  Embarked
+  4   2  Age  Fare  Embarked
+  4   3  Age  Fare  Embarked
+  4   4  Age  Fare  Embarked
+  4   5  Age  Fare  Embarked
+  5   1  Age  Fare  Embarked
+  5   2  Age  Fare  Embarked
+  5   3  Age  Fare  Embarked
+  5   4  Age  Fare  Embarked
+  5   5  Age  Fare  Embarked
+> 
+> # visulization of age
+> age_orig <- all$Age
+> age_rf <- all_rf$Age
+> age_cart <- all_cart$Age
+> age1 <- as.data.frame(cbind(age_orig,age_cart,age_rf))
+> names(age1) <- c('Original', 'CART', 'RF')
+> age <- gather(age1, key = origin, value = age, Original, CART, RF)
+> ggplot(age,aes(x = age, y = ..density.., fill = origin)) + 
++      stat_bin(alpha = 0.5, position = position_dodge(1))
+`stat_bin()` using `bins = 30`. Pick better value with `binwidth`.
+Warning message:
+Removed 263 rows containing non-finite values (stat_bin). 
+> # From the histogram, we find random forest has a slightly better result than 
+> # cart, so we use the RF imputation
+> 
+> all[,c('Age', 'Fare', 'Embarked')] <- all_rf[,c('Age', 'Fare', 'Embarked')]
+> 
+> 
+> 
+> # Split the data back to training and testing dataset
+> train <- all[1:nrow(train_raw),]
+> test <- all[-(1:nrow(train_raw)),]
+> 
+> set.seed(16)
+> 
+> # Model 1.Random Forest
+> control_rf <- trainControl(method = 'cv', number = 10, verboseIter = TRUE, 
++                            savePredictions = 'final' )
+> model_rf <- train(Survived ~ Pclass + Sex + Age + Family + Embarked + Title,
++                   train, method = 'rf', trControl = control_rf)
++ Fold01: mtry= 2 
+- Fold01: mtry= 2 
++ Fold01: mtry= 6 
+- Fold01: mtry= 6 
++ Fold01: mtry=11 
+- Fold01: mtry=11 
++ Fold02: mtry= 2 
+- Fold02: mtry= 2 
++ Fold02: mtry= 6 
+- Fold02: mtry= 6 
++ Fold02: mtry=11 
+- Fold02: mtry=11 
++ Fold03: mtry= 2 
+- Fold03: mtry= 2 
++ Fold03: mtry= 6 
+- Fold03: mtry= 6 
++ Fold03: mtry=11 
+- Fold03: mtry=11 
++ Fold04: mtry= 2 
+- Fold04: mtry= 2 
++ Fold04: mtry= 6 
+- Fold04: mtry= 6 
++ Fold04: mtry=11 
+- Fold04: mtry=11 
++ Fold05: mtry= 2 
+- Fold05: mtry= 2 
++ Fold05: mtry= 6 
+- Fold05: mtry= 6 
++ Fold05: mtry=11 
+- Fold05: mtry=11 
++ Fold06: mtry= 2 
+- Fold06: mtry= 2 
++ Fold06: mtry= 6 
+- Fold06: mtry= 6 
++ Fold06: mtry=11 
+- Fold06: mtry=11 
++ Fold07: mtry= 2 
+- Fold07: mtry= 2 
++ Fold07: mtry= 6 
+- Fold07: mtry= 6 
++ Fold07: mtry=11 
+- Fold07: mtry=11 
++ Fold08: mtry= 2 
+- Fold08: mtry= 2 
++ Fold08: mtry= 6 
+- Fold08: mtry= 6 
++ Fold08: mtry=11 
+- Fold08: mtry=11 
++ Fold09: mtry= 2 
+- Fold09: mtry= 2 
++ Fold09: mtry= 6 
+- Fold09: mtry= 6 
++ Fold09: mtry=11 
+- Fold09: mtry=11 
++ Fold10: mtry= 2 
+- Fold10: mtry= 2 
++ Fold10: mtry= 6 
+- Fold10: mtry= 6 
++ Fold10: mtry=11 
+- Fold10: mtry=11 
+Aggregating results
+Selecting tuning parameters
+Fitting mtry = 2 on full training set
+> 
+> 
+> # train_rf_pred <- predict.train(model_rf,train[,-2])
+> train_rf_pred <- model_rf$pred[,c('pred', 'obs')]
+> 
+> # Assess the training result
+> class_assess <- function(x) {
++      # train$Pred <- x
++      pred_table <- table(x$obs,x$pred)
++      tp <- pred_table[1,1]
++      fp <- pred_table[1,2]
++      fn <- pred_table[2,1]
++      tn <- pred_table[2,2]
++      Accuracy <- sum(diag(pred_table)) / sum(pred_table)
++      Precision <- tp / (tp + fp)
++      Recall <- tp / (tp + fn)
++      F1_Score <- 2 * Precision * Recall / (Precision + Recall)
++      return(data.frame(Accuracy = Accuracy, Precision = Precision,
++                        Recall = Recall, F1_Score = F1_Score))
++ }
+> 
+> RF <- class_assess(train_rf_pred)
+> 
+> 
+> 
+> 
+> 
+> # Model 2.Support Vector Machine
+> control_svm <- trainControl(method = 'cv', number = 10, verboseIter = TRUE, 
++                             savePredictions = 'final' )
+> model_svm <- train(Survived ~ Pclass + Sex + Age + Family + Embarked + Title,
++                    train, method = 'svmLinear', trControl = control_svm)
++ Fold01: C=1 
+- Fold01: C=1 
++ Fold02: C=1 
+- Fold02: C=1 
++ Fold03: C=1 
+- Fold03: C=1 
++ Fold04: C=1 
+- Fold04: C=1 
++ Fold05: C=1 
+- Fold05: C=1 
++ Fold06: C=1 
+- Fold06: C=1 
++ Fold07: C=1 
+- Fold07: C=1 
++ Fold08: C=1 
+- Fold08: C=1 
++ Fold09: C=1 
+- Fold09: C=1 
++ Fold10: C=1 
+- Fold10: C=1 
+Aggregating results
+Fitting final model on full training set
+> 
+> train_svm_pred <- model_svm$pred[,c('pred', 'obs')]
+> SVM <- class_assess(train_svm_pred)
+> 
+> 
+> 
+> 
+> # Model 3.K Nearest Neighbor
+> control_knn <- trainControl(method = 'cv', number = 10, verboseIter = TRUE, 
++                             savePredictions = 'final' )
+> model_knn <- train(Survived ~ Pclass + Sex + Age + Family + Embarked + Title,
++                    train, method = 'kknn', trControl = control_knn)
++ Fold01: kmax=5, distance=2, kernel=optimal 
+- Fold01: kmax=5, distance=2, kernel=optimal 
++ Fold01: kmax=7, distance=2, kernel=optimal 
+- Fold01: kmax=7, distance=2, kernel=optimal 
++ Fold01: kmax=9, distance=2, kernel=optimal 
+- Fold01: kmax=9, distance=2, kernel=optimal 
++ Fold02: kmax=5, distance=2, kernel=optimal 
+- Fold02: kmax=5, distance=2, kernel=optimal 
++ Fold02: kmax=7, distance=2, kernel=optimal 
+- Fold02: kmax=7, distance=2, kernel=optimal 
++ Fold02: kmax=9, distance=2, kernel=optimal 
+- Fold02: kmax=9, distance=2, kernel=optimal 
++ Fold03: kmax=5, distance=2, kernel=optimal 
+- Fold03: kmax=5, distance=2, kernel=optimal 
++ Fold03: kmax=7, distance=2, kernel=optimal 
+- Fold03: kmax=7, distance=2, kernel=optimal 
++ Fold03: kmax=9, distance=2, kernel=optimal 
+- Fold03: kmax=9, distance=2, kernel=optimal 
++ Fold04: kmax=5, distance=2, kernel=optimal 
+- Fold04: kmax=5, distance=2, kernel=optimal 
++ Fold04: kmax=7, distance=2, kernel=optimal 
+- Fold04: kmax=7, distance=2, kernel=optimal 
++ Fold04: kmax=9, distance=2, kernel=optimal 
+- Fold04: kmax=9, distance=2, kernel=optimal 
++ Fold05: kmax=5, distance=2, kernel=optimal 
+- Fold05: kmax=5, distance=2, kernel=optimal 
++ Fold05: kmax=7, distance=2, kernel=optimal 
+- Fold05: kmax=7, distance=2, kernel=optimal 
++ Fold05: kmax=9, distance=2, kernel=optimal 
+- Fold05: kmax=9, distance=2, kernel=optimal 
++ Fold06: kmax=5, distance=2, kernel=optimal 
+- Fold06: kmax=5, distance=2, kernel=optimal 
++ Fold06: kmax=7, distance=2, kernel=optimal 
+- Fold06: kmax=7, distance=2, kernel=optimal 
++ Fold06: kmax=9, distance=2, kernel=optimal 
+- Fold06: kmax=9, distance=2, kernel=optimal 
++ Fold07: kmax=5, distance=2, kernel=optimal 
+- Fold07: kmax=5, distance=2, kernel=optimal 
++ Fold07: kmax=7, distance=2, kernel=optimal 
+- Fold07: kmax=7, distance=2, kernel=optimal 
++ Fold07: kmax=9, distance=2, kernel=optimal 
+- Fold07: kmax=9, distance=2, kernel=optimal 
++ Fold08: kmax=5, distance=2, kernel=optimal 
+- Fold08: kmax=5, distance=2, kernel=optimal 
++ Fold08: kmax=7, distance=2, kernel=optimal 
+- Fold08: kmax=7, distance=2, kernel=optimal 
++ Fold08: kmax=9, distance=2, kernel=optimal 
+- Fold08: kmax=9, distance=2, kernel=optimal 
++ Fold09: kmax=5, distance=2, kernel=optimal 
+- Fold09: kmax=5, distance=2, kernel=optimal 
++ Fold09: kmax=7, distance=2, kernel=optimal 
+- Fold09: kmax=7, distance=2, kernel=optimal 
++ Fold09: kmax=9, distance=2, kernel=optimal 
+- Fold09: kmax=9, distance=2, kernel=optimal 
++ Fold10: kmax=5, distance=2, kernel=optimal 
+- Fold10: kmax=5, distance=2, kernel=optimal 
++ Fold10: kmax=7, distance=2, kernel=optimal 
+- Fold10: kmax=7, distance=2, kernel=optimal 
++ Fold10: kmax=9, distance=2, kernel=optimal 
+- Fold10: kmax=9, distance=2, kernel=optimal 
+Aggregating results
+Selecting tuning parameters
+Fitting kmax = 9, distance = 2, kernel = optimal on full training set
+> 
+> train_knn_pred <- model_knn$pred[,c('pred', 'obs')]
+> KNN <- class_assess(train_knn_pred)
+> 
+> 
+> # Model 4.Neural Network
+> control_nnet <- trainControl(method = 'cv', number = 10, verboseIter = TRUE, 
++                              savePredictions = 'final' )
+> model_nnet <- train(Survived ~ Pclass + Sex + Age + Family + Embarked + Title,
++                     train, method = 'nnet', trControl = control_nnet)
++ Fold01: size=1, decay=0e+00 
+# weights:  14
+initial  value 535.433550 
+iter  10 value 502.291587
+iter  20 value 350.360833
+iter  30 value 337.861339
+iter  40 value 336.261421
+iter  50 value 325.507617
+iter  60 value 308.035281
+iter  70 value 307.986844
+final  value 307.981232 
+converged
+- Fold01: size=1, decay=0e+00 
++ Fold01: size=3, decay=0e+00 
+# weights:  40
+initial  value 588.348226 
+iter  10 value 477.748445
+iter  20 value 339.805068
+iter  30 value 332.760508
+iter  40 value 317.958054
+iter  50 value 294.697024
+iter  60 value 292.820033
+iter  70 value 291.633851
+iter  80 value 290.514916
+iter  90 value 290.189590
+iter 100 value 290.164117
+final  value 290.164117 
+stopped after 100 iterations
+- Fold01: size=3, decay=0e+00 
++ Fold01: size=5, decay=0e+00 
+# weights:  66
+initial  value 537.765869 
+iter  10 value 459.684577
+iter  20 value 378.943382
+iter  30 value 304.019316
+iter  40 value 294.792368
+iter  50 value 289.865693
+iter  60 value 288.780983
+iter  70 value 288.164641
+iter  80 value 287.996716
+iter  90 value 287.899123
+iter 100 value 287.266192
+final  value 287.266192 
+stopped after 100 iterations
+- Fold01: size=5, decay=0e+00 
++ Fold01: size=1, decay=1e-01 
+# weights:  14
+initial  value 545.335188 
+iter  10 value 486.971964
+iter  20 value 344.993133
+iter  30 value 321.609938
+iter  40 value 319.959171
+iter  50 value 319.839706
+final  value 319.836463 
+converged
+- Fold01: size=1, decay=1e-01 
++ Fold01: size=3, decay=1e-01 
+# weights:  40
+initial  value 533.137506 
+iter  10 value 498.814179
+iter  20 value 381.276954
+iter  30 value 324.903414
+iter  40 value 319.546802
+iter  50 value 317.996162
+iter  60 value 317.401534
+iter  70 value 317.066463
+iter  80 value 317.042766
+final  value 317.035821 
+converged
+- Fold01: size=3, decay=1e-01 
++ Fold01: size=5, decay=1e-01 
+# weights:  66
+initial  value 1099.775361 
+iter  10 value 511.670422
+iter  20 value 337.899607
+iter  30 value 317.546664
+iter  40 value 314.545486
+iter  50 value 311.389301
+iter  60 value 308.655816
+iter  70 value 308.294900
+iter  80 value 308.176464
+iter  90 value 308.166763
+iter 100 value 308.165427
+final  value 308.165427 
+stopped after 100 iterations
+- Fold01: size=5, decay=1e-01 
++ Fold01: size=1, decay=1e-04 
+# weights:  14
+initial  value 569.837053 
+iter  10 value 505.509790
+iter  20 value 445.482166
+iter  30 value 349.577625
+iter  40 value 339.734877
+iter  50 value 339.122651
+iter  60 value 339.094955
+iter  70 value 339.050700
+iter  80 value 322.527138
+iter  90 value 318.309017
+iter 100 value 318.051664
+final  value 318.051664 
+stopped after 100 iterations
+- Fold01: size=1, decay=1e-04 
++ Fold01: size=3, decay=1e-04 
+# weights:  40
+initial  value 566.993891 
+iter  10 value 491.384866
+iter  20 value 338.022232
+iter  30 value 306.816473
+iter  40 value 301.695272
+iter  50 value 301.491379
+iter  60 value 301.438744
+iter  70 value 300.049331
+final  value 299.592872 
+converged
+- Fold01: size=3, decay=1e-04 
++ Fold01: size=5, decay=1e-04 
+# weights:  66
+initial  value 529.525047 
+iter  10 value 476.343438
+iter  20 value 353.197600
+iter  30 value 306.921099
+iter  40 value 295.862031
+iter  50 value 284.365254
+iter  60 value 281.410537
+iter  70 value 280.986259
+iter  80 value 280.768045
+iter  90 value 280.546183
+iter 100 value 280.311000
+final  value 280.311000 
+stopped after 100 iterations
+- Fold01: size=5, decay=1e-04 
++ Fold02: size=1, decay=0e+00 
+# weights:  14
+initial  value 562.712265 
+iter  10 value 528.183514
+iter  20 value 476.655201
+iter  30 value 447.701728
+iter  40 value 446.968022
+iter  50 value 446.913066
+iter  60 value 446.747386
+iter  70 value 446.581591
+iter  80 value 446.530849
+final  value 446.524368 
+converged
+- Fold02: size=1, decay=0e+00 
++ Fold02: size=3, decay=0e+00 
+# weights:  40
+initial  value 643.555714 
+iter  10 value 482.749594
+iter  20 value 328.759212
+iter  30 value 302.435227
+iter  40 value 296.118627
+iter  50 value 294.330142
+iter  60 value 293.826833
+iter  70 value 292.738743
+iter  80 value 292.666125
+final  value 292.665949 
+converged
+- Fold02: size=3, decay=0e+00 
++ Fold02: size=5, decay=0e+00 
+# weights:  66
+initial  value 755.883604 
+iter  10 value 445.575043
+iter  20 value 345.283802
+iter  30 value 323.516400
+iter  40 value 299.429653
+iter  50 value 290.414749
+iter  60 value 285.038089
+iter  70 value 282.642924
+iter  80 value 280.123394
+iter  90 value 278.126022
+iter 100 value 277.280630
+final  value 277.280630 
+stopped after 100 iterations
+- Fold02: size=5, decay=0e+00 
++ Fold02: size=1, decay=1e-01 
+# weights:  14
+initial  value 713.088757 
+iter  10 value 518.450834
+iter  20 value 399.656637
+iter  30 value 319.653721
+iter  40 value 319.305465
+iter  50 value 319.304982
+final  value 319.304938 
+converged
+- Fold02: size=1, decay=1e-01 
++ Fold02: size=3, decay=1e-01 
+# weights:  40
+initial  value 638.026499 
+iter  10 value 500.559252
+iter  20 value 352.736602
+iter  30 value 320.570251
+iter  40 value 318.546290
+iter  50 value 316.963638
+iter  60 value 313.974404
+iter  70 value 312.882280
+iter  80 value 312.716893
+iter  90 value 312.275019
+iter 100 value 309.226265
+final  value 309.226265 
+stopped after 100 iterations
+- Fold02: size=3, decay=1e-01 
++ Fold02: size=5, decay=1e-01 
+# weights:  66
+initial  value 535.542362 
+iter  10 value 507.296128
+iter  20 value 427.176725
+iter  30 value 341.374026
+iter  40 value 320.096911
+iter  50 value 317.530669
+iter  60 value 313.281745
+iter  70 value 310.472613
+iter  80 value 309.524841
+iter  90 value 309.126412
+iter 100 value 308.829112
+final  value 308.829112 
+stopped after 100 iterations
+- Fold02: size=5, decay=1e-01 
++ Fold02: size=1, decay=1e-04 
+# weights:  14
+initial  value 593.845216 
+iter  10 value 511.023223
+iter  20 value 504.173852
+iter  30 value 498.202275
+iter  40 value 484.151281
+iter  50 value 438.638992
+iter  60 value 384.471310
+iter  70 value 377.885252
+iter  80 value 357.688053
+iter  90 value 352.045065
+iter 100 value 346.107504
+final  value 346.107504 
+stopped after 100 iterations
+- Fold02: size=1, decay=1e-04 
++ Fold02: size=3, decay=1e-04 
+# weights:  40
+initial  value 848.800486 
+iter  10 value 512.358652
+iter  20 value 392.383128
+iter  30 value 314.706894
+iter  40 value 300.935528
+iter  50 value 298.840823
+iter  60 value 296.774049
+iter  70 value 295.963977
+iter  80 value 295.508255
+iter  90 value 295.353453
+iter 100 value 295.135476
+final  value 295.135476 
+stopped after 100 iterations
+- Fold02: size=3, decay=1e-04 
++ Fold02: size=5, decay=1e-04 
+# weights:  66
+initial  value 571.589953 
+iter  10 value 484.519531
+iter  20 value 347.563490
+iter  30 value 303.436572
+iter  40 value 296.333885
+iter  50 value 293.217147
+iter  60 value 292.713013
+iter  70 value 292.503960
+iter  80 value 292.277562
+iter  90 value 292.039086
+iter 100 value 291.964626
+final  value 291.964626 
+stopped after 100 iterations
+- Fold02: size=5, decay=1e-04 
++ Fold03: size=1, decay=0e+00 
+# weights:  14
+initial  value 719.996310 
+iter  10 value 534.140905
+iter  20 value 534.137838
+final  value 534.137828 
+converged
+- Fold03: size=1, decay=0e+00 
++ Fold03: size=3, decay=0e+00 
+# weights:  40
+initial  value 557.188775 
+iter  10 value 520.667030
+iter  20 value 404.390966
+iter  30 value 346.716868
+iter  40 value 305.981603
+iter  50 value 293.194364
+iter  60 value 290.991730
+iter  70 value 288.257483
+iter  80 value 286.594282
+iter  90 value 286.092334
+iter 100 value 285.989460
+final  value 285.989460 
+stopped after 100 iterations
+- Fold03: size=3, decay=0e+00 
++ Fold03: size=5, decay=0e+00 
+# weights:  66
+initial  value 564.513222 
+iter  10 value 508.015118
+iter  20 value 392.129709
+iter  30 value 331.439711
+iter  40 value 312.396366
+iter  50 value 305.289471
+iter  60 value 302.569348
+iter  70 value 291.495012
+iter  80 value 290.268714
+iter  90 value 289.660096
+iter 100 value 289.205035
+final  value 289.205035 
+stopped after 100 iterations
+- Fold03: size=5, decay=0e+00 
++ Fold03: size=1, decay=1e-01 
+# weights:  14
+initial  value 559.800792 
+iter  10 value 467.474436
+iter  20 value 317.186822
+iter  30 value 311.636641
+iter  40 value 311.532177
+final  value 311.527350 
+converged
+- Fold03: size=1, decay=1e-01 
++ Fold03: size=3, decay=1e-01 
+# weights:  40
+initial  value 640.160933 
+iter  10 value 509.955956
+iter  20 value 382.978718
+iter  30 value 314.534423
+iter  40 value 311.279607
+iter  50 value 308.653238
+iter  60 value 305.362711
+iter  70 value 304.838304
+iter  80 value 304.247363
+iter  90 value 304.213642
+iter 100 value 304.206961
+final  value 304.206961 
+stopped after 100 iterations
+- Fold03: size=3, decay=1e-01 
++ Fold03: size=5, decay=1e-01 
+# weights:  66
+initial  value 641.889131 
+iter  10 value 505.681069
+iter  20 value 367.824218
+iter  30 value 317.936758
+iter  40 value 312.113404
+iter  50 value 309.120919
+iter  60 value 307.907546
+iter  70 value 307.741050
+iter  80 value 307.603419
+iter  90 value 307.392059
+iter 100 value 305.863021
+final  value 305.863021 
+stopped after 100 iterations
+- Fold03: size=5, decay=1e-01 
++ Fold03: size=1, decay=1e-04 
+# weights:  14
+initial  value 540.542890 
+iter  10 value 524.937635
+iter  20 value 464.175734
+iter  30 value 355.033402
+iter  40 value 338.619985
+iter  50 value 311.749542
+iter  60 value 310.121403
+iter  70 value 309.816707
+iter  80 value 298.384020
+iter  90 value 296.072940
+iter 100 value 296.054965
+final  value 296.054965 
+stopped after 100 iterations
+- Fold03: size=1, decay=1e-04 
++ Fold03: size=3, decay=1e-04 
+# weights:  40
+initial  value 604.570370 
+iter  10 value 443.691044
+iter  20 value 349.319460
+iter  30 value 349.162369
+iter  40 value 349.116762
+iter  50 value 348.858749
+iter  60 value 344.701738
+iter  70 value 342.713528
+iter  80 value 338.577379
+iter  90 value 321.843969
+iter 100 value 320.429285
+final  value 320.429285 
+stopped after 100 iterations
+- Fold03: size=3, decay=1e-04 
++ Fold03: size=5, decay=1e-04 
+# weights:  66
+initial  value 533.146074 
+iter  10 value 487.849435
+iter  20 value 328.211338
+iter  30 value 307.308428
+iter  40 value 297.866599
+iter  50 value 296.372528
+iter  60 value 295.712894
+iter  70 value 295.286304
+iter  80 value 294.821488
+iter  90 value 294.725741
+iter 100 value 294.666073
+final  value 294.666073 
+stopped after 100 iterations
+- Fold03: size=5, decay=1e-04 
++ Fold04: size=1, decay=0e+00 
+# weights:  14
+initial  value 536.495378 
+iter  10 value 515.745031
+iter  20 value 384.762699
+iter  30 value 324.311391
+iter  40 value 309.326077
+iter  50 value 305.151166
+iter  60 value 305.066855
+iter  70 value 304.921449
+final  value 304.787222 
+converged
+- Fold04: size=1, decay=0e+00 
++ Fold04: size=3, decay=0e+00 
+# weights:  40
+initial  value 551.447869 
+iter  10 value 487.126324
+iter  20 value 328.678824
+iter  30 value 308.575127
+iter  40 value 303.022609
+iter  50 value 301.619804
+iter  60 value 300.124047
+iter  70 value 299.644505
+final  value 299.619431 
+converged
+- Fold04: size=3, decay=0e+00 
++ Fold04: size=5, decay=0e+00 
+# weights:  66
+initial  value 558.519651 
+iter  10 value 516.928489
+iter  20 value 374.371979
+iter  30 value 309.282388
+iter  40 value 305.106385
+iter  50 value 303.622969
+iter  60 value 303.065705
+iter  70 value 301.887147
+iter  80 value 299.547480
+iter  90 value 299.328935
+iter 100 value 299.301113
+final  value 299.301113 
+stopped after 100 iterations
+- Fold04: size=5, decay=0e+00 
++ Fold04: size=1, decay=1e-01 
+# weights:  14
+initial  value 536.312850 
+iter  10 value 480.224862
+iter  20 value 352.356198
+iter  30 value 322.023285
+iter  40 value 320.517424
+iter  50 value 320.496245
+final  value 320.495719 
+converged
+- Fold04: size=1, decay=1e-01 
++ Fold04: size=3, decay=1e-01 
+# weights:  40
+initial  value 541.072920 
+iter  10 value 501.088367
+iter  20 value 377.938794
+iter  30 value 338.639162
+iter  40 value 316.985790
+iter  50 value 312.767639
+iter  60 value 312.211165
+iter  70 value 312.178759
+iter  80 value 312.171232
+iter  90 value 312.170521
+final  value 312.170495 
+converged
+- Fold04: size=3, decay=1e-01 
++ Fold04: size=5, decay=1e-01 
+# weights:  66
+initial  value 534.500289 
+iter  10 value 373.204623
+iter  20 value 328.233377
+iter  30 value 320.804317
+iter  40 value 316.639141
+iter  50 value 315.920651
+iter  60 value 315.790798
+iter  70 value 315.769426
+iter  80 value 315.572371
+iter  90 value 311.993420
+iter 100 value 310.054874
+final  value 310.054874 
+stopped after 100 iterations
+- Fold04: size=5, decay=1e-01 
++ Fold04: size=1, decay=1e-04 
+# weights:  14
+initial  value 562.283088 
+iter  10 value 530.318789
+iter  20 value 515.093759
+iter  30 value 357.291389
+iter  40 value 339.419492
+iter  50 value 339.307685
+iter  60 value 339.286675
+iter  70 value 339.268338
+iter  80 value 339.193754
+iter  90 value 337.813428
+iter 100 value 312.383339
+final  value 312.383339 
+stopped after 100 iterations
+- Fold04: size=1, decay=1e-04 
++ Fold04: size=3, decay=1e-04 
+# weights:  40
+initial  value 669.350711 
+iter  10 value 517.945761
+iter  20 value 348.179954
+iter  30 value 310.248250
+iter  40 value 304.860941
+iter  50 value 303.966659
+iter  60 value 303.893226
+iter  70 value 303.832943
+iter  80 value 303.684160
+iter  90 value 303.277464
+iter 100 value 300.833425
+final  value 300.833425 
+stopped after 100 iterations
+- Fold04: size=3, decay=1e-04 
++ Fold04: size=5, decay=1e-04 
+# weights:  66
+initial  value 685.305969 
+iter  10 value 522.179226
+iter  20 value 410.214122
+iter  30 value 318.789435
+iter  40 value 302.757632
+iter  50 value 298.413807
+iter  60 value 295.596333
+iter  70 value 293.028335
+iter  80 value 291.824165
+iter  90 value 291.366281
+iter 100 value 291.001708
+final  value 291.001708 
+stopped after 100 iterations
+- Fold04: size=5, decay=1e-04 
++ Fold05: size=1, decay=0e+00 
+# weights:  14
+initial  value 552.828887 
+iter  10 value 502.726054
+iter  20 value 479.111389
+iter  30 value 334.212068
+iter  40 value 311.883039
+iter  50 value 310.318368
+iter  60 value 309.832904
+iter  70 value 309.357467
+final  value 309.220750 
+converged
+- Fold05: size=1, decay=0e+00 
++ Fold05: size=3, decay=0e+00 
+# weights:  40
+initial  value 653.233507 
+iter  10 value 500.375032
+iter  20 value 355.383543
+iter  30 value 305.602480
+iter  40 value 298.564597
+iter  50 value 296.071674
+iter  60 value 293.570427
+iter  70 value 292.192595
+iter  80 value 292.050923
+final  value 292.050316 
+converged
+- Fold05: size=3, decay=0e+00 
++ Fold05: size=5, decay=0e+00 
+# weights:  66
+initial  value 613.772126 
+iter  10 value 524.208344
+iter  20 value 489.859876
+iter  30 value 364.659887
+iter  40 value 324.646804
+iter  50 value 315.581760
+iter  60 value 311.103220
+iter  70 value 308.412080
+iter  80 value 306.652056
+iter  90 value 305.963724
+iter 100 value 304.119014
+final  value 304.119014 
+stopped after 100 iterations
+- Fold05: size=5, decay=0e+00 
++ Fold05: size=1, decay=1e-01 
+# weights:  14
+initial  value 569.058459 
+iter  10 value 518.501424
+iter  20 value 429.301599
+iter  30 value 336.602756
+iter  40 value 323.545760
+iter  50 value 323.340912
+iter  60 value 323.340700
+iter  60 value 323.340700
+iter  60 value 323.340700
+final  value 323.340700 
+converged
+- Fold05: size=1, decay=1e-01 
++ Fold05: size=3, decay=1e-01 
+# weights:  40
+initial  value 529.838996 
+iter  10 value 484.408704
+iter  20 value 441.426433
+iter  30 value 410.654906
+iter  40 value 334.223042
+iter  50 value 321.092708
+iter  60 value 317.565663
+iter  70 value 316.054333
+iter  80 value 315.480092
+iter  90 value 315.460355
+iter 100 value 315.459817
+final  value 315.459817 
+stopped after 100 iterations
+- Fold05: size=3, decay=1e-01 
++ Fold05: size=5, decay=1e-01 
+# weights:  66
+initial  value 553.617828 
+iter  10 value 498.386565
+iter  20 value 355.421015
+iter  30 value 324.975234
+iter  40 value 316.250817
+iter  50 value 313.326767
+iter  60 value 311.782408
+iter  70 value 311.111806
+iter  80 value 310.923575
+iter  90 value 310.676036
+iter 100 value 310.512683
+final  value 310.512683 
+stopped after 100 iterations
+- Fold05: size=5, decay=1e-01 
++ Fold05: size=1, decay=1e-04 
+# weights:  14
+initial  value 535.334895 
+iter  10 value 501.199294
+iter  20 value 364.015915
+iter  30 value 348.778444
+iter  40 value 345.428769
+iter  50 value 345.087350
+iter  60 value 329.799254
+iter  70 value 324.097347
+iter  80 value 318.945903
+iter  90 value 309.318349
+iter 100 value 308.627148
+final  value 308.627148 
+stopped after 100 iterations
+- Fold05: size=1, decay=1e-04 
++ Fold05: size=3, decay=1e-04 
+# weights:  40
+initial  value 564.812898 
+iter  10 value 495.606263
+iter  20 value 356.094929
+iter  30 value 340.783499
+iter  40 value 311.857449
+iter  50 value 308.141900
+iter  60 value 306.812835
+iter  70 value 306.692083
+iter  80 value 306.662970
+iter  90 value 306.652395
+iter 100 value 306.645401
+final  value 306.645401 
+stopped after 100 iterations
+- Fold05: size=3, decay=1e-04 
++ Fold05: size=5, decay=1e-04 
+# weights:  66
+initial  value 746.386672 
+iter  10 value 450.111471
+iter  20 value 354.586419
+iter  30 value 305.091322
+iter  40 value 297.391821
+iter  50 value 294.517064
+iter  60 value 290.877568
+iter  70 value 286.838944
+iter  80 value 285.318753
+iter  90 value 284.549939
+iter 100 value 284.397769
+final  value 284.397769 
+stopped after 100 iterations
+- Fold05: size=5, decay=1e-04 
++ Fold06: size=1, decay=0e+00 
+# weights:  14
+initial  value 532.903137 
+iter  10 value 456.641328
+iter  20 value 323.995286
+iter  30 value 315.186969
+iter  40 value 314.983209
+iter  50 value 311.940117
+iter  60 value 311.560687
+final  value 311.560141 
+converged
+- Fold06: size=1, decay=0e+00 
++ Fold06: size=3, decay=0e+00 
+# weights:  40
+initial  value 553.459090 
+iter  10 value 478.046018
+iter  20 value 356.517657
+iter  30 value 320.405146
+iter  40 value 313.854329
+iter  50 value 310.233592
+iter  60 value 308.524120
+iter  70 value 305.880265
+iter  80 value 304.490123
+iter  90 value 304.407605
+final  value 304.407447 
+converged
+- Fold06: size=3, decay=0e+00 
++ Fold06: size=5, decay=0e+00 
+# weights:  66
+initial  value 680.902921 
+iter  10 value 399.400395
+iter  20 value 367.920386
+iter  30 value 361.252001
+iter  40 value 341.824342
+iter  50 value 309.938275
+iter  60 value 306.180642
+iter  70 value 304.681103
+iter  80 value 304.595086
+iter  90 value 304.443772
+iter 100 value 304.337062
+final  value 304.337062 
+stopped after 100 iterations
+- Fold06: size=5, decay=0e+00 
++ Fold06: size=1, decay=1e-01 
+# weights:  14
+initial  value 535.144829 
+iter  10 value 506.383967
+iter  20 value 388.325539
+iter  30 value 335.742778
+iter  40 value 326.118921
+iter  50 value 325.968490
+iter  60 value 325.967629
+final  value 325.967625 
+converged
+- Fold06: size=1, decay=1e-01 
++ Fold06: size=3, decay=1e-01 
+# weights:  40
+initial  value 566.067590 
+iter  10 value 518.160679
+iter  20 value 448.371055
+iter  30 value 359.762310
+iter  40 value 327.837960
+iter  50 value 324.451913
+iter  60 value 323.128054
+iter  70 value 322.395412
+iter  80 value 322.248773
+iter  90 value 322.236724
+final  value 322.236694 
+converged
+- Fold06: size=3, decay=1e-01 
++ Fold06: size=5, decay=1e-01 
+# weights:  66
+initial  value 543.608372 
+iter  10 value 392.349869
+iter  20 value 333.726434
+iter  30 value 325.893970
+iter  40 value 324.231164
+iter  50 value 319.416563
+iter  60 value 317.620899
+iter  70 value 317.216467
+iter  80 value 317.042947
+iter  90 value 316.957980
+iter 100 value 316.922055
+final  value 316.922055 
+stopped after 100 iterations
+- Fold06: size=5, decay=1e-01 
++ Fold06: size=1, decay=1e-04 
+# weights:  14
+initial  value 567.825593 
+iter  10 value 479.743812
+iter  20 value 456.327334
+iter  30 value 453.206470
+iter  40 value 451.431493
+iter  50 value 450.912216
+iter  60 value 440.788703
+iter  70 value 440.577932
+iter  80 value 440.574212
+iter  90 value 440.501278
+iter 100 value 440.297778
+final  value 440.297778 
+stopped after 100 iterations
+- Fold06: size=1, decay=1e-04 
++ Fold06: size=3, decay=1e-04 
+# weights:  40
+initial  value 536.008609 
+iter  10 value 431.220080
+iter  20 value 328.223591
+iter  30 value 312.565728
+iter  40 value 304.157387
+iter  50 value 302.287676
+iter  60 value 301.857716
+iter  70 value 301.621747
+iter  80 value 301.396264
+iter  90 value 301.284584
+iter 100 value 301.216421
+final  value 301.216421 
+stopped after 100 iterations
+- Fold06: size=3, decay=1e-04 
++ Fold06: size=5, decay=1e-04 
+# weights:  66
+initial  value 530.880728 
+iter  10 value 461.229692
+iter  20 value 356.103200
+iter  30 value 314.622812
+iter  40 value 305.856661
+iter  50 value 304.325670
+iter  60 value 303.324456
+iter  70 value 302.923567
+iter  80 value 302.588144
+iter  90 value 301.520928
+iter 100 value 300.936890
+final  value 300.936890 
+stopped after 100 iterations
+- Fold06: size=5, decay=1e-04 
++ Fold07: size=1, decay=0e+00 
+# weights:  14
+initial  value 677.853831 
+iter  10 value 457.963634
+iter  20 value 327.125107
+iter  30 value 313.204180
+iter  40 value 312.571992
+iter  50 value 311.867015
+iter  60 value 309.625055
+iter  70 value 309.140158
+iter  80 value 309.104643
+iter  90 value 309.079303
+final  value 309.079103 
+converged
+- Fold07: size=1, decay=0e+00 
++ Fold07: size=3, decay=0e+00 
+# weights:  40
+initial  value 573.503360 
+iter  10 value 473.713315
+iter  20 value 364.302907
+iter  30 value 336.714342
+iter  40 value 311.229255
+iter  50 value 307.151759
+iter  60 value 306.613071
+iter  70 value 306.600840
+iter  80 value 306.600454
+iter  80 value 306.600451
+iter  80 value 306.600451
+final  value 306.600451 
+converged
+- Fold07: size=3, decay=0e+00 
++ Fold07: size=5, decay=0e+00 
+# weights:  66
+initial  value 555.009575 
+iter  10 value 466.685260
+iter  20 value 328.440021
+iter  30 value 310.555425
+iter  40 value 303.153317
+iter  50 value 302.632068
+iter  60 value 301.404384
+iter  70 value 301.158682
+iter  80 value 300.983171
+iter  90 value 300.954606
+iter 100 value 300.903419
+final  value 300.903419 
+stopped after 100 iterations
+- Fold07: size=5, decay=0e+00 
++ Fold07: size=1, decay=1e-01 
+# weights:  14
+initial  value 714.081574 
+iter  10 value 522.633287
+iter  20 value 372.499614
+iter  30 value 329.494147
+iter  40 value 325.627947
+iter  50 value 325.365331
+final  value 325.365011 
+converged
+- Fold07: size=1, decay=1e-01 
++ Fold07: size=3, decay=1e-01 
+# weights:  40
+initial  value 618.079154 
+iter  10 value 515.925387
+iter  20 value 378.477449
+iter  30 value 324.495113
+iter  40 value 321.964226
+iter  50 value 319.639988
+iter  60 value 319.403561
+iter  70 value 318.732517
+iter  80 value 318.320137
+iter  90 value 316.021050
+iter 100 value 315.331418
+final  value 315.331418 
+stopped after 100 iterations
+- Fold07: size=3, decay=1e-01 
++ Fold07: size=5, decay=1e-01 
+# weights:  66
+initial  value 537.183949 
+iter  10 value 414.783142
+iter  20 value 353.391785
+iter  30 value 328.197684
+iter  40 value 319.614431
+iter  50 value 318.751201
+iter  60 value 318.676557
+iter  70 value 318.604342
+iter  80 value 318.530496
+iter  90 value 317.653660
+iter 100 value 316.348135
+final  value 316.348135 
+stopped after 100 iterations
+- Fold07: size=5, decay=1e-01 
++ Fold07: size=1, decay=1e-04 
+# weights:  14
+initial  value 649.522920 
+iter  10 value 533.203807
+iter  20 value 528.809052
+iter  30 value 405.970539
+iter  40 value 318.501520
+iter  50 value 311.786353
+iter  60 value 309.824794
+iter  70 value 309.495678
+iter  80 value 309.414266
+final  value 309.389531 
+converged
+- Fold07: size=1, decay=1e-04 
++ Fold07: size=3, decay=1e-04 
+# weights:  40
+initial  value 533.762895 
+iter  10 value 509.615707
+iter  20 value 410.303691
+iter  30 value 343.556175
+iter  40 value 329.626290
+iter  50 value 327.563228
+iter  60 value 324.490676
+iter  70 value 319.847207
+iter  80 value 319.605203
+iter  90 value 319.203112
+iter 100 value 312.141403
+final  value 312.141403 
+stopped after 100 iterations
+- Fold07: size=3, decay=1e-04 
++ Fold07: size=5, decay=1e-04 
+# weights:  66
+initial  value 547.641598 
+iter  10 value 450.832200
+iter  20 value 352.341791
+iter  30 value 327.477866
+iter  40 value 302.695940
+iter  50 value 299.257015
+iter  60 value 297.352786
+iter  70 value 296.967259
+iter  80 value 296.644911
+iter  90 value 296.201121
+iter 100 value 295.695021
+final  value 295.695021 
+stopped after 100 iterations
+- Fold07: size=5, decay=1e-04 
++ Fold08: size=1, decay=0e+00 
+# weights:  14
+initial  value 562.721241 
+iter  10 value 499.672973
+iter  20 value 342.850368
+iter  30 value 316.670157
+iter  40 value 315.202839
+iter  50 value 311.049420
+iter  60 value 309.677899
+iter  70 value 309.651618
+iter  80 value 309.648461
+iter  90 value 309.645974
+final  value 309.645950 
+converged
+- Fold08: size=1, decay=0e+00 
++ Fold08: size=3, decay=0e+00 
+# weights:  40
+initial  value 574.266028 
+iter  10 value 491.784803
+iter  20 value 399.696837
+iter  30 value 320.552528
+iter  40 value 312.527205
+iter  50 value 308.785169
+iter  60 value 307.014300
+iter  70 value 305.464980
+iter  80 value 304.906701
+iter  90 value 304.269700
+iter 100 value 303.836448
+final  value 303.836448 
+stopped after 100 iterations
+- Fold08: size=3, decay=0e+00 
++ Fold08: size=5, decay=0e+00 
+# weights:  66
+initial  value 549.621051 
+iter  10 value 503.493173
+iter  20 value 352.166153
+iter  30 value 335.444824
+iter  40 value 331.220409
+iter  50 value 327.543983
+iter  60 value 327.205235
+iter  70 value 326.660041
+iter  80 value 325.133739
+iter  90 value 322.437423
+iter 100 value 322.150583
+final  value 322.150583 
+stopped after 100 iterations
+- Fold08: size=5, decay=0e+00 
++ Fold08: size=1, decay=1e-01 
+# weights:  14
+initial  value 611.780892 
+iter  10 value 519.330924
+iter  20 value 482.030579
+iter  30 value 382.037762
+iter  40 value 358.884413
+iter  50 value 328.005864
+iter  60 value 321.715139
+final  value 321.713353 
+converged
+- Fold08: size=1, decay=1e-01 
++ Fold08: size=3, decay=1e-01 
+# weights:  40
+initial  value 535.545026 
+iter  10 value 372.306802
+iter  20 value 330.523628
+iter  30 value 323.246391
+iter  40 value 318.481578
+iter  50 value 317.860774
+iter  60 value 317.631690
+iter  70 value 317.075885
+iter  80 value 316.832683
+iter  90 value 316.810880
+iter 100 value 316.809208
+final  value 316.809208 
+stopped after 100 iterations
+- Fold08: size=3, decay=1e-01 
++ Fold08: size=5, decay=1e-01 
+# weights:  66
+initial  value 531.233648 
+iter  10 value 388.062343
+iter  20 value 333.760412
+iter  30 value 319.270433
+iter  40 value 317.292291
+iter  50 value 316.237045
+iter  60 value 314.864673
+iter  70 value 314.419922
+iter  80 value 313.924548
+iter  90 value 312.377116
+iter 100 value 310.169849
+final  value 310.169849 
+stopped after 100 iterations
+- Fold08: size=5, decay=1e-01 
++ Fold08: size=1, decay=1e-04 
+# weights:  14
+initial  value 533.367315 
+iter  10 value 497.031914
+iter  20 value 387.237944
+iter  30 value 365.193489
+iter  40 value 352.033096
+iter  50 value 329.273153
+iter  60 value 324.265371
+iter  70 value 322.598544
+iter  80 value 311.755972
+iter  90 value 309.613533
+iter 100 value 309.587081
+final  value 309.587081 
+stopped after 100 iterations
+- Fold08: size=1, decay=1e-04 
++ Fold08: size=3, decay=1e-04 
+# weights:  40
+initial  value 539.046556 
+iter  10 value 491.607073
+iter  20 value 433.773054
+iter  30 value 431.811753
+iter  40 value 424.466185
+iter  50 value 423.256306
+iter  60 value 422.897349
+iter  70 value 422.834100
+iter  80 value 422.787797
+iter  90 value 422.767063
+iter 100 value 371.033818
+final  value 371.033818 
+stopped after 100 iterations
+- Fold08: size=3, decay=1e-04 
++ Fold08: size=5, decay=1e-04 
+# weights:  66
+initial  value 602.399777 
+iter  10 value 516.202386
+iter  20 value 333.866989
+iter  30 value 303.116306
+iter  40 value 293.406123
+iter  50 value 288.436503
+iter  60 value 285.886182
+iter  70 value 284.836048
+iter  80 value 284.073383
+iter  90 value 283.922557
+iter 100 value 283.528236
+final  value 283.528236 
+stopped after 100 iterations
+- Fold08: size=5, decay=1e-04 
++ Fold09: size=1, decay=0e+00 
+# weights:  14
+initial  value 608.955542 
+iter  10 value 454.508844
+iter  20 value 340.865598
+iter  30 value 326.510417
+iter  40 value 326.070350
+iter  50 value 322.620690
+iter  60 value 314.413659
+iter  70 value 311.409813
+iter  80 value 309.451161
+iter  90 value 309.445499
+iter 100 value 309.426478
+final  value 309.426478 
+stopped after 100 iterations
+- Fold09: size=1, decay=0e+00 
++ Fold09: size=3, decay=0e+00 
+# weights:  40
+initial  value 572.206950 
+iter  10 value 471.061441
+iter  20 value 409.058995
+iter  30 value 401.794256
+iter  40 value 338.791406
+iter  50 value 321.439422
+iter  60 value 307.976198
+iter  70 value 306.150762
+iter  80 value 304.491863
+iter  90 value 303.484343
+iter 100 value 303.372195
+final  value 303.372195 
+stopped after 100 iterations
+- Fold09: size=3, decay=0e+00 
++ Fold09: size=5, decay=0e+00 
+# weights:  66
+initial  value 529.549316 
+iter  10 value 374.278280
+iter  20 value 314.756326
+iter  30 value 306.790188
+iter  40 value 305.338572
+iter  50 value 303.324963
+iter  60 value 301.522443
+iter  70 value 299.876782
+iter  80 value 298.526540
+iter  90 value 297.883000
+iter 100 value 296.321727
+final  value 296.321727 
+stopped after 100 iterations
+- Fold09: size=5, decay=0e+00 
++ Fold09: size=1, decay=1e-01 
+# weights:  14
+initial  value 534.300082 
+iter  10 value 504.832993
+iter  20 value 407.874779
+iter  30 value 328.247852
+iter  40 value 325.012982
+iter  50 value 324.358482
+final  value 324.357376 
+converged
+- Fold09: size=1, decay=1e-01 
++ Fold09: size=3, decay=1e-01 
+# weights:  40
+initial  value 571.591610 
+iter  10 value 514.166724
+iter  20 value 353.505144
+iter  30 value 324.093757
+iter  40 value 323.634145
+iter  50 value 321.707389
+iter  60 value 320.079327
+iter  70 value 318.419964
+iter  80 value 315.939144
+iter  90 value 314.854782
+iter 100 value 314.518437
+final  value 314.518437 
+stopped after 100 iterations
+- Fold09: size=3, decay=1e-01 
++ Fold09: size=5, decay=1e-01 
+# weights:  66
+initial  value 714.907955 
+iter  10 value 515.173644
+iter  20 value 380.179277
+iter  30 value 324.427205
+iter  40 value 318.602503
+iter  50 value 313.397034
+iter  60 value 311.304669
+iter  70 value 310.894267
+iter  80 value 310.852699
+iter  90 value 310.851167
+final  value 310.851099 
+converged
+- Fold09: size=5, decay=1e-01 
++ Fold09: size=1, decay=1e-04 
+# weights:  14
+initial  value 539.668493 
+iter  10 value 373.106302
+iter  20 value 317.897407
+iter  30 value 312.818374
+iter  40 value 312.393431
+iter  50 value 309.936183
+iter  60 value 309.867097
+iter  70 value 309.836181
+iter  80 value 309.777278
+final  value 309.722213 
+converged
+- Fold09: size=1, decay=1e-04 
++ Fold09: size=3, decay=1e-04 
+# weights:  40
+initial  value 549.978335 
+iter  10 value 512.367229
+iter  20 value 460.281578
+iter  30 value 330.791237
+iter  40 value 317.824695
+iter  50 value 310.193443
+iter  60 value 305.505058
+iter  70 value 302.368048
+iter  80 value 300.686407
+iter  90 value 299.795569
+iter 100 value 299.482078
+final  value 299.482078 
+stopped after 100 iterations
+- Fold09: size=3, decay=1e-04 
++ Fold09: size=5, decay=1e-04 
+# weights:  66
+initial  value 701.565236 
+iter  10 value 525.536883
+iter  20 value 356.875127
+iter  30 value 323.393134
+iter  40 value 309.080874
+iter  50 value 300.353498
+iter  60 value 296.348583
+iter  70 value 294.953206
+iter  80 value 294.610990
+iter  90 value 294.502290
+iter 100 value 294.217786
+final  value 294.217786 
+stopped after 100 iterations
+- Fold09: size=5, decay=1e-04 
++ Fold10: size=1, decay=0e+00 
+# weights:  14
+initial  value 604.623412 
+iter  10 value 491.130134
+iter  20 value 340.968812
+iter  30 value 309.052989
+iter  40 value 306.027516
+iter  50 value 305.329118
+iter  60 value 305.306069
+iter  70 value 305.227143
+final  value 305.223959 
+converged
+- Fold10: size=1, decay=0e+00 
++ Fold10: size=3, decay=0e+00 
+# weights:  40
+initial  value 566.139284 
+iter  10 value 511.284072
+iter  20 value 460.560379
+iter  30 value 355.312913
+iter  40 value 321.100310
+iter  50 value 319.855344
+iter  60 value 319.729826
+iter  70 value 318.794730
+iter  80 value 316.255659
+iter  90 value 309.864770
+iter 100 value 308.875253
+final  value 308.875253 
+stopped after 100 iterations
+- Fold10: size=3, decay=0e+00 
++ Fold10: size=5, decay=0e+00 
+# weights:  66
+initial  value 538.183355 
+iter  10 value 508.759440
+iter  20 value 410.700720
+iter  30 value 332.153358
+iter  40 value 307.722572
+iter  50 value 301.799226
+iter  60 value 299.353673
+iter  70 value 297.693802
+iter  80 value 297.188275
+iter  90 value 297.092288
+iter 100 value 296.860081
+final  value 296.860081 
+stopped after 100 iterations
+- Fold10: size=5, decay=0e+00 
++ Fold10: size=1, decay=1e-01 
+# weights:  14
+initial  value 612.825933 
+iter  10 value 472.617023
+iter  20 value 360.712802
+iter  30 value 324.041206
+iter  40 value 321.654176
+final  value 321.653417 
+converged
+- Fold10: size=1, decay=1e-01 
++ Fold10: size=3, decay=1e-01 
+# weights:  40
+initial  value 563.957431 
+iter  10 value 518.485628
+iter  20 value 355.622181
+iter  30 value 323.808967
+iter  40 value 319.684442
+iter  50 value 318.581191
+iter  60 value 317.680798
+iter  70 value 317.369598
+iter  80 value 317.348439
+iter  90 value 317.316456
+iter 100 value 317.313790
+final  value 317.313790 
+stopped after 100 iterations
+- Fold10: size=3, decay=1e-01 
++ Fold10: size=5, decay=1e-01 
+# weights:  66
+initial  value 656.083817 
+iter  10 value 506.633756
+iter  20 value 398.808542
+iter  30 value 333.782671
+iter  40 value 322.525024
+iter  50 value 319.927904
+iter  60 value 317.338071
+iter  70 value 315.198697
+iter  80 value 314.454784
+iter  90 value 314.368895
+iter 100 value 314.206853
+final  value 314.206853 
+stopped after 100 iterations
+- Fold10: size=5, decay=1e-01 
++ Fold10: size=1, decay=1e-04 
+# weights:  14
+initial  value 550.867874 
+iter  10 value 508.302380
+iter  20 value 445.491380
+iter  30 value 332.194225
+iter  40 value 326.532935
+iter  50 value 322.594023
+iter  60 value 316.223494
+iter  70 value 309.170146
+iter  80 value 308.967132
+iter  90 value 308.811212
+iter 100 value 308.800146
+final  value 308.800146 
+stopped after 100 iterations
+- Fold10: size=1, decay=1e-04 
++ Fold10: size=3, decay=1e-04 
+# weights:  40
+initial  value 545.789917 
+iter  10 value 398.519938
+iter  20 value 341.802001
+iter  30 value 310.659677
+iter  40 value 306.228970
+iter  50 value 303.796680
+iter  60 value 303.486190
+iter  70 value 303.369895
+iter  80 value 303.291322
+iter  90 value 303.196107
+iter 100 value 303.167581
+final  value 303.167581 
+stopped after 100 iterations
+- Fold10: size=3, decay=1e-04 
++ Fold10: size=5, decay=1e-04 
+# weights:  66
+initial  value 573.078513 
+iter  10 value 497.760389
+iter  20 value 352.930499
+iter  30 value 309.155140
+iter  40 value 298.673667
+iter  50 value 290.741326
+iter  60 value 289.571315
+iter  70 value 289.313612
+iter  80 value 288.768009
+iter  90 value 287.570148
+iter 100 value 286.372206
+final  value 286.372206 
+stopped after 100 iterations
+- Fold10: size=5, decay=1e-04 
+Aggregating results
+Selecting tuning parameters
+Fitting size = 3, decay = 0.1 on full training set
+# weights:  40
+initial  value 600.816783 
+iter  10 value 508.823207
+iter  20 value 360.792045
+iter  30 value 355.238773
+iter  40 value 354.407123
+iter  50 value 351.472430
+iter  60 value 350.787553
+iter  70 value 348.796533
+iter  80 value 347.209577
+iter  90 value 347.159540
+final  value 347.159192 
+converged
+> 
+> train_nnet_pred <- model_nnet$pred[,c('pred', 'obs')]
+> NNET <- class_assess(train_nnet_pred)
+> 
+> comparison <- rbind(RF = RF,SVM = SVM,KNN = KNN,NNET = NNET)
+> comparison #Neural Network has the best result
+      Accuracy Precision    Recall  F1_Score
+RF   0.8215488 0.8961749 0.8282828 0.8608924
+SVM  0.8271605 0.8961749 0.8353141 0.8646749
+KNN  0.8092031 0.8579235 0.8365897 0.8471223
+NNET 0.8305275 0.9216758 0.8241042 0.8701634
+> 
+> 
+> # Making prediction based on the best model
+> test_pred <- predict.train(model_nnet,test)
+> titanic_prediction <- data.frame(PassengerId = test$PassengerId, 
++                                  Survived = test_pred)
+> write.csv(titanic_prediction, file = "Titanic_prediction.csv",row.names=FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+ 25.223   0.799  26.088 

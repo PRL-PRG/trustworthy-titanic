@@ -1,0 +1,229 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> # supress anoing warnings for now
+> options(warn=-1)
+> 
+> # Necessary Libraries 
+> library(ggplot2)
+> library(cowplot)
+
+********************************************************
+Note: As of version 1.0.0, cowplot does not change the
+  default ggplot2 theme anymore. To recover the previous
+  behavior, execute:
+  theme_set(theme_cowplot())
+********************************************************
+
+> library(lattice)
+> library(caret)
+> library(MASS)
+> 
+> # load train.csv
+> DstTrain <- read.csv('../input/train.csv', stringsAsFactors = FALSE)
+> # load test.csv
+> DstTest  <- read.csv('../input/test.csv', stringsAsFactors = FALSE)
+> 
+> # check data sample 
+> head(DstTrain, n=5L)
+  PassengerId Survived Pclass
+1           1        0      3
+2           2        1      1
+3           3        1      3
+4           4        1      1
+5           5        0      3
+                                                 Name    Sex Age SibSp Parch
+1                             Braund, Mr. Owen Harris   male  22     1     0
+2 Cumings, Mrs. John Bradley (Florence Briggs Thayer) female  38     1     0
+3                              Heikkinen, Miss. Laina female  26     0     0
+4        Futrelle, Mrs. Jacques Heath (Lily May Peel) female  35     1     0
+5                            Allen, Mr. William Henry   male  35     0     0
+            Ticket    Fare Cabin Embarked
+1        A/5 21171  7.2500              S
+2         PC 17599 71.2833   C85        C
+3 STON/O2. 3101282  7.9250              S
+4           113803 53.1000  C123        S
+5           373450  8.0500              S
+> 
+> # dimensions of dataset
+> dim(DstTrain)
+[1] 891  12
+> 
+> # check column type
+> sapply(DstTrain, typeof)
+PassengerId    Survived      Pclass        Name         Sex         Age 
+  "integer"   "integer"   "integer" "character" "character"    "double" 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+  "integer"   "integer" "character"    "double" "character" "character" 
+> 
+> # show dataframe info
+> str(DstTrain)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  "" "C85" "" "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> 
+> # clean NA values
+> DstTrain[is.na(DstTrain)] <- 0
+> DstTest[is.na(DstTest)] <- 0
+> 
+> # histogram of SibSp
+> plot.SibSp <- ggplot(DstTrain, aes(SibSp,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # histogram of Pclass
+> plot.Pclass <- ggplot(DstTrain, aes(Pclass,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # histogram of Sex
+> plot.Sex <- ggplot(DstTrain, aes(Sex,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # histogram of Embarked
+> plot.Embarked <- ggplot(DstTrain, aes(Embarked,fill = factor(Survived))) +
++     geom_histogram(stat = "count")
+> 
+> # create the plot grid with all
+> plot_grid(plot.SibSp, plot.Pclass, plot.Sex, plot.Embarked )
+> 
+> # histogram of Age
+> ggplot(DstTrain, aes(Age,fill = factor(Survived))) + 
++ geom_histogram(bins = 40)
+> 
+> # histogram of Fare
+> ggplot(DstTrain, aes(Fare,fill = factor(Survived))) + 
++ geom_histogram(bins = 40)
+> 
+> # Run algorithms using 10-fold cross validation
+> control <- trainControl(method="cv", number=10)
+> metric <- "Accuracy"
+> 
+> # create the test dataset with only the testing columns
+> varsToKeep <- c("Survived", "Age", "Fare", "Sex", "Embarked", "SibSp", "Pclass")
+> DstTrainTest <- DstTrain[varsToKeep]
+> 
+> # convert Survived to factor
+> DstTrainTest$Survived <- as.factor(DstTrainTest$Survived)
+> 
+> # logistic regression
+> set.seed(7)
+> fit.glm <- train(Survived ~ ., data=DstTrainTest, method="glm", metric=metric, trControl=control)
+> 
+> # linear algorithms
+> set.seed(7)
+> fit.lda <- train(Survived ~ ., data=DstTrainTest, method="lda", metric=metric, trControl=control)
+> 
+> # CART
+> set.seed(7)
+> fit.cart <- train(Survived ~ ., data=DstTrainTest, method="rpart", metric=metric, trControl=control)
+> 
+> # kNN
+> set.seed(7)
+> fit.knn <- train(Survived ~ ., data=DstTrainTest, method="knn", metric=metric, trControl=control)
+> 
+> # SVM
+> set.seed(7)
+> fit.svm <- train(Survived ~ ., data=DstTrainTest, method="svmRadial", metric=metric, trControl=control)
+> 
+> # Random Forest
+> set.seed(7)
+> fit.rf <- train(Survived ~ ., data=DstTrainTest, method="rf", metric=metric, trControl=control)
+> 
+> 
+> # summarize accuracy of models
+> results <- resamples(list(
++     glm=fit.glm, 
++     lda=fit.lda, 
++     cart=fit.cart, 
++     knn=fit.knn, 
++     svm=fit.svm, 
++     rf=fit.rf
++ ))
+> summary(results)
+
+Call:
+summary.resamples(object = results)
+
+Models: glm, lda, cart, knn, svm, rf 
+Number of resamples: 10 
+
+Accuracy 
+          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+glm  0.7303371 0.7493616 0.7865169 0.7855873 0.8089888 0.8666667    0
+lda  0.7303371 0.7640449 0.7752525 0.7833152 0.8061798 0.8444444    0
+cart 0.7640449 0.7733657 0.7977528 0.7990455 0.8174157 0.8555556    0
+knn  0.6333333 0.6544944 0.6872035 0.6881336 0.7219101 0.7500000    0
+svm  0.7444444 0.7752809 0.8079035 0.8024796 0.8202247 0.8555556    0
+rf   0.7111111 0.8000192 0.8089888 0.8114808 0.8398876 0.8777778    0
+
+Kappa 
+          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+glm  0.4089651 0.4618298 0.5437450 0.5422902 0.5965776 0.7194805    0
+lda  0.4089651 0.4813245 0.5289861 0.5354745 0.5818465 0.6760925    0
+cart 0.4735376 0.4938285 0.5394226 0.5521529 0.6038197 0.6811989    0
+knn  0.2163588 0.2402857 0.3006429 0.3207560 0.4015246 0.4557299    0
+svm  0.4359673 0.4880142 0.5751834 0.5558522 0.5867673 0.6811989    0
+rf   0.3922078 0.5734692 0.5917658 0.5953334 0.6572447 0.7468031    0
+
+> 
+> # compare accuracy of models
+> dotplot(results)
+> 
+> # summarize Best Model
+> print(fit.rf)
+Random Forest 
+
+891 samples
+  6 predictor
+  2 classes: '0', '1' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 802, 802, 802, 802, 801, 802, ... 
+Resampling results across tuning parameters:
+
+  mtry  Accuracy   Kappa    
+  2     0.8103328  0.5756316
+  5     0.8114808  0.5953334
+  8     0.8114553  0.5971229
+
+Accuracy was used to select the optimal model using the largest value.
+The final value used for the model was mtry = 5.
+> 
+> # prediction 
+> predictedval <- predict(fit.rf, newdata=DstTrainTest)
+> 
+> # set the Survived variable
+> #predict.Survived <- ifelse(predictedval > 0.5, 1, 0)
+> #predict.Survived <- as.integer(predict.Survived)
+> 
+> # summarize results with confusion matrix
+> cm <- confusionMatrix(predictedval, DstTrain$Survived)
+Error: `data` and `reference` should be factors with the same levels.
+Execution halted

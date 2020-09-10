@@ -1,0 +1,349 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> library(rpart)
+> library(rpart.plot)
+> 
+> 
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> system("ls ../input")
+gender_submission.csv
+test.csv
+train.csv
+> 
+> # Any results you write to the current directory are saved as output.library(ggplot2)
+> 
+> 
+> dat=read.csv("../input/train.csv")
+> 
+> colSums(is.na(dat))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0         177 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0           0           0 
+> 
+> summary(dat)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked
+            :687    :  2   
+ B96 B98    :  4   C:168   
+ C23 C25 C27:  4   Q: 77   
+ G6         :  4   S:644   
+ C22 C26    :  3           
+ D          :  3           
+ (Other)    :186           
+> str(dat)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> # variable showing total family size
+> dat$familySize=dat$SibSp+dat$Parch
+> ggplot(dat,aes(x=familySize,fill=Survived==1))+geom_bar(position="fill")+ggtitle("Survival rate by Family Size(discrete)")+ylab("Prob of survival")
+> 
+> #converting family size into categorical based on survival rates as single,small,medium,large
+> dat$familySize=ifelse(dat$familySize>6,"large",ifelse(dat$familySize>3,"medium",ifelse(dat$familySize>0,"small","single")))
+> ggplot(dat,aes(x=familySize,fill=Survived==1))+geom_bar(position="fill")+ggtitle("Survival rate by Family Size(categorical)")+ylab("Prob of survival")
+> 
+> # deriving variable title from name
+> nam=dat$Name
+> head(nam)
+[1] Braund, Mr. Owen Harris                            
+[2] Cumings, Mrs. John Bradley (Florence Briggs Thayer)
+[3] Heikkinen, Miss. Laina                             
+[4] Futrelle, Mrs. Jacques Heath (Lily May Peel)       
+[5] Allen, Mr. William Henry                           
+[6] Moran, Mr. James                                   
+891 Levels: Abbing, Mr. Anthony ... Zimmerman, Mr. Leo
+> title=gsub("(.*,)|(\\..*)","",nam)
+> head(title)
+[1] " Mr"   " Mrs"  " Miss" " Mrs"  " Mr"   " Mr"  
+> unique(title)
+ [1] " Mr"           " Mrs"          " Miss"         " Master"      
+ [5] " Don"          " Rev"          " Dr"           " Mme"         
+ [9] " Ms"           " Major"        " Lady"         " Sir"         
+[13] " Mlle"         " Col"          " Capt"         " the Countess"
+[17] " Jonkheer"    
+> table(title)
+title
+         Capt           Col           Don            Dr      Jonkheer 
+            1             2             1             7             1 
+         Lady         Major        Master          Miss          Mlle 
+            1             2            40           182             2 
+          Mme            Mr           Mrs            Ms           Rev 
+            1           517           125             1             6 
+          Sir  the Countess 
+            1             1 
+> dat=data.frame(dat,title)
+> 
+> dat$title=gsub("Mme","Mrs",dat$title)
+> dat$title=gsub("Mlle","Miss",dat$title)
+> dat$title=gsub("Ms","Miss",dat$title)
+> dat$title=gsub("Lady","hon",dat$title)
+> dat$title=gsub("Sir","hon",dat$title)
+> dat$title=gsub("Don","hon",dat$title)
+> dat$title=gsub("Jonkheer","hon",dat$title)
+> dat$title=gsub("the Countess","hon",dat$title)
+> dat$title=gsub("Capt","hon",dat$title)
+> dat$title=gsub("Col","hon",dat$title)
+> dat$title=gsub("Major","hon",dat$title)
+> dat$title=gsub("Dr","hon",dat$title)
+> 
+> ggplot(dat,aes(x=title,fill=Survived==1))+geom_bar(position = "fill")+ggtitle("Survival rate by Title")+ylab("Prob of survival")
+> 
+> 
+> 
+> # missing value imputation for variable 'embarked' by subtituting for most common port of embarkation
+> index=which(is.na(dat$Embarked))
+> index
+integer(0)
+> dat$Embarked[index]="S"
+> 
+> dat$Survived=as.factor(dat$Survived)
+> dat$Pclass=as.factor(dat$Pclass)
+> 
+> 
+> # Survival modeling on tarining dataset with decision tree algorithm
+> 
+> modd=rpart(Survived~.,data = dat[,-c(1, 4, 7, 8, 9, 11)],method="class")
+> printcp(modd)
+
+Classification tree:
+rpart(formula = Survived ~ ., data = dat[, -c(1, 4, 7, 8, 9, 
+    11)], method = "class")
+
+Variables actually used in tree construction:
+[1] Age        familySize Fare       Pclass     title     
+
+Root node error: 342/891 = 0.38384
+
+n= 891 
+
+        CP nsplit rel error  xerror     xstd
+1 0.450292      0   1.00000 1.00000 0.042446
+2 0.054094      1   0.54971 0.55556 0.035750
+3 0.013645      3   0.44152 0.46199 0.033336
+4 0.010000      6   0.40058 0.48830 0.034061
+> modd1=prune(modd,cp=0.01)
+> prp(modd1)
+Warning message:
+Bad 'data' field in model 'call' (expected a data.frame or a matrix).
+To silence this warning:
+    Call prp with roundint=FALSE,
+    or rebuild the rpart model with model=TRUE. 
+> modd1
+n= 891 
+
+node), split, n, loss, yval, (yprob)
+      * denotes terminal node
+
+  1) root 891 342 0 (0.61616162 0.38383838)  
+    2) title= Mr, Rev 523  81 0 (0.84512428 0.15487572) *
+    3) title= hon, Master, Miss, Mrs 368 107 1 (0.29076087 0.70923913)  
+      6) Pclass=3 172  83 0 (0.51744186 0.48255814)  
+       12) familySize=large,medium 45   4 0 (0.91111111 0.08888889) *
+       13) familySize=single,small 127  48 1 (0.37795276 0.62204724)  
+         26) Age>=16.5 95  43 1 (0.45263158 0.54736842)  
+           52) Fare>=7.8875 58  26 0 (0.55172414 0.44827586)  
+            104) Fare< 14.8729 32   9 0 (0.71875000 0.28125000) *
+            105) Fare>=14.8729 26   9 1 (0.34615385 0.65384615) *
+           53) Fare< 7.8875 37  11 1 (0.29729730 0.70270270) *
+         27) Age< 16.5 32   5 1 (0.15625000 0.84375000) *
+      7) Pclass=1,2 196  18 1 (0.09183673 0.90816327) *
+> 
+> 
+> # reading the test dataset 
+> 
+> test=read.csv("../input/test.csv")
+> 
+> str(test)
+'data.frame':	418 obs. of  11 variables:
+ $ PassengerId: int  892 893 894 895 896 897 898 899 900 901 ...
+ $ Pclass     : int  3 3 2 3 3 3 3 2 3 3 ...
+ $ Name       : Factor w/ 418 levels "Abbott, Master. Eugene Joseph",..: 210 409 273 414 182 370 85 58 5 104 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 2 2 1 2 1 2 1 2 ...
+ $ Age        : num  34.5 47 62 27 22 14 30 26 18 21 ...
+ $ SibSp      : int  0 1 0 0 1 0 0 1 0 2 ...
+ $ Parch      : int  0 0 0 0 1 0 0 1 0 0 ...
+ $ Ticket     : Factor w/ 363 levels "110469","110489",..: 153 222 74 148 139 262 159 85 101 270 ...
+ $ Fare       : num  7.83 7 9.69 8.66 12.29 ...
+ $ Cabin      : Factor w/ 77 levels "","A11","A18",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 2 3 2 3 3 3 2 3 1 3 ...
+> test$Pclass=as.factor(test$Pclass)
+> 
+> # creating variable familysize in test dataset
+> test$familySize=test$SibSp+test$Parch
+> test$familySize=ifelse(test$familySize>6,"large",ifelse(test$familySize>3,"medium",ifelse(test$familySize>0,"small","single")))
+> colSums(is.na(test))
+PassengerId      Pclass        Name         Sex         Age       SibSp 
+          0           0           0           0          86           0 
+      Parch      Ticket        Fare       Cabin    Embarked  familySize 
+          0           0           1           0           0           0 
+> 
+> # missing value imputation for fare
+> ind=which(is.na(test$Fare))
+> test$Pclass[ind]
+[1] 3
+Levels: 1 2 3
+> aggregate(Fare~Pclass,test,mean)
+  Pclass     Fare
+1      1 94.28030
+2      2 22.20210
+3      3 12.45968
+> test$Fare[ind]=12.4597
+> 
+> 
+> # creating variable title in test dataset
+> nam1=test$Name
+> head(nam1)
+[1] Kelly, Mr. James                            
+[2] Wilkes, Mrs. James (Ellen Needs)            
+[3] Myles, Mr. Thomas Francis                   
+[4] Wirz, Mr. Albert                            
+[5] Hirvonen, Mrs. Alexander (Helga E Lindqvist)
+[6] Svensson, Mr. Johan Cervin                  
+418 Levels: Abbott, Master. Eugene Joseph ... Zakarian, Mr. Ortin
+> title=gsub("(.*,)|(\\..*)","",nam1)
+> head(title)
+[1] " Mr"  " Mrs" " Mr"  " Mr"  " Mrs" " Mr" 
+> unique(title)
+[1] " Mr"     " Mrs"    " Miss"   " Master" " Ms"     " Col"    " Rev"   
+[8] " Dr"     " Dona"  
+> table(title)
+title
+    Col    Dona      Dr  Master    Miss      Mr     Mrs      Ms     Rev 
+      2       1       1      21      78     240      72       1       2 
+> test=data.frame(test,title)
+> unique(test$title)
+[1]  Mr      Mrs     Miss    Master  Ms      Col     Rev     Dr      Dona  
+Levels:  Col  Dona  Dr  Master  Miss  Mr  Mrs  Ms  Rev
+> test$title=gsub("Mme","Mrs",test$title)
+> test$title=gsub("Mlle","Miss",test$title)
+> test$title=gsub("Ms","Miss",test$title)
+> test$title=gsub("Lady","hon",test$title)
+> test$title=gsub("Sir","hon",test$title)
+> test$title=gsub("Dona","hon",test$title)
+> test$title=gsub("Jonkheer","hon",test$title)
+> test$title=gsub("the Countess","hon",test$title)
+> test$title=gsub("Capt","hon",test$title)
+> test$title=gsub("Col","hon",test$title)
+> test$title=gsub("Major","hon",test$title)
+> test$title=gsub("Dr","hon",test$title)
+> 
+> 
+> #predicting survival using the decision tree model
+> Survived=predict(modd1,type = "class",newdata = test)
+> Survived
+  1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20 
+  0   1   0   0   0   0   1   0   1   0   0   0   1   0   1   1   0   0   0   1 
+ 21  22  23  24  25  26  27  28  29  30  31  32  33  34  35  36  37  38  39  40 
+  0   1   1   0   1   0   1   0   0   0   0   0   1   1   0   0   0   0   0   0 
+ 41  42  43  44  45  46  47  48  49  50  51  52  53  54  55  56  57  58  59  60 
+  0   0   0   1   1   0   0   0   1   1   0   0   1   1   0   0   0   0   0   1 
+ 61  62  63  64  65  66  67  68  69  70  71  72  73  74  75  76  77  78  79  80 
+  0   0   0   1   1   1   1   0   0   1   1   0   0   0   1   0   0   1   0   1 
+ 81  82  83  84  85  86  87  88  89  90  91  92  93  94  95  96  97  98  99 100 
+  1   0   0   0   0   0   1   0   1   1   0   0   1   0   0   0   1   0   1   0 
+101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119 120 
+  1   0   0   0   1   0   0   0   0   0   0   1   1   1   1   0   0   1   0   1 
+121 122 123 124 125 126 127 128 129 130 131 132 133 134 135 136 137 138 139 140 
+  1   0   1   0   0   1   0   1   0   0   0   1   0   0   0   0   0   0   0   0 
+141 142 143 144 145 146 147 148 149 150 151 152 153 154 155 156 157 158 159 160 
+  0   1   0   0   0   0   0   0   0   0   1   0   0   0   0   0   1   1   0   0 
+161 162 163 164 165 166 167 168 169 170 171 172 173 174 175 176 177 178 179 180 
+  1   1   1   0   0   1   0   0   1   0   0   0   0   0   0   1   1   0   1   1 
+181 182 183 184 185 186 187 188 189 190 191 192 193 194 195 196 197 198 199 200 
+  0   0   1   0   1   0   1   0   0   0   0   0   1   0   1   0   1   1   0   0 
+201 202 203 204 205 206 207 208 209 210 211 212 213 214 215 216 217 218 219 220 
+  1   1   1   1   0   0   1   0   1   0   0   0   0   1   0   0   1   0   1   0 
+221 222 223 224 225 226 227 228 229 230 231 232 233 234 235 236 237 238 239 240 
+  1   0   1   0   1   1   0   1   0   0   0   1   0   0   0   0   0   0   1   1 
+241 242 243 244 245 246 247 248 249 250 251 252 253 254 255 256 257 258 259 260 
+  1   1   0   0   1   0   1   0   1   0   1   0   0   0   0   0   0   0   1   0 
+261 262 263 264 265 266 267 268 269 270 271 272 273 274 275 276 277 278 279 280 
+  0   0   1   1   0   0   0   0   0   0   0   0   1   1   0   1   0   0   0   0 
+281 282 283 284 285 286 287 288 289 290 291 292 293 294 295 296 297 298 299 300 
+  0   1   1   1   1   0   0   0   0   0   0   1   0   1   0   0   1   0   0   0 
+301 302 303 304 305 306 307 308 309 310 311 312 313 314 315 316 317 318 319 320 
+  0   0   0   0   1   1   0   1   0   0   0   0   0   1   1   1   0   0   0   0 
+321 322 323 324 325 326 327 328 329 330 331 332 333 334 335 336 337 338 339 340 
+  0   0   0   0   1   0   1   0   0   0   1   0   0   1   0   0   0   0   0   1 
+341 342 343 344 345 346 347 348 349 350 351 352 353 354 355 356 357 358 359 360 
+  0   0   0   1   1   1   0   1   0   1   1   0   0   0   1   0   1   0   0   1 
+361 362 363 364 365 366 367 368 369 370 371 372 373 374 375 376 377 378 379 380 
+  0   1   1   0   1   0   0   1   1   0   0   1   0   0   1   1   0   0   0   0 
+381 382 383 384 385 386 387 388 389 390 391 392 393 394 395 396 397 398 399 400 
+  0   0   0   1   0   1   0   0   0   0   0   1   1   0   0   1   0   1   0   0 
+401 402 403 404 405 406 407 408 409 410 411 412 413 414 415 416 417 418 
+  1   0   1   0   0   0   0   0   1   1   1   1   1   0   1   0   0   1 
+Levels: 0 1
+> PassengerId=test$PassengerId
+> result=data.frame(PassengerId,Survived)
+> 
+> write.csv(result,"Submission_Fin.csv",row.names = F)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  1.231   0.096   1.374 

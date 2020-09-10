@@ -1,0 +1,208 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> # machine learning - Titanic Dataset
+> library('ggplot2')
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library('caret')
+Loading required package: lattice
+> library('mice')
+
+Attaching package: ‘mice’
+
+The following objects are masked from ‘package:base’:
+
+    cbind, rbind
+
+Warning message:
+package ‘mice’ was built under R version 3.6.2 
+> library('dplyr')
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> 
+> train <- read.csv("../input/train.csv", na.strings = c("", "NA"))
+> test <- read.csv("../input/test.csv")
+> 
+> # exploring data
+> summary(train)
+  PassengerId       Survived          Pclass     
+ Min.   :  1.0   Min.   :0.0000   Min.   :1.000  
+ 1st Qu.:223.5   1st Qu.:0.0000   1st Qu.:2.000  
+ Median :446.0   Median :0.0000   Median :3.000  
+ Mean   :446.0   Mean   :0.3838   Mean   :2.309  
+ 3rd Qu.:668.5   3rd Qu.:1.0000   3rd Qu.:3.000  
+ Max.   :891.0   Max.   :1.0000   Max.   :3.000  
+                                                 
+                                    Name         Sex           Age       
+ Abbing, Mr. Anthony                  :  1   female:314   Min.   : 0.42  
+ Abbott, Mr. Rossmore Edward          :  1   male  :577   1st Qu.:20.12  
+ Abbott, Mrs. Stanton (Rosa Hunt)     :  1                Median :28.00  
+ Abelson, Mr. Samuel                  :  1                Mean   :29.70  
+ Abelson, Mrs. Samuel (Hannah Wizosky):  1                3rd Qu.:38.00  
+ Adahl, Mr. Mauritz Nils Martin       :  1                Max.   :80.00  
+ (Other)                              :885                NA's   :177    
+     SibSp           Parch             Ticket         Fare       
+ Min.   :0.000   Min.   :0.0000   1601    :  7   Min.   :  0.00  
+ 1st Qu.:0.000   1st Qu.:0.0000   347082  :  7   1st Qu.:  7.91  
+ Median :0.000   Median :0.0000   CA. 2343:  7   Median : 14.45  
+ Mean   :0.523   Mean   :0.3816   3101295 :  6   Mean   : 32.20  
+ 3rd Qu.:1.000   3rd Qu.:0.0000   347088  :  6   3rd Qu.: 31.00  
+ Max.   :8.000   Max.   :6.0000   CA 2144 :  6   Max.   :512.33  
+                                  (Other) :852                   
+         Cabin     Embarked  
+ B96 B98    :  4   C   :168  
+ C23 C25 C27:  4   Q   : 77  
+ G6         :  4   S   :644  
+ C22 C26    :  3   NA's:  2  
+ D          :  3             
+ (Other)    :186             
+ NA's       :687             
+> # 60% of first class pass. have survived, and third class only a quarter
+> tapply(train$Survived,train$Pclass,mean)
+        1         2         3 
+0.6296296 0.4728261 0.2423625 
+> # sex variable is a strong predictor, due the difference between male/female survivors
+> msex <- matrix(c(length(train$Sex[train$Survived=="0" & train$Sex == "male"]),
++                  length(train$Sex[train$Survived=="1" & train$Sex == "male"]),
++                  length(train$Sex[train$Survived=="0" & train$Sex == "female"]),
++                  length(train$Sex[train$Survived=="1" & train$Sex == "female"])), nrow = 2, ncol =2)
+> colnames(msex) <- c("male","female")
+> rownames(msex) <- c("0", "1")
+> barplot(msex)
+> # apparently column Age, even when combined with Sex, seems not to be a strong predictor, as thought
+> df.sexage <- data.frame(Sex = train$Sex, Age = train$Age, Survived = train$Survived)
+> list.sexage <- split(df.sexage,df.sexage[, c("Sex","Survived")])
+> boxplot(list.sexage[[1]]$Age, list.sexage[[3]]$Age, list.sexage[[2]]$Age, list.sexage[[4]]$Age, ylab = "Age", names = names(list.sexage), col = topo.colors(4))
+> legend("topleft", legend = c("female - died","female - survived","male - died","male - survived" ), fill = topo.colors(4))
+> # Embarked variable equals "Q" and "C" have 33~38% of survived = 1, and Embarked equals "C" almost half.
+> tapply(train$Survived,train$Embarked,mean)
+        C         Q         S 
+0.5535714 0.3896104 0.3369565 
+> # SibSp and Parch variables seem to predict better if values are grater than 2/3
+> plot(train$SibSp, col = as.factor(train$Survived), pch = 19)
+> plot(train$Parch, col = as.factor(train$Survived), pch = 19)
+> 
+> #removing non predictors
+> training <- subset(train, select = -c(PassengerId, Name, Ticket, Cabin))
+> training$Pclass <- as.factor(training$Pclass)
+> 
+> # dealing with nanvalues
+> c(sum(is.na(train$Survived)),sum(is.na(train$Pclass)),sum(is.na(train$Sex)),sum(is.na(train$Age)),
++   sum(is.na(train$SibSp)),sum(is.na(train$Parch)),sum(is.na(train$Fare)),sum(is.na(train$Embarked)))
+[1]   0   0   0 177   0   0   0   2
+> # Apparently only Age and Embarked variables have NaN values
+> # Age has significant NaN, Embarked only 2 rows
+> nanEmb <- is.na(training$Embarked)
+> training <- training[!nanEmb ,]
+> 
+> # Imputing missing Age/Fare values (test and train data)
+> # This code algo standardizes the values of Age and Fare
+> training.t <- select(training, -(Survived))
+> preObj <- preProcess(training.t, method = "knnImpute")
+> age <- predict(preObj, training.t)$Age
+> age.test <- predict(preObj, test)$Age
+> fare <- predict(preObj, training.t)$Fare
+> fare.test <- predict(preObj, test)$Fare
+> # plot(density(age, na.rm = TRUE), main = "Density for age values before/after imputation [train]")
+> # lines(density(training$Age, na.rm = TRUE), col = "blue")
+> # legend("topright", legend = c("Imputed data","Original data"), fill = c("black","blue"))
+> # plot(density(age.test, na.rm = TRUE), main = "Density for age values before/after imputation [test]")
+> # lines(density(test$Age, na.rm = TRUE), col = "blue")
+> # legend("topright", legend = c("Imputed data","Original data"), fill = c("black","blue"))
+> training$Age <- age
+> training$Fare <- fare
+> test$Age <- age.test
+> test$Fare <- fare.test
+> 
+> #making some dummies for test and training data
+> dummies <- dummyVars( ~., data=training)
+> training <- data.frame((predict(dummies, newdata = training)))
+> test$Pclass <- as.factor(test$Pclass)
+> dummies.test <- dummyVars( ~., subset(test, select = -c(Name, Ticket, Cabin)))
+> testing <- data.frame((predict(dummies.test, newdata = subset(test, select = -c(Name, Ticket, Cabin)))))
+> 
+> # Random Forest Model (caret)
+> inTrain <- createDataPartition(y=training$Survived, p=0.7, list = FALSE)
+> trainingRF <- training[inTrain,]
+> testingRF <- training[-inTrain,]
+> 
+> rf_model <- train(factor(Survived) ~., data = trainingRF, method = "rf", prox = TRUE)
+> predRF<-predict(rf_model, testingRF)
+> table(predRF,testingRF$Survived)
+      
+predRF   0   1
+     0 140  34
+     1  21  71
+> 
+> df<-as.data.frame(table(predRF,testingRF$Survived))
+> df<-data.frame(Predicted = df$predRF, Actual = df$Var2, Freq = df$Freq)
+> 
+> # Plotting confusion matrix
+> ggplot(data =  df, mapping = aes(x = df$Actual, y = df$Predicted)) +
++     geom_tile(aes(fill = df$Freq), colour = "white") +
++     geom_text(aes(label = sprintf("%0.2f", df$Freq)), vjust = 1) +
++     scale_fill_gradient(low = "blue", high = "red") +
++     theme_bw() + theme(legend.position = "none") +
++     ggtitle("Random Forest- prediction [%]") + xlab("Actual") + ylab("Predicted")
+Warning messages:
+1: Use of `df$Freq` is discouraged. Use `Freq` instead. 
+2: Use of `df$Actual` is discouraged. Use `Actual` instead. 
+3: Use of `df$Predicted` is discouraged. Use `Predicted` instead. 
+4: Use of `df$Freq` is discouraged. Use `Freq` instead. 
+5: Use of `df$Actual` is discouraged. Use `Actual` instead. 
+6: Use of `df$Predicted` is discouraged. Use `Predicted` instead. 
+> 
+> # Plotting importance of predictors
+> importance <- varImp(rf_model$finalModel)
+> importance <- data.frame(Predictor = rownames(importance), Value = importance$Overall)
+> importance <- importance[order(importance$Value, decreasing = TRUE),]
+> bp <- barplot(importance$Value, names.arg = importance$Predictor, ylab = "[%]")
+> text(x = bp, y = importance$Value, label = round(importance$Value), pos = 1, cex = 0.8)
+> 
+> # prediction for test matrix
+> predRF.test<-predict(rf_model, testing)
+> 
+> # saving prediction data.frame
+> prediction <- data.frame(PassengerID = test$PassengerId, Survived = predRF.test)
+> write.csv(prediction, file = 'prediction_test.csv', row.names = F)
+> 
+> # observation:
+> # doing the same preprocess but changing the model, GBM 
+> # GBM_model <- train(factor(Survived) ~., data = trainingGBM, method = "gbm")
+> # the result is, practically the same, ~76% score
+> # after standardizing Age and Fare predictors, score increased to 77$
+> # after doing some dummies, score remains pratically the same
+> 
+> proc.time()
+   user  system elapsed 
+ 37.135   1.004  38.645 

@@ -1,0 +1,468 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> 
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> system("ls ../input")
+gender_submission.csv
+test.csv
+train.csv
+> 
+> # Any results you write to the current directory are saved as output.
+> 
+> #read data
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mpurrr  [39m 0.3.4     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘tibble’ was built under R version 3.6.2 
+2: package ‘tidyr’ was built under R version 3.6.2 
+3: package ‘purrr’ was built under R version 3.6.2 
+4: package ‘dplyr’ was built under R version 3.6.2 
+> trainT <-
++   read_csv(file = "../input/train.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> testT <-
++   read_csv(file = "../input/test.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> glimpse(trainT)
+Rows: 891
+Columns: 12
+$ PassengerId [3m[90m<dbl>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+$ Survived    [3m[90m<dbl>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+$ Pclass      [3m[90m<dbl>[39m[23m 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Braund, Mr. Owen Harris", "Cumings, Mrs. John Bradley (F…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "female", "female", "male", "male", "ma…
+$ Age         [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+$ SibSp       [3m[90m<dbl>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+$ Parch       [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "A/5 21171", "PC 17599", "STON/O2. 3101282", "113803", "3…
+$ Fare        [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+$ Cabin       [3m[90m<chr>[39m[23m NA, "C85", NA, "C123", NA, NA, "E46", NA, NA, NA, "G6", "…
+$ Embarked    [3m[90m<chr>[39m[23m "S", "C", "S", "S", "S", "Q", "S", "S", "S", "C", "S", "S…
+> glimpse(testT)
+Rows: 418
+Columns: 11
+$ PassengerId [3m[90m<dbl>[39m[23m 892, 893, 894, 895, 896, 897, 898, 899, 900, 901, 902, 90…
+$ Pclass      [3m[90m<dbl>[39m[23m 3, 3, 2, 3, 3, 3, 3, 2, 3, 3, 3, 1, 1, 2, 1, 2, 2, 3, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Kelly, Mr. James", "Wilkes, Mrs. James (Ellen Needs)", "…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "male", "male", "female", "male", "fema…
+$ Age         [3m[90m<dbl>[39m[23m 34.5, 47.0, 62.0, 27.0, 22.0, 14.0, 30.0, 26.0, 18.0, 21.…
+$ SibSp       [3m[90m<dbl>[39m[23m 0, 1, 0, 0, 1, 0, 0, 1, 0, 2, 0, 0, 1, 1, 1, 1, 0, 0, 1, …
+$ Parch       [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "330911", "363272", "240276", "315154", "3101298", "7538"…
+$ Fare        [3m[90m<dbl>[39m[23m 7.8292, 7.0000, 9.6875, 8.6625, 12.2875, 9.2250, 7.6292, …
+$ Cabin       [3m[90m<chr>[39m[23m NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, "B45", NA…
+$ Embarked    [3m[90m<chr>[39m[23m "Q", "S", "Q", "S", "S", "S", "Q", "S", "C", "S", "S", "S…
+> testT$Survived <- NA
+> testT$Survived <- as.integer(testT$Survived)
+> t <- testT[, c(1, 12, 2:11)]
+> testT <- t
+> trainT$set <- "training"
+> testT$set <- "test"
+> cmbT_new <- rbind(trainT, testT)
+> glimpse(cmbT_new)
+Rows: 1,309
+Columns: 13
+$ PassengerId [3m[90m<dbl>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+$ Survived    [3m[90m<dbl>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+$ Pclass      [3m[90m<dbl>[39m[23m 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Braund, Mr. Owen Harris", "Cumings, Mrs. John Bradley (F…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "female", "female", "male", "male", "ma…
+$ Age         [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+$ SibSp       [3m[90m<dbl>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+$ Parch       [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "A/5 21171", "PC 17599", "STON/O2. 3101282", "113803", "3…
+$ Fare        [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+$ Cabin       [3m[90m<chr>[39m[23m NA, "C85", NA, "C123", NA, NA, "E46", NA, NA, NA, "G6", "…
+$ Embarked    [3m[90m<chr>[39m[23m "S", "C", "S", "S", "S", "Q", "S", "S", "S", "C", "S", "S…
+$ set         [3m[90m<chr>[39m[23m "training", "training", "training", "training", "training…
+> summary(cmbT_new)
+  PassengerId      Survived          Pclass          Name          
+ Min.   :   1   Min.   :0.0000   Min.   :1.000   Length:1309       
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median : 655   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295                     
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :1309   Max.   :1.0000   Max.   :3.000                     
+                NA's   :418                                        
+     Sex                 Age            SibSp            Parch      
+ Length:1309        Min.   : 0.17   Min.   :0.0000   Min.   :0.000  
+ Class :character   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000  
+ Mode  :character   Median :28.00   Median :0.0000   Median :0.000  
+                    Mean   :29.88   Mean   :0.4989   Mean   :0.385  
+                    3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000  
+                    Max.   :80.00   Max.   :8.0000   Max.   :9.000  
+                    NA's   :263                                     
+    Ticket               Fare            Cabin             Embarked        
+ Length:1309        Min.   :  0.000   Length:1309        Length:1309       
+ Class :character   1st Qu.:  7.896   Class :character   Class :character  
+ Mode  :character   Median : 14.454   Mode  :character   Mode  :character  
+                    Mean   : 33.295                                        
+                    3rd Qu.: 31.275                                        
+                    Max.   :512.329                                        
+                    NA's   :1                                              
+     set           
+ Length:1309       
+ Class :character  
+ Mode  :character  
+                   
+                   
+                   
+                   
+> 
+> cmbT_new$Sex <- as.factor(cmbT_new$Sex)
+> cmbT_new$Embarked <- as.factor(cmbT_new$Embarked)
+> cmbT_new$Survived <- as.factor(cmbT_new$Survived)
+> cmbT_new %>%
++   filter(set == "training") %>%
++   select(Survived) %>% table() %>%
++   addmargins()
+.
+  0   1 Sum 
+549 342 891 
+> 
+> cmbT_new %>%
++   filter(set == "training") %>%
++   select(Survived) %>% table() %>%
++   prop.table() %>%
++   addmargins()
+.
+        0         1       Sum 
+0.6161616 0.3838384 1.0000000 
+> 
+> summary(cmbT_new)
+  PassengerId   Survived       Pclass          Name               Sex     
+ Min.   :   1   0   :549   Min.   :1.000   Length:1309        female:466  
+ 1st Qu.: 328   1   :342   1st Qu.:2.000   Class :character   male  :843  
+ Median : 655   NA's:418   Median :3.000   Mode  :character               
+ Mean   : 655              Mean   :2.295                                  
+ 3rd Qu.: 982              3rd Qu.:3.000                                  
+ Max.   :1309              Max.   :3.000                                  
+                                                                          
+      Age            SibSp            Parch          Ticket         
+ Min.   : 0.17   Min.   :0.0000   Min.   :0.000   Length:1309       
+ 1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000   Class :character  
+ Median :28.00   Median :0.0000   Median :0.000   Mode  :character  
+ Mean   :29.88   Mean   :0.4989   Mean   :0.385                     
+ 3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000                     
+ Max.   :80.00   Max.   :8.0000   Max.   :9.000                     
+ NA's   :263                                                        
+      Fare            Cabin           Embarked       set           
+ Min.   :  0.000   Length:1309        C   :270   Length:1309       
+ 1st Qu.:  7.896   Class :character   Q   :123   Class :character  
+ Median : 14.454   Mode  :character   S   :914   Mode  :character  
+ Mean   : 33.295                      NA's:  2                     
+ 3rd Qu.: 31.275                                                   
+ Max.   :512.329                                                   
+ NA's   :1                                                         
+> 
+> cabinIntial <- ((str_extract(cmbT_new$Cabin, "^.")))
+> cmbT_new$CabinInitial <- cabinIntial
+> cmbT_new$CabinInitial[which(is.na(cmbT_new$CabinInitial))] <- "NoCabin"
+> cmbT_new$CabinInitial <- as.factor(cmbT_new$CabinInitial)
+> 
+> cmbT_new %>% ggplot(aes(x=Embarked, fill=as.factor(Pclass))) + geom_bar(position= "fill")
+> cmbT_new %>%  ggplot(aes(x=Embarked, fill=CabinInitial)) + geom_bar(position= "fill")
+> cmbT_new$Embarked[which(is.na(cmbT_new$Embarked))] <- "C"
+> cmbT_new$Title <- str_extract(cmbT_new$Name, "[A-Z][a-z]+\\.")
+> NameMedAge <-
++   cmbT_new %>% filter(!is.na(Age)) %>% group_by(Title) %>% summarise(med = median(Age))
+`summarise()` ungrouping output (override with `.groups` argument)
+> 
+> plugMedAge <- function(x, NameMedAge) {
++   for (i in 1:nrow(x)) {
++     if (is.na(x$Age[i])) {
++       x$Age[i] <-
++         as.numeric(NameMedAge[which(NameMedAge$Title == x$Title[i]), 2])
++     }
++   }
++   return(x)
++ }
+> cmbT_new <- plugMedAge(cmbT_new, NameMedAge)
+> cmbT_new$FamSize <- cmbT_new$SibSp + cmbT_new$Parch + 1
+> 
+> plugTitleType <- function(x) {
++   if (x %in% c("Capt.", "Col.", "Major.")) {
++     return("officer")
++   } else if (x %in% c("Countess.",
++                       "Don.",
++                       "Dona.",
++                       "Jonkheer.",
++                       "Lady.",
++                       "Mlle.",
++                       "Mme.",
++                       "Sir.")) {
++     return("Royalty")
++   } else if (x %in% c("Dr.")) {
++     return("Professional")
++   } else if (x %in% c("Master.")) {
++     return("boy")
++   } else if (x %in% c("Rev.")) {
++     return("Priest")
++   } else if (x %in% c("Miss.")) {
++     return("Comm_YoungWomen")
++   } else{
++     return("Commoner")
++   }
++ }
+> 
+> cmbT_new$TType <- as.factor(sapply(cmbT_new$Title, plugTitleType))
+> 
+> FamSizeBucket <- function(x) {
++   if (x <= 2) {
++     return("small")
++   }
++   else if (x <= 4) {
++     return("mid")
++   }
++   else if (x <= 8) {
++     return("big")
++   }
++   else{
++     return("vbig")
++   }
++ }
+> cmbT_new$FamSizeCat <- sapply((cmbT_new$Parch + cmbT_new$SibSp + 1), FamSizeBucket)
+> cmbT_new$alone <- sapply(cmbT_new$FamSize, function(x){if(x==1){1}else{0}})
+> 
+> df_fare_evaluation <- cmbT_new %>% filter(cmbT_new$Fare < boxplot.stats(cmbT_new$Fare)$stats[4] & is.na(cmbT_new$Fare) == FALSE )
+> 
+> #df_fare_evaluation_train <- sample_frac(df_fare_evaluation, 0.7 )
+> #df_fare_evaluation_test <- df_fare_evaluation %>% filter(!(PassengerId %in% df_fare_evaluation_train$PassengerId))
+> #names(df_fare_evaluation)
+> 
+> fare_model <- lm(Fare~ Pclass + Sex + Age + FamSize + Embarked +TType, data = df_fare_evaluation)
+> cmbT_new$Fare[which(is.na(cmbT_new$Fare))] <- predict(fare_model, cmbT_new[ which(is.na(cmbT_new$Fare)), ])
+> cmbT_new$FareCat <- cut(cmbT_new$Fare, c(boxplot.stats(cmbT_new$Fare)$stats, max(cmbT_new$Fare)))
+> cmbT_new$FareCat[which(is.na(cmbT_new$FareCat))] <- "(0,7.9]"
+> summary(cmbT_new$FareCat)
+    (0,7.9]  (7.9,14.5] (14.5,31.3]   (31.3,65]    (65,512] 
+        337         321         328         152         171 
+> cmbT_new$Cabin[(which(is.na(cmbT_new$Cabin)))] <- "No Cabin"
+> 
+> cmbT_new %>% ggplot(aes(y=Survived, x = Age, color = Sex)) + geom_jitter(aes(size = Fare, alpha = .00005)) + facet_grid(Pclass ~ Embarked)
+> 
+> #discarding field tht obviouly doesnt cotribute to prediction/outocome (Name, Ticket)
+> tit <- cmbT_new[, -c(4, 9, 15)]
+> x <- data.frame(sapply(tit[which(sapply(tit, is.character))], as.factor))
+> y <- tit[which(!sapply(tit, is.character))]
+> tit <- cbind(y, x)
+> tit$Cabin[(which(is.na(tit$Cabin)))] <- "No Cabin"
+> tit_train <- tit[which(tit$set == "training"), ]
+> tit_train$set <- NULL
+> tit_train$PassengerId <- NULL
+> tit_train$Cabin <- NULL
+> 
+> 
+> tit_test <- tit[which(tit$set == "test"), ]
+> tit_test$set <- NULL
+> 
+> 
+> null_model <- glm(Survived ~ 1 , data = tit_train, family = "binomial")
+> full_model <- glm(Survived ~ . , data = tit_train, family = "binomial")
+> 
+> #cmbT$Cabin <- as.factor(cmbT$Cabin)
+> #cmbT$Ticket <- as.factor(cmbT$Ticket)
+> #cmbT$Name <- as.factor(cmbT$Name)
+> 
+> step_model <- step(null_model, scope = list(lower = null_model, upper = full_model), direction = "forward")
+Start:  AIC=1188.66
+Survived ~ 1
+
+               Df Deviance    AIC
++ Sex           1    917.8  921.8
++ TType         6   1067.2 1081.2
++ Pclass        1   1084.4 1088.4
++ FareCat       4   1093.3 1103.3
++ CabinInitial  8   1088.4 1106.4
++ Fare          1   1117.6 1121.6
++ FamSizeCat    3   1140.3 1148.3
++ alone         1   1150.0 1154.0
++ Embarked      2   1159.3 1165.3
++ Parch         1   1180.8 1184.8
++ Age           1   1182.1 1186.1
+<none>              1186.7 1188.7
++ SibSp         1   1185.5 1189.5
++ FamSize       1   1186.4 1190.4
+
+Step:  AIC=921.8
+Survived ~ Sex
+
+               Df Deviance    AIC
++ Pclass        1   827.20 833.20
++ CabinInitial  8   836.03 856.03
++ FamSizeCat    3   862.31 872.31
++ FareCat       4   874.07 886.07
++ TType         6   873.83 889.83
++ Fare          1   884.31 890.31
++ Embarked      2   897.96 905.96
++ SibSp         1   904.69 910.69
++ FamSize       1   906.13 912.13
++ Parch         1   914.43 920.43
++ alone         1   915.80 921.80
+<none>              917.80 921.80
++ Age           1   917.23 923.23
+
+Step:  AIC=833.2
+Survived ~ Sex + Pclass
+
+               Df Deviance    AIC
++ TType         6   776.79 794.79
++ FamSizeCat    3   788.14 800.14
++ Age           1   803.10 811.10
++ SibSp         1   819.32 827.32
++ FamSize       1   820.30 828.30
++ Embarked      2   820.19 830.19
+<none>              827.20 833.20
++ Parch         1   825.32 833.32
++ CabinInitial  8   812.21 834.21
++ Fare          1   826.67 834.67
++ alone         1   826.94 834.94
++ FareCat       4   826.68 840.68
+
+Step:  AIC=794.79
+Survived ~ Sex + Pclass + TType
+
+               Df Deviance    AIC
++ FamSizeCat    3   723.38 747.38
++ FamSize       1   740.62 760.62
++ SibSp         1   744.99 764.99
++ Parch         1   761.57 781.57
++ Embarked      2   768.77 790.77
++ Age           1   770.85 790.85
++ alone         1   771.35 791.35
+<none>              776.79 794.79
++ Fare          1   776.78 796.78
++ FareCat       4   772.51 798.51
++ CabinInitial  8   765.18 799.18
+
+Step:  AIC=747.38
+Survived ~ Sex + Pclass + TType + FamSizeCat
+
+               Df Deviance    AIC
++ Age           1   716.56 742.56
++ Fare          1   719.24 745.24
+<none>              723.38 747.38
++ Embarked      2   719.86 747.86
++ SibSp         1   722.85 748.85
++ alone         1   722.95 748.95
++ Parch         1   723.04 749.04
++ FamSize       1   723.28 749.28
++ CabinInitial  8   712.18 752.18
++ FareCat       4   721.11 753.11
+
+Step:  AIC=742.56
+Survived ~ Sex + Pclass + TType + FamSizeCat + Age
+
+               Df Deviance    AIC
++ Fare          1   713.05 741.05
+<none>              716.56 742.56
++ Embarked      2   713.28 743.28
++ SibSp         1   715.60 743.60
++ alone         1   715.63 743.63
++ FamSize       1   716.17 744.17
++ Parch         1   716.24 744.24
++ CabinInitial  8   703.09 745.09
++ FareCat       4   714.12 748.12
+
+Step:  AIC=741.05
+Survived ~ Sex + Pclass + TType + FamSizeCat + Age + Fare
+
+               Df Deviance    AIC
+<none>              713.05 741.05
++ alone         1   711.29 741.29
++ SibSp         1   711.97 741.97
++ FamSize       1   712.32 742.32
++ Parch         1   712.88 742.88
++ Embarked      2   710.95 742.95
++ CabinInitial  8   699.76 743.76
++ FareCat       4   710.58 746.58
+> 
+> step_prob <- predict(step_model, type = "response")
+> 
+> library(pROC)
+Type 'citation("pROC")' for a citation.
+
+Attaching package: ‘pROC’
+
+The following objects are masked from ‘package:stats’:
+
+    cov, smooth, var
+
+> ROC <- roc(tit_train$Survived, step_prob)
+Setting levels: control = 0, case = 1
+Setting direction: controls < cases
+> plot(ROC, col = "red")
+> auc(ROC)
+Area under the curve: 0.8806
+> 
+> #confuion matrix on Training set
+> indexTrain <- which((predict(step_model, tit_train, type = "response") < 0.55))
+> SurvivedTrain <- vector(mode="integer", length=nrow(tit_train))
+> SurvivedTrain[indexTrain] <- 0
+> SurvivedTrain[-indexTrain] <- 1
+> 
+> confusionMatrix(as.factor(SurvivedTrain), as.factor(tit_train$Survived))
+Error in confusionMatrix(as.factor(SurvivedTrain), as.factor(tit_train$Survived)) : 
+  could not find function "confusionMatrix"
+Execution halted

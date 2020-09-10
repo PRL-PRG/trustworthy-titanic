@@ -1,0 +1,276 @@
+---
+title: "Titanic EDA Using 'xray' Package"
+output: html_document
+---
+
+To get a sense for the Titanic data set, we are going to do some exploratory 
+data analysis. As part of that, we will use the `xray` package to check 
+for anomalies and look at distributions.
+
+```{r setup, message = FALSE}
+library(tidyverse)
+library(xray)
+library(knitr)
+```
+
+## Data Import
+
+First, we need to import the training and testing data.
+
+```{r import, message = FALSE}
+training <- read_csv("../input/train.csv", progress = FALSE)
+testing <- read_csv("../input/test.csv", progress = FALSE)
+```
+
+Now, let's take a look at the data using `glimpse()`. 
+
+```{r glipse}
+glimpse(training)
+```
+
+We have 12 variables that we will want to look at. According to the data set 
+description from Kaggle, the variables are defined in the following way: 
+
+* PassengerId -- A numerical id for each passenger.
+* Survived -- The response variable as a factor showing survival.
+* Pclass -- The ticket class of the passenger used as a proxy for socio-economic 
+class. This variable is a factor with levels 1 = 1st (Upper Class), 
+2 = 2nd (Middle Class), and 3 = 3rd (Lower Class).
+* Name -- The full name of the passenger with title. Married female passengers 
+appear to have their partner's name listed with their actual name in 
+parentheses.
+* Sex -- A factor showing the sex of the passenger.
+* Age -- The age of the passenger. Estimated ages are given as xx.#. 
+* SibSp -- The number of siblings and spouses the passnger has aboard. 
+* Parch -- The number of parent/children relationships that the passneger has 
+aboard.
+* Ticket -- Ticket number of the passenger.
+* Fare -- The passenger fare. 
+* Cabin -- The passenge cabin number. 
+* Embarked -- The port of embarkation. This is a factor with three levels 
+C = Cherbourg, Q = Queenstown, S = Southampton.
+
+Before we begin the exploration, let's recode the factors with proper levels. 
+
+```{r factoring-training}
+training <- training %>% 
+  mutate(Survived = factor(Survived, 
+                           levels = c(1, 0), 
+                           labels = c("Yes", "No"))) %>% 
+  mutate(Pclass = factor(Pclass, 
+                         levels = c(3, 2, 1), 
+                         labels = c("3rd", "2nd", "1st"), 
+                         ordered = TRUE)) %>% 
+  mutate(Sex = factor(Sex, 
+                      levels = c("male", "female"))) %>% 
+  mutate(Embarked = factor(Embarked, 
+                           levels = c("C", "Q", "S"), 
+                           labels = c("Cherbourg", "Queenstown", "Southampton")))
+```
+
+```{r factoring_testing}
+testing <- testing %>% 
+  mutate(Pclass = factor(Pclass, 
+                         levels = c(3, 2, 1), 
+                         labels = c("3rd", "2nd", "1st"), 
+                         ordered = TRUE)) %>% 
+  mutate(Sex = factor(Sex, 
+                      levels = c("male", "female"))) %>% 
+  mutate(Embarked = factor(Embarked, 
+                           levels = c("C", "Q", "S"), 
+                           labels = c("Cherbourg", "Queenstown", "Southampton")))
+```
+
+## Exploration with `xray`
+
+### Checking Anomalies with `xray`
+
+Now that the data sets have been re-coded with factors, let's take a look for 
+any anomalies in the data set using the `xray` package. The `xray` package 
+gives access to several functions for performing exploratory data analysis. 
+The first one we will use is the `anomalies()` function that returns a data 
+frame summarizing the variables in a provided data frame. 
+
+The function returns summaries for each variable showing:
+
+* The number of observations
+* The number and percentage of observations that are NA
+* The number and percentage of observations that are zero
+* The number and percentage of observations that are blank
+* The number and percentage of observations that are infinite
+* The number of distinct observations
+* The variable type 
+* The percentage of observations that are "anomalous"
+
+This information can give us a starting point to examine the data set and see 
+what variables will be useful for training our models.
+
+```{r xray_anomalies, results = 'asis'}
+xray::anomalies(training)$variables %>% 
+  knitr::kable()
+```
+
+From calculating the anomalies on the training data, we can see that most of 
+the entries in the Cabin variable are NA. There are two options with this 
+entry as we can either remove the Cabin variable entirely or recode all of the 
+NA's as "No Cabin" or some similar value. We will investigate the other two 
+variables with NA's below to see if we can turn them into something useful.
+
+There are also three variables that show a number of zero observations. For the 
+Parch and SibSp variables, this should be fine. This just means that those 
+passengers are traveling without family members. For the fare, we may want to 
+investigate which of the passengers have zero fare as they may be crew members 
+or have some other identifying information.
+
+One interesting point that pops out from the anomalies function is that the 
+Ticket variable has only 681 distinct observations. This means that there must 
+be a few repeat tickets that bears a quick investigation.
+
+Note: As of this writing, the `xray` does not currently support ordered factors. 
+This is why the `Pclass` variable has a class of "Unknown" from the anomalies() 
+function. This will also cause a problem with the distributions() function so 
+we will remove the ordering for that.
+
+### Distributions with `xray`
+
+Next, we will use the `distributions()` function from the `xray` package to 
+visually inspect the variables. This function returns a series of box plots 
+(for categorical variables) and histograms (for numerical variables) along 
+with giving some distributions and breakdowns for the numerical variables. 
+
+For the bar plots, the axis labeled as "Rows" is actually the number of 
+observations of each variable category. For the histograms, the number of 
+observations has been scaled for the associated density plot.
+
+```{r xray_distributions, warning = FALSE, fig.width = 9}
+training %>% 
+  select(-PassengerId, -Name, -Age, -Cabin, -Ticket) %>% 
+  mutate(Pclass = factor(Pclass, ordered = FALSE)) %>% 
+  xray::distributions()
+```
+
+The `distributions()` function gives us a very rough visual tool for inspecting 
+the variables. The function allows us to see some general trends and places 
+that could use further checking. For instance, with this data set, it is clear 
+that the fare is being skewed by large outliers. Both the cabin and ticket 
+variables have many categories with low counts that make them hard to visualize 
+with a bar plot. However, the `distributions()` function works great for the 
+other variables as a means of quick visual analysis.
+
+*Note that the Age variable was removed due to poor interactions with the NA's 
+present. The variables Ticket and Cabin were also removed due to the large 
+numbers of categories present.*
+
+### Thoughts on `xray` package
+
+The functions in the `xray` package provide a simple way to quickly glean some 
+insight from unknown data sets. By letting the user pull out information on the 
+anomalies and distributions of variables, the user is able to easily compare 
+the variables and determine which ones require further investigation. It is a 
+wonderful stepping off point for deeper analysis and I look forward to see the 
+package develop further.
+
+## Further Exploration
+
+The `xray` package has given us a good starting point for some further 
+analysis. We will want to look closer at the Fare and Age variables as there 
+might be further structure hidden due to the outliers and binning choices. We 
+also want to inspect the Age variable for the NAs that are present and see if 
+we can extract anything useful. We may also want to look at the Ticket variable 
+and see if there is a good way to represent the tickets. 
+
+### Fare
+
+If we remove all of the fares above 200 and increase the number of bins to 20, 
+we start to see a more structured distribution. We still get a long tail out 
+to large fares, but we now have a sharp spike at lower fare values with a small 
+pedestal around 20 to 40.
+
+```{r}
+training %>% 
+  filter(Fare <= 200) %>% 
+  ggplot(aes(x = Fare)) + 
+  geom_histogram(bins = 20, color = "white") +
+  theme_bw() +
+  labs(x = "Fare", 
+       y = "Observations")
+```
+
+### Age
+
+We can examine the Age variable further by reproducing the Age histogram from 
+`xray::distributions()`, but increasing the number of bins to 30. From that, 
+we see that the ages are distributed with a slight skew to older ages. There is 
+also a small drop off in younger passnegers from ages 6 to 14.
+
+```{r}
+training %>% 
+  filter(!is.na(Age)) %>% 
+  ggplot(aes(x = Age)) +
+  geom_histogram(bins = 30, color = "white") + 
+  theme_bw() +
+  labs(x = "Age (years old)", 
+       y = "Observations")
+```
+
+Next, we want to explore whether there is any connection between missing Age 
+values and the other variables. Doing a quick visual exploration of the data, 
+most of the missing Age values seem to also be missing Cabin values. Looking at 
+the names, these appear to be passengers from various age ranges as some of 
+the names are women with married names. To further examine, we can use the 
+`xray::distributions()` function again on just the Ages with NA's.
+
+```{r}
+training %>% 
+  filter(is.na(Age)) %>% 
+  mutate(Pclass = factor(Pclass, ordered = FALSE)) %>% 
+  select(-Age, -PassengerId, -Ticket, -Name, -Cabin) %>% 
+  xray::distributions()
+```
+
+From these figures, we can see that many of the Age NA's come from lower 
+class passengers and that a majority of them were male and did not survive. 
+From this, I would say that the observations with Age NA's cannot be ignored. 
+To get around this for modeling, we could try binning the ages and including 
+a bin that contains all the missing ages. According to the data explanation 
+included with this data sets, these missing ages may be estimated ages that 
+did not make it into the Kaggle dataset.
+
+### Ticket
+
+Lastly, I want to take a closer look at the tickets. According to the 
+`xray::anamolies()` function, there are at least few non-unique tickets. Since 
+there are a large number of categories with only a few counts in each, an 
+easier way to model these may be to bin the tickets based on their uniqueness, 
+i.e., is a particular ticket unique to 1 person, 2 people, 3 people, etc. We 
+can examine this by grouping by the Ticket, getting the count per ticket, and 
+then creating a contingency table of the number of counts. 
+
+```{r}
+training %>% 
+  group_by(Ticket) %>% 
+  count() %>% 
+  ungroup() %>% 
+  select(-Ticket) %>% 
+  table()
+```
+
+From the contingency table, we can see that the majority of the tickets are 
+unique, with the next highest being unique to two people. For modeling, we will 
+likely want to collapse 5, 6, and 7 down to a single category of 5+ due to 
+the low counts in those categories.
+
+## Next Steps
+
+Now that we have taken a look at the data, we will next want to clean it and 
+get it in a form that we can send to our models. This may include a few feature 
+transformations as well. Of the cleaning we need to do, removing some of the 
+NA's we found will be the first step. Unfortunately, some of the variables have 
+a large number of NA's so we will need to transform those variables to account 
+for them. 
+
+Some feature transformations that may be useful are splitting the names of 
+passengers apart to get to their titles (Mr., Mrs., Doctor, etc.). Another 
+transformation mentioned above would be to bin the ages, allowing for an 
+"Unknown" bin to handle all the missing ages. The ticket information can also 
+be transformed based on the number of passengers that used the same ticket.

@@ -1,0 +1,200 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # Files located in ../input 
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> 
+> # Train and test data are read in, and combined for easier cleaning
+> train = read.csv("../input/train.csv", stringsAsFactors=FALSE, header = TRUE)
+> test = read.csv("../input/test.csv", stringsAsFactors=FALSE, header = TRUE)
+> train$IsTrain = TRUE
+> test$IsTrain = FALSE
+> test$Survived = NA
+> full = rbind(train, test)
+> # Full columns with NA entries: Age (263/1309), Fare (1/1309), Embarked (2/1309)
+> # The 2 missing Embarked rows (from train) are omitted outright. The 1 missing Fare row from test is made the median
+> full = full[!(full$Embarked == ''),]
+> fare_mean = summary(full$Fare)[4]
+> full[is.na(full$Fare),]$Fare = fare_mean
+> # The many missing Age rows are predicted
+> # TODO: Find significance of training data before creating models
+> age_outlier_filter  = full$Age <  boxplot.stats(full$Age)$stats[5]
+> age_model = lm(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked, data = full[age_outlier_filter,])
+> age_missing = full[is.na(full$Age), c("Pclass", "Sex", "SibSp", "Parch", "Fare", "Embarked")]
+> age_pred = predict(age_model, newdata = age_missing)
+> full[is.na(full$Age), "Age"] = age_pred
+> 
+> # Categorical casting for appropritate predictors
+> full$Pclass = as.factor(full$Pclass)
+> full$Sex = as.factor(full$Sex)
+> #full$SibSp = as.factor(full$SibSp)
+> #full$Parch = as.factor(full$Parch)
+> full$Embarked = as.factor(full$Embarked)
+> 
+> # Split back into cleaned train and test data
+> train = full[full$IsTrain == TRUE,]
+> test = full[full$IsTrain == FALSE,]
+> # The binary classification training response
+> # train$Survived = as.factor(train$Survived)
+> 
+> 
+> 
+> 
+> # Null model
+> logit_model_null = glm(Survived ~ 1, data=train, family = binomial)
+> summary(logit_model_null)
+
+Call:
+glm(formula = Survived ~ 1, family = binomial, data = train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-0.9818  -0.9818  -0.9818   1.3865   1.3865  
+
+Coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -0.47915    0.06901  -6.943 3.84e-12 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1182.8  on 888  degrees of freedom
+Residual deviance: 1182.8  on 888  degrees of freedom
+AIC: 1184.8
+
+Number of Fisher Scoring iterations: 4
+
+> 
+> logit_model_prime = glm(Survived ~ . -(Name + Ticket + Cabin), data = train, family = binomial)
+> summary(logit_model_prime)
+
+Call:
+glm(formula = Survived ~ . - (Name + Ticket + Cabin), family = binomial, 
+    data = train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6800  -0.6164  -0.4098   0.6162   2.4855  
+
+Coefficients: (1 not defined because of singularities)
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  4.278e+00  5.202e-01   8.223  < 2e-16 ***
+PassengerId  7.958e-05  3.489e-04   0.228 0.819603    
+Pclass2     -1.042e+00  3.052e-01  -3.415 0.000638 ***
+Pclass3     -2.335e+00  3.130e-01  -7.460 8.67e-14 ***
+Sexmale     -2.698e+00  2.026e-01 -13.315  < 2e-16 ***
+Age         -4.293e-02  8.300e-03  -5.172 2.32e-07 ***
+SibSp       -3.834e-01  1.077e-01  -3.560 0.000370 ***
+Parch       -8.853e-02  1.204e-01  -0.735 0.462262    
+Fare         2.026e-03  2.464e-03   0.822 0.410970    
+EmbarkedQ   -1.884e-02  3.843e-01  -0.049 0.960900    
+EmbarkedS   -3.987e-01  2.408e-01  -1.656 0.097757 .  
+IsTrainTRUE         NA         NA      NA       NA    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1182.82  on 888  degrees of freedom
+Residual deviance:  781.32  on 878  degrees of freedom
+AIC: 803.32
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> logit_model = glm(Survived ~ Pclass + Sex + Age + SibSp, data = train, family = binomial)
+> summary(logit_model)
+
+Call:
+glm(formula = Survived ~ Pclass + Sex + Age + SibSp, family = binomial, 
+    data = train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.7551  -0.6069  -0.4107   0.6148   2.4556  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  4.281591   0.427723  10.010  < 2e-16 ***
+Pclass2     -1.286355   0.267948  -4.801 1.58e-06 ***
+Pclass3     -2.524126   0.258381  -9.769  < 2e-16 ***
+Sexmale     -2.718233   0.195170 -13.928  < 2e-16 ***
+Age         -0.044534   0.008227  -5.413 6.19e-08 ***
+SibSp       -0.420008   0.102323  -4.105 4.05e-05 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1182.82  on 888  degrees of freedom
+Residual deviance:  786.61  on 883  degrees of freedom
+AIC: 798.61
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> # Anova table
+> anova(logit_model_null, logit_model_prime, logit_model, test="Chisq")
+Analysis of Deviance Table
+
+Model 1: Survived ~ 1
+Model 2: Survived ~ (PassengerId + Pclass + Name + Sex + Age + SibSp + 
+    Parch + Ticket + Fare + Cabin + Embarked + IsTrain) - (Name + 
+    Ticket + Cabin)
+Model 3: Survived ~ Pclass + Sex + Age + SibSp
+  Resid. Df Resid. Dev Df Deviance Pr(>Chi)    
+1       888    1182.82                         
+2       878     781.32 10   401.49   <2e-16 ***
+3       883     786.61 -5    -5.29   0.3818    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+> 
+> logit_prob = predict(logit_model, test, type = "response")
+> logit_pred = rep(0, dim(test)[1])
+> plot(logit_prob)
+> logit_pred[logit_prob > 0.5] = 1
+> 
+> PassengerId = test$PassengerId
+> output_df = as.data.frame(PassengerId)
+> output_df$Survived = logit_pred
+> write.csv(output_df, file = "titanic_logit_submission.csv", row.names = FALSE)
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  1.043   0.094   1.169 

@@ -1,0 +1,34 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # Title: Titanic Kaggle Competition v1
+> # Author: Landon Gibson
+> # Date: 8/29/17
+> #--------------------------------#
+> # Data Import
+> fileurl_train <- "https://storage.googleapis.com/kaggle-competitions-data/kaggle/3136/train.csv?GoogleAccessId=competitions-data@kaggle-161607.iam.gserviceaccount.com&Expires=1504325799&Signature=ZREfojvjBxGz2%2FF4Yu1Kka3j%2BylZLrFiNNgzVOjRJk4XOpKFgV%2BK4eM0fS874l3fXVvg051nUB%2BDsCVORI%2FN3Cgt%2FyE5OLE5zpwpe%2Ff1zWD5JPS91S767g0oRCT%2FEwqfV4Dx2TwIT1dEZXVBfLVL5qlp5lIDJSOnfezs3at%2BhMpGDJUIKzbtnbA%2BLn%2FhRbtZqa%2B8SnhdmwnDOSkxA9ZYDK9QpmITb7liBRgd3DthiTNCp2ajG%2FSwnOgV8Tm%2FNefDKTMtbRgljgMzvpuQ031SomV5iBu8WmIygqxjfib6DhKP4m5t%2FahZzBYIEfY7AmBokiZDNlwtVwOivWDANIXBzA%3D%3D"
+> fileurl_test <- "https://storage.googleapis.com/kaggle-competitions-data/kaggle/3136/test.csv?GoogleAccessId=competitions-data@kaggle-161607.iam.gserviceaccount.com&Expires=1504325924&Signature=hL1wMTmPKV5OYjZqHckFPzc%2BWAbEp0dD4AtzxgaLQXosZaj4dtGlM2PEl0Jq0WNTAZhUIQifGweKJM6qTa8G%2FQgRyRunN%2BQa2hqocGDsQ77wi71CkmOvqKogZL0fMLnU%2Bowd7ww5OBSerpAYXY%2FC8vT5J%2BrVfMAxfXQfyO9w1as%2BV7zUia14TfplOxMJwJQGNib08T8qIpZYjyvSZZcWEvoIKPqpnZBqDqnrxGOOvm%2BDpvWL04ftIg7mIAFOlhxiJ87X%2BQOAHyv9u9HBia2lbjn6h%2BoI8HmF0o6i%2BZs6BK3EyMMEEaE1G5dv02j%2B8%2B%2F9V%2FWukLam2y%2Fx1jMs6D3wKQ%3D%3D"
+> trainSet <- read.delim(fileurl_train, header=T, stringsAsFactors = FALSE, sep = ",")
+Error in file(file, "rt") : 
+  cannot open the connection to 'https://storage.googleapis.com/kaggle-competitions-data/kaggle/3136/train.csv?GoogleAccessId=competitions-data@kaggle-161607.iam.gserviceaccount.com&Expires=1504325799&Signature=ZREfojvjBxGz2%2FF4Yu1Kka3j%2BylZLrFiNNgzVOjRJk4XOpKFgV%2BK4eM0fS874l3fXVvg051nUB%2BDsCVORI%2FN3Cgt%2FyE5OLE5zpwpe%2Ff1zWD5JPS91S767g0oRCT%2FEwqfV4Dx2TwIT1dEZXVBfLVL5qlp5lIDJSOnfezs3at%2BhMpGDJUIKzbtnbA%2BLn%2FhRbtZqa%2B8SnhdmwnDOSkxA9ZYDK9QpmITb7liBRgd3DthiTNCp2ajG%2FSwnOgV8Tm%2FNefDKTMtbRgljgMzvpuQ031SomV5iBu8WmIygqxjfib6DhKP4m5t%2FahZzBYIEfY7AmBokiZDNlwtVwOivWDANIXBzA%3D%3D'
+Calls: read.delim -> read.table -> file
+In addition: Warning message:
+In file(file, "rt") :
+  cannot open URL 'https://storage.googleapis.com/kaggle-competitions-data/kaggle/3136/train.csv?GoogleAccessId=competitions-data@kaggle-161607.iam.gserviceaccount.com&Expires=1504325799&Signature=ZREfojvjBxGz2%2FF4Yu1Kka3j%2BylZLrFiNNgzVOjRJk4XOpKFgV%2BK4eM0fS874l3fXVvg051nUB%2BDsCVORI%2FN3Cgt%2FyE5OLE5zpwpe%2Ff1zWD5JPS91S767g0oRCT%2FEwqfV4Dx2TwIT1dEZXVBfLVL5qlp5lIDJSOnfezs3at%2BhMpGDJUIKzbtnbA%2BLn%2FhRbtZqa%2B8SnhdmwnDOSkxA9ZYDK9QpmITb7liBRgd3DthiTNCp2ajG%2FSwnOgV8Tm%2FNefDKTMtbRgljgMzvpuQ031SomV5iBu8WmIygqxjfib6DhKP4m5t%2FahZzBYIEfY7AmBokiZDNlwtVwOivWDANIXBzA%3D%3D': HTTP status was '400 Bad Request'
+Execution halted

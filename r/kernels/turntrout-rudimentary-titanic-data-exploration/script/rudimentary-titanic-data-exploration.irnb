@@ -1,0 +1,177 @@
+{
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "_cell_guid": "056a7334-bdec-fa6d-c02f-9d92b949928f"
+      },
+      "source": [
+        "To help myself become better acquainted with R, I'll do a basic exploration of the Titanic dataset (taking much of [AiO's notebook][1] and applying it here; any copied code will be commented with my best understanding of what is going on).\n",
+        "\n",
+        "\n",
+        "  [1]: https://www.kaggle.com/notaapple/house-prices-advanced-regression-techniques/detailed-exploratory-data-analysis-using-r"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "_cell_guid": "f930e25a-416d-7dab-35a7-26b7e6a3e8ae"
+      },
+      "outputs": [],
+      "source": [
+        "libraries <- c('readr', 'data.table', 'testthat', 'gridExtra', 'corrplot', 'GGally', 'ggplot2', 'e1071', 'dplyr')\n",
+        "lapply(libraries, require, character.only = TRUE)"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "_cell_guid": "68b4ab6c-6270-173f-1024-2d48cec9a330"
+      },
+      "outputs": [],
+      "source": [
+        "train = read_csv(\"../input/train.csv\")\n",
+        "test = read_csv(\"../input/test.csv\")"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "_cell_guid": "2cc9e64e-4a6e-8de9-ffcc-a90659863eae"
+      },
+      "source": [
+        "## Data Structure ##\n",
+        "\n",
+        "The Titanic train data set comprises 891 passengers and 12 features, including the target feature *Survived*."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "_cell_guid": "61df38f6-3d55-48fa-774a-0c8bcc241bfe"
+      },
+      "outputs": [],
+      "source": [
+        "str(train)"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "_cell_guid": "913973f9-dc41-196d-b056-0a954ebef391"
+      },
+      "source": [
+        "We see that a lot of data is missing from *Cabin* and *Age*, and a few values are missing from *Embarked*."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "_cell_guid": "baa236d7-20b8-d50b-f765-50a53d0281f2"
+      },
+      "outputs": [],
+      "source": [
+        "colSums(sapply(train, is.na))"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "_cell_guid": "6b7735d9-aab3-4c9e-5714-50f5860f1713"
+      },
+      "source": [
+        "Let's explore whether these missing values are for the same passengers."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "_cell_guid": "587dc8d3-a56c-e45c-9f87-96996c6abbb2"
+      },
+      "outputs": [],
+      "source": [
+        "plot_Missing <- function(data_in, title = NULL){\n",
+        "  # create a data frame of the binarized data (0 for missing, 1 for not missing)\n",
+        "  temp_df <- as.data.frame(ifelse(is.na(data_in), 0, 1))\n",
+        "  # order the features by how much data they are missing\n",
+        "  temp_df <- temp_df[,order(colSums(temp_df))]\n",
+        "  # convert data to tileable entity (not sure about these two lines)\n",
+        "  data_temp <- expand.grid(list(x = 1:nrow(temp_df), y = colnames(temp_df)))\n",
+        "  data_temp$m <- as.vector(as.matrix(temp_df))\n",
+        "  # add axis labels\n",
+        "  data_temp <- data.frame(x = unlist(data_temp$x), y = unlist(data_temp$y), m = unlist(data_temp$m))\n",
+        "  # construct the graph\n",
+        "  ggplot(data_temp) + geom_tile(aes(x=x, y=y, fill=factor(m))) + scale_fill_manual(values=c(\"white\", \"black\"), name=\"Missing\\n(0=Yes, 1=No)\") + theme_light() + ylab(\"\") + xlab(\"\") + ggtitle(title)\n",
+        "}\n",
+        "\n",
+        "\n",
+        "plot_Missing(train[,colSums(is.na(train)) > 0])"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "_cell_guid": "b124e673-f487-e56f-92d1-9354a6151ff5"
+      },
+      "source": [
+        "*Parch* describes how many parents and/or children are accompanying a given passenger aboard the Titanic. Since nannies aren't included, let's see how many children were travelling under supervision."
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "_cell_guid": "4e9b709f-91ea-cfd1-44bc-e135eec53a57"
+      },
+      "outputs": [],
+      "source": [
+        "length(which(train$Parch == 0 & train$Age<18))"
+      ]
+    },
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "_cell_guid": "5f3c4763-f1eb-f60a-3b69-4b6115d8bf27"
+      },
+      "source": [
+        "Were nannied children more likely to survive than their parented counterparts?"
+      ]
+    },
+    {
+      "cell_type": "code",
+      "execution_count": null,
+      "metadata": {
+        "_cell_guid": "54144943-17d9-c8e1-65f5-cfe1b58127fb"
+      },
+      "outputs": [],
+      "source": [
+        "train <- mutate(train, Nanny = Age < 18 & Parch == 0)\n",
+        "train$Nanny"
+      ]
+    }
+  ],
+  "metadata": {
+    "_change_revision": 0,
+    "_is_fork": false,
+    "kernelspec": {
+      "display_name": "R",
+      "language": "R",
+      "name": "ir"
+    },
+    "language_info": {
+      "codemirror_mode": "r",
+      "file_extension": ".r",
+      "mimetype": "text/x-r-source",
+      "name": "R",
+      "pygments_lexer": "r",
+      "version": "3.3.3"
+    }
+  },
+  "nbformat": 4,
+  "nbformat_minor": 0
+}

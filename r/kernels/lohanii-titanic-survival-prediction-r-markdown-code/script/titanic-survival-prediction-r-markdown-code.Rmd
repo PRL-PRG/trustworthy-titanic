@@ -1,0 +1,62 @@
+---
+Title: "Titanic Survival Prediction - R Markdown code"
+Author: "Lohani"
+Date: "March 19, 2017"
+Output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+##### **Getting started**
+
+*Note: This is still a work in progress*
+
+Start off by loading the relevant libraries
+
+1. ggplot2: library for data visualization
+2. caret: library for model selection and finetuning
+3. plyr: library for modifying data frames
+
+```{r}
+library(ggplot2) # Library for data visualization
+library(caret) # Library for model selection and finetuning
+library(plyr) # Library for modifying data frames
+
+```
+
+Next, get the list of all files in the input directory by using the command
+system("ls ../input")
+
+Input data files are available in the "../input/" directory.
+
+```{r}
+system("ls ../input", intern=TRUE)
+```
+
+Load data sets as train and test
+```{r}
+train <- read.csv("../input/train.csv")
+test <- read.csv("../input/test.csv")
+```
+
+Check if data was successfully loaded
+```{r}
+ls()
+str(train)
+str(test)
+```
+
+Create a column for Survival in the test file and feed a dummy value to it 
+```{r}
+test$Survived <- ''
+```
+
+Combine the training and test set into one file
+```{r}
+full <- rbind(train, test)
+str(full)
+```
+
+**This is still a work in progress. I am going to continue to fine tune this code.**

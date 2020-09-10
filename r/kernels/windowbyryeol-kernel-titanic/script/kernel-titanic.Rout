@@ -1,0 +1,983 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> install.packages(c('ggplot2','ISLR','MASS','glmnet','randomForest','gbm','rpart','boot'))
+
+  There is a binary version available but the source version is later:
+     binary source needs_compilation
+MASS 7.3-52 7.3-53              TRUE
+
+trying URL 'https://cran.rstudio.com/bin/macosx/el-capitan/contrib/3.6/ggplot2_3.3.2.tgz'
+Content type 'application/x-gzip' length 4068619 bytes (3.9 MB)
+==================================================
+downloaded 3.9 MB
+
+trying URL 'https://cran.rstudio.com/bin/macosx/el-capitan/contrib/3.6/ISLR_1.2.tgz'
+Content type 'application/x-gzip' length 2925741 bytes (2.8 MB)
+==================================================
+downloaded 2.8 MB
+
+trying URL 'https://cran.rstudio.com/bin/macosx/el-capitan/contrib/3.6/glmnet_4.0-2.tgz'
+Content type 'application/x-gzip' length 1848534 bytes (1.8 MB)
+==================================================
+downloaded 1.8 MB
+
+trying URL 'https://cran.rstudio.com/bin/macosx/el-capitan/contrib/3.6/randomForest_4.6-14.tgz'
+Content type 'application/x-gzip' length 253893 bytes (247 KB)
+==================================================
+downloaded 247 KB
+
+trying URL 'https://cran.rstudio.com/bin/macosx/el-capitan/contrib/3.6/gbm_2.1.8.tgz'
+Content type 'application/x-gzip' length 1031354 bytes (1007 KB)
+==================================================
+downloaded 1007 KB
+
+trying URL 'https://cran.rstudio.com/bin/macosx/el-capitan/contrib/3.6/rpart_4.1-15.tgz'
+Content type 'application/x-gzip' length 763935 bytes (746 KB)
+==================================================
+downloaded 746 KB
+
+trying URL 'https://cran.rstudio.com/bin/macosx/el-capitan/contrib/3.6/boot_1.3-25.tgz'
+Content type 'application/x-gzip' length 630421 bytes (615 KB)
+==================================================
+downloaded 615 KB
+
+
+The downloaded binary packages are in
+	/var/folders/z8/75snmrgn3n3cyk89jxrwc4dc0000gn/T//RtmpZhQNvf/downloaded_packages
+installing the source package ‘MASS’
+
+trying URL 'https://cran.rstudio.com/src/contrib/MASS_7.3-53.tar.gz'
+Content type 'application/x-gzip' length 495467 bytes (483 KB)
+==================================================
+downloaded 483 KB
+
+* installing *source* package ‘MASS’ ...
+** package ‘MASS’ successfully unpacked and MD5 sums checked
+** using staged installation
+** libs
+clang -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG   -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -I/usr/local/include  -fPIC  -Wall -g -O2  -c MASS.c -o MASS.o
+clang -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG   -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -I/usr/local/include  -fPIC  -Wall -g -O2  -c lqs.c -o lqs.o
+clang -dynamiclib -Wl,-headerpad_max_install_names -undefined dynamic_lookup -single_module -multiply_defined suppress -L/Library/Frameworks/R.framework/Resources/lib -L/usr/local/lib -o MASS.so MASS.o lqs.o -F/Library/Frameworks/R.framework/.. -framework R -Wl,-framework -Wl,CoreFoundation
+installing to /Library/Frameworks/R.framework/Versions/3.6/Resources/library/00LOCK-MASS/00new/MASS/libs
+** R
+** data
+*** moving datasets to lazyload DB
+** inst
+** byte-compile and prepare package for lazy loading
+** help
+*** installing help indices
+** building package indices
+** testing if installed package can be loaded from temporary location
+** checking absolute paths in shared objects and dynamic libraries
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* DONE (MASS)
+
+The downloaded source packages are in
+	‘/private/var/folders/z8/75snmrgn3n3cyk89jxrwc4dc0000gn/T/RtmpZhQNvf/downloaded_packages’
+> install.packages('dplyr')
+trying URL 'https://cran.rstudio.com/bin/macosx/el-capitan/contrib/3.6/dplyr_1.0.2.tgz'
+Content type 'application/x-gzip' length 1217346 bytes (1.2 MB)
+==================================================
+downloaded 1.2 MB
+
+
+The downloaded binary packages are in
+	/var/folders/z8/75snmrgn3n3cyk89jxrwc4dc0000gn/T//RtmpZhQNvf/downloaded_packages
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(ISLR)
+> library(MASS)
+
+Attaching package: ‘MASS’
+
+The following object is masked _by_ ‘.GlobalEnv’:
+
+    select
+
+> library(glmnet)
+Loading required package: Matrix
+Loaded glmnet 4.0-2
+Warning message:
+package ‘glmnet’ was built under R version 3.6.2 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> library(gbm)
+Loaded gbm 2.1.8
+Warning message:
+package ‘gbm’ was built under R version 3.6.2 
+> library(rpart)
+> library(boot)
+Warning message:
+package ‘boot’ was built under R version 3.6.2 
+> library(dplyr)
+
+Attaching package: ‘dplyr’
+
+The following object is masked from ‘package:randomForest’:
+
+    combine
+
+The following object is masked from ‘package:MASS’:
+
+    select
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> select <- dplyr::select 
+> 
+> #데이터 읽어오기. 문자는 factor로 변환 안시킴. 결측값을 NA로 변경. 
+> titanic_train <- read.csv("../input/train.csv", stringsAsFactors = F, na.strings = c("NA", ""))
+> titanic_test <- read.csv("../input/test.csv", stringsAsFactors = F, na.strings = c("NA", ""))
+> ?read.csv
+read.table                package:utils                R Documentation
+
+_D_a_t_a _I_n_p_u_t
+
+_D_e_s_c_r_i_p_t_i_o_n:
+
+     Reads a file in table format and creates a data frame from it,
+     with cases corresponding to lines and variables to fields in the
+     file.
+
+_U_s_a_g_e:
+
+     read.table(file, header = FALSE, sep = "", quote = "\"'",
+                dec = ".", numerals = c("allow.loss", "warn.loss", "no.loss"),
+                row.names, col.names, as.is = !stringsAsFactors,
+                na.strings = "NA", colClasses = NA, nrows = -1,
+                skip = 0, check.names = TRUE, fill = !blank.lines.skip,
+                strip.white = FALSE, blank.lines.skip = TRUE,
+                comment.char = "#",
+                allowEscapes = FALSE, flush = FALSE,
+                stringsAsFactors = default.stringsAsFactors(),
+                fileEncoding = "", encoding = "unknown", text, skipNul = FALSE)
+     
+     read.csv(file, header = TRUE, sep = ",", quote = "\"",
+              dec = ".", fill = TRUE, comment.char = "", ...)
+     
+     read.csv2(file, header = TRUE, sep = ";", quote = "\"",
+               dec = ",", fill = TRUE, comment.char = "", ...)
+     
+     read.delim(file, header = TRUE, sep = "\t", quote = "\"",
+                dec = ".", fill = TRUE, comment.char = "", ...)
+     
+     read.delim2(file, header = TRUE, sep = "\t", quote = "\"",
+                 dec = ",", fill = TRUE, comment.char = "", ...)
+     
+_A_r_g_u_m_e_n_t_s:
+
+    file: the name of the file which the data are to be read from.
+          Each row of the table appears as one line of the file.  If it
+          does not contain an _absolute_ path, the file name is
+          _relative_ to the current working directory, ‘getwd()’.
+          Tilde-expansion is performed where supported.  This can be a
+          compressed file (see ‘file’).
+
+          Alternatively, ‘file’ can be a readable text-mode connection
+          (which will be opened for reading if necessary, and if so
+          ‘close’d (and hence destroyed) at the end of the function
+          call).  (If ‘stdin()’ is used, the prompts for lines may be
+          somewhat confusing.  Terminate input with a blank line or an
+          EOF signal, ‘Ctrl-D’ on Unix and ‘Ctrl-Z’ on Windows.  Any
+          pushback on ‘stdin()’ will be cleared before return.)
+
+          ‘file’ can also be a complete URL.  (For the supported URL
+          schemes, see the ‘URLs’ section of the help for ‘url’.)
+
+  header: a logical value indicating whether the file contains the
+          names of the variables as its first line.  If missing, the
+          value is determined from the file format: ‘header’ is set to
+          ‘TRUE’ if and only if the first row contains one fewer field
+          than the number of columns.
+
+     sep: the field separator character.  Values on each line of the
+          file are separated by this character.  If ‘sep = ""’ (the
+          default for ‘read.table’) the separator is ‘white space’,
+          that is one or more spaces, tabs, newlines or carriage
+          returns.
+
+   quote: the set of quoting characters. To disable quoting altogether,
+          use ‘quote = ""’.  See ‘scan’ for the behaviour on quotes
+          embedded in quotes.  Quoting is only considered for columns
+          read as character, which is all of them unless ‘colClasses’
+          is specified.
+
+     dec: the character used in the file for decimal points.
+
+numerals: string indicating how to convert numbers whose conversion to
+          double precision would lose accuracy, see ‘type.convert’.
+          Can be abbreviated.  (Applies also to complex-number inputs.)
+
+row.names: a vector of row names.  This can be a vector giving the
+          actual row names, or a single number giving the column of the
+          table which contains the row names, or character string
+          giving the name of the table column containing the row names.
+
+          If there is a header and the first row contains one fewer
+          field than the number of columns, the first column in the
+          input is used for the row names.  Otherwise if ‘row.names’ is
+          missing, the rows are numbered.
+
+          Using ‘row.names = NULL’ forces row numbering. Missing or
+          ‘NULL’ ‘row.names’ generate row names that are considered to
+          be ‘automatic’ (and not preserved by ‘as.matrix’).
+
+col.names: a vector of optional names for the variables.  The default
+          is to use ‘"V"’ followed by the column number.
+
+   as.is: the default behavior of ‘read.table’ is to convert character
+          variables (which are not converted to logical, numeric or
+          complex) to factors.  The variable ‘as.is’ controls the
+          conversion of columns not otherwise specified by
+          ‘colClasses’.  Its value is either a vector of logicals
+          (values are recycled if necessary), or a vector of numeric or
+          character indices which specify which columns should not be
+          converted to factors.
+
+          Note: to suppress all conversions including those of numeric
+          columns, set ‘colClasses = "character"’.
+
+          Note that ‘as.is’ is specified per column (not per variable)
+          and so includes the column of row names (if any) and any
+          columns to be skipped.
+
+na.strings: a character vector of strings which are to be interpreted
+          as ‘NA’ values.  Blank fields are also considered to be
+          missing values in logical, integer, numeric and complex
+          fields.  Note that the test happens _after_ white space is
+          stripped from the input, so ‘na.strings’ values may need
+          their own white space stripped in advance.
+
+colClasses: character.  A vector of classes to be assumed for the
+          columns.  If unnamed, recycled as necessary.  If named, names
+          are matched with unspecified values being taken to be ‘NA’.
+
+          Possible values are ‘NA’ (the default, when ‘type.convert’ is
+          used), ‘"NULL"’ (when the column is skipped), one of the
+          atomic vector classes (logical, integer, numeric, complex,
+          character, raw), or ‘"factor"’, ‘"Date"’ or ‘"POSIXct"’.
+          Otherwise there needs to be an ‘as’ method (from package
+          ‘methods’) for conversion from ‘"character"’ to the specified
+          formal class.
+
+          Note that ‘colClasses’ is specified per column (not per
+          variable) and so includes the column of row names (if any).
+
+   nrows: integer: the maximum number of rows to read in.  Negative and
+          other invalid values are ignored.
+
+    skip: integer: the number of lines of the data file to skip before
+          beginning to read data.
+
+check.names: logical.  If ‘TRUE’ then the names of the variables in the
+          data frame are checked to ensure that they are syntactically
+          valid variable names.  If necessary they are adjusted (by
+          ‘make.names’) so that they are, and also to ensure that there
+          are no duplicates.
+
+    fill: logical. If ‘TRUE’ then in case the rows have unequal length,
+          blank fields are implicitly added.  See ‘Details’.
+
+strip.white: logical. Used only when ‘sep’ has been specified, and
+          allows the stripping of leading and trailing white space from
+          unquoted ‘character’ fields (‘numeric’ fields are always
+          stripped).  See ‘scan’ for further details (including the
+          exact meaning of ‘white space’), remembering that the columns
+          may include the row names.
+
+blank.lines.skip: logical: if ‘TRUE’ blank lines in the input are
+          ignored.
+
+comment.char: character: a character vector of length one containing a
+          single character or an empty string.  Use ‘""’ to turn off
+          the interpretation of comments altogether.
+
+allowEscapes: logical.  Should C-style escapes such as ‘\n’ be
+          processed or read verbatim (the default)?  Note that if not
+          within quotes these could be interpreted as a delimiter (but
+          not as a comment character).  For more details see ‘scan’.
+
+   flush: logical: if ‘TRUE’, ‘scan’ will flush to the end of the line
+          after reading the last of the fields requested.  This allows
+          putting comments after the last field.
+
+stringsAsFactors: logical: should character vectors be converted to
+          factors?  Note that this is overridden by ‘as.is’ and
+          ‘colClasses’, both of which allow finer control.
+
+fileEncoding: character string: if non-empty declares the encoding used
+          on a file (not a connection) so the character data can be
+          re-encoded.  See the ‘Encoding’ section of the help for
+          ‘file’, the ‘R Data Import/Export Manual’ and ‘Note’.
+
+encoding: encoding to be assumed for input strings.  It is used to mark
+          character strings as known to be in Latin-1 or UTF-8 (see
+          ‘Encoding’): it is not used to re-encode the input, but
+          allows R to handle encoded strings in their native encoding
+          (if one of those two).  See ‘Value’ and ‘Note’.
+
+    text: character string: if ‘file’ is not supplied and this is, then
+          data are read from the value of ‘text’ via a text connection.
+          Notice that a literal string can be used to include (small)
+          data sets within R code.
+
+ skipNul: logical: should nuls be skipped?
+
+     ...: Further arguments to be passed to ‘read.table’.
+
+_D_e_t_a_i_l_s:
+
+     This function is the principal means of reading tabular data into
+     R.
+
+     Unless ‘colClasses’ is specified, all columns are read as
+     character columns and then converted using ‘type.convert’ to
+     logical, integer, numeric, complex or (depending on ‘as.is’)
+     factor as appropriate.  Quotes are (by default) interpreted in all
+     fields, so a column of values like ‘"42"’ will result in an
+     integer column.
+
+     A field or line is ‘blank’ if it contains nothing (except
+     whitespace if no separator is specified) before a comment
+     character or the end of the field or line.
+
+     If ‘row.names’ is not specified and the header line has one less
+     entry than the number of columns, the first column is taken to be
+     the row names.  This allows data frames to be read in from the
+     format in which they are printed.  If ‘row.names’ is specified and
+     does not refer to the first column, that column is discarded from
+     such files.
+
+     The number of data columns is determined by looking at the first
+     five lines of input (or the whole input if it has less than five
+     lines), or from the length of ‘col.names’ if it is specified and
+     is longer.  This could conceivably be wrong if ‘fill’ or
+     ‘blank.lines.skip’ are true, so specify ‘col.names’ if necessary
+     (as in the ‘Examples’).
+
+     ‘read.csv’ and ‘read.csv2’ are identical to ‘read.table’ except
+     for the defaults.  They are intended for reading ‘comma separated
+     value’ files (‘.csv’) or (‘read.csv2’) the variant used in
+     countries that use a comma as decimal point and a semicolon as
+     field separator.  Similarly, ‘read.delim’ and ‘read.delim2’ are
+     for reading delimited files, defaulting to the TAB character for
+     the delimiter.  Notice that ‘header = TRUE’ and ‘fill = TRUE’ in
+     these variants, and that the comment character is disabled.
+
+     The rest of the line after a comment character is skipped; quotes
+     are not processed in comments.  Complete comment lines are allowed
+     provided ‘blank.lines.skip = TRUE’; however, comment lines prior
+     to the header must have the comment character in the first
+     non-blank column.
+
+     Quoted fields with embedded newlines are supported except after a
+     comment character.  Embedded nuls are unsupported: skipping them
+     (with ‘skipNul = TRUE’) may work.
+
+_V_a_l_u_e:
+
+     A data frame (‘data.frame’) containing a representation of the
+     data in the file.
+
+     Empty input is an error unless ‘col.names’ is specified, when a
+     0-row data frame is returned: similarly giving just a header line
+     if ‘header = TRUE’ results in a 0-row data frame.  Note that in
+     either case the columns will be logical unless ‘colClasses’ was
+     supplied.
+
+     Character strings in the result (including factor levels) will
+     have a declared encoding if ‘encoding’ is ‘"latin1"’ or ‘"UTF-8"’.
+
+_M_e_m_o_r_y _u_s_a_g_e:
+
+     These functions can use a surprising amount of memory when reading
+     large files.  There is extensive discussion in the ‘R Data
+     Import/Export’ manual, supplementing the notes here.
+
+     Less memory will be used if ‘colClasses’ is specified as one of
+     the six atomic vector classes.  This can be particularly so when
+     reading a column that takes many distinct numeric values, as
+     storing each distinct value as a character string can take up to
+     14 times as much memory as storing it as an integer.
+
+     Using ‘nrows’, even as a mild over-estimate, will help memory
+     usage.
+
+     Using ‘comment.char = ""’ will be appreciably faster than the
+     ‘read.table’ default.
+
+     ‘read.table’ is not the right tool for reading large matrices,
+     especially those with many columns: it is designed to read _data
+     frames_ which may have columns of very different classes.  Use
+     ‘scan’ instead for matrices.
+
+_N_o_t_e:
+
+     The columns referred to in ‘as.is’ and ‘colClasses’ include the
+     column of row names (if any).
+
+     There are two approaches for reading input that is not in the
+     local encoding.  If the input is known to be UTF-8 or Latin1, use
+     the ‘encoding’ argument to declare that.  If the input is in some
+     other encoding, then it may be translated on input.  The
+     ‘fileEncoding’ argument achieves this by setting up a connection
+     to do the re-encoding into the current locale.  Note that on
+     Windows or other systems not running in a UTF-8 locale, this may
+     not be possible.
+
+_R_e_f_e_r_e_n_c_e_s:
+
+     Chambers, J. M. (1992) _Data for models._ Chapter 3 of
+     _Statistical Models in S_ eds J. M. Chambers and T. J. Hastie,
+     Wadsworth & Brooks/Cole.
+
+_S_e_e _A_l_s_o:
+
+     The ‘R Data Import/Export’ manual.
+
+     ‘scan’, ‘type.convert’, ‘read.fwf’ for reading _f_ixed _w_idth
+     _f_ormatted input; ‘write.table’; ‘data.frame’.
+
+     ‘count.fields’ can be useful to determine problems with reading
+     files which result in reports of incorrect record lengths (see the
+     ‘Examples’ below).
+
+     <URL: https://tools.ietf.org/html/rfc4180> for the IANA definition
+     of CSV files (which requires comma as separator and CRLF line
+     endings).
+
+_E_x_a_m_p_l_e_s:
+
+     ## using count.fields to handle unknown maximum number of fields
+     ## when fill = TRUE
+     test1 <- c(1:5, "6,7", "8,9,10")
+     tf <- tempfile()
+     writeLines(test1, tf)
+     
+     read.csv(tf, fill = TRUE) # 1 column
+     ncol <- max(count.fields(tf, sep = ","))
+     read.csv(tf, fill = TRUE, header = FALSE,
+              col.names = paste0("V", seq_len(ncol)))
+     unlink(tf)
+     
+     ## "Inline" data set, using text=
+     ## Notice that leading and trailing empty lines are auto-trimmed
+     
+     read.table(header = TRUE, text = "
+     a b
+     1 2
+     3 4
+     ")
+     
+
+> #데이터 구조파악 
+> glimpse(titanic_train)
+Rows: 891
+Columns: 12
+$ PassengerId [3m[90m<int>[39m[23m 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17…
+$ Survived    [3m[90m<int>[39m[23m 0, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 0, …
+$ Pclass      [3m[90m<int>[39m[23m 3, 1, 3, 1, 3, 3, 1, 3, 3, 2, 3, 1, 3, 3, 3, 2, 3, 2, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Braund, Mr. Owen Harris", "Cumings, Mrs. John Bradley (F…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "female", "female", "male", "male", "ma…
+$ Age         [3m[90m<dbl>[39m[23m 22, 38, 26, 35, 35, NA, 54, 2, 27, 14, 4, 58, 20, 39, 14,…
+$ SibSp       [3m[90m<int>[39m[23m 1, 1, 0, 1, 0, 0, 0, 3, 0, 1, 1, 0, 0, 1, 0, 0, 4, 0, 1, …
+$ Parch       [3m[90m<int>[39m[23m 0, 0, 0, 0, 0, 0, 0, 1, 2, 0, 1, 0, 0, 5, 0, 0, 1, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "A/5 21171", "PC 17599", "STON/O2. 3101282", "113803", "3…
+$ Fare        [3m[90m<dbl>[39m[23m 7.2500, 71.2833, 7.9250, 53.1000, 8.0500, 8.4583, 51.8625…
+$ Cabin       [3m[90m<chr>[39m[23m NA, "C85", NA, "C123", NA, NA, "E46", NA, NA, NA, "G6", "…
+$ Embarked    [3m[90m<chr>[39m[23m "S", "C", "S", "S", "S", "Q", "S", "S", "S", "C", "S", "S…
+> str(titanic_train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr  "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr  "male" "female" "female" "female" ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr  "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr  NA "C85" NA "C123" ...
+ $ Embarked   : chr  "S" "C" "S" "S" ...
+> glimpse(titanic_test) #Survived 변수가 test 데이터에는 없다. 
+Rows: 418
+Columns: 11
+$ PassengerId [3m[90m<int>[39m[23m 892, 893, 894, 895, 896, 897, 898, 899, 900, 901, 902, 90…
+$ Pclass      [3m[90m<int>[39m[23m 3, 3, 2, 3, 3, 3, 3, 2, 3, 3, 3, 1, 1, 2, 1, 2, 2, 3, 3, …
+$ Name        [3m[90m<chr>[39m[23m "Kelly, Mr. James", "Wilkes, Mrs. James (Ellen Needs)", "…
+$ Sex         [3m[90m<chr>[39m[23m "male", "female", "male", "male", "female", "male", "fema…
+$ Age         [3m[90m<dbl>[39m[23m 34.5, 47.0, 62.0, 27.0, 22.0, 14.0, 30.0, 26.0, 18.0, 21.…
+$ SibSp       [3m[90m<int>[39m[23m 0, 1, 0, 0, 1, 0, 0, 1, 0, 2, 0, 0, 1, 1, 1, 1, 0, 0, 1, …
+$ Parch       [3m[90m<int>[39m[23m 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+$ Ticket      [3m[90m<chr>[39m[23m "330911", "363272", "240276", "315154", "3101298", "7538"…
+$ Fare        [3m[90m<dbl>[39m[23m 7.8292, 7.0000, 9.6875, 8.6625, 12.2875, 9.2250, 7.6292, …
+$ Cabin       [3m[90m<chr>[39m[23m NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, "B45", NA…
+$ Embarked    [3m[90m<chr>[39m[23m "Q", "S", "Q", "S", "S", "S", "Q", "S", "C", "S", "S", "S…
+> titanic_test$Survived <- NA #결측으로 survived 값을 만들어 준다. 
+> 
+> #survival : 0 = no, 1 = yes 
+> #pclass : 1 = 1st, 2 = 2nd, 3 = 3rd
+> #sibsp : 형제, 배우자의 수 
+> #Parch : 부모/아이의 수
+> #범주형자료: Name, Ticket, Sex, Cabin(148레벨), Embarked(4레벨) 
+> #C = Cherbourg, Q = Queenstown, S = Southampton
+> 
+> titanic_all <- rbind(titanic_train, titanic_test)
+> titanic_all$Sex <- as.factor(titanic_all$Sex)
+> titanic_all$Survived <- as.factor(titanic_all$Survived)
+> titanic_all$Pclass <- as.ordered(titanic_all$Pclass) #Pclass는 순서척도
+> 
+> 
+> #결측 데이터 확인 
+> sapply(titanic_all, function(x) {
++   sum(is.na(x))}) #age랑 cabin이 결측데이터가 많다. 
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1        1014           2 
+>   
+> sapply(titanic_train, function(x) {
++   sum(is.na(x))}) #test 데이터의 survived는 결측이다 
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0           0           0           0           0         177 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           0         687           2 
+> 
+> 
+> 
+> #시각화
+> #생존자 수 
+> ggplot(titanic_train[!is.na(titanic_train$Survived),], aes(x = Survived, fill = Survived)) +
++   geom_bar(stat='count') +
++   labs(x = '타이타닉 생존') +
++   geom_label(stat='count',aes(label=..count..), size=7) 
+There were 50 or more warnings (use warnings() to see the first 50)
+> 
+> 
+> 
+> #성별에 따른 탑승인원,,   
+> ggplot(titanic_train, aes(x = Sex, fill = Sex)) +
++   geom_bar(stat='count', position='dodge')  
+>   labs(x = 'train_성별') +
++   geom_label(stat='count', aes(label=..count..)) 
+NULL
+> 
+> #좌석등급별 탑승인원  
+> ggplot(titanic_train, aes(x = Pclass, fill = Pclass)) +
++   geom_bar(stat='count', position='dodge') +
++   labs(x = 'Pclass, train_좌석등급') + geom_label(stat='count', aes(label=..count..)) +
++   theme(legend.position="none")      
+There were 50 or more warnings (use warnings() to see the first 50)
+> 
+> install.packages("sqldf")
+trying URL 'https://cran.rstudio.com/bin/macosx/el-capitan/contrib/3.6/sqldf_0.4-11.tgz'
+Content type 'application/x-gzip' length 76110 bytes (74 KB)
+==================================================
+downloaded 74 KB
+
+
+The downloaded binary packages are in
+	/var/folders/z8/75snmrgn3n3cyk89jxrwc4dc0000gn/T//RtmpZhQNvf/downloaded_packages
+> library(sqldf)
+Loading required package: gsubfn
+Loading required package: proto
+Loading required package: RSQLite
+> 
+> #성별별 생존자 수 
+> sqldf('select *, (Survived/Total)
++        from( select A.Survived, B.Total, A.sex 
++              from(select count(*) Survived, Sex
++                   from titanic_train
++                   where Survived = 1
++                   group by Sex ) A
++              inner join (select count(*) Total, Sex
++                     from titanic_train
++                     group by Sex) B
++         on A.Sex = B.Sex 
++        ) T
++       ')
+  Survived Total    sex (Survived/Total)
+1      233   314 female                0
+2      109   577   male                0
+> #여자 생존자: 233/314 
+> #남자 생존자: 109/577    //남자가 생존율이 더 낮다. 
+> 
+> 
+> 
+> sqldf('select *, (Survived/Total)
++        from(select A.Survived, B.Total, A.Pclass 
++             from(select count(*) Survived, Pclass
++                  from titanic_train
++                  where Survived = 1 
++                  group by Pclass) A
++                   inner join (select count(*) Total, Pclass
++                               from titanic_train
++                               group by Pclass) B
++         on A.Pclass = B.Pclass 
++       ) T
++       ')
+  Survived Total Pclass (Survived/Total)
+1      136   216      1                0
+2       87   184      2                0
+3      119   491      3                0
+> #1등석 생존자 : 136/216 
+> #2등석 생존자 : 87/184 
+> #3등석 생존자 : 119/491     //3등석일수록 생존율 낮다.
+> 
+> sqldf('select *
++        from (select A.Survived, B.Total, A.Pclass, A.Sex 
++             from (select count(*) Survived, Pclass, Sex
++                   from titanic_train
++                   where Survived = 1 
++                   group by Sex, Pclass) A
++                     inner join (select count(*) Total, Pclass, Sex
++                                 from titanic_train
++                                 group by Sex, Pclass) B
++                   on A.Pclass = B.Pclass 
++                   and A.Sex = B.Sex
++             ) T
++      ')
+  Survived Total Pclass    Sex
+1       91    94      1 female
+2       70    76      2 female
+3       72   144      3 female
+4       45   122      1   male
+5       17   108      2   male
+6       47   347      3   male
+> #여자면서 1,2 등석은 거의 다 생존
+> #남자면서 2,3 등석은 거의 다 죽음 
+> 
+> 
+> 
+> #sibsp : 형제, 배우자의 수 
+> #Parch : 부모/아이의 수 
+> #에 따른 생존율을 비교해본다 
+> sqldf('select A.sibsp, Survived, Total
++        from (select sibsp, count(*) Survived 
++              from titanic_train 
++              where Survived = 1
++              group by sibsp) A 
++        inner join ( select sibsp, count(*) Total 
++                      from titanic_train 
++                      group by sibsp
++                     ) B
++         on A.sibsp = B.sibsp 
++       ')
+  sibsp Survived Total
+1     0      210   608
+2     1      112   209
+3     2       13    28
+4     3        4    16
+5     4        3    18
+> 
+> sqldf('select A.Parch, Survived, Total
++        from (select Parch, count(*) Survived 
++              from titanic_train 
++              where Survived = 1
++              group by Parch) A 
++        inner join ( select Parch, count(*) Total 
++                     from titanic_train 
++                     group by Parch
++                   ) B
++        on A.Parch = B.Parch 
++       ')
+  Parch Survived Total
+1     0      233   678
+2     1       65   118
+3     2       40    80
+4     3        3     5
+5     5        1     5
+> #둘다 직접적인 지표는 아닌듯..? age랑 결합하면 좀더 좋은 자료가 될 것 같다.
+> 
+> 
+> #Embarked 와 생존율을 고려해보자.
+> sqldf('select A.Embarked, Survived, Total
++        from (select Embarked, count(*) Survived 
++             from titanic_train 
++             where Survived = 1
++             group by Embarked) A 
++             inner join ( select Embarked, count(*) Total 
++                           from titanic_train 
++                           group by Embarked
++                           ) B
++       on A.Embarked = B.Embarked 
++       ') 
+  Embarked Survived Total
+1        C       93   168
+2        Q       30    77
+3        S      217   644
+> #직접적인 지표는 아닌 것 같다. 
+> 
+> 
+> # #범주형 자료 모델화 
+> # x_mod_first <- model.matrix(~ Sex + Embarked + Pclass + SibSp + Parch,titanic_train)
+> # View(x_mod_first)
+> # dim(x_mod_first)
+> 
+> 
+> 
+> #훈련, 검증세트를 구분하자. 
+> #set.seed 안의 숫자는 의미없음. 계속 같은 난수(재현가능)로 테스트하기 위함
+> set.seed(1777) 
+> n <- nrow(titanic_train)
+> idx <- 1:n #adult의 row 수 만큼 idx 를 할당 
+> ?sample
+sample                  package:base                   R Documentation
+
+_R_a_n_d_o_m _S_a_m_p_l_e_s _a_n_d _P_e_r_m_u_t_a_t_i_o_n_s
+
+_D_e_s_c_r_i_p_t_i_o_n:
+
+     ‘sample’ takes a sample of the specified size from the elements of
+     ‘x’ using either with or without replacement.
+
+_U_s_a_g_e:
+
+     sample(x, size, replace = FALSE, prob = NULL)
+     
+     sample.int(n, size = n, replace = FALSE, prob = NULL,
+                useHash = (!replace && is.null(prob) && size <= n/2 && n > 1e7))
+     
+_A_r_g_u_m_e_n_t_s:
+
+       x: either a vector of one or more elements from which to choose,
+          or a positive integer.  See ‘Details.’
+
+       n: a positive number, the number of items to choose from.  See
+          ‘Details.’
+
+    size: a non-negative integer giving the number of items to choose.
+
+ replace: should sampling be with replacement?
+
+    prob: a vector of probability weights for obtaining the elements of
+          the vector being sampled.
+
+ useHash: ‘logical’ indicating if the hash-version of the algorithm
+          should be used.  Can only be used for ‘replace = FALSE’,
+          ‘prob = NULL’, and ‘size <= n/2’, and really should be used
+          for large ‘n’, as ‘useHash=FALSE’ will use memory
+          proportional to ‘n’.
+
+_D_e_t_a_i_l_s:
+
+     If ‘x’ has length 1, is numeric (in the sense of ‘is.numeric’) and
+     ‘x >= 1’, sampling _via_ ‘sample’ takes place from ‘1:x’.  _Note_
+     that this convenience feature may lead to undesired behaviour when
+     ‘x’ is of varying length in calls such as ‘sample(x)’.  See the
+     examples.
+
+     Otherwise ‘x’ can be any R object for which ‘length’ and
+     subsetting by integers make sense: S3 or S4 methods for these
+     operations will be dispatched as appropriate.
+
+     For ‘sample’ the default for ‘size’ is the number of items
+     inferred from the first argument, so that ‘sample(x)’ generates a
+     random permutation of the elements of ‘x’ (or ‘1:x’).
+
+     It is allowed to ask for ‘size = 0’ samples with ‘n = 0’ or a
+     length-zero ‘x’, but otherwise ‘n > 0’ or positive ‘length(x)’ is
+     required.
+
+     Non-integer positive numerical values of ‘n’ or ‘x’ will be
+     truncated to the next smallest integer, which has to be no larger
+     than ‘.Machine$integer.max’.
+
+     The optional ‘prob’ argument can be used to give a vector of
+     weights for obtaining the elements of the vector being sampled.
+     They need not sum to one, but they should be non-negative and not
+     all zero.  If ‘replace’ is true, Walker's alias method (Ripley,
+     1987) is used when there are more than 200 reasonably probable
+     values: this gives results incompatible with those from R < 2.2.0.
+
+     If ‘replace’ is false, these probabilities are applied
+     sequentially, that is the probability of choosing the next item is
+     proportional to the weights amongst the remaining items.  The
+     number of nonzero weights must be at least ‘size’ in this case.
+
+     ‘sample.int’ is a bare interface in which both ‘n’ and ‘size’ must
+     be supplied as integers.
+
+     Argument ‘n’ can be larger than the largest integer of type
+     ‘integer’, up to the largest representable integer in type
+     ‘double’.  Only uniform sampling is supported.  Two random numbers
+     are used to ensure uniform sampling of large integers.
+
+_V_a_l_u_e:
+
+     For ‘sample’ a vector of length ‘size’ with elements drawn from
+     either ‘x’ or from the integers ‘1:x’.
+
+     For ‘sample.int’, an integer vector of length ‘size’ with elements
+     from ‘1:n’, or a double vector if n >= 2^31.
+
+_R_e_f_e_r_e_n_c_e_s:
+
+     Becker, R. A., Chambers, J. M. and Wilks, A. R. (1988) _The New S
+     Language_.  Wadsworth & Brooks/Cole.
+
+     Ripley, B. D. (1987) _Stochastic Simulation_. Wiley.
+
+_S_e_e _A_l_s_o:
+
+     ‘RNGkind(sample.kind = ..)’ about random number generation,
+     notably the change of ‘sample()’ results with R version 3.6.0.
+
+     CRAN package ‘sampling’ for other methods of weighted sampling
+     without replacement.
+
+_E_x_a_m_p_l_e_s:
+
+     x <- 1:12
+     # a random permutation
+     sample(x)
+     # bootstrap resampling -- only if length(x) > 1 !
+     sample(x, replace = TRUE)
+     
+     # 100 Bernoulli trials
+     sample(c(0,1), 100, replace = TRUE)
+     
+     ## More careful bootstrapping --  Consider this when using sample()
+     ## programmatically (i.e., in your function or simulation)!
+     
+     # sample()'s surprise -- example
+     x <- 1:10
+         sample(x[x >  8]) # length 2
+         sample(x[x >  9]) # oops -- length 10!
+         sample(x[x > 10]) # length 0
+     
+     ## safer version:
+     resample <- function(x, ...) x[sample.int(length(x), ...)]
+     resample(x[x >  8]) # length 2
+     resample(x[x >  9]) # length 1
+     resample(x[x > 10]) # length 0
+     
+     ## R 3.x.y only
+     sample.int(1e10, 12, replace = TRUE)
+     sample.int(1e10, 12) # not that there is much chance of duplicates
+     
+
+> #sample()
+> training_idx <- sample(idx, n * .80) #idx 를 비복원 추출. n*0.8만큼. 
+> validate_idx <- setdiff(idx, training_idx) #training_idx에서 뽑힌것을 제외함.
+> length(training_idx)
+[1] 712
+> length(validate_idx)
+[1] 179
+> training <- titanic_train[training_idx, ]
+> validation <- titanic_train[validate_idx, ]
+> 
+> 
+> 
+> glm_first <- glm(Survived ~ Age + Pclass + Sex + SibSp + Parch + Fare, data = training, family = binomial) 
+> summary(glm_first)
+
+Call:
+glm(formula = Survived ~ Age + Pclass + Sex + SibSp + Parch + 
+    Fare, family = binomial, data = training)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.8123  -0.6238  -0.3676   0.6283   2.4440  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  5.576734   0.679394   8.208 2.24e-16 ***
+Age         -0.046444   0.009066  -5.123 3.01e-07 ***
+Pclass      -1.293813   0.184439  -7.015 2.30e-12 ***
+Sexmale     -2.553594   0.243803 -10.474  < 2e-16 ***
+SibSp       -0.440874   0.147769  -2.984  0.00285 ** 
+Parch       -0.033053   0.135339  -0.244  0.80705    
+Fare         0.001663   0.003081   0.540  0.58933    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 769.00  on 567  degrees of freedom
+Residual deviance: 503.85  on 561  degrees of freedom
+  (144 observations deleted due to missingness)
+AIC: 517.85
+
+Number of Fisher Scoring iterations: 5
+
+> glm_predictions <- predict(glm_first, newdata = validation, type = "response")
+> 
+> validation$pred_survived <- as.numeric(glm_predictions > .5)
+> validation$pred_survived <- ifelse(is.na(validation$pred_survived), 0, validation$pred_survived)
+> print(validation$pred_survived)
+  [1] 0 0 0 0 1 0 0 0 1 0 0 0 0 0 0 0 1 0 0 1 1 0 1 1 1 1 0 1 0 1 0 1 0 0 0 0 0
+ [38] 0 0 0 1 1 1 0 0 1 0 0 0 1 0 0 0 0 0 1 1 1 0 1 0 0 1 1 0 0 1 1 0 1 0 1 0 0
+ [75] 0 1 0 1 0 1 0 1 0 1 0 0 0 0 0 1 0 0 0 0 0 0 0 1 1 0 1 1 0 0 1 0 1 0 1 0 1
+[112] 0 1 0 1 1 0 0 1 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 1 0 0 1 0
+[149] 0 0 0 1 0 0 0 0 0 0 1 0 0 1 0 0 1 0 1 0 0 0 0 0 0 0 0 0 1 0 1
+> 
+> #with는 칼럼명에 바로 접근하는 함수. 
+> got_right <- with(validation, pred_survived == Survived)
+> got_wrong <- with(validation, pred_survived != Survived)
+> n_right <- sum(got_right, na.rm = TRUE)
+> n_wrong <- sum(got_wrong, na.rm = TRUE)
+> accuracy <- n_right / (n_right + n_wrong)
+> cat("accuracy: ", accuracy, "\n") #검증셋으로 정확도가 높게나옴. 
+accuracy:  0.8044693 
+> 
+> 
+> 
+> titanic_test$Survived <- ifelse(predict(glm_first, titanic_test, type="response")>0.5,1,0)
+> titanic_test$Survived <- ifelse(is.na(titanic_test$Survived),0,titanic_test$Survived)
+> 
+> submission <- titanic_test[, c("PassengerId", "Survived")]
+> glimpse(submission)
+Rows: 418
+Columns: 2
+$ PassengerId [3m[90m<int>[39m[23m 892, 893, 894, 895, 896, 897, 898, 899, 900, 901, 902, 90…
+$ Survived    [3m[90m<dbl>[39m[23m 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, …
+> write.csv(submission, "submission.csv", row.names = FALSE)
+> print(list.files())
+[1] "kernel-titanic.json" "kernel-titanic.R"    "kernel-titanic.Rout"
+[4] "Rplots.pdf"          "submission.csv"     
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 12.138   1.878  18.449 

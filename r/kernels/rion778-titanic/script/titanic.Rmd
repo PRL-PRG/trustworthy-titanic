@@ -1,0 +1,181 @@
+## ライブラリ読み込み
+
+```{r, message=FALSE}
+library(mlr)
+library(readr)
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+library(gridExtra)
+library(formattable)
+```
+
+
+## データ読み込み
+
+KaggleのKernel環境下であるかどうかで挙動を分ける。
+
+```{r, message=FALSE}
+input_path <- "../data/download/"
+output_path <- "../submissions/"
+kaggle <- FALSE
+if(!dir.exists(input_path)) {
+    kaggle  <- TRUE
+    input_path  <- "../input/"
+    output_path <- ""
+}
+train <- read_csv(paste0(input_path, "train.csv"))
+test  <- read_csv(paste0(input_path, "test.csv"))
+```
+
+## データ結合
+
+```{r}
+train$Set <- factor("Train")
+test$Set <- factor("Test")
+test$Survived <- NA
+df <- rbind(train, test)
+df %<>% as.data.frame
+```
+
+# 前処理
+
+## 型の調整
+
+```{r}
+head(df)
+```
+
+Survivedを論理型に、文字列及びPclassを因子型に変換する。
+
+```{r}
+f <- . %>%
+  mutate_if(is.character, factor) %>%
+  mutate_at("Survived", as.logical) %>% 
+  mutate_at("Pclass", factor)
+train %<>% f
+test %<>% f
+df %<>% f
+```
+
+## 欠損値の確認
+
+欠損値をカウントする。
+
+```{r}
+df %>%
+  select(-Survived) %>%
+  summarise_all(function(x){sum(is.na(x))})
+```
+
+# 事前分析
+
+## 各変数と死亡率の関係
+
+### Pclass(客室クラス)
+
+Pclassは客室のクラスを表す変数で、1〜3の整数が割り当てられている。1は一等客室、2は二等客室、3は三等客室。客室の区分ではあるが、要するに乗客の社会的地位の区分であるので、Pclassは"Passenger Class"の略である。
+
+一等客室の方が死亡率が低いと予想されるが、そうだろうか？
+
+まず、件数と比率について可視化してみる。
+
+```{r}
+p <- train %>%
+  ggplot(aes(x = Survived, fill = Pclass))
+grid.arrange(
+  p + geom_bar(), 
+  p + geom_bar(position = "fill") + ylab("rate")
+  )
+```
+
+やはり三等客室の乗客の死亡数が多いようだ。Pclass別に生存率を集計すると以下のようになる。
+
+```{r}
+train %>%
+  group_by(Pclass) %>%
+  summarise(SurviveRate = mean(Survived)) %>%
+  formattable(list(
+    SurviveRate = proportion_bar()
+  ))
+```
+
+### Sex(性別)
+
+タイタニックの沈没事故をきっかけに「ウィメン・アンド・チルドレン・ファースト」というフレーズが有名になったらしい。つまり、避難にあたっては女性や子供が優先されたと言われている(cf. 
+[ウィメン・アンド・チルドレン・ファースト - Wikipedia](https://ja.wikipedia.org/wiki/%E3%82%A6%E3%82%A3%E3%83%A1%E3%83%B3%E3%83%BB%E3%82%A2%E3%83%B3%E3%83%89%E3%83%BB%E3%83%81%E3%83%AB%E3%83%89%E3%83%AC%E3%83%B3%E3%83%BB%E3%83%95%E3%82%A1%E3%83%BC%E3%82%B9%E3%83%88))。
+
+従って、性別と死亡率の間には強い関係があると予想される。実際、死亡者の大半は男性が占めている。また、単に男性を死亡、女性を生存と予測しただけのデータがkaggleでは提出練習用のファイルとして用意されており、これを提出するとスコアは0.76555となる。
+
+```{r}
+train %>%
+  ggplot(aes(x = Survived, fill = Sex)) +
+  geom_bar()
+```
+
+性別ごとの生存率を集計しておく。
+
+```{r}
+train %>%
+  group_by(Sex) %>%
+  summarise(SurviveRate = mean(Survived)) %>%
+  formattable(list(
+    SurviveRate = proportion_bar()
+  ))
+```
+
+### Age(年齢)
+
+年齢は1歳未満は1より小さい小数で表現されている。また、年齢が推定であるものは値に続いて".5"が付いている。
+
+女性や子供が優先して避難したのであれば、年齢が若いほど生存率は高いのではないだろうか？
+
+生存と死亡の別に年齢分布の密度曲線をプロットしてみる。
+
+```{r}
+train %>%
+  ggplot(aes(x = Age, fill = Survived)) +
+  geom_density(alpha = 0.5)
+```
+
+10歳あたりを境に、低年齢側で生存率が高いようだ。また、60歳より上の年齢で生存率が低いようにも見える。
+
+年齢を10歳毎に階級に区切って集計してみる。
+
+```{r}
+train %>%
+  mutate(c_age = cut_width(Age, width = 10, center = 5)) %>%
+  group_by(c_age) %>%
+  summarise(SurvivedRate = mean(Survived)) %>%
+  ggplot(aes(x = c_age, y = SurvivedRate)) + geom_bar(stat = "identity")
+```
+
+10歳以下の生存率は高く、60歳より上で生存率が低い傾向が見て取れる。
+
+
+### SibSp(兄弟・配偶者)
+
+SibSpは兄弟(Siblings)と配偶者(Spouses)の数の合計である。
+
+値の分布を確認すると、0が圧倒的に多い。
+
+```{r}
+table(train$SibSp)
+```
+
+死亡率との関係を確認する。
+
+```{r}
+train %>%
+  ggplot(aes(x = SibSp, fill = Survived)) + 
+  geom_bar()
+```
+
+0の場合と1の場合で死亡率に差がありそうだ。
+
+```{r}
+train %>%
+  ggplot(aes(x = SibSp, fill = Survived)) +
+  geom_bar(position = "fill")
+```
+

@@ -1,0 +1,466 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+> 
+> 
+> ## ----packages, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE----------------------------------------------------------------------------------------------------------------------------------------------------
+> ## Importing packages
+> library(glmnet)
+Loading required package: Matrix
+Loaded glmnet 4.0-2
+Warning message:
+package ‘glmnet’ was built under R version 3.6.2 
+> library(gridExtra)
+> library(kableExtra)
+> library(knitr)
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:gridExtra’:
+
+    combine
+
+> library(reshape2)
+Warning message:
+package ‘reshape2’ was built under R version 3.6.2 
+> library(tidyverse)
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mcombine()[39m    masks [34mrandomForest[39m::combine(), [34mgridExtra[39m::combine()
+[31mx[39m [34mtidyr[39m::[32mexpand()[39m     masks [34mMatrix[39m::expand()
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m     masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mgroup_rows()[39m masks [34mkableExtra[39m::group_rows()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m        masks [34mstats[39m::lag()
+[31mx[39m [34mggplot2[39m::[32mmargin()[39m   masks [34mrandomForest[39m::margin()
+[31mx[39m [34mtidyr[39m::[32mpack()[39m       masks [34mMatrix[39m::pack()
+[31mx[39m [34mtidyr[39m::[32munpack()[39m     masks [34mMatrix[39m::unpack()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> 
+> # Create custom theme for ggplot2
+> theme_custom <- function(base_family = "Times"){
++   theme_minimal(base_family = base_family) %+replace%
++     theme(
++       plot.title = element_text(size = 20),
++       plot.subtitle = element_text(size = 16, vjust = -1),
++       
++       axis.title = element_text(size = 18),
++       axis.text = element_text(size = 16),
++       
++       axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0), angle = 90),
++       axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 20, l = 0)),
++       
++       strip.text.x = element_text(size = 16)
++     )
++ }
+> 
+> 
+> ## ----load, message=FALSE, warning=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- read_csv('../input/train.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test <- read_csv('../input/test.csv')
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> titanic <- train %>% 
++             bind_rows(test) %>%
++             select(-PassengerId) %>%
++             mutate_at(vars(Pclass, Sex, Embarked), funs(factor(.)))
+Warning message:
+`funs()` is deprecated as of dplyr 0.8.0.
+Please use a list of either functions or lambdas: 
+
+  # Simple named list: 
+  list(mean = mean, median = median)
+
+  # Auto named with `tibble::lst()`: 
+  tibble::lst(mean, median)
+
+  # Using lambdas
+  list(~ mean(., trim = .2), ~ median(., na.rm = TRUE))
+[90mThis warning is displayed once every 8 hours.[39m
+[90mCall `lifecycle::last_warnings()` to see where this warning was generated.[39m 
+> 
+> 
+> ## ----class, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic %>%
++   ggplot(aes(x = Pclass)) +
++     geom_bar(width = 0.5, fill = "#56B4E9") +
++     coord_flip() +
++     labs(title = 'Count of the passengers by class') + 
++     scale_x_discrete(name = "Passenger's class") +
++     scale_y_continuous(name = "Count", breaks = seq(0, 900, 100)) +
++     theme_custom()
+> 
+> 
+> ## ----sex, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic %>%
++   ggplot(aes(x = Sex)) +
++     geom_bar(width = 0.5, fill = "#56B4E9") +
++     coord_flip() +
++     labs(title = 'Count of the passengers by sex') + 
++     scale_x_discrete(name = "Passenger's sex") +
++     scale_y_continuous(name = "Count", breaks = seq(0, 900, 100)) +
++     theme_custom()
+> 
+> 
+> ## ----title, echo=TRUE, message=FALSE, warning=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Extract the title from the Passenger's name.
+> Title <- "^.*, (.*?)\\..*$" %>% 
++           gsub("\\1", titanic$Name)
+> # Create another factors for low represented title.
+> title_high <- c('Mr', 'Miss', 'Mrs', 'Master')
+> Title <- Title %in% title_high %>%
++           if_else(Title, 'Other')
+> # Add titlecolumn to the dataframe
+> titanic <- titanic %>% 
++             add_column(Title) %>%
++             mutate_at(vars(Title), funs(factor(.)))
+> 
+> 
+> ## ----name, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic %>%
++   ggplot(aes(x = Title)) +
++     geom_bar(width = 0.5, fill = "#56B4E9") +
++     coord_flip() +
++     labs(title = 'Count of the passengers by title') + 
++     scale_x_discrete(name = "Passenger's title") +
++     scale_y_continuous(name = "Count", breaks = seq(0, 900, 100)) +
++     theme_custom()
+> 
+> 
+> ## ----missing_port, echo=FALSE, message=FALSE, warning=FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic %>% 
++   filter(is.na(Embarked)) %>%
++   kable(format = 'html') %>%
++   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+<table class="table table-striped table-hover table-condensed" style="margin-left: auto; margin-right: auto;">
+ <thead>
+  <tr>
+   <th style="text-align:right;"> Survived </th>
+   <th style="text-align:left;"> Pclass </th>
+   <th style="text-align:left;"> Name </th>
+   <th style="text-align:left;"> Sex </th>
+   <th style="text-align:right;"> Age </th>
+   <th style="text-align:right;"> SibSp </th>
+   <th style="text-align:right;"> Parch </th>
+   <th style="text-align:left;"> Ticket </th>
+   <th style="text-align:right;"> Fare </th>
+   <th style="text-align:left;"> Cabin </th>
+   <th style="text-align:left;"> Embarked </th>
+   <th style="text-align:left;"> Title </th>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:left;"> 1 </td>
+   <td style="text-align:left;"> Icard, Miss. Amelie </td>
+   <td style="text-align:left;"> female </td>
+   <td style="text-align:right;"> 38 </td>
+   <td style="text-align:right;"> 0 </td>
+   <td style="text-align:right;"> 0 </td>
+   <td style="text-align:left;"> 113572 </td>
+   <td style="text-align:right;"> 80 </td>
+   <td style="text-align:left;"> B28 </td>
+   <td style="text-align:left;"> NA </td>
+   <td style="text-align:left;"> Miss </td>
+  </tr>
+  <tr>
+   <td style="text-align:right;"> 1 </td>
+   <td style="text-align:left;"> 1 </td>
+   <td style="text-align:left;"> Stone, Mrs. George Nelson (Martha Evelyn) </td>
+   <td style="text-align:left;"> female </td>
+   <td style="text-align:right;"> 62 </td>
+   <td style="text-align:right;"> 0 </td>
+   <td style="text-align:right;"> 0 </td>
+   <td style="text-align:left;"> 113572 </td>
+   <td style="text-align:right;"> 80 </td>
+   <td style="text-align:left;"> B28 </td>
+   <td style="text-align:left;"> NA </td>
+   <td style="text-align:left;"> Mrs </td>
+  </tr>
+</tbody>
+</table>
+> 
+> 
+> ## ----plot_missing_embarked, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE---------------------------------------------------------------------------------------------------------------------------------
+> titanic %>% 
++   filter(Pclass == 1) %>%
++   ggplot(aes(x = Embarked, y = Fare)) +
++     geom_boxplot(colour = "black", fill = "#56B4E9", outlier.colour = 'red') +
++     ggtitle("Fare depending on the port of embarkation for the first class") +
++     scale_x_discrete(name = "Port of embarkation") +
++     scale_y_continuous(name = "Fare") +
++     theme_custom()
+> 
+> 
+> ## ----inputation_port, echo=TRUE, message=FALSE, warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic[62, "Embarked"] <- "C"
+> titanic[830, "Embarked"] <- "C"
+> 
+> 
+> ## ----port, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic %>%
++   ggplot(aes(x = Embarked)) +
++     geom_bar(width = 0.5, fill = "#56B4E9") +
++     coord_flip() +
++     labs(title = 'Count of the passengers by port of embarkation') + 
++     scale_x_discrete(name = "Passenger's port of embarkation") +
++     scale_y_continuous(name = "Count", breaks = seq(0, 900, 100)) +
++     theme_custom()
+> 
+> 
+> ## ----missing_fare, echo=FALSE, message=FALSE, warning=FALSE----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic %>% 
++   filter(is.na(Fare)) %>%
++   kable(format = 'html') %>%
++   kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+<table class="table table-striped table-hover table-condensed" style="margin-left: auto; margin-right: auto;">
+ <thead>
+  <tr>
+   <th style="text-align:right;"> Survived </th>
+   <th style="text-align:left;"> Pclass </th>
+   <th style="text-align:left;"> Name </th>
+   <th style="text-align:left;"> Sex </th>
+   <th style="text-align:right;"> Age </th>
+   <th style="text-align:right;"> SibSp </th>
+   <th style="text-align:right;"> Parch </th>
+   <th style="text-align:left;"> Ticket </th>
+   <th style="text-align:right;"> Fare </th>
+   <th style="text-align:left;"> Cabin </th>
+   <th style="text-align:left;"> Embarked </th>
+   <th style="text-align:left;"> Title </th>
+  </tr>
+ </thead>
+<tbody>
+  <tr>
+   <td style="text-align:right;"> NA </td>
+   <td style="text-align:left;"> 3 </td>
+   <td style="text-align:left;"> Storey, Mr. Thomas </td>
+   <td style="text-align:left;"> male </td>
+   <td style="text-align:right;"> 60.5 </td>
+   <td style="text-align:right;"> 0 </td>
+   <td style="text-align:right;"> 0 </td>
+   <td style="text-align:left;"> 3701 </td>
+   <td style="text-align:right;"> NA </td>
+   <td style="text-align:left;"> NA </td>
+   <td style="text-align:left;"> S </td>
+   <td style="text-align:left;"> Mr </td>
+  </tr>
+</tbody>
+</table>
+> 
+> 
+> ## ----plot_fare, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE---------------------------------------------------------------------------------------------------------------------------------------------
+> titanic %>%
++   filter(Embarked == 'S', Pclass == 3) %>%
++   ggplot(aes(x = Fare)) +
++     geom_density(kernel = 'gaussian', colour = "#FFFFFF", fill = "#56B4E9") +
++     ggtitle("Density of Fare", subtitle = "Embarked in Southampton in third class") +
++     xlab("Fare ($)") + ylab("Density") +
++     theme_custom()
+Warning message:
+Removed 1 rows containing non-finite values (stat_density). 
+> 
+> 
+> ## ----fare_inputation, echo=TRUE, message=FALSE, warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic[1044, "Fare"] <- titanic %>% filter(Embarked == 'S', Pclass == 3) %>% pull(Fare) %>% median(na.rm = TRUE)
+> 
+> 
+> ## ----plot_age, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE----------------------------------------------------------------------------------------------------------------------------------------------
+> grid.arrange(
++ titanic %>% 
++   ggplot(aes(y = Age)) +
++     geom_boxplot(fill = "#56B4E9", outlier.colour = 'red') +
++     coord_flip() +
++     ggtitle("Boxplot of Age") +
++     scale_x_continuous(breaks = NULL) +
++     theme_custom(),
++ 
++ titanic %>%
++   ggplot(aes(x = Age)) +
++     geom_density(kernel = 'gaussian', colour = "#FFFFFF", fill = "#56B4E9") +
++     ggtitle("Density of Age") +
++     xlab("Age") + ylab("Density") +
++     theme_custom(),
++ ncol = 2, nrow = 1)
+Warning messages:
+1: Removed 263 rows containing non-finite values (stat_boxplot). 
+2: Removed 263 rows containing non-finite values (stat_density). 
+> 
+> 
+> ## ----ridge_regression_age, echo=TRUE, message=FALSE, warning=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Split the dataset into the ones with Age and the ones without Age.
+> titanic.with.age <- titanic %>% 
++   filter(!is.na(Age)) %>%
++   select(-c(Survived, Name, Ticket, Cabin))
+> titanic.without.age <- titanic %>%
++   filter(is.na(Age)) %>%
++   select(-c(Survived, Name, Ticket, Cabin)) %>%
++   mutate(Age = 0)
+> 
+> # Build a model matrix of the data
+> titanic.lm <- lm(Age ~ ., data = titanic.with.age)
+> titanic.with.age.model.matrix <- model.matrix(titanic.lm, data = titanic.with.age)[,-1]
+> # Perform the Ridge Regression (alpha = 0)
+> titanic.age.model <- glmnet(titanic.with.age.model.matrix, titanic.with.age$Age, alpha = 0)
+> 
+> # Prediction of the Age 
+> titanic.without.age$Age <- predict(titanic.age.model, 
++   newx = model.matrix(titanic.lm, data = titanic.without.age)[, -1],
++   s = cv.glmnet(titanic.with.age.model.matrix, titanic.with.age$Age, alpha = 0)$lambda.min,
++   type = 'link')
+> 
+> # Replace the missing Age into the all dataset
+> titanic[is.na(titanic$Age), "Age"] <- titanic.without.age$Age
+> 
+> 
+> ## ----plot_age2, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE---------------------------------------------------------------------------------------------------------------------------------------------
+> grid.arrange(
++ titanic %>% 
++   ggplot(aes(y = Age)) +
++     geom_boxplot(fill = "#56B4E9", outlier.colour = 'red') +
++     coord_flip() +
++     ggtitle("Boxplot of Age") +
++     scale_x_continuous(breaks = NULL) +
++     theme_custom(),
++ 
++ titanic %>%
++   ggplot(aes(x = Age)) +
++     geom_density(kernel = 'gaussian', colour = "#FFFFFF", fill = "#56B4E9") +
++     ggtitle("Density of Age") +
++     xlab("Age") + ylab("Density") +
++     theme_custom(),
++ ncol = 2, nrow = 1)
+> 
+> 
+> ## ----plot_sipsp, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------
+> titanic %>%
++   ggplot(aes(x = as.factor(SibSp))) +
++     geom_bar(width = 0.5, fill = "#56B4E9") +
++     coord_flip() +
++     labs(title = 'Count of the passengers number of siblings/spouses') + 
++     scale_x_discrete(name = "Number of Siblings/Spouses") +
++     scale_y_continuous(name = "Count", breaks = seq(0, 900, 100)) +
++     theme_custom()
+> 
+> 
+> ## ----plot_parch, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------
+> titanic %>%
++   ggplot(aes(x = as.factor(Parch))) +
++     geom_bar(width = 0.5, fill = "#56B4E9") +
++     coord_flip() +
++     labs(title = 'Count of the passengers number of parents/children') + 
++     scale_x_discrete(name = "Number of Parents/Children") +
++     scale_y_continuous(name = "Count", breaks = seq(0, 1000, 100)) +
++     theme_custom()
+> 
+> 
+> ## ----del_cabin, echo=TRUE, message=FALSE, warning=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic <- titanic %>% select(-Cabin)
+> 
+> 
+> ## ----del_ticket, echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> titanic <- titanic %>% select(-Ticket)
+> 
+> 
+> ## ----model, echo=TRUE, message=FALSE, warning=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- titanic %>% select(-Name) %>% filter(!is.na(Survived))
+> test <- titanic %>% select(-Name) %>% filter(is.na(Survived))
+> 
+> # Split the train set into two dataset (for validation)
+> set.seed(42)
+> sample <- sample(c(TRUE, FALSE), nrow(train), replace = TRUE, prob = c(2/3, 1/3))
+> train.val <- train[sample, ]
+> test.val <- train[!sample, ]
+> 
+> # Perform Ridge regression
+> train.lm <- lm(Survived ~ ., data = train.val)
+> X <- model.matrix(train.lm, data = train.val)[ , -1]
+> Y <- train.val$Survived
+> train.ridge.model <- glmnet(X, Y, alpha = 0, family = 'binomial')
+> 
+> # Prediction on the test.val set
+> test.val.predict <- predict(train.ridge.model, 
++                             s = cv.glmnet(X, Y, alpha = 0)$lambda.min,
++                             newx = model.matrix(train.lm, data = test.val)[ , -1],
++                             type = 'class')
+> 
+> 
+> ## ----submission, echo=TRUE, message=FALSE, warning=FALSE-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Prediction of the test set
+> test$Survived <- 0
+> test.predict <- predict(train.ridge.model, 
++                         s = cv.glmnet(X, Y, alpha = 0)$lambda.min,
++                         newx = model.matrix(train.lm, data = test)[ , -1],
++                         type = 'class') 
+> 
+> # Construt the dataframe
+> result <- data.frame(PassengerID = row.names(test.predict),
++                      Survived = test.predict[ , 1])
+> 
+> # Export as CSV
+> write.csv(result, 'results.csv', row.names = FALSE)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  3.485   0.231   3.808 

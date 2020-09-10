@@ -1,0 +1,50 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> #1.	Introduction
+> #1.1	Key point for solving the problem
+> 
+> #2.	Preparation
+> #2.1	Initial works
+> #2.2	Adding new column
+> #2.3 Filling up missing values
+> 
+> #3.	Prediction
+> #3.1	Split in to training and test sets
+> #3.2	prediction
+> 
+> #4.	Conclusion
+> 
+> 
+> 
+> #1.	Introduction
+> #I looked other scripts and it was amazing to see their unique ideas for solving the Titanic problem. However, I found out that those methods could be bit complicated for the beginners. Accordingly, the purpose for writing this is to help the people who just wanted to become a data scientist. 
+> 
+> #1.1	Key point for solving the problem
+> #I will use “tree” function to make Machine Learning model. So people who haven’t installed the package need to type install.packages(tree) in the Console. To set up the tree model, it is really important to know the types of variables and need to change the types to appropriate ones. 
+> 
+> 
+> #2.	Preparation
+> 
+> #2.1	Initial works
+> #Load packages
+> library(tree)
+Error in library(tree) : there is no package called ‘tree’
+Execution halted

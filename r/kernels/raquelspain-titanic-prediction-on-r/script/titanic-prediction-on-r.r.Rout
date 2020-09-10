@@ -1,0 +1,1456 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> # This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
+> # The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
+> # For example, here's several helpful packages to load in 
+> 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(readr) # CSV file I/O, e.g. the read_csv function
+> 
+> # Input data files are available in the "../input/" directory.
+> # For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
+> 
+> system("ls ../input")
+Rplots.pdf
+gender_submission.csv
+test.csv
+train.csv
+> 
+> # Any results you write to the current directory are saved as output.
+> 
+> setwd("../input")
+> train <- read.csv("train.csv", na.strings = "")
+> test <- read.csv("test.csv")
+> 
+> 
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 147 levels "A10","A14","A16",..: NA 82 NA 56 NA NA 130 NA NA NA ...
+ $ Embarked   : Factor w/ 3 levels "C","Q","S": 3 1 3 3 3 2 3 3 3 1 ...
+> train$Survived <- as.factor(train$Survived)
+> train$Pclass <-  as.factor(train$Pclass)
+> 
+> #missing values
+> library(Amelia)
+Loading required package: Rcpp
+## 
+## Amelia II: Multiple Imputation
+## (Version 1.7.6, built: 2019-11-24)
+## Copyright (C) 2005-2020 James Honaker, Gary King and Matthew Blackwell
+## Refer to http://gking.harvard.edu/amelia/ for more information
+## 
+> missmap(train)
+> 
+> sum(is.na(train$Age) == TRUE ) / length(train$Age)
+[1] 0.1986532
+> 
+> #all the attributes in % of missing
+> sapply(train, function(df) {
++   sum(is.na(df) == TRUE) / length(df);
++ })
+PassengerId    Survived      Pclass        Name         Sex         Age 
+0.000000000 0.000000000 0.000000000 0.000000000 0.000000000 0.198653199 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+0.000000000 0.000000000 0.000000000 0.000000000 0.771043771 0.002244669 
+> 
+> #Input missing values
+> 
+> table(train$Embarked, useNA = "always")
+
+   C    Q    S <NA> 
+ 168   77  644    2 
+> #function (..., exclude = if (useNA == "no") c(NA, NaN), 
+> #useNA = c("no", "ifany", "always"), 
+> #dnn = list.names(...), deparse.level = 1)
+> 
+> #For Embarkmed we will assign the most probable port "S"
+> 
+> train$Embarked[which(is.na(train$Embarked))] = "S"
+> table(train$Embarked, useNA = "always")#done!
+
+   C    Q    S <NA> 
+ 168   77  646    0 
+> 
+> #Names....first we will see what kind of words are in "name"
+> 
+> train$Name = as.character(train$Name)
+> table_words = table(unlist(strsplit(train$Name, "\\s+"))) #separar por blanks
+> sort(table_words [grep("\\.", names(table_words))], 
++      decreasing = TRUE) #lista por el tratamiento (que acaba en punto)
+
+      Mr.     Miss.      Mrs.   Master.       Dr.      Rev.      Col.    Major. 
+      517       182       125        40         7         6         2         2 
+    Mlle.     Capt. Countess.      Don. Jonkheer.        L.     Lady.      Mme. 
+        2         1         1         1         1         1         1         1 
+      Ms.      Sir. 
+        1         1 
+> 
+> table_words
+
+                 "Andy"                  "Annie                 "Annie" 
+                      1                       1                       1 
+               "Archie"                "Bessie"                "Carrie" 
+                      1                       1                       1 
+                  "Dai"                 "Daisy"                 "Dolly" 
+                      1                       1                       1 
+                "Ellen"                 "Ellie"                "Fannie" 
+                      1                       1                       1 
+                "Frank"               "Frankie"                   "Gus" 
+                      1                       1                       1 
+               "Hannah"                 "Harry"                  "Jane" 
+                      1                       1                       1 
+                 "Kate"                 "Katie"                "Lottie" 
+                      1                       2                       1 
+               "Maggie"                  "Mary"               "Mildred" 
+                      1                       1                       1 
+               "Nellie"               "Neville"                  "Nina" 
+                      2                       1                       1 
+                 "Nora"                 "Norah"                  "Ruby" 
+                      2                       1                       1 
+              "Suzette"               "William"                "Winnie" 
+                      1                       1                       1 
+               ("George               ("Henry")              ("Irving") 
+                      1                       1                       1 
+                ("Louis                ("Mary")                    ("Mr 
+                      1                       1                       4 
+                  ("Mrs             ("Pentcho")                ("Philip 
+                      4                       1                       1 
+        ("Wennerstrom")               ("William                    (Ada 
+                      1                       1                       4 
+                 (Adele                  (Agnes                (Alfrida 
+                      1                       1                       1 
+                 (Alice                   (Alma                 (Amelia 
+                      2                       1                       1 
+                   (Amy                   (Anna                  (Anna) 
+                      1                       5                       1 
+                 (Annie                (Augusta                 (Beila) 
+                      1                       1                       1 
+                  (Berk                 (Bertha                 (Bessie 
+                      1                       1                       1 
+             (Catherine             (Catherine)              (Charlotte 
+                      2                       1                       2 
+                 (Clara               (Cordelia                  (David 
+                      2                       1                       1 
+               (Dorothy                  (Edith                 (Edwiga 
+                      1                       3                       1 
+                  (Elin              (Elisabeth                  (Eliza 
+                      1                       2                       1 
+             (Elizabeth                   (Elna                 (Emelia 
+                      6                       1                       1 
+                 (Emily                  (Emma)                 (Esther 
+                      2                       1                       1 
+                 (Ethel               (Farnham)               (Florence 
+                      1                       1                       3 
+                 (Grace                 (Hannah                  (Hanne 
+                      1                       1                       1 
+               (Hedwig)                  (Helen                 (Helena 
+                      1                       1                       1 
+                (Helene                    (Ida                (Imanita 
+                      1                       1                       1 
+                 (Irene                   (Jane                 (Jessie 
+                      1                       3                       1 
+               (Johanna               (Josefine                 (Juliet 
+                      2                       1                       1 
+              (Juliette              (Karolina)                 (Latifa 
+                      1                       1                       1 
+                  (Leah                  (Leila                 (Lilian 
+                      1                       1                       1 
+               (Lillian                   (Lily                 (Lucile 
+                      1                       2                       1 
+               (Lucille                   (Lucy                   (Lulu 
+                      1                       1                       1 
+                 (Lutie              (Madeleine               (Mantoura 
+                      1                       1                       1 
+              (Margaret             (Margaretta                  (Maria 
+                      4                       1                       4 
+                (Marian                  (Marie                 (Marion 
+                      1                       2                       1 
+               (Marion)                 (Martha                   (Mary 
+                      1                       2                       4 
+                 (Mary)               (Mathilde                 (Miriam 
+                      1                       1                       1 
+                  (Myna                   (Rosa                  (Rosa) 
+                      1                       1                       1 
+               (Rosalie                 (Sallie                 (Selini 
+                      1                       1                       1 
+                 (Selma               (Sultana)                 (Sylvia 
+                      1                       1                       1 
+                (Tillie                   (Vera                       A 
+                      1                       1                       4 
+                  Aaron                 Abbing,                 Abbott, 
+                      1                       1                       2 
+               Abelson,                 Abraham                  Achem) 
+                      2                       2                       1 
+                Achille                Achilles                     Ada 
+                      1                       1                       1 
+                 Adahl,                  Adams,                Adelaide 
+                      1                       1                       1 
+                  Adele                  Adelia                   Adola 
+                      1                       1                       1 
+                  Adolf                Adolfina                 Adolphe 
+                      2                       1                       1 
+                 Adrian                  Agatha                    Agda 
+                      2                       1                       1 
+                  Agnes                  Ahlin,                   Ahmed 
+                      2                       1                       1 
+                   Aijo                    Aime                    Aina 
+                      1                       1                       1 
+                   Aks,                  Albert               Albimona, 
+                      1                       8                       1 
+                  Albin                  Albina                   Alden 
+                      1                       1                       1 
+              Alexander              Alexander,              Alexander) 
+                      9                       1                       1 
+              Alexandra              Alexanteri                Alexenia 
+                      2                       1                       1 
+                 Alfons                 Alfonzo                  Alfred 
+                      2                       1                      12 
+                Alfrida                Algernon               Alhomaki, 
+                      1                       1                       1 
+                    Ali                    Ali,                   Alice 
+                      1                       2                       6 
+                  Aline                  Allen,                Allison, 
+                      1                       2                       3 
+                 Allum,                 Aloisia                  Amanda 
+                      1                       1                       1 
+                Ambrose                  Amelia                  Amelie 
+                      1                       2                       1 
+                   Amin                     Amy                  Anders 
+                      2                       2                       3 
+               Andersen        Andersen-Jensen,                Anderson 
+                      1                       1                       2 
+              Anderson,              Andersson,                   Andre 
+                      1                       9                       1 
+                Andreas             Andreasson,                  Andree 
+                      2                       1                       1 
+                 Andrew                 Andrew,                Andrews, 
+                      3                       1                       2 
+               Andrews)                  Angle,                     Ann 
+                      1                       1                       3 
+                   Anna                    Anne                   Annie 
+                     11                       5                       5 
+                Anthony                  Antino                  Antoni 
+                      2                       1                       2 
+               Antonine                   Antti               Apostolos 
+                      1                       2                       1 
+              Appleton,               Archibald                    Arne 
+                      1                       1                       2 
+                 Arnold         Arnold-Franchi,           Artagaveytia, 
+                      2                       2                       1 
+                 Arthur                   Arvid                   Asim, 
+                     13                       2                       1 
+               Asplund,                   Assad                    Assi 
+                      4                       1                       1 
+                 Astor,                Asuncion               Atkinson) 
+                      1                       1                       1 
+               Attalah,                 Aubart,                  August 
+                      2                       1                       5 
+                Augusta             Augustsson,                Augustus 
+                      4                       1                       2 
+                 Aurora                  Austen                  Austin 
+                      1                       1                       2 
+                 Ayoub,                       B              Backstrom, 
+                      1                       1                       2 
+               Baclini,                   Badt,                 Bailey, 
+                      4                       1                       1 
+                  Baird                 Balkic,                   Ball, 
+                      2                       1                       1 
+              Banfield,                 Banoura                 Baptist 
+                      1                       1                       1 
+               Baptiste                  Barah,                 Barbara 
+                      2                       1                       1 
+               Barbara,                 Barber,              Barkworth, 
+                      2                       1                       1 
+               Barrett)                 Barron)                 Barton, 
+                      1                       1                       1 
+               Bateman,                Baumann,                 Baxter, 
+                      1                       1                       2 
+               Bazzani,                  Beane,                   Beard 
+                      1                       2                       1 
+                Beavan,               Bechstein                 Becker, 
+                      1                       1                       2 
+              Beckwith,                Beesley,                   Behr, 
+                      2                       1                       1 
+                  Bengt               Bengtsson              Bengtsson, 
+                      1                       1                       1 
+             Bengtsson)                Benjamin                   Berg) 
+                      1                       4                       1 
+              Berglund,               Berglund)                    Berk 
+                      1                       1                       1 
+                Bernard             Bernhardina                   Bernt 
+                      1                       1                       1 
+              Berriman,                  Bertha                  Berthe 
+                      1                       4                       1 
+                Bertram                 Betros,                 Bidois, 
+                      4                       1                       1 
+              Billiard,                   Bing,                  Birger 
+                      1                       1                       1 
+             Birkeland,               Birkhardt                 Bishop, 
+                      1                       2                       2 
+              Bissette, Bjornstrom-Steffansson,              Blackwell, 
+                      1                       1                       1 
+                 Blank,             Bloomfield)                  Blyler 
+                      1                       1                       1 
+                  Bone)                Bonnell,                   Borie 
+                      1                       1                       1 
+                Borland            Bostandyeff,                 Boulos, 
+                      3                       1                       3 
+                Boulos)                 Bourke,                  Bowen, 
+                      1                       3                       1 
+              Bowerman,               Bowerman)                Bracken, 
+                      1                       1                       1 
+                Bradley                Bradley,                  Branko 
+                      1                       1                       1 
+                Braund,               Brayton")                  Brewe, 
+                      2                       1                       1 
+                Bridget                 Brigdet                  Briggs 
+                      2                       1                       1 
+           Brocklebank,                Brogren)                  Brown, 
+                      1                       2                       4 
+                 Brown)                  Bryhl,                  Bullen 
+                      1                       1                       1 
+                 Burke,                  Burns,                   Buss, 
+                      1                       1                       1 
+                Butler,                   Butt,                  Byles, 
+                      1                       1                       1 
+               Bystrom,                       C                  Cacic, 
+                      1                       3                       2 
+                Cahoone                 Cairns,             Calderhead, 
+                      1                       1                       1 
+              Caldwell,                  Calic,                Cameron, 
+                      2                       2                       1 
+               Campbell               Campbell,                Canavan, 
+                      2                       1                       1 
+                  Cann,                   Capt.                  Caram, 
+                      1                       1                       1 
+              Carbines,                Cardeza,                    Carl 
+                      1                       1                       3 
+           Carl/Charles                   Carla                  Carlo, 
+                      1                       1                       1 
+              Carlsson,                Caroline                   Carr, 
+                      2                       1                       1 
+                Carrau,                 Carter,                  Cassem 
+                      1                       6                       1 
+            Castellana,                   Cater               Catharina 
+                      2                       1                       1 
+              Catherine              Cavendish,                   Celia 
+                      4                       1                       1 
+               Celotti,                   Cerin                Chaffee, 
+                      1                       1                       1 
+            Chamberlain               Chambers,                   Chang 
+                      1                       2                       1 
+               Chapman,                 Chaput)                 Charity 
+                      2                       1                       1 
+                Charles               Charlotta               Charters, 
+                     23                       2                       1 
+                 Chehab                 Cherry,               Chibnall, 
+                      1                       1                       1 
+                  Chip,                  Choong               Christian 
+                      1                       1                       1 
+             Christian)              Christiana               Christine 
+                      1                       1                       1 
+            Christmann,                 Christo                Christy, 
+                      1                       1                       1 
+               Christy)           Chronopoulos,                Clarence 
+                      1                       1                       1 
+                Clarke,                 Clarke)                   Claus 
+                      1                       1                       1 
+                  Clear                Cleaver,                 Clemmer 
+                      1                       1                       1 
+              Clifford,                  Clinch                 Clinton 
+                      1                       1                       1 
+                  Clyde                 Coelho,                  Cohen, 
+                      1                       1                       1 
+                   Col.                 Coleff,              Coleridge, 
+                      2                       2                       1 
+             Collander,                 Colley,                Collyer, 
+                      1                       1                       3 
+               Compton,             Connaghton,               Connolly, 
+                      1                       1                       1 
+               Connors,                 Conover               Constance 
+                      1                       1                       2 
+             Constanzia                   Cook,                    Cor, 
+                      1                       1                       1 
+                  Corn,                Cornelia               Cornelius 
+                      1                       1                       1 
+                Corning                   Cosmo               Countess. 
+                      1                       1                       1 
+              Courtenay                 Coutts,                  Coxon, 
+                      2                       2                       1 
+                Crease,                  Cribb,                 Crosby, 
+                      1                       1                       2 
+              Cruyssen,              Culumovic,                Cumings, 
+                      1                       1                       1 
+                Cummins             Cunningham,                  Curnow 
+                      1                       1                       1 
+                 Cyriel                       D                   Dahl, 
+                      1                       3                       1 
+              Dahlberg,                   Daisy                  Dakic, 
+                      1                       1                       1 
+                   Dale                   Daly,               Damsgaard 
+                      1                       2                       1 
+                Danbom,                  Daniel                 Daniel, 
+                      2                       4                       1 
+               Daniels)               Danielsen                  Danira 
+                      1                       1                       1 
+                Danoff,              Dantcheff,                  Darwis 
+                      1                       1                       1 
+                  David                  David)                  Davids 
+                      5                       1                       1 
+              Davidson,                 Davies,                   Davis 
+                      1                       3                       1 
+                 Davis,                  Davis)                Davison, 
+                      1                       1                       1 
+                     de                   Dean,                     del 
+                      7                       2                       1 
+           DeLaudeniere                   Delia                   Denis 
+                      1                       3                       2 
+               Denkoff,                 Dennick                 Dennis, 
+                      1                       1                       1 
+                 Denzil                     der                Devaney, 
+                      1                       1                       1 
+                   Dibo                   Dick,               Dickinson 
+                      1                       2                       2 
+                 Dimic,                  Dodge,                 Doharr, 
+                      1                       1                       1 
+                 Dolck)                 Doling,                Domingos 
+                      1                       2                       1 
+                   Don.                  Donald                 Dooley, 
+                      1                       1                       1 
+                Doolina                Dorking,                 Dorothy 
+                      1                       1                       1 
+                Douglas                Douglas,                Dowdell, 
+                      2                       1                       1 
+               Downton,                     Dr.                   Drake 
+                      1                       7                       1 
+             Drazenoic,                   Drew,                   Duane 
+                      1                       1                       1 
+                 Duane,                    Duff                   Duran 
+                      1                       2                       1 
+          Dyer-Edwards)                       E                    Ebba 
+                      1                       6                       1 
+               Eberhard                    Eden                   Edgar 
+                      1                       1                       2 
+                Edgardo                   Edith                  Edmond 
+                      1                       3                       2 
+               Edmondus                  Edmund                  Edvard 
+                      1                       1                       3 
+            Edvardsson,                   Edvin                  Edward 
+                      1                       3                      18 
+                 Edwart                   Edwin                  Edwina 
+                      1                       1                       1 
+                   Edwy                   Einar                    Eino 
+                      2                       1                       2 
+                 Eiriik             Eitemiller,                 Eklund, 
+                      1                       1                       1 
+               Ekstrom,                 Eleanor                   Elias 
+                      1                       1                       2 
+                 Elias,                  Elias)                 Eliezer 
+                      3                       1                       1 
+                 Eliina                   Elina               Elisabeth 
+                      1                       1                       2 
+                  Elise               Elizabeth                  Elkins 
+                      1                       9                       1 
+                  Ellen                   Ellis                   Elmer 
+                      4                       1                       2 
+                   Elon                Elsbury,                   Elsie 
+                      1                       1                       4 
+               Emanuel,                    Emil                   Emile 
+                      1                       4                       1 
+                 Emilia                   Emily                   Emir, 
+                      2                       2                       1 
+                   Emma             Encarnacion                 Endres, 
+                      1                       1                       1 
+              Engelhart                   Ennis                    Eric 
+                      1                       1                       1 
+                   Erik                  Erland                    Erna 
+                      2                       1                       1 
+                 Ernest                 Ernesti                   Ernst 
+                      9                       1                       5 
+                  Ervin               Estanslas                   Ethel 
+                      1                       1                       2 
+                 Eugene                 Eugenie                Eugenie) 
+                      3                       1                       1 
+                Eustis,                 Eustis)                     Eva 
+                      1                       1                       1 
+                Evelyn)                       F                  Fabian 
+                      1                       1                       1 
+                  Fahim              Fahlstrom,                    Fang 
+                      1                       1                       1 
+                  Fared                  Farred                Farrell, 
+                      1                       1                       1 
+              Farthing,                  Fatima             Faunthorpe, 
+                      1                       1                       1 
+                  Felix                 Fellows                  Fenton 
+                      1                       1                       1 
+              Fernandeo                  Finck)                Fischer, 
+                      1                       1                       1 
+               Fischer)                  Fisher                   Fiske 
+                      1                       1                       1 
+                Fleming                Fleming,                Fletcher 
+                      1                       1                       1 
+               Florence                   Floyd                  Flynn, 
+                      2                       1                       3 
+                   Foo,                  Forbes                  Forby) 
+                      1                       1                       1 
+                 Force)                   Ford,                   Ford) 
+                      1                       4                       1 
+               Foreman,                Fortune,                    Fox, 
+                      1                       4                       1 
+           Francatelli,                 Frances               Francesco 
+                      1                       1                       1 
+               Franchi)                 Francis               Francisco 
+                      1                       6                       1 
+              Francoise                   Frank                   Frans 
+                      1                       6                       1 
+                 Frasar             Frauenthal,                Frederic 
+                      1                       2                       2 
+              Frederick                 Fredrik                Fridtjof 
+                     15                       1                       1 
+      Frolicher-Stehli,              Frolicher,                  Frost, 
+                      1                       1                       1 
+                   Fry,                  Fuller                   Funk, 
+                      1                       1                       1 
+              Futrelle,                 Fynney,                       G 
+                      2                       1                       3 
+                  Gale,              Gallagher,               Garfirth, 
+                      1                       1                       1 
+               Garside,                Gaskell,                   Gates 
+                      1                       1                       1 
+                 Gavey,                    Gee,                  George 
+                      1                       1                      22 
+               George")               Georgette                   Gerda 
+                      1                       1                       1 
+                 Gerios                 Gerious                 Gertrud 
+                      1                       2                       1 
+               Gertrude             Gheorgheff,                  Gideon 
+                      2                       1                       1 
+                Gifford                 Giglio,                 Gilbert 
+                      1                       1                       2 
+                 Giles,               Gilinski,                   Gill, 
+                      1                       1                       1 
+             Gillespie,              Gillespie)                Gilnagh, 
+                      1                       1                       1 
+                Givard,                  Gladys                  Glynn, 
+                      1                       2                       1 
+                Godfrey                Godfrey)             Goldenberg, 
+                      1                       1                       2 
+           Goldschmidt,              Goldsmith,              Goncalves, 
+                      1                       3                       1 
+                 Gonios                Goodwin,               Goransson 
+                      1                       6                       1 
+                Gordon,                   Gosta                Gottfrid 
+                      2                       1                       1 
+               Govaert)              Grabowska)                 Graham, 
+                      1                       1                       3 
+                 Green,              Greenberg,             Greenfield, 
+                      1                       1                       1 
+                 Gregg)                Gretchen                   Grice 
+                      1                       2                       1 
+                Griggs)             Gronnestad,                Guentcho 
+                      1                       1                       1 
+            Guggenheim,               Guillaume                 Gurshon 
+                      1                       1                       1 
+                 Gustaf             Gustafsson,             Gustafsson) 
+                      5                       4                       1 
+                Gustave                       H                   Haas, 
+                      1                       8                       1 
+               Hagland,                    Haim                   Hakan 
+                      2                       1                       1 
+           Hakkarainen,                   Hale,                   Halim 
+                      2                       1                       1 
+                   Hall                   Hall)                 Hallace 
+                      1                       2                       1 
+              Halvorsen             Hamalainen,                  Hammad 
+                      1                       2                       1 
+                 Hampe,                   Hanna                  Hanna, 
+                      1                       3                       1 
+                 Hanora                    Hans                  Hansen 
+                      3                       4                       2 
+                Hansen,                  Harald               Harbaugh) 
+                      3                       2                       1 
+              Harbeck")                 Harder,               Harknett, 
+                      1                       1                       1 
+                Harmer,                  Harold                 Harper, 
+                      1                       2                       4 
+                Harriet             Harrington,                  Harris 
+                      1                       1                       1 
+                Harris,               Harrison,                   Harry 
+                      4                       1                       5 
+                  Hart,                  Harvey                 Hassab, 
+                      4                       2                       1 
+                Hassan,                Hastings                Hatfield 
+                      1                       1                       1 
+                Haven")              Hawksford,                 Haxtun) 
+                      1                       1                       1 
+                 Hayden                   Hays,                  Healy, 
+                      1                       2                       1 
+                  Heath                 Hedman,                  Hedwig 
+                      2                       1                       1 
+               Hegarty,              Heikkinen,               Heininen, 
+                      1                       1                       1 
+           Heinsheimer)                   Helen                  Helene 
+                      1                       6                       1 
+                Helmina             Hendekovic,               Henriette 
+                      1                       1                       1 
+                 Henrik                   Henry                  Henry, 
+                      2                      33                       1 
+                Herbert                  Herman                 Herman, 
+                      1                       1                       2 
+               Hewlett,                Hickman,                   Hilda 
+                      1                       3                       1 
+                 Hildur                  Hileni                Hippach, 
+                      1                       1                       2 
+              Hirvonen,              Hitchcock)                 Hjalmar 
+                      1                       1                       2 
+               Hocking,                Hocking)                 Hodges, 
+                      2                       1                       1 
+                  hoef,               Hoffman")               Hogeboom, 
+                      1                       1                       1 
+                  Hold,                   Holm,              Holverson, 
+                      1                       1                       2 
+                 Homer,               Honkanen,                   Hood, 
+                      1                       1                       1 
+                Horgan,                 Hosono,                Houssein 
+                      1                       1                       1 
+                 Howard                  Howell                   Hoyt, 
+                      1                       1                       3 
+                 Hubert                  Hudson                    Hugh 
+                      1                       2                       4 
+                Hughes)                    Hugo                   Hulda 
+                      2                       2                       1 
+               Humblen,                   Hunt,                   Hunt) 
+                      1                       1                       1 
+                 Husein                 Ibrahim                  Icard, 
+                      1                       1                       1 
+                    Ida                  Ignjac                      II 
+                      2                       1                       2 
+                Iisakki                   Ileen                  Ilett, 
+                      1                       1                       1 
+                   Ilia             Ilmakangas,                  Ilmari 
+                      1                       1                       1 
+                  Impe,                Ingeborg                  Inglis 
+                      3                       1                       1 
+                Ingvald                    Iris                   Irwin 
+                      1                       1                       1 
+                 Isham,                    Ivan                Ivanoff, 
+                      1                       4                       1 
+                   Ivar                       J                   Jaako 
+                      1                       8                       1 
+                Jackson                   Jacob              Jacobsohn, 
+                      1                       3                       2 
+                Jacques                   Jakob               Jalsevac, 
+                      3                       3                       1 
+                  James                  Jamila                     Jan 
+                     24                       1                       1 
+                   Jane                   Janko                Jansson, 
+                      1                       1                       1 
+                Jardin,                 Jarvis,                    Jean 
+                      1                       1                       3 
+                Jeannie               Jefferys)                 Jenkin, 
+                      1                       1                       1 
+               Jennings                 Jensen,                Jeremiah 
+                      1                       3                       1 
+                Jermyn,                 Jerwan,                    Jeso 
+                      1                       1                       1 
+                 Jessie                 Joackim                    Joan 
+                      2                       1                       1 
+                   Joel                   Johan                  Johann 
+                      2                      15                       1 
+               Johannes Johannesen-Bratthammer,             Johannesson 
+                      2                       1                       1 
+              Johanson,              Johansson,              Johansson) 
+                      1                       3                       1 
+                   John                Johnson,               Johnston, 
+                     44                       6                       2 
+                  Jonas               Jonkheer.                Jonkoff, 
+                      1                       1                       1 
+               Jonsson,                    Jose                   Josef 
+                      1                       1                       2 
+                 Josefa                Josefina                  Joseph 
+                      1                       1                      16 
+                  Jovan                    Jovo                   Jozef 
+                      1                       1                       1 
+                     Jr                    Juha                    Juho 
+                     10                       3                       2 
+                  Julia                  Julian                   Julie 
+                      1                       2                       1 
+                 Julius                Junkins)                  Juozas 
+                      1                       1                       1 
+               Jussila,                    Juul                       K 
+                      3                       1                       1 
+                Kallio,                 Kalvik,                   Kanio 
+                      1                       1                       1 
+                Kantor,                 Karaic,                    Karl 
+                      2                       1                       9 
+              Karlsson,               Karlsson)               Karoliina 
+                      1                       1                       1 
+                 Karun,                 Kassem,                    Kate 
+                      1                       1                       5 
+                  Kate"               Katherine                   Katie 
+                      1                       4                       1 
+               Katriina                  Keane,                  Keefe, 
+                      1                       2                       1 
+                 Kelly,                   Kent,                 Kenyon, 
+                      4                       1                       1 
+                 Khalil                  Kiamie                Kiernan, 
+                      1                       1                       1 
+             Kilgannon,                Kimball,                  Kimber 
+                      1                       1                       1 
+              Kingcome)          Kink-Heilmann,                   Kink, 
+                      1                       1                       1 
+              Kirkland,                 Klaber,                    Klas 
+                      1                       1                       1 
+                Klasen,                 Knight,                    Knud 
+                      1                       1                       1 
+                 Konrad              Konstantia                Kornelia 
+                      1                       1                       1 
+                Kraeff,              Kristensen                Kristina 
+                      1                       1                       1 
+               Kristine                  Kristo                    Kurt 
+                      1                       1                       1 
+              Kvillner,                       L                      L. 
+                      1                       3                       1 
+                     L)                   Lady.               Lafargue) 
+                      1                       1                       1 
+                Lahoud,               Lahtinen,                   Laina 
+                      1                       1                       1 
+              Laitinen,                 Laleff,                   Lalio 
+                      1                       1                       2 
+                   Lam,                 Lamson)             Landergren, 
+                      2                       1                       1 
+                  Lang,                Laroche,                Larsson, 
+                      1                       3                       2 
+               Larsson)                   Laura                 Lauritz 
+                      1                       1                       2 
+                 Laury)               Laventall                  Laver) 
+                      1                       1                       1 
+               Lawrence                 Leader,                     Lee 
+                      2                       1                       2 
+                 Leeni,                Lefebre,                Lehmann, 
+                      1                       4                       1 
+              Leinonen,                 Leitch,          Lemberopolous, 
+                      1                       1                       1 
+              Lemercier                 Lemore,                     Len 
+                      1                       1                       1 
+                Lennon,                     Leo                    Leon 
+                      1                       3                       1 
+                Leonard                Leonard,                Leontine 
+                      8                       1                       1 
+                Leopold                  LeRoy,                  Leslie 
+                      1                       1                       2 
+                Lester,                Lesurer,                   Levy, 
+                      1                       1                       1 
+                  Lewis                   Lewy,                 Leyson, 
+                      2                       1                       1 
+               Lievens,                 Lillian                Lindahl, 
+                      1                       2                       1 
+              Lindblom,                Lindell,              Lindqvist, 
+                      1                       1                       1 
+                 Lines,                   Ling,                   Linus 
+                      1                       1                       1 
+                 Lionel                 Lishin)                Liudevit 
+                      1                       1                       1 
+                 Lizzie                   Lobb,                    Loch 
+                      1                       2                       1 
+                  Long,                Longley,              Longstreth 
+                      1                       1                       1 
+                Loraine                  Louch,                   Louis 
+                      1                       1                       1 
+                 Louise                 Lovell,                  Lucile 
+                      5                       1                       1 
+                   Lucy                   Luise                    Luka 
+                      1                       1                       2 
+                 Lulic,                Lundahl,                Lurette, 
+                      1                       1                       1 
+                  Lyyli                       M                   Mabel 
+                      1                       3                       3 
+                  Mack,               Madeleine                Madigan, 
+                      1                       2                       1 
+                Madill,                 Madsen,                     Mae 
+                      1                       1                       1 
+               Maenpaa,                  Maggie               Maidment) 
+                      1                       1                       1 
+                Maioni,                Maisner,                  Major. 
+                      1                       1                       2 
+                 Malake                 Malkolm                 Mallet, 
+                      1                       2                       2 
+                 Mamee,                   Manca             Mandelbaum) 
+                      1                       1                       1 
+                Manent,                 Mangan,                  Manley 
+                      1                       1                       1 
+               Mannion,                Mansouer                 Mansour 
+                      1                       1                       1 
+                 Manuel                    Mara               Marechal, 
+                      2                       1                       1 
+               Margaret               Margareth              Margaritha 
+                      8                       1                       1 
+                Margido                  Margit              Marguerite 
+                      1                       1                       1 
+                   Mari                   Maria                   Marie 
+                      1                       7                       4 
+                 Marija                   Marin                  Marion 
+                      2                       1                       2 
+               Marjorie                    Mark                Markland 
+                      2                       2                       1 
+               Markoff,                 Markun,                   Marsh 
+                      1                       1                       1 
+             Marshall")                  Martha                  Marthe 
+                      2                       2                       1 
+                 Martin                Martinez                 Marvin, 
+                      8                       1                       1 
+                   Mary                Masabumi             Masselmani, 
+                     13                       1                       1 
+                Master.                 Mathias                Mathilda 
+                     40                       2                       1 
+               Mathilde                 Matilda                 Matthew 
+                      1                       4                       1 
+              Matthews,                   Matti                 Maurice 
+                      1                       2                       2 
+                Mauritz                     Max                Maxfield 
+                      2                       1                       2 
+             Maxmillian                     May                Maybelle 
+                      1                       2                       1 
+                 Mayne,               McCarthy,              McCormack, 
+                      1                       1                       1 
+                 McCoy,              McDermott,                 McEvoy, 
+                      2                       1                       1 
+               McGough,               McGovern,                McGowan, 
+                      1                       1                       1 
+                McKane,                McMahon,               McMillan) 
+                      1                       1                       1 
+               McNamee,               Meanwell,                   Meek, 
+                      1                       1                       1 
+                  Meier              Melkebeke,              Mellinger, 
+                      1                       1                       2 
+               Mellors,                Melville                    Meo, 
+                      1                       1                       1 
+               Mernagh,            Messemaeker,                  Meyer, 
+                      1                       1                       3 
+                Michael                  Michel                   Milan 
+                      3                       2                       1 
+                   Mile                 Millet,                 Milley) 
+                      1                       1                       1 
+               Milling,                  Milne)                  Milton 
+                      1                       1                       1 
+               Minahan,                 Mineff,                   Minko 
+                      2                       1                       1 
+               Mionoff,                  Miriam                  Mirium 
+                      1                       1                       1 
+                  Miss.               Mitchell,                Mitkoff, 
+                    182                       1                       1 
+                   Mito                   Mitto                   Mlle. 
+                      1                       1                       2 
+                   Mme.                Mockler,                   Moen, 
+                      1                       1                       1 
+                Mohamed                 Molson,                  Monsen 
+                      1                       1                       1 
+             Montgomery               Montvila,                Monypeny 
+                      1                       1                       1 
+              Monypeny)                   Moor,                  Moore, 
+                      1                       2                       1 
+                 Moran,               Moraweck,                   More, 
+                      3                       1                       1 
+                 Morgan                Morgan")                 Morley, 
+                      1                       2                       2 
+                Morris)                 Morrow,                   Moses 
+                      1                       1                       1 
+                  Moss,               Moubarek,                 Moussa, 
+                      1                       2                       1 
+                Moutal,                     Mr.                    Mrs. 
+                      1                     517                     125 
+                    Ms.                   Mudd,                 Mulder, 
+                      1                       1                       1 
+               Mullens,                 Munger)                Murdlin, 
+                      1                       1                       1 
+                Murphy,                  Mussey                Myhrman, 
+                      2                       1                       1 
+                      N              Naidenoff,                  Najib, 
+                      1                       1                       1 
+                 Nakid,                   Nakli                Nankoff, 
+                      2                       1                       1 
+                 Nassef                 Nasser,                 Natalia 
+                      1                       2                       1 
+                Natalie                 Natsch,               Navratil, 
+                      1                       1                       3 
+                   Neal                 Nedelio                  Needs) 
+                      2                       1                       1 
+                 Nelson                Nenkoff,                  Nestor 
+                      2                       1                       1 
+                   Neto                 Newell,                 Newsom, 
+                      1                       3                       1 
+               Nicholas               Nicholls,              Nicholson, 
+                      2                       1                       1 
+         Nicola-Yarred,                 Nicolai                   Niels 
+                      2                       1                       1 
+               Nielsine                   Niilo                  Nikola 
+                      1                       1                       1 
+                Nikolai                    Nils                Nilsson, 
+                      1                       5                       1 
+                 Nirva,               Niskanen,                    Noel 
+                      1                       1                       1 
+                   Nora                  Norman                 Norman, 
+                      1                       3                       1 
+                Norton)              Nosworthy,               Nourelain 
+                      1                       1                       1 
+                 Novel,                    Nye,                 Nysten, 
+                      1                       1                       1 
+               Nysveen,                O'Brien,              O'Connell, 
+                      1                       3                       1 
+              O'Connor,             O'Driscoll,                O'Dwyer, 
+                      1                       1                       1 
+               O'Leary,             O'Sullivan,                  Oakley 
+                      1                       1                       1 
+                 Oberst                  Odahl,                      of 
+                      1                       1                       1 
+                 Ogden)                  Ohman,                  Ojala) 
+                      1                       1                       1 
+                   Olaf                    Olai                     Ole 
+                      1                       1                       1 
+                 Oliver                    Olof                   Olsen 
+                      1                       3                       2 
+                 Olsen,                 Olsson,               Olsvigen, 
+                      3                       2                       1 
+             Oreskovic,                   Orsen                   Oscar 
+                      2                       1                       2 
+                  Osen,                   Oskar                  Osman, 
+                      1                       3                       1 
+                 Ossian                  Ostby,                  Otter, 
+                      1                       1                       1 
+                   Owen                   Padro                   Pain, 
+                      2                       1                       1 
+               Palsson,                 Panula,                  Parker 
+                      4                       6                       1 
+                Parkes,                   Parr,                 Parrish 
+                      1                       1                       1 
+               Parrish,                Partner,                  Pasic, 
+                      1                       1                       1 
+                Pastcho               Patchett,                 Patrick 
+                      1                       1                       5 
+                   Paul                   Paula                 Pauline 
+                      1                       1                       1 
+               Paulner,                   Paust               Pavlovic, 
+                      1                       1                       1 
+                 Pears,                   Pede)                   Peder 
+                      2                       1                       2 
+               Peduzzi,                   Peel)                    Pehr 
+                      1                       1                       1 
+                   Peju                   Pekka              Pekoniemi, 
+                      1                       2                       1 
+            Pelsmaeker,                 Penasco               Pengelly, 
+                      1                       2                       1 
+                  Penko              Pennington                Percival 
+                      1                       1                       4 
+                  Percy                   Perez                 Perkin, 
+                      1                       1                       1 
+                Pernot,              Perreault,              Persdotter 
+                      1                       1                       1 
+               Persson,                Persson)                   Petar 
+                      1                       1                       1 
+                  Petco                   Peter                  Peter, 
+                      1                       9                       2 
+                Peters,               Petranec,                Petroff, 
+                      1                       1                       2 
+             Petterson,             Pettersson,                Peuchen, 
+                      1                       1                       1 
+               Philemon                  Philip                Philippe 
+                      1                       1                       1 
+              Phillippe                Phillips               Phillips, 
+                      1                       1                       1 
+                 Phoebe                 Phyllis                Pickard, 
+                      1                       1                       1 
+                 Pierre                   Pieta                 Pietari 
+                      1                       1                       2 
+                Pinsky,                 Planke,            Plotcharsky, 
+                      1                       3                       1 
+                   Polk                   Polk)                 Pomeroy 
+                      1                       1                       1 
+              Ponesell,                 Portage                 Porter, 
+                      1                       1                       1 
+                Potter,                   Price                  Quick, 
+                      1                       1                       2 
+                  Quigg                  Quincy                 Qurban) 
+                      1                       1                       1 
+                      R                  Rachel                 Radeff, 
+                      3                       1                       1 
+                Rahamin                  Raihed                 Ramell) 
+                      1                       1                       1 
+                  Ramon                   Razi,                   Razi) 
+                      1                       1                       1 
+                Rebecca                   Reed,                 Reeves, 
+                      1                       1                       1 
+               Reginald                Reiersen                  Rekic, 
+                      3                       1                       1 
+                   Rene                 Renouf,               Reuchlin, 
+                      3                       2                       1 
+                   Rev.               Reynaldo,                   Rice, 
+                      6                       1                       5 
+                Richard                Richard,               Richards, 
+                     13                       1                       3 
+              Richards)               Ridsdale,               Ringhini, 
+                      1                       1                       1 
+             Rintamaki,                 Risien,                  Ristiu 
+                      1                       1                       1 
+                  Rizk)                Robbins,                  Robert 
+                      1                       1                       9 
+                Robert,                 Roberta                  Robina 
+                      1                       1                       1 
+                Robins,               Roebling,                   Roger 
+                      1                       1                       2 
+                Rogers,                    Rojj                  Roland 
+                      1                       1                       1 
+              Rolmane")                Romaine,             Rommetvedt, 
+                      1                       1                       1 
+                  Rood,                 Rosalie                Rosblom, 
+                      1                       1                       2 
+                 Roscoe                  Rosen)                   Ross, 
+                      1                       1                       1 
+               Rossmore                 Rothes,             Rothschild, 
+                      1                       1                       1 
+                 Rouse,                 Roussel                   Rowan 
+                      1                       1                       1 
+                   Rowe                 Rowley)                  Rudolf 
+                      1                       1                       1 
+                  Rugg,                   Rush,                     Rut 
+                      1                       1                       1 
+                   Ruth                   Ryan,                Ryerson, 
+                      1                       1                       2 
+                      S                   Saad,               Saalfeld, 
+                      1                       2                       1 
+               Sadlier,                   Sage,               Sagesser, 
+                      1                       7                       1 
+                  Sahid                  Saiide                   Saks) 
+                      1                       1                       1 
+           Salkjelsvik,                Salonen,                     Sam 
+                      1                       1                       1 
+                Samaan,                  Samuel              Sandstrom, 
+                      1                      13                       2 
+                  Sante                    Sara                  Sarkis 
+                      1                       1                       1 
+                  Satio                  Satode            Saundercock, 
+                      1                       2                       1 
+                Sawyer,                Scanlan,                   Scott 
+                      1                       1                       1 
+               Sdycoff,              Sebastiano               Sedgwick, 
+                      1                       1                       1 
+                 Selman               Serepeca,                 Seward, 
+                      1                       1                       1 
+               Shadrach                  Sharp,                 Shawah, 
+                      1                       1                       1 
+            Sheerlinck,               Shellard,                Shelley, 
+                      1                       1                       1 
+               Shorney,                 Shutes,                  Sibley 
+                      1                       1                       1 
+                 Sidney                Siegwart                 Sigfrid 
+                      4                       1                       1 
+                 Sigrid                  Sigurd                 Sigvard 
+                      2                       1                       1 
+                Silven,           Silverthorne,                 Silvey, 
+                      1                       1                       2 
+               Simmons,                   Simon        Simonius-Blumer, 
+                      1                       1                       1 
+                Simonne                   Sinai              Sinkkonen, 
+                      1                       2                       1 
+                   Sir.             Sirayanian,                 Sirota, 
+                      1                       1                       1 
+                 Sivic,                 Sivola,                Sjoblom, 
+                      1                       1                       1 
+              Sjostedt,                  Skoog,              Slabenoff, 
+                      1                       6                       1 
+               Slayter,                 Sleeper                 Sleiman 
+                      1                       2                       1 
+                Slemen,              Slocovski,                 Sloper, 
+                      1                       1                       1 
+                  Slow)                  Smart,              Smiljanic, 
+                      1                       1                       1 
+                 Smith,                  Sobey,                   Sofia 
+                      4                       1                       6 
+                Soholt,                 Solomon               Somerton, 
+                      1                       3                       1 
+                 Sophia                    Soto                Spedden, 
+                      2                       1                       1 
+                Spencer                Spencer,       Stahelin-Maeglin, 
+                      1                       1                       1 
+               Staneff,                  Stanio              Stankovic, 
+                      1                       1                       1 
+                Stanley                Stanley,               Stanlick) 
+                      2                       2                       1 
+                Stanton                  Stead,                  Steen, 
+                      1                       1                       1 
+                  Stefo                  Stella                 Stephen 
+                      1                       1                       3 
+            Stephenson,                Sternin)                Stewart, 
+                      1                       1                       1 
+                  Stina                 Stjepan                  Stone, 
+                      1                       1                       1 
+                 Stone)             Stoytcheff,                Stoytcho 
+                      1                       1                       1 
+            Strandberg,               Stranden,                  Strom, 
+                      1                       1                       2 
+            Sunderland,                Sundman,                   Susan 
+                      1                       1                       2 
+              Sutehall,             Sutherland)                 Sutton, 
+                      1                       1                       1 
+                   Sven                   Svend                Svensson 
+                      1                       1                       1 
+              Svensson,                  Swift,                Sylfven) 
+                      2                       1                       1 
+                      T                Talmadge                 Tannous 
+                      1                       1                       3 
+                  Tate)                Taussig,                 Taylor, 
+                      1                       3                       2 
+                  Telma                 Thamine                 Thayer, 
+                      1                       1                       3 
+                Thayer)                     the               Thelander 
+                      1                       1                       1 
+              Theobald,                 Theodor                Theodore 
+                      1                       2                       1 
+              Theodosia                  Thomas                 Thomas, 
+                      1                      21                       1 
+               Thompson                    Thor                Thorilda 
+                      2                       1                       1 
+                 Thorne                 Thorne,           Thorneycroft, 
+                      1                       1                       2 
+               Thornton                Thorsten              Thuillard) 
+                      2                       1                       1 
+                   Tido               Tikkanen,                 Timothy 
+                      1                       1                       2 
+                 Tobin,                  Tobin)                   Todor 
+                      1                       1                       1 
+              Todoroff,                 Tomlin,                 Toomey, 
+                      1                       1                       1 
+                Torber,                 Torborg              Tornquist, 
+                      1                       1                       1 
+                Toufik,                  Touma,                 Towner) 
+                      1                       1                       1 
+             Trembisky)                  Trevor            Troupiansky, 
+                      1                       1                       1 
+                 Trout,                 Troutt,                 Turcin, 
+                      1                       1                       1 
+                 Turja,                Turkula,                 Turpin, 
+                      1                       1                       2 
+                 Tyler)                  Tyrell                   Ulrik 
+                      1                       1                       1 
+                 Ulrika                    Urho              Uruchurtu, 
+                      1                       1                       1 
+                 Uscher                       V                Vallejo) 
+                      1                       1                       1 
+                    van                     Van                   Vande 
+                      2                       4                       2 
+         Vandemoortele)                  Vanden                  Vander 
+                      1                       1                       4 
+                  Vasil                  Velde,                   Velin 
+                      1                       1                       1 
+                   Vere                Vestrom,                  Victor 
+                      1                       1                       8 
+                 Viktor                Viktoria                 Vilhelm 
+                      4                       1                       1 
+             Vilhelmina                 Viljami                   Viljo 
+                      1                       1                       1 
+             Villiers")                 Vincenz                   Viola 
+                      1                       1                       1 
+                 Violet                Virginia                  Vivian 
+                      1                       1                       1 
+                  Vovk,                       W              Waddington 
+                      1                       2                       1 
+               Waelens,                   Waldo                 Walker, 
+                      1                       1                       1 
+               Wallach)                  Walle,                  Walter 
+                      1                       1                       5 
+                 Walton                 Walton)                   Ward, 
+                      2                       1                       1 
+                 Warner                 Warren,              Washington 
+                      1                       1                       2 
+                Watson,                 Watson)                   Watt, 
+                      1                       1                       1 
+                Wayland                   Wazli                 Wearne) 
+                      1                       1                       1 
+                  Weart                 Webber,                 Webster 
+                      1                       2                       1 
+                  Weir,                  Weisz,                  Welles 
+                      1                       1                       1 
+                 Wells,                  Wendla                  Werner 
+                      1                       1                       1 
+                  West,                Wheadon,                  White, 
+                      3                       1                       2 
+                 White)                   Wick,               Widegren, 
+                      1                       2                       1 
+               Widener,                Wiklund,                 Wilhelm 
+                      1                       1                       3 
+            Wilhelmina)               Wilhelms,              Wilkinson) 
+                      1                       1                       1 
+                Willey,                 William                Williams 
+                      1                      62                       1 
+      Williams-Lambert,               Williams,              Willingham 
+                      1                       4                       1 
+                  Wills                  Wilson                 Wilson) 
+                      1                       1                       1 
+              Windelov,               Winfield)                Wiseman, 
+                      1                       1                       1 
+               Wizosky)              Wonnacott)                    Wood 
+                      1                       1                       1 
+               Woolner,                  Worth)                 Wright, 
+                      1                       1                       1 
+                Wright)                 Wyckoff                       y 
+                      1                       1                       5 
+               Yasbeck,                    Yoto                  Young, 
+                      2                       1                       1 
+               Youseff,                 Yousif,                 Youssef 
+                      1                       1                       2 
+               Yousseff               Yousseff,                  Yrois, 
+                      1                       1                       1 
+                Zabour,                  Zebley                 Zenni") 
+                      2                       2                       1 
+                 Zillah              Zimmerman, 
+                      1                       1 
+> 
+> #obtain which titles contain missing values
+> 
+> library(stringr)
+> tb = cbind(train$Age, str_match(train$Name, "[a-zA-Z]+\\."))
+> table(tb[is.na(tb[,1]),2])
+
+    Dr. Master.   Miss.     Mr.    Mrs. 
+      1       4      36     119      17 
+> 
+> #we will assign the mean of the age for the title examples 
+> #with no missing data
+> 
+> mean.mr <- mean(train$Age[grepl("Mr\\.", train$Name) & 
++                             !is.na(train$Age)])
+> mean.mrs <- mean(train$Age[grepl("Mrs\\.", train$Name) & 
++                             !is.na(train$Age)] )
+> mean.dr <- mean(train$Age[grepl("Dr\\.", train$Name) & 
++                              !is.na(train$Age)] )
+> mean.miss <- mean(train$Age[grepl("Miss\\.", train$Name) & 
++                             !is.na(train$Age)] )
+> mean.master <- mean(train$Age[grepl("Master\\.", train$Name) & 
++                             !is.na(train$Age)] )
+> 
+> #assign
+> #
+> train$Age[grepl("Mr\\.", train$Name) & is.na(train$Age)] = mean.mr
+> train$Age[grepl("Mrs\\.", train$Name) & is.na(train$Age)] = mean.mrs
+> train$Age[grepl("Dr\\.", train$Name) & is.na(train$Age)] = mean.dr
+> train$Age[grepl("Master\\.", train$Name) & is.na(train$Age)] = mean.master
+> train$Age[grepl("Miss\\.", train$Name) & is.na(train$Age)] = mean.miss
+> 
+> missmap(train)
+> 
+> #Exploring and visualizing data
+> 
+> barplot(table(train$Survived), main = "Passenger survival", 
++         names = c("Perished", "Survived"))
+> barplot(table(train$Pclass), main = "Passenger Class", 
++         names = c("First", "Second", "Third"))
+> barplot(table(train$Sex), main = "Passenger Gender")
+> hist(train$Age, main = "Passenger age", xlab = "Age")
+> barplot(table(train$SibSp), main = "Passenger Siblings")
+> barplot(table(train$Parch), main = "Passenger Parch")
+> hist(train$Fare, main = "Passenger Fare", xlab = "Fare")
+> barplot(table(train$Embarked), main = "Passenger Embarkation")
+> 
+> counts <- table(train$Survived, train$Sex)
+> counts
+   
+    female male
+  0     81  468
+  1    233  109
+> col <- c("darkblue", "red")
+> 
+> boxplot(train$Age~train$Survived, main = "Passenger survival by Age")
+> 
+> #separate passengers by bin age
+> #subsets
+> #
+> train_child <- train$Survived[train$Age < 13]
+> length(train_child[which(train_child == 1)])/length(train_child)
+[1] 0.5753425
+> 
+> train_youth <- train$Survived[train$Age >= 13 & train$Age < 25]
+> length(train_youth[which(train_youth == 1)])/length(train_youth)
+[1] 0.4081633
+> 
+> train_adult <- train$Survived[train$Age >= 25 & train$Age < 65]
+> length(train_youth[which(train_adult == 1)])/length(train_adult)
+[1] 0.3540925
+> 
+> train_senior<- train$Survived[train$Age >= 65]
+> length(train_youth[which(train_senior == 1)])/length(train_senior)
+[1] 0.09090909
+> 
+> 
+> #mosaic plot
+> 
+> mosaicplot(train$Pclass ~ train$Survived, 
++            main = "Pass. survival Class", color = TRUE,
++            xlab = "Pclass", ylab = "Survived")
+> 
+> #PREDICTION
+> #DECISION TREE
+> 
+> set.seed(666)
+> trainSize <- round(nrow(train)*0.70)
+> testSize <- nrow(train) - trainSize
+> index <- sample(seq_len(nrow(train)), size = trainSize)
+> train1 <- train[index,]
+> test1 <-  train[-index,] 
+> 
+> library(party)
+Loading required package: grid
+Loading required package: mvtnorm
+Loading required package: modeltools
+Loading required package: stats4
+Loading required package: strucchange
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: sandwich
+
+Attaching package: ‘strucchange’
+
+The following object is masked from ‘package:stringr’:
+
+    boundary
+
+Warning messages:
+1: package ‘party’ was built under R version 3.6.2 
+2: package ‘zoo’ was built under R version 3.6.2 
+> #condition tree
+> 
+> train_ctree <- ctree(Survived ~ Pclass + Sex + Age + 
++                         SibSp + Fare + Parch + Embarked,
++                       data = train1)
+> plot(train_ctree)
+> 
+> train_ctree
+
+	 Conditional inference tree with 6 terminal nodes
+
+Response:  Survived 
+Inputs:  Pclass, Sex, Age, SibSp, Fare, Parch, Embarked 
+Number of observations:  624 
+
+1) Sex == {male}; criterion = 1, statistic = 180.757
+  2) Pclass == {2, 3}; criterion = 1, statistic = 21.226
+    3) Age <= 3; criterion = 1, statistic = 22.354
+      4)*  weights = 12 
+    3) Age > 3
+      5)*  weights = 312 
+  2) Pclass == {1}
+    6) Age <= 38; criterion = 0.984, statistic = 9.337
+      7)*  weights = 58 
+    6) Age > 38
+      8)*  weights = 39 
+1) Sex == {female}
+  9) Pclass == {3}; criterion = 1, statistic = 59.081
+    10)*  weights = 92 
+  9) Pclass == {1, 2}
+    11)*  weights = 111 
+> 
+> #svm
+> library(e1071)
+> svm_model <- svm(Survived ~ Pclass + Sex + Age + 
++   SibSp + Fare + Parch + Embarked,
++ data = train1, probability = TRUE)
+> 
+> #validation
+> 
+> ctree_prediction <- predict(train_ctree, test1)
+> ctree_prediction
+  [1] 0 1 0 1 0 1 1 0 0 0 0 0 0 0 0 1 1 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 1 0
+ [38] 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1
+ [75] 0 0 0 1 0 0 1 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 0 1 0 0 1 0 1 1 0 0 0 0 0 0 0
+[112] 0 0 0 1 0 0 1 0 0 0 1 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1
+[149] 0 0 0 0 0 0 0 0 0 0 0 1 0 0 1 1 0 1 1 0 0 1 0 0 0 1 0 0 0 0 0 0 0 1 1 0 1
+[186] 0 1 0 0 0 0 0 1 0 1 0 0 1 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 1 1 0 0 1 1 1 0 0
+[223] 0 0 0 0 0 0 1 0 0 0 0 1 1 1 1 0 0 0 0 1 1 0 0 1 0 0 1 0 1 0 0 1 1 0 0 0 0
+[260] 1 0 1 0 0 1 0 0
+Levels: 0 1
+> 
+> plot(ctree_prediction, col= "blue")+  
++ plot(test1$Survived, col= "red", add = T) 
+     [,1]
+[1,]  1.4
+[2,]  3.8
+> 
+> library(caret)
+Loading required package: lattice
+> #confusion matrix
+> confusionMatrix(ctree_prediction, test1$Survived)
+Confusion Matrix and Statistics
+
+          Reference
+Prediction   0   1
+         0 146  57
+         1   7  57
+                                          
+               Accuracy : 0.7603          
+                 95% CI : (0.7045, 0.8102)
+    No Information Rate : 0.573           
+    P-Value [Acc > NIR] : 1.279e-10       
+                                          
+                  Kappa : 0.4811          
+                                          
+ Mcnemar's Test P-Value : 9.068e-10       
+                                          
+            Sensitivity : 0.9542          
+            Specificity : 0.5000          
+         Pos Pred Value : 0.7192          
+         Neg Pred Value : 0.8906          
+             Prevalence : 0.5730          
+         Detection Rate : 0.5468          
+   Detection Prevalence : 0.7603          
+      Balanced Accuracy : 0.7271          
+                                          
+       'Positive' Class : 0               
+                                          
+> 
+> #probability matrix
+> train_ctree_pred <- predict(train_ctree, test1)
+> train_ctree_prob <- 1-unlist(treeresponse(train_ctree, test1,
++                                           use.names = T)[seq(1,
++                                                              nrow(test1)*2,2)])
+> library(ROCR)
+Warning message:
+package ‘ROCR’ was built under R version 3.6.2 
+> train_ctree_prob_rocr <- prediction(train_ctree_prob, 
++                                     test1$Survived)
+Error in prediction(train_ctree_prob, test1$Survived) : 
+  Number of predictions in each run must be equal to the number of labels for each run.
+Execution halted

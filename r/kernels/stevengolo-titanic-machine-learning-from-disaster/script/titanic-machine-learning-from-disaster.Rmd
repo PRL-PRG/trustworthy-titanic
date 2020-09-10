@@ -1,0 +1,391 @@
+---
+title: 'Titanic: Machine Learning from Disaster'
+author: "Golovkine Steven"
+date: "22/11/2018"
+output: 
+  html_document: 
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+<center><a title="F.G.O. Stuart (1843-1923) [Public domain], via Wikimedia Commons" href="https://commons.wikimedia.org/wiki/File:RMS_Titanic_3.jpg"><img width="512" alt="RMS Titanic 3" src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/RMS_Titanic_3.jpg/512px-RMS_Titanic_3.jpg"></a></center>
+
+## Context 
+
+The sinking of the RMS Titanic is one of the most infamous shipwrecks in history.  On April 15, 1912, during her maiden voyage, the Titanic sank after colliding with an iceberg, killing 1502 out of 2224 passengers and crew. This sensational tragedy shocked the international community and led to better safety regulations for ships.
+
+One of the reasons that the shipwreck led to such loss of life was that there were not enough lifeboats for the passengers and crew. Although there was some element of luck involved in surviving the sinking, some groups of people were more likely to survive than others, such as women, children, and the upper-class.
+
+---
+
+## Variables description
+
+Variable Name | Description
+--------------|--------------------------------------------------------
+PassengerId   | Passenger's Id
+Survived      | Survived (1) or died (0)
+Pclass        | Passenger's class
+Name          | Passenger's name
+Sex           | Passenger's sex
+Age           | Passenger's age
+SibSp         | Number of siblings/spouses aboard
+Parch         | Number of parents/children aboard
+Ticket        | Ticket number
+Fare          | Passenger Fare
+Cabin         | Cabin
+Embarked      | Port of embarkation (C = Cherbourg; Q = Queenstown; S = Southampton)
+
+**SPECIAL NOTES**:
+
+_Pclass_ is a proxy for socio-economic status (SES): 1st ~ Upper; 2nd ~ Middle; 3rd ~ Lower.
+
+_Age_ is in Years; fractional if _Age_ is less than One (1). If the _Age_ is estimated, it is in the form xx.5.
+
+With respect to the family relation variables (i.e. _sibsp_ and _parch_) some relations were ignored. The following are the definitions used for _sibsp_ and _parch_:
+
+* Sibling:  Brother, Sister, Stepbrother, or Stepsister of Passenger Aboard Titanic;
+* Spouse:   Husband or Wife of Passenger Aboard Titanic (Mistresses and Fiances Ignored);
+* Parent:   Mother or Father of Passenger Aboard Titanic;
+* Child:    Son, Daughter, Stepson, or Stepdaughter of Passenger Aboard Titanic.
+
+Other family relatives excluded from this study include cousins, nephews/nieces, aunts/uncles, and in-laws. Some children travelled only with a nanny, therefore _parch_ $=~0$ for them.  As well, some travelled with very close friends or neighbors in a village, however, the definitions do not support such relations.
+
+## Load the data
+
+```{r packages, message=FALSE, warning=FALSE, include=FALSE, paged.print=FALSE}
+## Importing packages
+library(glmnet)
+library(gridExtra)
+library(kableExtra)
+library(knitr)
+library(randomForest)
+library(reshape2)
+library(tidyverse)
+
+# Create custom theme for ggplot2
+theme_custom <- function(base_family = "Times"){
+  theme_minimal(base_family = base_family) %+replace%
+    theme(
+      plot.title = element_text(size = 20),
+      plot.subtitle = element_text(size = 16, vjust = -1),
+      
+      axis.title = element_text(size = 18),
+      axis.text = element_text(size = 16),
+      
+      axis.title.y = element_text(margin = margin(t = 0, r = 20, b = 0, l = 0), angle = 90),
+      axis.title.x = element_text(margin = margin(t = 20, r = 0, b = 20, l = 0)),
+      
+      strip.text.x = element_text(size = 16)
+    )
+}
+```
+
+```{r load, message=FALSE, warning=FALSE}
+train <- read_csv('../input/train.csv')
+test <- read_csv('../input/test.csv')
+
+titanic <- train %>% 
+            bind_rows(test) %>%
+            select(-PassengerId) %>%
+            mutate_at(vars(Pclass, Sex, Embarked), funs(factor(.)))
+```
+
+The train dataset has `r dim(train)[1]` observations and `r dim(train)[2]` variables. The test dataset has `r dim(test)[1]` observations and `r dim(test)[2]` variables. We want to use the `train` dataset to learn if a passenger survived given the different variables, and then predict the fate of the passenger into the `test` dataset.
+
+## Exploratory Data Analysis
+
+### Passenger's class
+
+There is no missing values into the _PClass_ variable. Half of the passenger are in the third class.
+
+```{r class, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE}
+titanic %>%
+  ggplot(aes(x = Pclass)) +
+    geom_bar(width = 0.5, fill = "#56B4E9") +
+    coord_flip() +
+    labs(title = 'Count of the passengers by class') + 
+    scale_x_discrete(name = "Passenger's class") +
+    scale_y_continuous(name = "Count", breaks = seq(0, 900, 100)) +
+    theme_custom()
+```
+
+### Passenger's sex
+
+There is almost twice men than women. 
+
+```{r sex, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE}
+titanic %>%
+  ggplot(aes(x = Sex)) +
+    geom_bar(width = 0.5, fill = "#56B4E9") +
+    coord_flip() +
+    labs(title = 'Count of the passengers by sex') + 
+    scale_x_discrete(name = "Passenger's sex") +
+    scale_y_continuous(name = "Count", breaks = seq(0, 900, 100)) +
+    theme_custom()
+```
+
+### Passenger's name
+
+This variable, obviously, confirm the high number of men compare to the number of women. But it carry another piece of information: more than the half of the women on the Titanic are not married (the `Miss` factor). It is probably due to the children. 
+
+```{r title, echo=TRUE, message=FALSE, warning=FALSE}
+# Extract the title from the Passenger's name.
+Title <- "^.*, (.*?)\\..*$" %>% 
+          gsub("\\1", titanic$Name)
+# Create another factors for low represented title.
+title_high <- c('Mr', 'Miss', 'Mrs', 'Master')
+Title <- Title %in% title_high %>%
+          if_else(Title, 'Other')
+# Add titlecolumn to the dataframe
+titanic <- titanic %>% 
+            add_column(Title) %>%
+            mutate_at(vars(Title), funs(factor(.)))
+```
+
+```{r name, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE}
+titanic %>%
+  ggplot(aes(x = Title)) +
+    geom_bar(width = 0.5, fill = "#56B4E9") +
+    coord_flip() +
+    labs(title = 'Count of the passengers by title') + 
+    scale_x_discrete(name = "Passenger's title") +
+    scale_y_continuous(name = "Count", breaks = seq(0, 900, 100)) +
+    theme_custom()
+```
+
+### Passenger's port of embarkation
+
+`r round(sum(titanic$Embarked == 'S', na.rm = TRUE) / length(titanic$Embarked), digit = 0)` % of the passengers embarked in Southampton. We do not known the port of embarkation for only `r sum(is.na(titanic$Embarked))` persons. So, we will try to infer these missing values. 
+
+First, let's take a look at the `r sum(is.na(titanic$Embarked))` passengers with missing port of embarkation.
+
+```{r missing_port, echo=FALSE, message=FALSE, warning=FALSE}
+titanic %>% 
+  filter(is.na(Embarked)) %>%
+  kable(format = 'html') %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Miss. Icard and Mrs. Stone paid 80\$ and was in first class. Let's plot a boxplot to determine the median fare depending on the port of embarkation for the first class.
+
+```{r plot_missing_embarked, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE}
+titanic %>% 
+  filter(Pclass == 1) %>%
+  ggplot(aes(x = Embarked, y = Fare)) +
+    geom_boxplot(colour = "black", fill = "#56B4E9", outlier.colour = 'red') +
+    ggtitle("Fare depending on the port of embarkation for the first class") +
+    scale_x_discrete(name = "Port of embarkation") +
+    scale_y_continuous(name = "Fare") +
+    theme_custom()
+```
+
+There are only `r titanic %>% filter(Pclass == 1) %>% filter(Embarked == 'Q') %>% count()` passengers that embarked in Queenstown in first class. There fare was 90\$. Moreover, they were part of the same family. So, considering the boxplot, we might think that the port of embarkation of Miss. Icard and Mrs. Stone were Cherbourg.
+
+```{r inputation_port, echo=TRUE, message=FALSE, warning=FALSE}
+titanic[62, "Embarked"] <- "C"
+titanic[830, "Embarked"] <- "C"
+```
+
+```{r port, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE}
+titanic %>%
+  ggplot(aes(x = Embarked)) +
+    geom_bar(width = 0.5, fill = "#56B4E9") +
+    coord_flip() +
+    labs(title = 'Count of the passengers by port of embarkation') + 
+    scale_x_discrete(name = "Passenger's port of embarkation") +
+    scale_y_continuous(name = "Count", breaks = seq(0, 900, 100)) +
+    theme_custom()
+```
+
+### Passenger's fare
+
+There is only `r sum(is.na(titanic$Fare))` person with a missing in the all dataset. The mean fare is `r round(mean(titanic$Fare, na.rm = TRUE), digit = 0)`\$ and the median fare `r round(median(titanic$Fare, na.rm = TRUE), digit = 0)`\$ for a ticket on the Titanic. Let's look at the person with a missing fare.
+
+```{r missing_fare, echo=FALSE, message=FALSE, warning=FALSE}
+titanic %>% 
+  filter(is.na(Fare)) %>%
+  kable(format = 'html') %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"))
+```
+
+Let's plot a kernel density estimator of the fare for the person with the same characteristics than Mr. Storey (embarked in Southampton in third class).
+
+```{r plot_fare, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE}
+titanic %>%
+  filter(Embarked == 'S', Pclass == 3) %>%
+  ggplot(aes(x = Fare)) +
+    geom_density(kernel = 'gaussian', colour = "#FFFFFF", fill = "#56B4E9") +
+    ggtitle("Density of Fare", subtitle = "Embarked in Southampton in third class") +
+    xlab("Fare ($)") + ylab("Density") +
+    theme_custom()
+```
+
+The median for the third class and the embarkment in Southampton is `r titanic %>% filter(Embarked == 'S', Pclass == 3) %>% pull(Fare) %>% median(na.rm = TRUE) %>% round(digit = 0)`\$. So, we might think that Mr. Storey has paid the median fare of the people from the third class who embarked in Southampton.
+
+```{r fare_inputation, echo=TRUE, message=FALSE, warning=FALSE}
+titanic[1044, "Fare"] <- titanic %>% filter(Embarked == 'S', Pclass == 3) %>% pull(Fare) %>% median(na.rm = TRUE)
+```
+
+### Passenger's age
+
+There are `r sum(is.na(titanic$Age))` persons without _Age_ in the dataset. The mean age is `r round(mean(titanic$Age, na.rm = TRUE), 1)` years old.
+
+```{r plot_age, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE}
+grid.arrange(
+titanic %>% 
+  ggplot(aes(y = Age)) +
+    geom_boxplot(fill = "#56B4E9", outlier.colour = 'red') +
+    coord_flip() +
+    ggtitle("Boxplot of Age") +
+    scale_x_continuous(breaks = NULL) +
+    theme_custom(),
+
+titanic %>%
+  ggplot(aes(x = Age)) +
+    geom_density(kernel = 'gaussian', colour = "#FFFFFF", fill = "#56B4E9") +
+    ggtitle("Density of Age") +
+    xlab("Age") + ylab("Density") +
+    theme_custom(),
+ncol = 2, nrow = 1)
+```
+
+Since there are a lot of missing values, we are going to input these ones using a ridge regression ([glmnet_ package](https://cran.r-project.org/web/packages/glmnet/glmnet.pdf)).
+
+```{r ridge_regression_age, echo=TRUE, message=FALSE, warning=FALSE}
+# Split the dataset into the ones with Age and the ones without Age.
+titanic.with.age <- titanic %>% 
+  filter(!is.na(Age)) %>%
+  select(-c(Survived, Name, Ticket, Cabin))
+titanic.without.age <- titanic %>%
+  filter(is.na(Age)) %>%
+  select(-c(Survived, Name, Ticket, Cabin)) %>%
+  mutate(Age = 0)
+
+# Build a model matrix of the data
+titanic.lm <- lm(Age ~ ., data = titanic.with.age)
+titanic.with.age.model.matrix <- model.matrix(titanic.lm, data = titanic.with.age)[,-1]
+# Perform the Ridge Regression (alpha = 0)
+titanic.age.model <- glmnet(titanic.with.age.model.matrix, titanic.with.age$Age, alpha = 0)
+
+# Prediction of the Age 
+titanic.without.age$Age <- predict(titanic.age.model, 
+  newx = model.matrix(titanic.lm, data = titanic.without.age)[, -1],
+  s = cv.glmnet(titanic.with.age.model.matrix, titanic.with.age$Age, alpha = 0)$lambda.min,
+  type = 'link')
+
+# Replace the missing Age into the all dataset
+titanic[is.na(titanic$Age), "Age"] <- titanic.without.age$Age
+```
+
+Let's check the new density estimator for the _Age_ to ensure that things still look good. (Careful, one person with a predicted negative age!)
+
+```{r plot_age2, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE}
+grid.arrange(
+titanic %>% 
+  ggplot(aes(y = Age)) +
+    geom_boxplot(fill = "#56B4E9", outlier.colour = 'red') +
+    coord_flip() +
+    ggtitle("Boxplot of Age") +
+    scale_x_continuous(breaks = NULL) +
+    theme_custom(),
+
+titanic %>%
+  ggplot(aes(x = Age)) +
+    geom_density(kernel = 'gaussian', colour = "#FFFFFF", fill = "#56B4E9") +
+    ggtitle("Density of Age") +
+    xlab("Age") + ylab("Density") +
+    theme_custom(),
+ncol = 2, nrow = 1)
+```
+
+### Number of siblings/spouses aboard
+
+There is no missing value for the variable _SipSp_ in the dataset. A majority if the passengers does not have siblings or spouses aboard. 
+
+```{r plot_sipsp, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE}
+titanic %>%
+  ggplot(aes(x = as.factor(SibSp))) +
+    geom_bar(width = 0.5, fill = "#56B4E9") +
+    coord_flip() +
+    labs(title = 'Count of the passengers number of siblings/spouses') + 
+    scale_x_discrete(name = "Number of Siblings/Spouses") +
+    scale_y_continuous(name = "Count", breaks = seq(0, 900, 100)) +
+    theme_custom()
+```
+
+### Number of parents/children aboard
+
+There is no missing value for the variable _Parch_ in the dataset. A majority if the passengers does not have parents or children aboard. 
+
+```{r plot_parch, echo=FALSE, fig.height=5, fig.width=15, message=FALSE, warning=FALSE}
+titanic %>%
+  ggplot(aes(x = as.factor(Parch))) +
+    geom_bar(width = 0.5, fill = "#56B4E9") +
+    coord_flip() +
+    labs(title = 'Count of the passengers number of parents/children') + 
+    scale_x_discrete(name = "Number of Parents/Children") +
+    scale_y_continuous(name = "Count", breaks = seq(0, 1000, 100)) +
+    theme_custom()
+```
+
+### Passenger's cabin
+
+There are `r sum(is.na(titanic$Cabin))` missing values for the _Cabin_ variable. So, `r round(100*sum(is.na(titanic$Cabin)) / summarise(titanic, n()), digit = 0)`\% of the observations are missing. We decided to delete this features from the dataset.
+
+```{r del_cabin, echo=TRUE, message=FALSE, warning=FALSE}
+titanic <- titanic %>% select(-Cabin)
+```
+
+### Passenger's ticket
+
+There are `r sum(is.na(titanic$Ticket))` missing values for the _Ticket_ variable. But, there are `r length(unique(titanic$Ticket))` different values. Thus, we also delete this feature from the dataset because almost every passenger has a different Ticket.
+
+```{r del_ticket, echo=TRUE, message=FALSE, warning=FALSE}
+titanic <- titanic %>% select(-Ticket)
+```
+
+## Prediction of the survivors
+
+```{r model, echo=TRUE, message=FALSE, warning=FALSE}
+train <- titanic %>% select(-Name) %>% filter(!is.na(Survived))
+test <- titanic %>% select(-Name) %>% filter(is.na(Survived))
+
+# Split the train set into two dataset (for validation)
+set.seed(42)
+sample <- sample(c(TRUE, FALSE), nrow(train), replace = TRUE, prob = c(2/3, 1/3))
+train.val <- train[sample, ]
+test.val <- train[!sample, ]
+
+# Perform Ridge regression
+train.lm <- lm(Survived ~ ., data = train.val)
+X <- model.matrix(train.lm, data = train.val)[ , -1]
+Y <- train.val$Survived
+train.ridge.model <- glmnet(X, Y, alpha = 0, family = 'binomial')
+
+# Prediction on the test.val set
+test.val.predict <- predict(train.ridge.model, 
+                            s = cv.glmnet(X, Y, alpha = 0)$lambda.min,
+                            newx = model.matrix(train.lm, data = test.val)[ , -1],
+                            type = 'class')
+```
+
+On the validation set, there are `r round(mean(test.val.predict != test.val$Survived), digit = 2)`\% of missclassified passengers.
+
+```{r submission, echo=TRUE, message=FALSE, warning=FALSE}
+# Prediction of the test set
+test$Survived <- 0
+test.predict <- predict(train.ridge.model, 
+                        s = cv.glmnet(X, Y, alpha = 0)$lambda.min,
+                        newx = model.matrix(train.lm, data = test)[ , -1],
+                        type = 'class') 
+
+# Construt the dataframe
+result <- data.frame(PassengerID = row.names(test.predict),
+                     Survived = test.predict[ , 1])
+
+# Export as CSV
+write.csv(result, 'results.csv', row.names = FALSE)
+```

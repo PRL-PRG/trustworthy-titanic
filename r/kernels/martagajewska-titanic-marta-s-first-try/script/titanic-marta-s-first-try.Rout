@@ -1,0 +1,44 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> # This R script will run on our backend. You can write arbitrary code here!
+> 
+> # Load packages
+> 
+> #library('ggplot2') # visualization
+> #library('ggthemes') # visualization
+> #library('scales') # visualization
+> #library('dplyr') # data manipulation
+> #library('mice') # imputation
+> #library('randomForest') # classification algorithm
+> 
+> # The train and test data is stored in the ../input directory
+> train <- read.csv("../input/train.csv")
+> 
+> # We can inspect the train data. The results of this are printed in the log tab below
+> #summary(train)
+> nrow(train)
+[1] 891
+> 
+> proc.time()
+   user  system elapsed 
+  0.145   0.033   0.170 

@@ -1,0 +1,1 @@
+{"c(\"package:git2r\", \"package:spam\", \"package:timeSeries\", \"package:diffobj\", \"package:rJava\", \"package:arules\", \"package:Matrix\", \"package:utils\")":["head"],"c(\"package:OpenMx\", \"package:base\")":["nrow"],"package:base":["as.numeric","dim","library","system"],"package:Matrix":["sparse.model.matrix"],"package:stats":["runif"],"package:utils":["read.csv"]}

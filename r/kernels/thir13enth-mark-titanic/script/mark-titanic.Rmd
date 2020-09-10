@@ -1,0 +1,9 @@
+```{r}
+# This is a code block
+library(ggplot2) # Data visualization
+library(readr) # CSV file I/O, e.g. the read_csv function
+```
+
+
+data_train = read_csv("../input/train.csv", col_names = TRUE)
+head(data_train)

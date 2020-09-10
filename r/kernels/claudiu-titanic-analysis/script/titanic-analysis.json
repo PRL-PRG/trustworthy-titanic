@@ -1,0 +1,1 @@
+{"c(\"package:generics\", \"package:base\")":["as.factor"],"package:base":["c","factor","levels","library","prop.table","rep","table"],"package:graphics":["mosaicplot"],"package:grDevices":["dev.off","png"],"package:utils":["read.csv"]}

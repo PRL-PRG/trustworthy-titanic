@@ -1,0 +1,181 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> traindata<-read.csv("../input/train.csv",header = TRUE, colClasses=c("numeric", "factor", "factor","character", "factor", "numeric","numeric", "numeric", "character", "numeric","character","factor"))
+> testdata<-read.csv("../input/test.csv",header = TRUE, colClasses=c("numeric",  "factor","character", "factor", "numeric","numeric", "numeric", "character", "numeric","character","factor"))
+> 
+> summary(traindata)
+  PassengerId    Survived Pclass      Name               Sex     
+ Min.   :  1.0   0:549    1:216   Length:891         female:314  
+ 1st Qu.:223.5   1:342    2:184   Class :character   male  :577  
+ Median :446.0            3:491   Mode  :character               
+ Mean   :446.0                                                   
+ 3rd Qu.:668.5                                                   
+ Max.   :891.0                                                   
+                                                                 
+      Age            SibSp           Parch           Ticket         
+ Min.   : 0.42   Min.   :0.000   Min.   :0.0000   Length:891        
+ 1st Qu.:20.12   1st Qu.:0.000   1st Qu.:0.0000   Class :character  
+ Median :28.00   Median :0.000   Median :0.0000   Mode  :character  
+ Mean   :29.70   Mean   :0.523   Mean   :0.3816                     
+ 3rd Qu.:38.00   3rd Qu.:1.000   3rd Qu.:0.0000                     
+ Max.   :80.00   Max.   :8.000   Max.   :6.0000                     
+ NA's   :177                                                        
+      Fare           Cabin           Embarked
+ Min.   :  0.00   Length:891          :  2   
+ 1st Qu.:  7.91   Class :character   C:168   
+ Median : 14.45   Mode  :character   Q: 77   
+ Mean   : 32.20                      S:644   
+ 3rd Qu.: 31.00                              
+ Max.   :512.33                              
+                                             
+> summary(testdata)
+  PassengerId     Pclass      Name               Sex           Age       
+ Min.   : 892.0   1:107   Length:418         female:152   Min.   : 0.17  
+ 1st Qu.: 996.2   2: 93   Class :character   male  :266   1st Qu.:21.00  
+ Median :1100.5   3:218   Mode  :character                Median :27.00  
+ Mean   :1100.5                                           Mean   :30.27  
+ 3rd Qu.:1204.8                                           3rd Qu.:39.00  
+ Max.   :1309.0                                           Max.   :76.00  
+                                                          NA's   :86     
+     SibSp            Parch           Ticket               Fare        
+ Min.   :0.0000   Min.   :0.0000   Length:418         Min.   :  0.000  
+ 1st Qu.:0.0000   1st Qu.:0.0000   Class :character   1st Qu.:  7.896  
+ Median :0.0000   Median :0.0000   Mode  :character   Median : 14.454  
+ Mean   :0.4474   Mean   :0.3923                      Mean   : 35.627  
+ 3rd Qu.:1.0000   3rd Qu.:0.0000                      3rd Qu.: 31.500  
+ Max.   :8.0000   Max.   :9.0000                      Max.   :512.329  
+                                                      NA's   :1        
+    Cabin           Embarked
+ Length:418         C:102   
+ Class :character   Q: 46   
+ Mode  :character   S:270   
+                            
+                            
+                            
+                            
+> 
+> # fun_Age<-function(x){
+> #   if(is.na(x)==TRUE) 
+> #     {x=28} 
+> #   return(x)
+> # }
+> # 
+> # traindata$Age<-sapply(traindata$Age,fun_Age)
+> 
+> fun_Fare<-function(x){
++   if(is.na(x)==TRUE) 
++   {x=14.454} 
++   return(x)
++ }
+> 
+> testdata$Fare<-sapply(testdata$Fare,fun_Fare)
+> 
+> traindata$Survived<-factor(traindata$Survived,levels = c("0","1"))
+> traindata$Pclass<-factor(traindata$Pclass,levels = c("1","2","3"))
+> traindata$Sex<-factor(traindata$Sex,levels = c("female","male"))
+> traindata$Embarked<-factor(traindata$Embarked,levels = c("","C","Q","S"))
+> 
+> testdata$Pclass<-factor(testdata$Pclass,levels = c("1","2","3"))
+> testdata$Sex<-factor(testdata$Sex,levels = c("female","male"))
+> testdata$Embarked<-factor(testdata$Embarked,levels = c("","C","Q","S"))
+> 
+> 
+> 
+> 
+> library(gplots)
+
+Attaching package: ‘gplots’
+
+The following object is masked from ‘package:stats’:
+
+    lowess
+
+> library(ROCR)
+Warning message:
+package ‘ROCR’ was built under R version 3.6.2 
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> set.seed(5000)
+> train.rf<-randomForest(Survived~Sex+Fare+Pclass+SibSp+Parch, data = traindata,na.action=na.omit,cutoff=c(0.616,0.384))
+> 
+> importance(train.rf)
+       MeanDecreaseGini
+Sex           110.26211
+Fare           70.88568
+Pclass         33.05420
+SibSp          16.38234
+Parch          16.10926
+> train.rf
+
+Call:
+ randomForest(formula = Survived ~ Sex + Fare + Pclass + SibSp +      Parch, data = traindata, cutoff = c(0.616, 0.384), na.action = na.omit) 
+               Type of random forest: classification
+                     Number of trees: 500
+No. of variables tried at each split: 2
+
+        OOB estimate of  error rate: 20.2%
+Confusion matrix:
+    0   1 class.error
+0 463  86   0.1566485
+1  94 248   0.2748538
+> 
+> tmpROC=cbind(traindata$Survived,train.rf$votes)
+> head(tmpROC)
+             0          1
+1 1 0.96315789 0.03684211
+2 2 0.01604278 0.98395722
+3 2 0.38690476 0.61309524
+4 2 0.00000000 1.00000000
+5 1 1.00000000 0.00000000
+6 1 0.98136646 0.01863354
+> 
+> pred.auc.rf.train=prediction(tmpROC[,3], tmpROC[,1])
+> perf.rf.train = performance(pred.auc.rf.train,'auc',"tpr","fpr")
+> perf.rf.train@y.values[[1]]
+[1] 0.8565121
+> 
+> 
+> 
+> 
+> pred.rf=predict(train.rf,testdata,type="prob") 
+> 
+> my_submission=cbind(PassengerId=testdata$PassengerId,Survived=pred.rf[,2])
+> summary(my_submission)
+  PassengerId        Survived     
+ Min.   : 892.0   Min.   :0.0000  
+ 1st Qu.: 996.2   1st Qu.:0.0040  
+ Median :1100.5   Median :0.1460  
+ Mean   :1100.5   Mean   :0.3588  
+ 3rd Qu.:1204.8   3rd Qu.:0.8145  
+ Max.   :1309.0   Max.   :1.0000  
+> 
+> for(i in 1:418){
++   if(my_submission[i,2]>=0.384)my_submission[i,2]=1 else my_submission[i,2]=0
++   }
+> 
+> write.csv(my_submission,file="my_submission_7.csv",row.names=FALSE,quote = FALSE)
+> 
+> proc.time()
+   user  system elapsed 
+  0.448   0.062   0.514 

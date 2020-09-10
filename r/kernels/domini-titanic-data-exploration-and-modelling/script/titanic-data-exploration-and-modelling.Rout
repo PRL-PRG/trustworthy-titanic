@@ -1,0 +1,710 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> ## ---- message = FALSE, warning=FALSE---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Loading packages
+> library(readr) # Data import
+> library(dplyr) # Data manipulation
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Warning message:
+package ‘dplyr’ was built under R version 3.6.2 
+> library(ggplot2) # Data visualization
+Warning message:
+package ‘ggplot2’ was built under R version 3.6.2 
+> library(missForest) # Missing data imputation
+Loading required package: randomForest
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+Loading required package: foreach
+Loading required package: itertools
+Loading required package: iterators
+Warning message:
+package ‘foreach’ was built under R version 3.6.2 
+> library(rpart) # Decision Tree classification algorythm
+> library(rpart.plot) # Decision Tree visualization
+> library(randomForest) # Random Forest classification algorythm
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Getting data
+> train <- read_csv("../input/train.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test <- read_csv("../input/test.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Joining datasets
+> all <- bind_rows(train, test)
+> 
+> # Quick look
+> str(all)
+tibble [1,309 × 12] (S3: spec_tbl_df/tbl_df/tbl/data.frame)
+ $ PassengerId: num [1:1309] 1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : num [1:1309] 0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : num [1:1309] 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr [1:1309] "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr [1:1309] "male" "female" "female" "female" ...
+ $ Age        : num [1:1309] 22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : num [1:1309] 1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : num [1:1309] 0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr [1:1309] "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num [1:1309] 7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr [1:1309] NA "C85" NA "C123" ...
+ $ Embarked   : chr [1:1309] "S" "C" "S" "S" ...
+ - attr(*, "spec")=
+  .. cols(
+  ..   PassengerId = [32mcol_double()[39m,
+  ..   Survived = [32mcol_double()[39m,
+  ..   Pclass = [32mcol_double()[39m,
+  ..   Name = [31mcol_character()[39m,
+  ..   Sex = [31mcol_character()[39m,
+  ..   Age = [32mcol_double()[39m,
+  ..   SibSp = [32mcol_double()[39m,
+  ..   Parch = [32mcol_double()[39m,
+  ..   Ticket = [31mcol_character()[39m,
+  ..   Fare = [32mcol_double()[39m,
+  ..   Cabin = [31mcol_character()[39m,
+  ..   Embarked = [31mcol_character()[39m
+  .. )
+> summary(all)
+  PassengerId      Survived          Pclass          Name          
+ Min.   :   1   Min.   :0.0000   Min.   :1.000   Length:1309       
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median : 655   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295                     
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :1309   Max.   :1.0000   Max.   :3.000                     
+                NA's   :418                                        
+     Sex                 Age            SibSp            Parch      
+ Length:1309        Min.   : 0.17   Min.   :0.0000   Min.   :0.000  
+ Class :character   1st Qu.:21.00   1st Qu.:0.0000   1st Qu.:0.000  
+ Mode  :character   Median :28.00   Median :0.0000   Median :0.000  
+                    Mean   :29.88   Mean   :0.4989   Mean   :0.385  
+                    3rd Qu.:39.00   3rd Qu.:1.0000   3rd Qu.:0.000  
+                    Max.   :80.00   Max.   :8.0000   Max.   :9.000  
+                    NA's   :263                                     
+    Ticket               Fare            Cabin             Embarked        
+ Length:1309        Min.   :  0.000   Length:1309        Length:1309       
+ Class :character   1st Qu.:  7.896   Class :character   Class :character  
+ Mode  :character   Median : 14.454   Mode  :character   Mode  :character  
+                    Mean   : 33.295                                        
+                    3rd Qu.: 31.275                                        
+                    Max.   :512.329                                        
+                    NA's   :1                                              
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Looking at the top and bottom of the data
+> head(all)
+[90m# A tibble: 6 x 12[39m
+  PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin
+        [3m[90m<dbl>[39m[23m    [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m
+[90m1[39m           1        0      3 Brau… male     22     1     0 A/5 2…  7.25 [31mNA[39m   
+[90m2[39m           2        1      1 Cumi… fema…    38     1     0 PC 17… 71.3  C85  
+[90m3[39m           3        1      3 Heik… fema…    26     0     0 STON/…  7.92 [31mNA[39m   
+[90m4[39m           4        1      1 Futr… fema…    35     1     0 113803 53.1  C123 
+[90m5[39m           5        0      3 Alle… male     35     0     0 373450  8.05 [31mNA[39m   
+[90m6[39m           6        0      3 Mora… male     [31mNA[39m     0     0 330877  8.46 [31mNA[39m   
+[90m# … with 1 more variable: Embarked [3m[90m<chr>[90m[23m[39m
+> tail(all)
+[90m# A tibble: 6 x 12[39m
+  PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket   Fare Cabin
+        [3m[90m<dbl>[39m[23m    [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m   [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m
+[90m1[39m        [4m1[24m304       [31mNA[39m      3 Henr… fema…  28       0     0 347086   7.78 [31mNA[39m   
+[90m2[39m        [4m1[24m305       [31mNA[39m      3 Spec… male   [31mNA[39m       0     0 A.5. …   8.05 [31mNA[39m   
+[90m3[39m        [4m1[24m306       [31mNA[39m      1 Oliv… fema…  39       0     0 PC 17… 109.   C105 
+[90m4[39m        [4m1[24m307       [31mNA[39m      3 Saet… male   38.5     0     0 SOTON…   7.25 [31mNA[39m   
+[90m5[39m        [4m1[24m308       [31mNA[39m      3 Ware… male   [31mNA[39m       0     0 359309   8.05 [31mNA[39m   
+[90m6[39m        [4m1[24m309       [31mNA[39m      3 Pete… male   [31mNA[39m       1     1 2668    22.4  [31mNA[39m   
+[90m# … with 1 more variable: Embarked [3m[90m<chr>[90m[23m[39m
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> sapply(all, function(x) sum(is.na(x)))
+PassengerId    Survived      Pclass        Name         Sex         Age 
+          0         418           0           0           0         263 
+      SibSp       Parch      Ticket        Fare       Cabin    Embarked 
+          0           0           0           1        1014           2 
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Survived variable 
+> table(train$Survived)
+
+  0   1 
+549 342 
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ggplot(all[1:891,], aes(x = Pclass, fill = factor(Survived)))+
++     geom_bar(stat = 'count', position = 'stack') +
++     ggtitle("Survival Based on Ticket Class") +
++     theme(plot.title = element_text(hjust = 0.5)) +
++     scale_fill_discrete(name = "Survived")+
++     scale_x_continuous(breaks = c(1:11)) 
+> 
+> # Percentage of people survived in each class
+> all[1:891,] %>% group_by(Pclass) %>% summarise(survived_percentage = (sum(Survived)/length(Pclass)*100))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 3 x 2[39m
+  Pclass survived_percentage
+   [3m[90m<dbl>[39m[23m               [3m[90m<dbl>[39m[23m
+[90m1[39m      1                63.0
+[90m2[39m      2                47.3
+[90m3[39m      3                24.2
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Table: Pclass and Sex
+> table(train$Pclass, train$Sex)
+   
+    female male
+  1     94  122
+  2     76  108
+  3    144  347
+> 
+> # Table: Pclass and Sex (Survived only)
+> table(train[train$Survived == 1,]$Pclass,train[train$Survived == 1,]$Sex)
+   
+    female male
+  1     91   45
+  2     70   17
+  3     72   47
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all$Pclass <- as.factor(all$Pclass) 
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Getting the title from the Name variable
+> name_split <- strsplit(all$Name, split='[,.]')
+> name_title <- sapply(name_split, "[", 2)
+> name_title <- substring(name_title, 2)
+> table(name_title)
+name_title
+        Capt          Col          Don         Dona           Dr     Jonkheer 
+           1            4            1            1            8            1 
+        Lady        Major       Master         Miss         Mlle          Mme 
+           1            2           61          260            2            1 
+          Mr          Mrs           Ms          Rev          Sir the Countess 
+         757          197            2            8            1            1 
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Grouping similar titles
+> uncommon_titles <- c("Capt", "Col", "Don", "Dona", "Dr", "Jonkheer", "Lady", "Major", "Rev", "Sir", "the Countess")
+> 
+> name_title[name_title %in% uncommon_titles] <- "uncommon"
+> 
+> name_title[name_title == "Mlle"] <- "Miss"
+> name_title[name_title %in% c("Mme", "Ms")] <- "Mrs"
+> 
+> # Adding the Title variable and changing its class to factor
+> all <- mutate(all, Title = name_title) 
+> all$Title <- as.factor(all$Title)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Unset helper variables
+> rm(name_split, name_title, uncommon_titles)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Sex variable visualisation
+> ggplot(all[1:891,], aes(x = Sex, fill = factor(Survived)))+
++     geom_bar(stat = 'count', position = 'stack') +
++     ggtitle("Survival Based on Gender") +
++     theme(plot.title = element_text(hjust = 0.5)) +
++     scale_fill_discrete(name = "Survived")
+> 
+> # Changing class to factor
+> all$Sex <- as.factor(all$Sex)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> sum(is.na(all$Age))
+[1] 263
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Dataset used for imputation
+> age.mis <- as.data.frame(all[,c(2,3,5,6,7,8,10,12)])
+> 
+> # Changing class to factor
+> age.mis$Embarked <- as.factor(age.mis$Embarked)
+> age.mis$Survived <- as.factor(age.mis$Survived)
+> 
+> # Imputation
+> age_imp <- missForest(age.mis)
+  missForest iteration 1 in progress...done!
+  missForest iteration 2 in progress...done!
+  missForest iteration 3 in progress...done!
+  missForest iteration 4 in progress...done!
+  missForest iteration 5 in progress...done!
+  missForest iteration 6 in progress...done!
+  missForest iteration 7 in progress...done!
+  missForest iteration 8 in progress...done!
+  missForest iteration 9 in progress...done!
+  missForest iteration 10 in progress...done!
+> age_new <- age_imp[[1]][4]
+> age_new <- as.numeric(age_new$Age)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Age variable histogram
+> hist(age_new, freq=F)
+> median(age_new)
+[1] 28.07588
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Adding the new Age variable
+> all$Age <- age_new
+> 
+> # Age variable visualization
+> ggplot(all[1:891,], aes(factor(Survived), Age))+
++     geom_boxplot() +
++     ggtitle("Survival Based on Age") +
++     theme(plot.title = element_text(hjust = 0.5)) +
++     scale_fill_discrete(name = "Survived")
+> 
+> # Unset helper variables
+> rm(age_imp, age_new, age.mis)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all <- mutate(all, family_size = SibSp+Parch+1) 
+> 
+> # visualizing the family_size variable on a plot
+> 
+> ggplot(all[1:891,], aes(x = family_size, fill = factor(Survived)))+
++     geom_bar(stat = 'count', position = 'dodge') +
++     ggtitle("Survival Based on family size") +
++     theme(plot.title = element_text(hjust = 0.5)) +
++     scale_fill_discrete(name = "Survived") +
++     scale_x_continuous(breaks = c(1:11))
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Dividing family_size variable into 3 groups: singe, medium, big
+> all$family_size <- ifelse(all$family_size == 1, "single", 
++                           ifelse(all$family_size > 4, "big", "medium"))
+> 
+> # Changing class to factor
+> all$family_size <- as.factor(all$family_size)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Creating the new ticket_count variable
+> ticket_count <- rep("NA", times = nrow(all))
+> 
+> for (i in 1:nrow(all)){
++     ticket_count[i] <- nrow(all[all$Ticket == all$Ticket[i],])
++ }
+> 
+> # Adding the ticket_count variable to the dataset
+> all <- mutate(all, ticket_count)
+> 
+> # visualizing the ticket_count variable on a plot
+> ggplot(all[1:891,], aes(x = as.numeric(ticket_count), fill = factor(Survived)))+
++     geom_bar(stat = 'count', position = 'dodge') +
++     ggtitle("Survival Based on Ticket Count") +
++     theme(plot.title = element_text(hjust = 0.5)) +
++     scale_fill_discrete(name = "Survived") +
++     scale_x_continuous(breaks = c(1:11))
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Dividing ticket_count variable into 3 groups: singe, medium, big
+> all$ticket_count <- ifelse(all$ticket_count == 1, "single", ifelse(all$ticket_count > 4, "big", "medium")) 
+> 
+> # Changing class to factor
+> all$ticket_count <- as.factor(all$ticket_count)
+> 
+> # Correlation between family_size and ticket_count
+> family_size <-  all$SibSp + all$Parch + 1 # variable before dividing into 3 groups
+> cor(family_size, as.numeric(ticket_count), method = "pearson")
+[1] 0.8005555
+> 
+> # Unset helper variables
+> rm(family_size, i, ticket_count)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all[is.na(all$Fare),]
+[90m# A tibble: 1 x 15[39m
+  PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin
+        [3m[90m<dbl>[39m[23m    [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m  [3m[90m<chr>[39m[23m [3m[90m<fct>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m
+[90m1[39m        [4m1[24m044       [31mNA[39m 3      Stor… male   60.5     0     0 3701      [31mNA[39m [31mNA[39m   
+[90m# … with 4 more variables: Embarked [3m[90m<chr>[90m[23m, Title [3m[90m<fct>[90m[23m, family_size [3m[90m<fct>[90m[23m,[39m
+[90m#   ticket_count [3m[90m<fct>[90m[23m[39m
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Median for passengers with the same sex, place of embarkement and class
+> all[is.na(all$Fare),]$Fare <- median(all[(all$Embarked == "S" & all$Sex == "male" & all$Pclass == "3"),"Fare"]$Fare, na.rm = T)
+> 
+> # Checking imputation
+> all[1044,"Fare"]
+[90m# A tibble: 1 x 1[39m
+   Fare
+  [3m[90m<dbl>[39m[23m
+[90m1[39m  8.05
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Plotting a density plot for the Fare variable
+> ggplot(all, aes(x = Fare))+
++     geom_density(kernel = "gaussian") +
++     ggtitle("Density Plot for Fare Variable") +
++     theme(plot.title = element_text(hjust = 0.5)) 
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Creating new Fare_ln variable
+> all <- mutate(all, Fare_ln = as.numeric(ifelse(all$Fare == 0,"NA",log(all$Fare))))
+Warning messages:
+1: Problem with `mutate()` input `Fare_ln`.
+[34mℹ[39m NAs introduced by coercion
+[34mℹ[39m Input `Fare_ln` is `as.numeric(ifelse(all$Fare == 0, "NA", log(all$Fare)))`. 
+2: In mask$eval_all_mutate(dots[[i]]) : NAs introduced by coercion
+> 
+> # Plotting Density Plot for Fare_ln Variable
+> ggplot(all, aes(x = Fare_ln))+
++     geom_density(kernel = "gaussian") +
++     ggtitle("Density Plot for Fare_ln Variable") +
++     theme(plot.title = element_text(hjust = 0.5)) 
+Warning message:
+Removed 17 rows containing non-finite values (stat_density). 
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> all[is.na(all$Embarked),]
+[90m# A tibble: 2 x 16[39m
+  PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin
+        [3m[90m<dbl>[39m[23m    [3m[90m<dbl>[39m[23m [3m[90m<fct>[39m[23m  [3m[90m<chr>[39m[23m [3m[90m<fct>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m
+[90m1[39m          62        1 1      Icar… fema…    38     0     0 113572    80 B28  
+[90m2[39m         830        1 1      Ston… fema…    62     0     0 113572    80 B28  
+[90m# … with 5 more variables: Embarked [3m[90m<chr>[90m[23m, Title [3m[90m<fct>[90m[23m, family_size [3m[90m<fct>[90m[23m,[39m
+[90m#   ticket_count [3m[90m<fct>[90m[23m, Fare_ln [3m[90m<dbl>[90m[23m[39m
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ## Finding the median for similar observations
+> all %>%
++     filter(Pclass == 1 & Sex == "female" & ticket_count == "medium") %>%
++     group_by(Embarked)%>%
++     summarise(avg_fare = median(Fare))
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 4 x 2[39m
+  Embarked avg_fare
+  [3m[90m<chr>[39m[23m       [3m[90m<dbl>[39m[23m
+[90m1[39m C            82.7
+[90m2[39m Q            90  
+[90m3[39m S            79.2
+[90m4[39m [31mNA[39m           80  
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Missing data imputation
+> all[is.na(all$Embarked),]$Embarked <- "S"
+> 
+> # Checking imputation
+> all[c(62,830),"Embarked"]
+[90m# A tibble: 2 x 1[39m
+  Embarked
+  [3m[90m<chr>[39m[23m   
+[90m1[39m S       
+[90m2[39m S       
+> 
+> # Changing class to factor
+> all$Embarked <- as.factor(all$Embarked)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> 
+> ## Creating the Mother variable
+> mother <- rep("NA", times = nrow(all))
+> 
+> for (i in 1:nrow(all)){
++     mother[i]<- ifelse(all$Sex[i] == "female" & all$Age[i] > 16 & all$Parch[i] > 0 & 
++                     nrow(all[all$Ticket == all$Ticket[i],]) > 1,
++                     ifelse(any((all[all$Ticket == all$Ticket[i] & all$Age < 10 & 
++                     all$Parch > 0,]$Age + 16) < all$Age[i]), 1, 0) ,0)
++ }
+> 
+> # Adding the Mother variable
+> all <- all %>% mutate(mother)
+> 
+> # Changing class to factor
+> all$mother <- as.factor(all$mother)
+> 
+> # Unset helper variables
+> rm(mother, i)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Adding the child variable
+> all <- mutate(all, child = ifelse(all$Age < 10, 1, 0))
+> 
+> # Changing class to factor
+> all$child <- as.factor(all$child)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Choosing variables for modelling
+> train_model <- all[1:891, c("Survived", "Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Fare_ln", "Embarked", "Title", "family_size", "ticket_count", "mother", "child")]
+> 
+> test_model <- all[892:1309, c("Survived", "Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Fare_ln", "Embarked", "Title", "family_size", "ticket_count", "mother", "child")]
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Logistic Regression with Forward Selection
+> reg0 <- glm(Survived~1,data = train_model, family = binomial)
+> reg1 <- glm(Survived~.,data = train_model, family = binomial)
+> step(reg0, scope = formula(reg1), direction = "forward",k = 2) 
+Start:  AIC=1188.66
+Survived ~ 1
+
+               Df Deviance     AIC
++ Title         4   877.31  902.89
++ Sex           1   908.57  928.15
++ Pclass        2  1060.61 1082.19
++ Fare_ln       1  1077.11 1096.70
++ ticket_count  2  1088.33 1109.92
++ family_size   2  1098.93 1120.52
++ Fare          1  1105.71 1125.29
++ Embarked      2  1147.42 1169.00
++ child         1  1155.42 1175.00
++ mother        1  1165.45 1185.04
++ Age           1  1165.87 1185.45
++ Parch         1  1165.98 1185.57
+<none>             1171.07 1188.66
++ SibSp         1  1169.56 1189.14
+
+Step:  AIC=896.35
+Survived ~ Title
+
+               Df Deviance    AIC
++ Pclass        2   770.79 793.83
++ family_size   2   804.85 827.89
++ SibSp         1   836.85 857.89
++ ticket_count  2   836.45 859.49
++ Fare_ln       1   841.29 862.33
++ Fare          1   847.63 868.67
++ Parch         1   859.10 880.14
++ Embarked      2   857.35 880.39
++ mother        1   869.01 890.05
++ Sex           1   870.37 891.41
++ Age           1   875.14 896.18
+<none>              877.31 896.35
++ child         1   877.26 898.29
+
+Step:  AIC=798.35
+Survived ~ Title + Pclass
+
+               Df Deviance    AIC
++ family_size   2   718.09 749.65
++ SibSp         1   738.79 768.35
++ ticket_count  2   738.97 770.53
++ Parch         1   755.25 784.80
++ Age           1   761.46 791.01
++ Fare_ln       1   763.41 792.97
++ Embarked      2   763.08 794.64
++ Sex           1   765.27 794.83
++ mother        1   768.56 798.12
+<none>              770.79 798.35
++ child         1   770.58 800.14
++ Fare          1   770.75 800.31
+
+Step:  AIC=749.49
+Survived ~ Title + Pclass + family_size
+
+               Df Deviance    AIC
++ Age           1   703.27 736.66
++ Sex           1   712.74 746.13
++ Fare          1   715.10 748.50
++ child         1   715.26 748.66
+<none>              718.09 749.49
++ Fare_ln       1   716.31 749.71
++ Embarked      2   715.29 750.69
++ Parch         1   717.39 750.78
++ SibSp         1   717.50 750.90
++ mother        1   718.09 751.48
++ ticket_count  2   717.93 753.33
+
+Step:  AIC=736.85
+Survived ~ Title + Pclass + family_size + Age
+
+               Df Deviance    AIC
++ Sex           1   698.47 734.05
+<none>              703.27 736.85
++ Fare          1   701.47 737.06
++ Fare_ln       1   702.26 737.84
++ SibSp         1   702.55 738.14
++ Parch         1   702.62 738.21
++ child         1   702.90 738.49
++ Embarked      2   701.09 738.68
++ mother        1   703.25 738.84
++ ticket_count  2   703.15 740.74
+
+Step:  AIC=733.61
+Survived ~ Title + Pclass + family_size + Age + Sex
+
+               Df Deviance    AIC
+<none>              698.47 733.61
++ Fare          1   696.53 733.67
++ Fare_ln       1   697.36 734.50
++ Parch         1   697.76 734.90
++ SibSp         1   697.77 734.92
++ child         1   698.08 735.23
++ Embarked      2   696.13 735.28
++ mother        1   698.45 735.60
++ ticket_count  2   698.35 737.49
+
+Call:  glm(formula = Survived ~ Title + Pclass + family_size + Age + 
+    Sex, family = binomial, data = train_model)
+
+Coefficients:
+      (Intercept)          TitleMiss            TitleMr           TitleMrs  
+         16.61471          -15.55641           -3.32053          -14.78469  
+    Titleuncommon            Pclass2            Pclass3  family_sizemedium  
+         -3.35711           -1.58012           -2.57723            2.70798  
+family_sizesingle                Age            Sexmale  
+          3.03951           -0.03646          -15.14558  
+
+Degrees of Freedom: 890 Total (i.e. Null);  880 Residual
+Null Deviance:	    1187 
+Residual Deviance: 711.6 	AIC: 733.6
+Warning messages:
+1: In add1.glm(fit, scope$add, scale = scale, trace = trace, k = k,  :
+  using the 876/891 rows from a combined fit
+2: In add1.glm(fit, scope$add, scale = scale, trace = trace, k = k,  :
+  using the 876/891 rows from a combined fit
+3: In add1.glm(fit, scope$add, scale = scale, trace = trace, k = k,  :
+  using the 876/891 rows from a combined fit
+4: In add1.glm(fit, scope$add, scale = scale, trace = trace, k = k,  :
+  using the 876/891 rows from a combined fit
+5: In add1.glm(fit, scope$add, scale = scale, trace = trace, k = k,  :
+  using the 876/891 rows from a combined fit
+6: In add1.glm(fit, scope$add, scale = scale, trace = trace, k = k,  :
+  using the 876/891 rows from a combined fit
+> 
+> # Model with selected variables
+> logistic_forward <- glm(Survived ~ Title + Pclass + family_size + Age + Sex, data = train_model, family = binomial)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> decision_tree <- rpart(Survived ~., data = train_model, method = "class")
+> 
+> # Decision Tree visualisation
+> rpart.plot(decision_tree)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> # Random Forest
+> random_forest <- randomForest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch +
++                         Fare + Embarked + Title + family_size + ticket_count + mother + 
++                         child, data = train_model, importance = TRUE, ntree = 2000)
+> 
+> # Checking variable importance
+> varImpPlot(random_forest)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> pred_log <- predict(logistic_forward, newdata = test_model, type = "response")
+> classification <- ifelse(pred_log > 0.5, 1, 0) # The cutoff is set for 50%
+> 
+> # Saving results
+> Prediction_logistic <- data.frame(PassengerId = test$PassengerId, Survived = classification)
+> write.csv(Prediction_logistic, file = "logistic.csv", row.names = FALSE)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> pred_tree <- predict(decision_tree, newdata = test_model, type = "class")
+> 
+> # Saving results
+> Prediction_tree <- data.frame(PassengerId = test$PassengerId, Survived = pred_tree)
+> write.csv(Prediction_tree, file = "tree.csv", row.names = FALSE)
+> 
+> 
+> ## ---- message=FALSE, warning=FALSE-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> ## Random Forest prediction
+> pred_random <- predict(random_forest, newdata = test_model)
+> 
+> # Saving results
+> Prediction_random <- data.frame(PassengerId = test$PassengerId, Survived = pred_random)
+> write.csv(Prediction_random, file = "random.csv", row.names = FALSE)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 10.165   0.400  10.585 

@@ -1,0 +1,167 @@
+---
+title: "Survival prediction in Titanic"
+author: "Liang Shi"
+date: "updated on `r format(Sys.time(), '%B %d, %Y')`"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    toc: yes
+    toc_depth: '2'
+---
+
+0. Introduction
+------------------
+
+Since many wonderful tutorials (both on Python and R) are available for Titanic challenge, 
+it is a great exercise to practice for a beginner. This is how I come here. I would 
+like to share my raw simple script and to learn from the community.
+
+
+1. Libraries
+----------------
+```{r message=FALSE, warning=FALSE}
+library(randomForest) # random Forest
+library(party)        # conditional inference trees and forests
+library(e1071)        # support vector machine
+library(mice)         # multiple imputation
+library(ggplot2)      # nice plots
+```
+
+2. Check the data
+-------------------
+Load the CSV datasets and combine them into one dataset for preprocessing, excluding the predictend `Suvived`.
+```{r}
+trainData <- read.csv('../input/train.csv')
+testData <- read.csv('../input/test.csv')
+allData <- rbind(trainData[,-2],testData)
+```
+
+Check the feature space and missing values
+```{r}
+str(allData)
+nrow(allData[!complete.cases(allData),])
+```
+
+Check the pattern of missing values.
+```{r}
+md.pattern(allData)
+```
+There are 236 missing values in `Age` and 1 missing value in `Fare`.
+
+2. Handling missing values
+------------------
+Missing values can usually be delt with three ways: listwise deletion, multiple imputation and rational approaches. Since the missing values here are in the test dataset and the corresponding features are by intuition quite relevant to the prediction, a rational approach is employed to fill the missings. For `Fare`, the single missing value is replaced with the median of the Fare in the associated `Pclass`, which are actually highly correlated.
+```{r}
+# correlation
+cor(allData[!is.na(allData$Fare),]$Pclass,allData[!is.na(allData$Fare),]$Fare)
+# boxplot
+ggplot(data = allData,aes(x=factor(Pclass),y=Fare,fill=factor(Pclass))) + geom_boxplot(notch = FALSE)
+# replace missing
+allData[is.na(allData$Fare),]$Fare <-  median(allData[allData$Pclass==3,]$Fare,na.rm = TRUE)
+```
+
+For the feature `Age`, in the Kaggle forum many use multiple imputation from the package `mice`: `imp <- mice(allData,seed = 123)`. On the other hand, the missing value is often replaced by the median age in the corresponding `Title` class. `Title` is a derived feature from the `Name` variable. Since `Title` and `Age` has some sort of correlation, it is hence reasonable to infer the age in this fasion, which may be even more appropriate. 
+
+Let's first creat the `Title` feature.
+```{r}
+allData$Title <- sub('.*, (\\w+)\\. .*','\\1',allData$Name)
+allData[!(allData$Title %in% c('Miss','Mr','Mrs','Master')),]$Title <- 'Respected'
+table(allData$Sex,allData$Title)
+```
+Replace the missing ages with the median in the corresponding `Title`.
+Note that using median instead of mean is to reduce the influence of outliers.
+```{r}
+for (ttl in levels(factor(allData$Title))){
+  allData[(is.na(allData$Age)) & (allData$Title == ttl),]$Age <- 
+    median(allData[allData$Title==ttl,]$Age,na.rm = TRUE)
+}
+```
+Now, let us check that all missing values are gone.
+```{r}
+sum(is.na(allData))
+```
+
+3. Feature Selection
+---------------------
+Feature selection is a key but tricky step in the learning process, involving many "blank arts" and domain knowledge. In this exercise, very simple feature selection strategy is adopted. 
+Besides the `Title` that was already extracted from the `Name`, family size is another frequently used feature in Kaggle forum, which is the sum of `SibSp` and `Parch`. 
+```{r}
+allData$FamilySize <- allData$Parch + allData$SibSp +1
+```
+Not all features are useful in the prediction, e.g., `PassengerID`,`Name`, while some are redundant, `SibSp`,`Parch`. 
+Finally, 7 features are retained for this exercise and the corresponding train and test datasets are created.
+```{r}
+myfeatures <- c('Pclass','Sex','Age','Fare','Embarked','Title','FamilySize')
+allData$Pclass <- factor(allData$Pclass) # as factor
+allData$Title <- factor(allData$Title)   # as factor
+train <- cbind(allData[1:nrow(trainData),myfeatures],trainData['Survived'])
+test <- allData[(nrow(trainData)+1):nrow(allData),myfeatures]
+```
+
+4. Fit the models
+------------------
+Three classifiers, including random forest, conditional inference forest and support vector machine with radial kernel are considered. 
+Due to the presence of the (multi-)collinearity, linear models such as logit regression or linear discriminant analysis are not considered in this exercise. Let's start with random forest.
+To find the best parameters `mtry` and `ntree`, 10-fold cross validation is performed for the parameter tuning.
+```{r}
+set.seed(66)
+fit.tune <- tune.randomForest(factor(Survived)~.,data = train,mtry=c(2:5),ntree = c(500,1000,1500,2000))
+summary(fit.tune)
+```
+The best model based on the out-of-bag error rate are selected to predict the test dataset. The trainning accuracy (correct classification rate) is shown. The relative importance of different features is also shown, indicating that `Title`, `Fare` and `Sex` are the most important features.
+```{r}
+fit.rf <- fit.tune$best.model
+mean(fit.rf$predicted==train$Survived)
+varImpPlot(fit.rf)
+```
+
+Similar procedure (including cross validation) can be applied to conditional inference forest and support vector machine. To save time, fixed parameters are chosen to fit the models. 
+Build the conditional inference forest classifier.
+```{r}
+set.seed(66)
+fit.cf <- cforest(factor(Survived)~., data=train,
+                   controls = cforest_unbiased(ntree=2000, mtry=3))
+fit.cf
+pred.cf <- predict(fit.cf)
+mean(pred.cf==train$Survived)
+```
+Build the support vector machine classifier
+```{r}
+set.seed(66)
+#fit.tune <- tune.svm(factor(Survived)~.,data=train, kernel="radial",
+#                      gamma=10^(-2:2),cost=10^(-2:4))
+#fit.svm <- fit.tune$best.model
+fit.svm <- svm(factor(Survived)~.,data=train,
+               kernel="radial",gamma=0.1,cost=1)
+summary(fit.svm)
+mean(fit.svm$fitted==train$Survived)
+```
+
+5. Prediction
+---------------
+Perform the prediction using above classifier and save the results in accordance with Kaggle requirement. The function `kagglePred` defined below predicts and save the result to files. 
+```{r}
+kagglePred <- function(myfit,test,filename,...){
+  mypred <- predict(myfit,test,...)
+  myresult <- data.frame(PassengerID = testData$PassengerId,
+                        Survived = mypred)
+  write.csv(myresult,file=filename,row.names=FALSE)
+}
+```
+Use `kagglePred` to predict.
+```{r}
+kagglePred(fit.rf,test,'rf.csv')
+kagglePred(fit.cf,test,'cf.csv',OOB=TRUE,type="response")
+kagglePred(fit.svm,test,'svm.csv')
+```
+The primary scores in Kaggle for above predictions from random forest, conditional inference forest and support vector machine are 0.77512, 0.80861, 0.78947, respectively. These scores are all lower than the trainning scores but preserves the accuracy order among these three methods. Note that the winning of conditional inference forest here does not generalize to other situations.
+
+6. Discussion and Conclusion
+----------------------------
+Motivated by "learning by doing", the Titanic Kaggle challenge was taken here as a small exercise for the classification methodology. The problem is unfolded in small steps, from loading the datasets, exploratory data analysis, missing value handling, feature selection, to model fitting and predicting. Three different classifiers, including random forest, conditional inference forest and support vector machine, were considered, with some parameters tuned by 10-fold cross validation. In this particular case, contional inference tree seems outperform the other two, which nevertheless does not guarantee any further generalization.
+
+Feature selection is one of the key elements in the prediction. Several different combinations, though not presented in the report, were tried, which gave quite different results. Some tutorials in Kaggle forum using different feature spaces improved the ranking in the leaderbord a lot. As to which features are most relevant to the prediction accuracy, it is like a piece of black art but more systematic method for feature selection are desired and should be in the learning list. 
+
+Multicollinearity is mysterious. It is intuitive to remove the redundant features that are highly correlated, such as `Title` and `Sex`, or `Pclass` and `Fare`. However, including all of them in the classifier considered here improves the prediction accuracy. Nevertherless, in linear models such as logit regression, (multi-)collinearity does influence the prediction, making the standard error of coefficients larger and hence decreasing the power of the hypothesis tests for the coefficients (the probability to reject the null hypothesis). 

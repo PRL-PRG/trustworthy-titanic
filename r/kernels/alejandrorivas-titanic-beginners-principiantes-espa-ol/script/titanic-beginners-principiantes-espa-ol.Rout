@@ -1,0 +1,655 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> ## ----setup, include=FALSE--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> knitr::opts_chunk$set(echo = TRUE, message=F, warning=F, fig.width=9.475, fig.height=5)
+> 
+> 
+> ## ----1---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Directorio de trabajo para que siempre sea en la misma carpeta.
+> #setwd(".../Kaggle Titanic")
+> 
+> 
+> ## ----2---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Importamos los data set que nos hemos descargado de Kaggle.
+> train <- read.csv("../input/train.csv")
+> test <- read.csv("../input/test.csv")
+> 
+> 
+> ## ----3---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Si necesitamos visualizarlos:
+> #View(train)
+> #View(test)
+> 
+> 
+> ## ----4---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Conocer la estructura de los datos.
+> str(train)
+'data.frame':	891 obs. of  12 variables:
+ $ PassengerId: int  1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : int  0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : int  3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : Factor w/ 891 levels "Abbing, Mr. Anthony",..: 109 191 358 277 16 559 520 629 417 581 ...
+ $ Sex        : Factor w/ 2 levels "female","male": 2 1 1 1 2 2 2 2 1 1 ...
+ $ Age        : num  22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : int  1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : int  0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : Factor w/ 681 levels "110152","110413",..: 524 597 670 50 473 276 86 396 345 133 ...
+ $ Fare       : num  7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : Factor w/ 148 levels "","A10","A14",..: 1 83 1 57 1 1 131 1 1 1 ...
+ $ Embarked   : Factor w/ 4 levels "","C","Q","S": 4 2 4 4 4 3 4 4 4 2 ...
+> 
+> 
+> ## ----5---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Pasar la información que está en Factor a Texto Strings.
+> #train <- read.csv("train.csv", stringsAsFactors=FALSE)
+> 
+> 
+> ## ----6---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Resumen basico sobre una columna podemos usar.
+> table(train$Survived)
+
+  0   1 
+549 342 
+> 
+> 
+> ## ----7---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Obtener la proporción.
+> prop.table(table(train$Survived))
+
+        0         1 
+0.6161616 0.3838384 
+> 
+> 
+> ## ----8---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Para añadir algo podemos usar <-.
+> #En este caso añadiremos que todo el mundo muere. 
+> #Usando rep(valor a añadir, numero de veces)
+> test$Survived <- rep(0, 418)
+> 
+> 
+> ## ----9---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Creamos un fichero para el envio de la información demandada.
+> #Creamos el dataframe.
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+> #Escrivimos el csv.
+> write.csv(submit, file = "theyallperish.csv", row.names = FALSE)
+> 
+> 
+> ## ----10--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Directorio de trabajo para que siempre sea en la misma carpeta.
+> #setwd(".../Kaggle Titanic")
+> 
+> 
+> ## ----11--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Importamos los data set que nos hemos descargado de Kaggle.
+> train <- read.csv("../input/train.csv")
+> test <- read.csv("../input/test.csv")
+> 
+> 
+> ## ----12--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Usamos otro Resumen con Summary.
+> summary(train$Sex)
+female   male 
+   314    577 
+> 
+> 
+> ## ----13--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Sacamos el % e incluimos la variable de supervivientes.
+> prop.table(table(train$Sex, train$Survived))
+        
+                  0          1
+  female 0.09090909 0.26150393
+  male   0.52525253 0.12233446
+> 
+> 
+> ## ----14--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Si ponemos un 1 al final nos dará el % por filas, 2 por Columnas.
+> prop.table(table(train$Sex, train$Survived),1)
+        
+                 0         1
+  female 0.2579618 0.7420382
+  male   0.8110919 0.1889081
+> 
+> 
+> ## ----15--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Cargamos esta nueva prediccion indicando que las mujeres sobreviven.
+> test$Survived <- 0
+> test$Survived[test$Sex == 'female'] <- 1
+> 
+> 
+> ## ----16--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Generamos el fichero para subirlo a kaggle.
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+> write.csv(submit, file = "theyallperish.csv", row.names = FALSE)
+> 
+> 
+> ## ----17--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Miramos la variable edad en su resumen.
+> summary(train$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.42   20.12   28.00   29.70   38.00   80.00     177 
+> #Cuidado con los NA, asumiremos que están dentro de la edad media.
+> 
+> 
+> ## ----18--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Creamos la variable NIÑOS con edad <18 años.
+> #Creamos la columna.
+> train$Child <- 0
+> #Añadimos la variable.
+> train$Child[train$Age < 18] <- 1
+> 
+> 
+> ## ----19--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Vemos el numero de supervivientes según estas condiciones.
+> #aggragate(Variableobjetivo ~ variable1 + variable2, data=dataframe buscado, FUN=sumar) )
+> aggregate(Survived ~ Child + Sex, data=train, FUN=sum)
+  Child    Sex Survived
+1     0 female      195
+2     1 female       38
+3     0   male       86
+4     1   male       23
+> 
+> 
+> ## ----20--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Sacamos el %.
+> #Añadimos a la parte final de la funcion, la suma de los casos entre el total.
+> aggregate(Survived ~ Child + Sex, data=train, FUN=function(x) {sum(x)/length(x)})
+  Child    Sex  Survived
+1     0 female 0.7528958
+2     1 female 0.6909091
+3     0   male 0.1657033
+4     1   male 0.3965517
+> 
+> 
+> ## ----21--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Vamos a revisar la variable Clase.
+> #La dividimos en 4 clases <10, 10-20, 20-30, >30. e introducimos una nueva columna.
+> #Creamos la nueva columna y decimos que todos están por encima.
+> train$Fare2 <- '30+'
+> #Ajustamos segun las categorias indicadas.
+> train$Fare2[train$Fare < 30 & train$Fare >= 20] <- '20-30'
+> train$Fare2[train$Fare < 20 & train$Fare >= 10] <- '10-20'
+> train$Fare2[train$Fare < 10] <- '<10'
+> 
+> 
+> ## ----22--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Vemos el resumen en %, añadiendo esta nueva variable en lugar de NIÑO.
+> aggregate(Survived ~ Fare2 + Pclass + Sex, data=train, FUN=function(x) {sum(x)/length(x)})
+   Fare2 Pclass    Sex  Survived
+1  20-30      1 female 0.8333333
+2    30+      1 female 0.9772727
+3  10-20      2 female 0.9142857
+4  20-30      2 female 0.9000000
+5    30+      2 female 1.0000000
+6    <10      3 female 0.5937500
+7  10-20      3 female 0.5813953
+8  20-30      3 female 0.3333333
+9    30+      3 female 0.1250000
+10   <10      1   male 0.0000000
+11 20-30      1   male 0.4000000
+12   30+      1   male 0.3837209
+13   <10      2   male 0.0000000
+14 10-20      2   male 0.1587302
+15 20-30      2   male 0.1600000
+16   30+      2   male 0.2142857
+17   <10      3   male 0.1115385
+18 10-20      3   male 0.2368421
+19 20-30      3   male 0.1250000
+20   30+      3   male 0.2400000
+> 
+> 
+> ## ----23--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Hacemos una nueva predicción.
+> #Pongo los supervivientes a 0 (nadie sobrevive).
+> test$Survived <- 0
+> #Indico que las muejeres sobreviven.
+> test$Survived[test$Sex == 'female'] <- 1
+> #Indico que las mujeres de Clase 3 con gasto <20 NO sobrevien.
+> test$Survived[test$Sex == 'female' & test$Pclass == 3 & test$Fare >= 20] <- 0
+> 
+> 
+> ## ----24--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Creo el fichero para subirlo a Kaggle.
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = test$Survived)
+> write.csv(submit, file = "theyallperish.csv", row.names = FALSE)
+> 
+> 
+> ## ----25--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Importamos los ficheros originales, sin modificaciones.
+> #setwd(".../Kaggle Titanic")
+> train <- read.csv("../input/train.csv")
+> test <- read.csv("../input/test.csv")
+> 
+> 
+> ## ----26--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Para realizar los arboles tenemos que importar la libreria rpart.
+> library(rpart)
+> 
+> 
+> ## ----27--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Filtramos la tabla para obtener las columnas que nos resulten utiles para el arbol.
+> #(Los datos como el nombre no afectarán por ello los exluimos).
+> #El comando rport es similar a aggregate. Ponemos la variable de interes y el resto de variables.
+> #Usamos el metodo "class" ya que es más apropiado al incluir decimales.
+> fit <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked, data=train, method="class")
+> 
+> 
+> ## ----28--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Examinamos el arbol.
+> plot(fit)
+> text(fit)
+> 
+> 
+> ## ----29--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Instalamos paquetes de visualización mejores.
+> #install.packages('rattle')
+> #install.packages('rpart.plot')
+> #install.packages('RColorBrewer')
+> #library(rattle)
+> library(rpart.plot)
+> library(RColorBrewer)
+> 
+> 
+> ## ----30--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Generamos el arbol con el nuevo paquete descargado y revisamos.
+> #fancyRpartPlot(fit)
+> 
+> 
+> ## ----31--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Preparamos el fichero para subir a kaggle con esta prediccion.
+> #Sacamos la variable predica del arbol de decision.
+> Prediction <- predict(fit, test, type = "class")
+> 
+> 
+> ## ----32--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Generamos los ficheros.
+> #submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+> #write.csv(submit, file = "myfirstdtree.csv", row.names = FALSE)
+> 
+> 
+> ## ----33--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> train <- read.csv("../input/train.csv")
+> test <- read.csv("../input/test.csv")
+> 
+> 
+> ## ----34--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Vamos a buscar nuevas variables que nos puedan ayudar a predecir.
+> #Por ejemplo miramos el nombre nos podran indicar por ej si es señora o señorita - Está casada o es soltero.
+> train$Name[1]
+[1] Braund, Mr. Owen Harris
+891 Levels: Abbing, Mr. Anthony ... Zimmerman, Mr. Leo
+> 
+> 
+> ## ----35--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Antes de unir el test y train con rbind, éstos deben ser iguales. (Más información para el algoritmo)
+> #Añadimos la columna Survive en el test para que sean iguales.
+> test$Survived <- NA
+> #Las unimos.
+> combi <- rbind(train, test)
+> 
+> 
+> ## ----36--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Ponemos los textos como texto y no como factor como vimos al princio.
+> combi$Name <- as.character(combi$Name)
+> combi$Name[1]
+[1] "Braund, Mr. Owen Harris"
+> 
+> 
+> ## ----37--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Separamos la información relevante del nombre, Hay que identificar el sufijo y el nombre.
+> #Separamos el string por coma y punto.
+> strsplit(combi$Name[1], split='[,.]')
+[[1]]
+[1] "Braund"       " Mr"          " Owen Harris"
+
+> 
+> 
+> ## ----38--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Quitamos el indice [[1]] que aparece al princio.
+> strsplit(combi$Name[1], split='[,.]')[[1]]
+[1] "Braund"       " Mr"          " Owen Harris"
+> 
+> 
+> ## ----39--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Ajustamos el comando para que nos estraiga justamente el segundo bloque que contiene el titulo del nombre.
+> strsplit(combi$Name[1], split='[,.]')[[1]][2]
+[1] " Mr"
+> 
+> 
+> ## ----40--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Para aplicar este comando a todos los datos usaremos sapply y lo introducimos como una nueva columna.
+> combi$Title <- sapply(combi$Name, FUN=function(x) {strsplit(x, split='[,.]')[[1]][2]})
+> 
+> 
+> 
+> ## ----41--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Quitamos el espacio que aparece al seleccionar el titulo que acabamos de hacer.
+> combi$Title <- sub(' ', '', combi$Title)
+> 
+> 
+> ## ----42--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Resumen de los titulos que aparecen.
+> table(combi$Title)
+
+        Capt          Col          Don         Dona           Dr     Jonkheer 
+           1            4            1            1            8            1 
+        Lady        Major       Master         Miss         Mlle          Mme 
+           1            2           61          260            2            1 
+          Mr          Mrs           Ms          Rev          Sir the Countess 
+         757          197            2            8            1            1 
+> 
+> 
+> ## ----43--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Aparecen algunos extraños y otros que son muy parecidos por ello vamos a unificarlos para tener menos.
+> combi$Title[combi$Title %in% c('Mme', 'Mlle')] <- 'Mlle'
+> 
+> 
+> ## ----44--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Miramos si hay más redundancias.
+> combi$Title[combi$Title %in% c('Capt', 'Don', 'Major', 'Sir')] <- 'Sir'
+> combi$Title[combi$Title %in% c('Dona', 'Lady', 'the Countess', 'Jonkheer')] <- 'Lady'
+> 
+> 
+> ## ----45--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Ahora pasaremos esta columna a factor para que lo recozca el algoritmo.
+> combi$Title <- factor(combi$Title)
+> 
+> 
+> ## ----46--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Revisamos otras variables disponibles en el dataset como numero de familiares que viajan juntos.
+> combi$FamilySize <- combi$SibSp + combi$Parch + 1
+> 
+> 
+> ## ----47--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Revisamos y extraemos los apellidos para conocer si las familias con el mismo apellido sobrevivieron.
+> #Hay que tener en cuenta que en ingles solo usan un apellido por lo que pueden existir viajeros solos.
+> combi$Surname <- sapply(combi$Name, FUN=function(x) {strsplit(x, split='[,.]')[[1]][1]})
+> 
+> 
+> ## ----48--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Para poder trabajar con esta informacion debemos pasarla a strig temporalmente.
+> combi$FamilyID <- paste(as.character(combi$FamilySize), combi$Surname, sep="")
+> 
+> 
+> ## ----49--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Por el momento categorizamos las familias de un o dos miembros a small.
+> combi$FamilyID[combi$FamilySize <= 2] <- 'Small'
+> 
+> 
+> ## ----50--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Revisamos esta variable.
+> table(combi$FamilyID)
+
+           11Sage           3Abbott         3Appleton         3Beckwith 
+               11                 3                 1                 2 
+          3Boulos           3Bourke            3Brown         3Caldwell 
+                3                 3                 4                 3 
+         3Christy          3Collyer          3Compton          3Cornell 
+                2                 3                 3                 1 
+          3Coutts           3Crosby           3Danbom           3Davies 
+                3                 3                 3                 5 
+           3Dodge          3Douglas             3Drew            3Elias 
+                3                 1                 3                 3 
+      3Frauenthal        3Frolicher 3Frolicher-Stehli        3Goldsmith 
+                1                 1                 2                 3 
+      3Gustafsson       3Hamalainen           3Hansen             3Hart 
+                2                 2                 1                 3 
+            3Hays          3Hickman         3Hiltunen         3Hirvonen 
+                2                 3                 1                 1 
+        3Jefferys          3Johnson             3Kink    3Kink-Heilmann 
+                2                 3                 2                 2 
+          3Klasen         3Lahtinen           3Mallet            3McCoy 
+                3                 2                 3                 3 
+         3Minahan         3Moubarek            3Nakid         3Navratil 
+                1                 3                 3                 3 
+          3Newell           3Newsom         3Nicholls          3Peacock 
+                1                 1                 1                 3 
+           3Peter            3Quick         3Richards          3Rosblom 
+                3                 3                 2                 3 
+          3Samaan        3Sandstrom           3Silven          3Spedden 
+                3                 3                 1                 3 
+           3Strom          3Taussig           3Thayer           3Thomas 
+                1                 3                 3                 1 
+           3Touma     3van Billiard         3Van Impe    3Vander Planke 
+                3                 3                 3                 2 
+           3Wells             3Wick          3Widener          4Allison 
+                3                 3                 3                 4 
+       4Backstrom          4Baclini           4Becker           4Carter 
+                1                 4                 4                 4 
+        4Davidson             4Dean           4Herman          4Hocking 
+                1                 4                 4                 2 
+       4Jacobsohn         4Johnston          4Laroche           4Renouf 
+                1                 4                 4                 1 
+   4Vander Planke             4West             5Ford          5Hocking 
+                1                 4                 5                 1 
+   5Kink-Heilmann          5Lefebre          5Palsson          5Ryerson 
+                1                 5                 5                 5 
+         6Fortune           6Panula             6Rice         6Richards 
+                6                 6                 6                 1 
+           6Skoog        7Andersson          7Asplund          8Goodwin 
+                6                 9                 7                 8 
+            Small 
+             1025 
+> 
+> 
+> ## ----51--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Vamos a revisar estos datos para limpiarlos un poco. Muchas de una persona.
+> famIDs <- data.frame(table(combi$FamilyID))
+> 
+> 
+> ## ----52--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Para analizarlo mejor nos centramos en las familias pequeñas.
+> famIDs <- famIDs[famIDs$Freq <= 2,]
+> 
+> 
+> ## ----53--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Las convertimos en small usando esa tabla con nuestra tabla Combi.
+> combi$FamilyID[combi$FamilyID %in% famIDs$Var1] <- 'Small'
+> #Volvemos a ponerlo como factor.
+> combi$FamilyID <- factor(combi$FamilyID)
+> 
+> 
+> ## ----54--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Volvemos a separar el train y test de nustro Combi para el algoritmo con el mismo numero de objetos.
+> train <- combi[1:891,]
+> test <- combi[892:1309,]
+> 
+> 
+> ## ----55--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Con las nuevas variables realizamos el Arbol al igual que hicimos antes. Sin ajustes especiales.
+> fit <- rpart(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize + FamilyID,
++              data=train, method="class")
+> 
+> 
+> ## ----56--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Lo vemos.
+> #fancyRpartPlot(fit)
+> 
+> 
+> ## ----57--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Generamos el csv para Kaggle.
+> #Prediction <- predict(fit, test, type = "class")
+> #submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+> #write.csv(submit, file = "myfirstdtree.csv", row.names = FALSE)
+> 
+> 
+> ## ----58--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #R's Random Forest algorithm
+> sample(1:10, replace = TRUE)
+ [1] 3 2 7 7 1 5 9 1 2 7
+> 
+> 
+> ## ----59--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(combi$Age)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   0.17   21.00   28.00   29.88   39.00   80.00     263 
+> 
+> 
+> ## ----60--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> Agefit <- rpart(Age ~ Pclass + Sex + SibSp + Parch + Fare + Embarked + Title + FamilySize,
++                 data=combi[!is.na(combi$Age),], method="anova")
+> 
+> combi$Age[is.na(combi$Age)] <- predict(Agefit, combi[is.na(combi$Age),])
+> 
+> 
+> 
+> ## ----61--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(combi)
+  PassengerId      Survived          Pclass          Name          
+ Min.   :   1   Min.   :0.0000   Min.   :1.000   Length:1309       
+ 1st Qu.: 328   1st Qu.:0.0000   1st Qu.:2.000   Class :character  
+ Median : 655   Median :0.0000   Median :3.000   Mode  :character  
+ Mean   : 655   Mean   :0.3838   Mean   :2.295                     
+ 3rd Qu.: 982   3rd Qu.:1.0000   3rd Qu.:3.000                     
+ Max.   :1309   Max.   :1.0000   Max.   :3.000                     
+                NA's   :418                                        
+     Sex           Age            SibSp            Parch            Ticket    
+ female:466   Min.   : 0.17   Min.   :0.0000   Min.   :0.000   CA. 2343:  11  
+ male  :843   1st Qu.:22.00   1st Qu.:0.0000   1st Qu.:0.000   1601    :   8  
+              Median :28.86   Median :0.0000   Median :0.000   CA 2144 :   8  
+              Mean   :29.70   Mean   :0.4989   Mean   :0.385   3101295 :   7  
+              3rd Qu.:36.50   3rd Qu.:1.0000   3rd Qu.:0.000   347077  :   7  
+              Max.   :80.00   Max.   :8.0000   Max.   :9.000   347082  :   7  
+                                                               (Other) :1261  
+      Fare                     Cabin      Embarked     Title    
+ Min.   :  0.000                  :1014    :  2    Mr     :757  
+ 1st Qu.:  7.896   C23 C25 C27    :   6   C:270    Miss   :260  
+ Median : 14.454   B57 B59 B63 B66:   5   Q:123    Mrs    :197  
+ Mean   : 33.295   G6             :   5   S:914    Master : 61  
+ 3rd Qu.: 31.275   B96 B98        :   4            Dr     :  8  
+ Max.   :512.329   C22 C26        :   4            Rev    :  8  
+ NA's   :1         (Other)        : 271            (Other): 18  
+   FamilySize       Surname                FamilyID   
+ Min.   : 1.000   Length:1309        Small     :1074  
+ 1st Qu.: 1.000   Class :character   11Sage    :  11  
+ Median : 1.000   Mode  :character   7Andersson:   9  
+ Mean   : 1.884                      8Goodwin  :   8  
+ 3rd Qu.: 2.000                      7Asplund  :   7  
+ Max.   :11.000                      6Fortune  :   6  
+                                     (Other)   : 194  
+> 
+> 
+> ## ----62--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(combi$Embarked)
+      C   Q   S 
+  2 270 123 914 
+> 
+> 
+> ## ----63--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> which(combi$Embarked == '')
+[1]  62 830
+> 
+> 
+> ## ----64--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combi$Embarked[c(62,830)] = "S"
+> #Lo ponemos como factor again.
+> combi$Embarked <- factor(combi$Embarked)
+> 
+> 
+> ## ----65--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> summary(combi$Fare)
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+  0.000   7.896  14.454  33.295  31.275 512.329       1 
+> 
+> 
+> ## ----66--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> which(is.na(combi$Fare))
+[1] 1044
+> 
+> 
+> ## ----67--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> combi$Fare[1044] <- median(combi$Fare, na.rm=TRUE)
+> 
+> 
+> ## ----68--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Incrementamos las small familias a 2 o 3 personas.
+> combi$FamilyID2 <- combi$FamilyID
+> combi$FamilyID2 <- as.character(combi$FamilyID2)
+> combi$FamilyID2[combi$FamilySize <= 3] <- 'Small'
+> combi$FamilyID2 <- factor(combi$FamilyID2)
+> 
+> 
+> ## ----69--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Separamos el contenido
+> train <- combi[1:891,]
+> test <- combi[892:1309,]
+> 
+> 
+> ## ----70--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #Insamos y activamos el paquete.
+> #install.packages('randomForest')
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+> 
+> 
+> ## ----71--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(415)
+> 
+> 
+> ## ----72--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> fit <- randomForest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize +
++                       FamilyID2, data=train, importance=TRUE, ntree=2000)
+> 
+> 
+> ## ----73--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> varImpPlot(fit)
+> 
+> 
+> ## ----74--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> Prediction <- predict(fit, test)
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+> write.csv(submit, file = "firstforest.csv", row.names = FALSE)
+> 
+> 
+> ## ----75--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> #install.packages('party')
+> library(party)
+Loading required package: grid
+Loading required package: mvtnorm
+Loading required package: modeltools
+Loading required package: stats4
+Loading required package: strucchange
+Loading required package: zoo
+
+Attaching package: ‘zoo’
+
+The following objects are masked from ‘package:base’:
+
+    as.Date, as.Date.numeric
+
+Loading required package: sandwich
+Warning messages:
+1: package ‘party’ was built under R version 3.6.2 
+2: package ‘zoo’ was built under R version 3.6.2 
+> 
+> 
+> ## ----76--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> set.seed(415)
+> fit <- cforest(as.factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FamilySize + FamilyID,
++                data = train, controls=cforest_unbiased(ntree=2000, mtry=3))
+> 
+> 
+> ## ----77--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+> Prediction <- predict(fit, test, OOB=TRUE, type = "response")
+> submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
+Error in data.frame(PassengerId = test$PassengerId, Survived = Prediction) : 
+  arguments imply differing number of rows: 418, 891
+Execution halted

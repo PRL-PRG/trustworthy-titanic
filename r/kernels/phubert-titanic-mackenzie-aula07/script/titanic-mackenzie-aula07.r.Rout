@@ -1,0 +1,801 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+[Previously saved workspace restored]
+
+> 
+> ## Importing packages
+> 
+> # This R environment comes with all of CRAN and many other helpful packages preinstalled.
+> # You can see which packages are installed by checking out the kaggle/rstats docker image: 
+> # https://github.com/kaggle/docker-rstats
+> 
+> library(tidyverse) # metapackage with lots of helpful functions
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> 
+> dados = read.csv('../input/train.csv', sep = ',', header = T)
+> 
+> # Árvore
+> library(rpart)
+> library(rpart.plot)
+> 
+> dados$Survived = as.factor(dados$Survived)
+> 
+> # Treinando a árvore para diferentes subamostras 
+> dadosBoot = sample_n(dados, size = nrow(dados), replace = T)
+> mod1 = rpart(Survived ~ Sex + Age + Pclass + SibSp + Parch + Fare, data = dadosBoot)
+> rpart.plot(mod1)
+> 
+> # Eliminando do data set as variáveis que não queremos usar para construir os algoritmos de previsão
+> dados = dados %>% select(-c('Name', 'Ticket', 'Cabin', 'Embarked'))
+> dados$Survived = factor(dados$Survived)
+> colnames(dados)
+[1] "PassengerId" "Survived"    "Pclass"      "Sex"         "Age"        
+[6] "SibSp"       "Parch"       "Fare"       
+> 
+> 
+> passageiro_teste = sample_n(dados, 1)
+> 
+> dados_train = dados %>% filter(PassengerId != passageiro_teste$PassengerId)
+> 
+> # Número de bootstraps para estimar a variância da previsão
+> nboot = 100
+> 
+> # Número de boostraps para o bagging
+> nbag = 30
+> 
+> # Número de variáveis para sortear a cada árvore
+> nvar = 3
+> 
+> i = 1
+> 
+> prev_arvore = matrix(nrow = nboot, ncol = 1)
+> prev_bag = matrix(nrow = nboot, ncol= 1)
+> prev_rf = matrix(nrow = nboot, ncol= 1)
+> 
+> dados_boot = sample_n(dados_train, nrow(dados_train), replace = T)
+> # Obtenho a árvore
+> arvore = rpart(data = dados_boot, Survived ~ Sex + Age + Pclass + SibSp + Parch + Fare)
+> # Obtenho a previsão
+> prev_arvore[i] = predict(arvore, passageiro_teste)[1]
+> 
+> # Verificando a variância das previsões
+> 
+> # Vamos fazer o seguinte: vou sortear um passageiro e retirá-lo do banco de dados
+> # Em seguida, aplico um bootstrapping nos passageiros restantes.
+> # Para cada amostra sorteada no bootstrapping, ajusto um modelo de árvore e calculo a previsão para o passageiro que foi separado.
+> # Também faço um bootstrapping em cima dessa nova amostra, e calculo a previsão feita usando o bagging.
+> 
+> passageiro_teste = sample_n(dados, 1)
+> 
+> dados_train = dados %>% filter(PassengerId != passageiro_teste$PassengerId)
+> 
+> # Número de bootstraps para estimar a variância da previsão
+> nboot = 100
+> 
+> # Número de boostraps para o bagging
+> nbag = 30
+> 
+> # Número de variáveis para sortear a cada árvore
+> nvar = 3
+> 
+> prev_arvore = matrix(nrow = nboot, ncol = 1)
+> prev_bag = matrix(nrow = nboot, ncol= 1)
+> prev_rf = matrix(nrow = nboot, ncol= 1)
+> for(i in 1:nboot) {
++     # Obtenho a amostra
++     dados_boot = sample_n(dados_train, nrow(dados_train), replace = T)
++     # Obtenho a árvore
++     arvore = rpart(data = dados_boot, Survived ~ Sex + Age + Pclass + SibSp + Parch + Fare)
++     # Obtenho a previsão
++     prev_arvore[i] = predict(arvore, passageiro_teste)[1]
++     
++     # Fazendo o bagging
++     pbag = 0
++     prf = 0
++     for(j in 1:nbag) {
++         dados_bag = sample_n(dados_boot, nrow(dados_boot), replace = T)
++         arvore_tmp = rpart(data = dados_bag, Survived ~ Sex + Age + Pclass + SibSp + Parch + Fare)
++         
++         # Atualizando a previsão do bagging
++         pbag = pbag + predict(arvore_tmp, passageiro_teste)[1]  / nbag
++         
++         # Incluindo a seleção aleatória de variáveis
++         dados_rf = cbind(Survived = dados_bag$Survived, dados_bag %>% select(-c(PassengerId, Survived)) %>% sample(nvar))
++         arvore_tmp = rpart(data = dados_rf, eval(paste0("Survived~", colnames(dados_rf %>% select(-Survived)))))    }
++     
++         # Atualizando a previsão do bagging + sav
++         prf = prf + predict(arvore_tmp, passageiro_teste)[1] / nbag
++     
++     # Previsão final do bagging
++     prev_bag[i] = pbag
++     prev_rf[i] = prf
++ }
+> 
+> # Calculando o desvio-padrão das previsões em cada caso
+> sd(prev_arvore)
+[1] 0.1168466
+> sd(prev_bag)
+[1] 0.05372612
+> sd(prev_rf)
+[1] 0.00470656
+> 
+> # Histogramas
+> dfplot = rbind(data.frame(prev = prev_arvore, Modelo = rep('Árvore', length(prev_arvore))), data.frame(prev = prev_bag, Modelo = rep('Bagging', length(prev_bag))), data.frame(prev = prev_rf, Modelo = rep('RF', length(prev_rf))))
+> g = ggplot(data = dfplot %>% subset(Modelo %in% c('Árvore', 'Bagging')), aes(x = prev, fill = Modelo))
+> g + geom_histogram(aes(y=..count../sum(..count..)), bins = 10, alpha = 0.3, position = 'identity') +
++ xlab("Previsão") + ylab("Frequência") + ggtitle("Previsões- árvore x bagging") +
++ theme(plot.title = element_text(size = 30, face = "bold"))
+> 
+> g = ggplot(data = dfplot, aes(x = prev, fill = Modelo))
+> g + geom_histogram(aes(y=..count../sum(..count..)), bins = 20, alpha = 0.3, position = 'identity') +
++ xlab("Previsão") + ylab("Frequência") + ggtitle("Previsões- árvore x bagging x rf") +
++ theme(plot.title = element_text(size = 25, face = "bold"))
+> 
+> 
+> # Pacote para random forest
+> library(randomForest)
+randomForest 4.6-14
+Type rfNews() to see new features/changes/bug fixes.
+
+Attaching package: ‘randomForest’
+
+The following object is masked from ‘package:dplyr’:
+
+    combine
+
+The following object is masked from ‘package:ggplot2’:
+
+    margin
+
+> 
+> 
+> # Preenchendo missing values de idade com a média. Dá pra melhorar...
+> dados[which(is.na(dados$Age)), 'Age'] = mean(dados$Age, na.rm = T)
+> 
+> # Grid para busca
+> g_ntree = c(10, 100, 200)
+> g_mtry = c(2, 3, 4, 5, 6)
+> g_maxnodes = c(3, 5, 10, 20, 40)
+> 
+> # Número de combinações
+> n = length(g_ntree) * length(g_mtry) * length(g_maxnodes)
+> 
+> # Parãmetro para cross-validation
+> n_fold = 10
+> 
+> # Número de indivíduos em cada fatia
+> n_ind = floor(nrow(dados) / n_fold)
+> 
+> # Primeiro vamos calcular quanto tempo demora para fazer o cross-validation com uma combinação
+> i_ntree = 2
+> i_mtry = 3
+> i_maxnodes = 4
+> 
+> inicio = Sys.time()
+> 
+> # Sorteio uma permutação das linhas do dataset
+> indices = sample(1:nrow(dados))
+> 
+> ntree = g_ntree[i_ntree]
+> mtry = g_mtry[i_mtry]
+> maxnodes = g_maxnodes[i_maxnodes]
+> acc = 0
+> # Para cada fatia
+> for(i in 1:n_fold) {
++     test = dados[(indices[((i-1)*n_ind):(i*n_ind)]),] # Teste na fatia
++     train = dados[-(indices[((i-1)*n_ind):(i*n_ind)]),] # Treino no restante
++     
++     modrf = randomForest(Survived~., data = train, ntree = ntree, mtry = mtry, maxnodes = maxnodes, na.action = na.roughfix)
++     
++     # Calculando as previsões
++     prev = predict(modrf, test %>% select(-Survived))
++     
++     # Atualizando a acurácia média
++     acc = acc + (sum(prev == test$Survived) / length(prev)) / n_fold   
++ }
+> 
+> fim = Sys.time()
+> t = (fim - inicio)
+> 
+> print(paste0("Tempo estimado para rodar todas as ", n, " combinações:"))
+[1] "Tempo estimado para rodar todas as 75 combinações:"
+> print(n*t)
+Time difference of 26.11327 secs
+> 
+> # SE o tempo for razoável, vou rodar a busca exaustiva
+> inicio = Sys.time()
+> 
+> dfres = data.frame(ntree = integer(), mtry = integer(), maxnodes = integer(), acc = numeric(), stringsAsFactors = F)
+> # Sorteio uma permutação das linhas do dataset
+> indices = sample(1:nrow(dados))
+> for(i_ntree in 1:length(g_ntree)) {
++     ntree = g_ntree[i_ntree]
++     for(i_mtry in 1:length(g_mtry)){
++          mtry = g_mtry[i_mtry]
++         for(i_maxnodes in 1:length(g_maxnodes)) {
++             maxnodes = g_maxnodes[i_maxnodes]
++             
++             acc = 0
++             # Percorro as fatias do dataset
++             for(i in 1:n_fold) {
++                 test = dados[(indices[((i-1)*n_ind):(i*n_ind)]),] # Teste na fatia
++                 train = dados[-(indices[((i-1)*n_ind):(i*n_ind)]),] # Treino no restante
++ 
++                 modrf = randomForest(Survived~., data = train, ntree = ntree, mtry = mtry, maxnodes = maxnodes, na.action = na.roughfix)
++ 
++                 # Calculando as previsões
++                 prev = predict(modrf, test %>% select(-Survived))
++ 
++                 # Atualizando a acurácia média
++                 acc = acc + (sum(prev == test$Survived) / length(prev)) / n_fold   
++             }
++             
++             # Guardando os resultados
++             linha = data.frame(ntree = ntree, mtry = mtry, maxnodes = maxnodes, acc = acc)
++             dfres = rbind(dfres, linha)
++             print(paste0("ntree = ", ntree, ", mtry = ", mtry, ", maxnodes = ", maxnodes, ", acc = ", acc))
++         }
++     }
++ }
+[1] "ntree = 10, mtry = 2, maxnodes = 3, acc = 0.75521847690387"
+[1] "ntree = 10, mtry = 2, maxnodes = 5, acc = 0.778601747815231"
+[1] "ntree = 10, mtry = 2, maxnodes = 10, acc = 0.798589263420724"
+[1] "ntree = 10, mtry = 2, maxnodes = 20, acc = 0.814257178526841"
+[1] "ntree = 10, mtry = 2, maxnodes = 40, acc = 0.814269662921348"
+[1] "ntree = 10, mtry = 3, maxnodes = 3, acc = 0.775318352059925"
+[1] "ntree = 10, mtry = 3, maxnodes = 5, acc = 0.778614232209738"
+[1] "ntree = 10, mtry = 3, maxnodes = 10, acc = 0.797528089887641"
+[1] "ntree = 10, mtry = 3, maxnodes = 20, acc = 0.816441947565543"
+[1] "ntree = 10, mtry = 3, maxnodes = 40, acc = 0.810911360799001"
+[1] "ntree = 10, mtry = 4, maxnodes = 3, acc = 0.783121098626717"
+[1] "ntree = 10, mtry = 4, maxnodes = 5, acc = 0.780873907615481"
+[1] "ntree = 10, mtry = 4, maxnodes = 10, acc = 0.810898876404494"
+[1] "ntree = 10, mtry = 4, maxnodes = 20, acc = 0.81314606741573"
+[1] "ntree = 10, mtry = 4, maxnodes = 40, acc = 0.817578027465668"
+[1] "ntree = 10, mtry = 5, maxnodes = 3, acc = 0.788651685393258"
+[1] "ntree = 10, mtry = 5, maxnodes = 5, acc = 0.789725343320849"
+[1] "ntree = 10, mtry = 5, maxnodes = 10, acc = 0.811997503121098"
+[1] "ntree = 10, mtry = 5, maxnodes = 20, acc = 0.818701622971286"
+[1] "ntree = 10, mtry = 5, maxnodes = 40, acc = 0.817503121098627"
+[1] "ntree = 10, mtry = 6, maxnodes = 3, acc = 0.776404494382022"
+[1] "ntree = 10, mtry = 6, maxnodes = 5, acc = 0.781947565543071"
+[1] "ntree = 10, mtry = 6, maxnodes = 10, acc = 0.814244694132335"
+[1] "ntree = 10, mtry = 6, maxnodes = 20, acc = 0.81645443196005"
+[1] "ntree = 10, mtry = 6, maxnodes = 40, acc = 0.825355805243446"
+[1] "ntree = 100, mtry = 2, maxnodes = 3, acc = 0.784169787765293"
+[1] "ntree = 100, mtry = 2, maxnodes = 5, acc = 0.785255930087391"
+[1] "ntree = 100, mtry = 2, maxnodes = 10, acc = 0.807553058676654"
+[1] "ntree = 100, mtry = 2, maxnodes = 20, acc = 0.819812734082397"
+[1] "ntree = 100, mtry = 2, maxnodes = 40, acc = 0.81980024968789"
+[1] "ntree = 100, mtry = 3, maxnodes = 3, acc = 0.77191011235955"
+[1] "ntree = 100, mtry = 3, maxnodes = 5, acc = 0.787540574282147"
+[1] "ntree = 100, mtry = 3, maxnodes = 10, acc = 0.808689138576779"
+[1] "ntree = 100, mtry = 3, maxnodes = 20, acc = 0.828701622971286"
+[1] "ntree = 100, mtry = 3, maxnodes = 40, acc = 0.82314606741573"
+[1] "ntree = 100, mtry = 4, maxnodes = 3, acc = 0.783046192259676"
+[1] "ntree = 100, mtry = 4, maxnodes = 5, acc = 0.787553058676654"
+[1] "ntree = 100, mtry = 4, maxnodes = 10, acc = 0.809812734082397"
+[1] "ntree = 100, mtry = 4, maxnodes = 20, acc = 0.817590511860175"
+[1] "ntree = 100, mtry = 4, maxnodes = 40, acc = 0.815330836454432"
+[1] "ntree = 100, mtry = 5, maxnodes = 3, acc = 0.783033707865169"
+[1] "ntree = 100, mtry = 5, maxnodes = 5, acc = 0.781922596754057"
+[1] "ntree = 100, mtry = 5, maxnodes = 10, acc = 0.813133583021223"
+[1] "ntree = 100, mtry = 5, maxnodes = 20, acc = 0.815355805243446"
+[1] "ntree = 100, mtry = 5, maxnodes = 40, acc = 0.827590511860175"
+[1] "ntree = 100, mtry = 6, maxnodes = 3, acc = 0.77414481897628"
+[1] "ntree = 100, mtry = 6, maxnodes = 5, acc = 0.770811485642946"
+[1] "ntree = 100, mtry = 6, maxnodes = 10, acc = 0.815355805243446"
+[1] "ntree = 100, mtry = 6, maxnodes = 20, acc = 0.817565543071161"
+[1] "ntree = 100, mtry = 6, maxnodes = 40, acc = 0.824232209737828"
+[1] "ntree = 200, mtry = 2, maxnodes = 3, acc = 0.777503121098627"
+[1] "ntree = 200, mtry = 2, maxnodes = 5, acc = 0.793046192259675"
+[1] "ntree = 200, mtry = 2, maxnodes = 10, acc = 0.808689138576779"
+[1] "ntree = 200, mtry = 2, maxnodes = 20, acc = 0.815368289637952"
+[1] "ntree = 200, mtry = 2, maxnodes = 40, acc = 0.815355805243446"
+[1] "ntree = 200, mtry = 3, maxnodes = 3, acc = 0.786392009987516"
+[1] "ntree = 200, mtry = 3, maxnodes = 5, acc = 0.781935081148564"
+[1] "ntree = 200, mtry = 3, maxnodes = 10, acc = 0.80980024968789"
+[1] "ntree = 200, mtry = 3, maxnodes = 20, acc = 0.819812734082397"
+[1] "ntree = 200, mtry = 3, maxnodes = 40, acc = 0.822034956304619"
+[1] "ntree = 200, mtry = 4, maxnodes = 3, acc = 0.781922596754057"
+[1] "ntree = 200, mtry = 4, maxnodes = 5, acc = 0.787478152309613"
+[1] "ntree = 200, mtry = 4, maxnodes = 10, acc = 0.812022471910112"
+[1] "ntree = 200, mtry = 4, maxnodes = 20, acc = 0.819812734082397"
+[1] "ntree = 200, mtry = 4, maxnodes = 40, acc = 0.827578027465668"
+[1] "ntree = 200, mtry = 5, maxnodes = 3, acc = 0.783058676654182"
+[1] "ntree = 200, mtry = 5, maxnodes = 5, acc = 0.780811485642946"
+[1] "ntree = 200, mtry = 5, maxnodes = 10, acc = 0.814244694132335"
+[1] "ntree = 200, mtry = 5, maxnodes = 20, acc = 0.817578027465668"
+[1] "ntree = 200, mtry = 5, maxnodes = 40, acc = 0.829812734082397"
+[1] "ntree = 200, mtry = 6, maxnodes = 3, acc = 0.777478152309613"
+[1] "ntree = 200, mtry = 6, maxnodes = 5, acc = 0.773033707865169"
+[1] "ntree = 200, mtry = 6, maxnodes = 10, acc = 0.818701622971286"
+[1] "ntree = 200, mtry = 6, maxnodes = 20, acc = 0.815343320848939"
+[1] "ntree = 200, mtry = 6, maxnodes = 40, acc = 0.827565543071161"
+> 
+> fim = Sys.time()
+> t = (fim - inicio)
+> 
+> # Ordenando da maior acurácia para a menor
+> dfres = dfres[order(dfres$acc, decreasing = T), ]
+> 
+> # PEgando os melhores parametros
+> ntree = dfres[1, 'ntree']
+> mtry = dfres[1, 'mtry']
+> maxnodes = dfres[1, 'maxnodes']
+> 
+> print(paste0("Melhores parâmetros: ntree = ", ntree, ", mtry = ", mtry, ", maxnodes = ", maxnodes))
+[1] "Melhores parâmetros: ntree = 200, mtry = 5, maxnodes = 40"
+> 
+> # Treinando o modelo com os melhores parâmetros e todos os dados
+> modrf_final = randomForest(Survived~., data = dados, ntree = ntree, mtry = mtry, maxnodes = maxnodes)
+> 
+> # Amostra de teste
+> test = read.csv('../input/test.csv')
+> 
+> # Preenchendo missing de Age e Fare
+> test[which(is.na(test$Age)), 'Age'] = mean(test$Age, na.rm = T)
+> test[which(is.na(test$Fare)), 'Fare'] = mean(test$Fare, na.rm = T)
+> 
+> # Calculando previsões para submeter à competição
+> res = predict(modrf_final, test)
+> 
+> submit = data.frame(PassengerId = test$PassengerId, Survived = res)
+> write.csv(submit, "submit_RF.csv", row.names = F)
+> 
+> submit
+    PassengerId Survived
+1           892        0
+2           893        0
+3           894        0
+4           895        0
+5           896        0
+6           897        0
+7           898        1
+8           899        0
+9           900        1
+10          901        0
+11          902        0
+12          903        0
+13          904        1
+14          905        0
+15          906        1
+16          907        1
+17          908        0
+18          909        0
+19          910        0
+20          911        0
+21          912        0
+22          913        1
+23          914        1
+24          915        0
+25          916        1
+26          917        0
+27          918        1
+28          919        0
+29          920        1
+30          921        0
+31          922        0
+32          923        0
+33          924        0
+34          925        0
+35          926        0
+36          927        0
+37          928        0
+38          929        0
+39          930        0
+40          931        0
+41          932        0
+42          933        1
+43          934        0
+44          935        1
+45          936        1
+46          937        0
+47          938        1
+48          939        0
+49          940        1
+50          941        0
+51          942        1
+52          943        0
+53          944        1
+54          945        1
+55          946        0
+56          947        0
+57          948        0
+58          949        0
+59          950        0
+60          951        1
+61          952        0
+62          953        0
+63          954        0
+64          955        1
+65          956        1
+66          957        1
+67          958        1
+68          959        0
+69          960        1
+70          961        1
+71          962        1
+72          963        0
+73          964        0
+74          965        1
+75          966        1
+76          967        0
+77          968        0
+78          969        1
+79          970        0
+80          971        1
+81          972        1
+82          973        0
+83          974        0
+84          975        0
+85          976        0
+86          977        0
+87          978        1
+88          979        0
+89          980        0
+90          981        1
+91          982        0
+92          983        0
+93          984        1
+94          985        0
+95          986        0
+96          987        0
+97          988        1
+98          989        0
+99          990        1
+100         991        0
+101         992        1
+102         993        0
+103         994        0
+104         995        0
+105         996        0
+106         997        0
+107         998        0
+108         999        0
+109        1000        0
+110        1001        0
+111        1002        0
+112        1003        0
+113        1004        1
+114        1005        1
+115        1006        1
+116        1007        0
+117        1008        0
+118        1009        1
+119        1010        0
+120        1011        1
+121        1012        1
+122        1013        0
+123        1014        1
+124        1015        0
+125        1016        0
+126        1017        1
+127        1018        0
+128        1019        0
+129        1020        0
+130        1021        0
+131        1022        0
+132        1023        1
+133        1024        0
+134        1025        0
+135        1026        0
+136        1027        0
+137        1028        0
+138        1029        0
+139        1030        0
+140        1031        0
+141        1032        0
+142        1033        1
+143        1034        0
+144        1035        0
+145        1036        1
+146        1037        0
+147        1038        0
+148        1039        0
+149        1040        1
+150        1041        0
+151        1042        1
+152        1043        0
+153        1044        0
+154        1045        0
+155        1046        0
+156        1047        0
+157        1048        1
+158        1049        1
+159        1050        1
+160        1051        1
+161        1052        1
+162        1053        1
+163        1054        1
+164        1055        0
+165        1056        0
+166        1057        0
+167        1058        0
+168        1059        0
+169        1060        1
+170        1061        0
+171        1062        0
+172        1063        0
+173        1064        0
+174        1065        0
+175        1066        0
+176        1067        1
+177        1068        1
+178        1069        0
+179        1070        1
+180        1071        1
+181        1072        0
+182        1073        0
+183        1074        1
+184        1075        0
+185        1076        1
+186        1077        0
+187        1078        1
+188        1079        0
+189        1080        0
+190        1081        0
+191        1082        0
+192        1083        0
+193        1084        0
+194        1085        0
+195        1086        1
+196        1087        0
+197        1088        1
+198        1089        1
+199        1090        0
+200        1091        0
+201        1092        1
+202        1093        1
+203        1094        0
+204        1095        1
+205        1096        0
+206        1097        0
+207        1098        0
+208        1099        0
+209        1100        1
+210        1101        0
+211        1102        0
+212        1103        0
+213        1104        0
+214        1105        1
+215        1106        0
+216        1107        0
+217        1108        0
+218        1109        0
+219        1110        1
+220        1111        0
+221        1112        1
+222        1113        0
+223        1114        1
+224        1115        0
+225        1116        1
+226        1117        0
+227        1118        0
+228        1119        0
+229        1120        0
+230        1121        0
+231        1122        0
+232        1123        1
+233        1124        0
+234        1125        0
+235        1126        0
+236        1127        0
+237        1128        0
+238        1129        0
+239        1130        1
+240        1131        1
+241        1132        1
+242        1133        1
+243        1134        0
+244        1135        0
+245        1136        0
+246        1137        0
+247        1138        1
+248        1139        0
+249        1140        1
+250        1141        0
+251        1142        1
+252        1143        0
+253        1144        1
+254        1145        0
+255        1146        0
+256        1147        0
+257        1148        0
+258        1149        0
+259        1150        1
+260        1151        0
+261        1152        0
+262        1153        0
+263        1154        1
+264        1155        1
+265        1156        0
+266        1157        0
+267        1158        0
+268        1159        0
+269        1160        0
+270        1161        0
+271        1162        0
+272        1163        0
+273        1164        1
+274        1165        0
+275        1166        0
+276        1167        1
+277        1168        0
+278        1169        0
+279        1170        0
+280        1171        0
+281        1172        0
+282        1173        1
+283        1174        0
+284        1175        1
+285        1176        1
+286        1177        0
+287        1178        0
+288        1179        0
+289        1180        0
+290        1181        0
+291        1182        0
+292        1183        1
+293        1184        0
+294        1185        0
+295        1186        0
+296        1187        0
+297        1188        1
+298        1189        0
+299        1190        0
+300        1191        0
+301        1192        0
+302        1193        0
+303        1194        0
+304        1195        0
+305        1196        0
+306        1197        1
+307        1198        0
+308        1199        1
+309        1200        0
+310        1201        0
+311        1202        0
+312        1203        0
+313        1204        0
+314        1205        0
+315        1206        1
+316        1207        1
+317        1208        0
+318        1209        0
+319        1210        0
+320        1211        0
+321        1212        0
+322        1213        0
+323        1214        0
+324        1215        1
+325        1216        1
+326        1217        0
+327        1218        1
+328        1219        0
+329        1220        0
+330        1221        0
+331        1222        1
+332        1223        1
+333        1224        0
+334        1225        0
+335        1226        0
+336        1227        0
+337        1228        0
+338        1229        0
+339        1230        0
+340        1231        0
+341        1232        0
+342        1233        0
+343        1234        0
+344        1235        1
+345        1236        0
+346        1237        1
+347        1238        0
+348        1239        0
+349        1240        0
+350        1241        1
+351        1242        1
+352        1243        0
+353        1244        0
+354        1245        0
+355        1246        1
+356        1247        0
+357        1248        1
+358        1249        0
+359        1250        0
+360        1251        1
+361        1252        0
+362        1253        1
+363        1254        1
+364        1255        0
+365        1256        1
+366        1257        0
+367        1258        0
+368        1259        0
+369        1260        1
+370        1261        0
+371        1262        0
+372        1263        1
+373        1264        0
+374        1265        0
+375        1266        1
+376        1267        1
+377        1268        0
+378        1269        0
+379        1270        0
+380        1271        0
+381        1272        0
+382        1273        0
+383        1274        0
+384        1275        1
+385        1276        0
+386        1277        1
+387        1278        0
+388        1279        0
+389        1280        0
+390        1281        0
+391        1282        0
+392        1283        1
+393        1284        0
+394        1285        0
+395        1286        0
+396        1287        1
+397        1288        0
+398        1289        1
+399        1290        0
+400        1291        0
+401        1292        1
+402        1293        0
+403        1294        1
+404        1295        0
+405        1296        1
+406        1297        0
+407        1298        0
+408        1299        0
+409        1300        1
+410        1301        1
+411        1302        0
+412        1303        1
+413        1304        1
+414        1305        0
+415        1306        1
+416        1307        0
+417        1308        0
+418        1309        0
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 82.906   0.815  84.224 

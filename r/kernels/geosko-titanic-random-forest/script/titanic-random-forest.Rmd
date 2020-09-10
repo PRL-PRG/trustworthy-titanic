@@ -1,0 +1,401 @@
+
+For this Kernel I will explore and manipulate the data and then use `RandomForest` to create a model predicting survival on the Titanic. There is also a part where I try to find optimal parameters for the random forest model.
+
+<br>
+####Load the train and test data sets
+
+```{r}
+testdata <- read.csv('../input/test.csv',header = TRUE, stringsAsFactors = FALSE, na.strings = c("", "NA"))
+traindata <- read.csv('../input/train.csv',header = TRUE, stringsAsFactors = FALSE, na.strings = c("", "NA"))
+```
+<br>
+
+####Data exploration and manipulation
+
+Lets check the sructure of the data sets
+```{r}
+str(testdata)
+str(traindata)
+```
+Both data sets are containing as expected the same 11 variables and the train data set is containing one more the "survived" variable which we are going to use as a variable to predict.
+<br>
+Now lets explore the data separately before we combine the two data sets in order to understand how similar the data sets are.
+
+<br><br>
+
+Categorical variables
+```{r}
+table(testdata$Pclass)/nrow(testdata)
+table(traindata$Pclass)/nrow(traindata)
+
+table(testdata$Sex)/nrow(testdata)
+table(traindata$Sex)/nrow(traindata)
+
+table(testdata$Embarked)/nrow(testdata)
+table(traindata$Embarked)/nrow(traindata)
+```
+<br>
+The percentages of Pclass and Sex are quite similar with no missing values.For the variable Embarked the percentages are close enough and it seems that there missing values for the train data.
+<br>
+```{r}
+summary(is.na(traindata$Embarked))
+```
+The is.na is not givving any results. Hence we will try a work around.
+
+```{r}
+summary(traindata$Embarked== "")
+```
+We have only two missing values that we will need to fill later.
+
+
+Numeric variables
+```{r}
+hist(testdata$Age)
+hist(traindata$Age)
+
+summary(testdata$Age)
+summary(traindata$Age)
+
+hist(testdata$SibSp)
+hist(traindata$SibSp)
+
+summary(testdata$SibSp)
+summary(traindata$SibSp)
+
+hist(testdata$Parch)
+hist(traindata$Parch)
+
+summary(testdata$Parch)
+summary(traindata$Parch)
+
+hist(testdata$Fare)
+hist(traindata$Fare)
+
+summary(testdata$Fare)
+summary(traindata$Fare)
+```
+
+<br>
+
+The data sets are quite similar.One interesting difference is for the Parch variable where the test data set does not contain the value 1 but the train data set contains the value 1 more than 100 times. There are missing values for age, two missing values for Embarked and one missing value for Fare that we will have to fill after we integrate the data sets.
+
+The remaining variables are Passenger id which we are not going to use, Cabin which has too many missing values and we will probably decide not to include and name which seems interesting to try extract some information from.Passenger name we can break it down into additional meaningful variables which can feed predictions or be used in the creation of additional new variables. For instance, passenger title is contained within the passenger name variable and we can use surname to represent families.
+
+In order to haver a better feeling of the effect of each varible on if the passenger survived or not we will generate some correlations. This is always useful in order to understant if ignoring a variable is a good idea or not.
+
+<br>
+
+Correlation visualizations
+```{r}
+mosaicplot(table (traindata$Pclass, traindata$Survived))
+mosaicplot(table (traindata$Sex, traindata$Survived))
+mosaicplot(table (traindata$Age, traindata$Survived))
+mosaicplot(table (traindata$SibSp, traindata$Survived))
+mosaicplot(table (traindata$Parch, traindata$Survived))
+mosaicplot(table (traindata$Fare, traindata$Survived))
+mosaicplot(table (traindata$Embarked, traindata$Survived))
+```
+<br>
+Since the numeric mosaicplots can not give useful results; one idea is to create histograms by factor.
+
+```{r}
+library(ggplot2)
+
+ggplot(traindata,aes(x=Age,group=Survived,fill=Survived))+
+  geom_histogram(position="dodge",binwidth=15)+theme_bw()
+
+ggplot(traindata,aes(x=SibSp,group=Survived,fill=Survived))+
+  geom_histogram(position="dodge",binwidth=1)+theme_bw()
+
+ggplot(traindata,aes(x=Parch,group=Survived,fill=Survived))+
+  geom_histogram(position="dodge",binwidth=1)+theme_bw()
+
+ggplot(traindata,aes(x=Fare,group=Survived,fill=Survived))+
+  geom_histogram(position="dodge",binwidth=55)+theme_bw()
+
+```
+<br>
+The outcome of these visualizations is that all above variables seem to have an effect on surviving or not.
+
+Now lets try to explore the variables a little more and try to fill any missing data.
+Before we do this though lets combine the two data sets.
+```{r}
+library(dplyr)
+library(mice)
+
+full <- bind_rows(traindata, testdata) 
+```
+<br>
+Extract title from passenger names. This part was taken from an example already published since I found it very useful.
+```{r}
+full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
+```
+<br>
+Show title counts by sex.
+```{r}
+table(full$Sex, full$Title)
+```
+<br>
+
+Titles with very low cell counts to be combined to "rare" level.
+```{r}
+rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
+                'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
+```
+<br>
+Also reassign mlle, ms, and mme accordingly.
+```{r}
+full$Title[full$Title == 'Mlle']        <- 'Miss' 
+full$Title[full$Title == 'Ms']          <- 'Miss'
+full$Title[full$Title == 'Mme']         <- 'Mrs' 
+full$Title[full$Title %in% rare_title]  <- 'Rare Title'
+```
+<br>
+
+Show title counts by sex again.
+```{r}
+table(full$Sex, full$Title)
+```
+<br>
+Convert variables to factors
+
+```{r}
+full$Pclass <-as.factor(full$Pclass)
+full$Sex <-as.factor(full$Sex)
+full$Embarked <-as.factor(full$Embarked)
+full$Cabin <-as.factor(full$Cabin)
+full$Title <-as.factor(full$Title)
+```
+<br><br>
+Missing values. There are variables with missing values that we will try to replace.
+
+Lets start with the variable age
+```{r}
+sum(is.na(full$Age))
+```
+<br>
+There are 263 missing values for age. In this case we will try to apply predicting computation of age since the number of missing values is quite large.
+
+We will prefer doing that instead of ignoring the variable since age as a predicting variable seems quite important.
+
+Lets check the percentage of the missing data as well.
+```{r}
+pMiss <- function(x){sum(is.na(x))/length(x)*100}
+apply(full,2,pMiss)
+```
+<br>
+We can see that age is missing 20% of the values which in another case might led us to drop the variable but in this case age seems to important to drop. Hence we will try to do predicting imputing.
+
+Imputing the missing data
+We will use the mice() function (we exclude "survived"" variable since this is our predicting variable and the variables that we decided to exclude from the model plus "cabin"" that we will try to use later).
+```{r}
+fullpart<-full[-c(1, 2, 4, 9, 11)]
+summary(fullpart)
+```
+
+Convert variables into factors.
+```{r}
+fullpart$Pclass <-as.factor(fullpart$Pclass)
+fullpart$Sex <-as.factor(fullpart$Sex)
+fullpart$Embarked <-as.factor(fullpart$Embarked)
+fullpart$Title <-as.factor(fullpart$Title)
+```
+
+```{r}
+fullIm <- mice(fullpart,m=5,maxit=50,meth='rf',seed=500)
+summary(fullIm)
+```
+<br><br>
+Now we can get back the completed dataset using the complete() function.
+```{r}
+fullcomplete <- complete(fullIm,1)
+summary(fullcomplete)
+```
+<br>
+Inspect the distribution of original and imputed data for age.
+```{r}
+hist(full$Age, freq=F, main='Age full', 
+     col='green', ylim=c(0,0.04))
+hist(fullcomplete$Age, freq=F, main='Age fullcomplete', 
+     col='red', ylim=c(0,0.04))
+```
+<br>
+The distributions are very similar.
+
+The last step before training the model is to try extract information regarding to the deck.In order to do that lets add back again the cabin variable.
+```{r}
+fullcomplete$Cabin <- full$Cabin
+summary(fullcomplete)
+```
+<br>
+We can extract the first letter of the cabin that indicates the deck level.
+```{r}
+fullcomplete$Cabin <-  substr(fullcomplete$Cabin,1,1)
+fullcomplete$Cabin[1:45]
+```
+<br>
+
+Now lets add the deck variable and remove the cabin variable
+```{r}
+fullcomplete$Deck <- fullcomplete$Cabin
+fullcomplete <- fullcomplete[-c(9)]
+summary(fullcomplete)
+```
+<br><br>
+The last step will be to Imput the missing Deck data.
+We will use the mice() function again.
+```{r}
+fullcomplete$Deck <-as.factor(fullcomplete$Deck)
+
+fullCompleteIm <- mice(fullcomplete,m=5,maxit=50,meth='rf',seed=500)
+fullcompletefinal <- complete(fullCompleteIm,1)
+fullcompletefinal[1:20,]
+```
+<br>
+
+####Predictive model
+
+Now that we have a complete data set we will proceed with generating a predective model.
+
+First we built again the train data set.
+```{r}
+traindatafinal <- fullcompletefinal[1:891,]
+```
+<br>
+Add back the Survived variable.
+```{r}
+traindatafinal$Survived <- traindata$Survived
+summary(traindatafinal)
+str(traindatafinal)
+```
+<br>
+Change the Survived variable to factor.
+```{r}
+traindatafinal$Survived <- as.factor(traindatafinal$Survived)
+str(traindatafinal)
+```
+<br>
+
+Generate again the test data set.
+```{r}
+testdatafinal <- fullcompletefinal[892:1309,]
+testdatafinal$PassengerId <- testdata$PassengerId
+#split the train data set into training and testing sub data sets
+traindatafinaltr <- traindatafinal[1:624,]
+traindatafinaltes <- traindatafinal[625:891,]
+```
+<br>
+
+Set a random seed.
+```{r}
+set.seed(652)
+```
+<br><br>
+
+Build random forest model.
+```{r}
+library(randomForest)
+rf_model <- randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch +  Fare + Embarked + Title + Deck ,data = traindatafinaltr)
+```
+<br>
+
+Show model error
+```{r}
+plot(rf_model, ylim=c(0,0.36))
+legend('topright', colnames(rf_model$err.rate), col=1:3, fill=1:3)
+```
+<br><br>
+
+We will change the number of trees to 450 since it seems to get an optimal error rate for total, survived and not survived.
+```{r}
+rf_model <- randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch +  Fare + Embarked + Title + Deck , ntree=450, data = traindatafinaltr)
+```
+<br>
+
+We can also tune the model for the best mtry
+```{r}
+train.res <- tuneRF(traindatafinaltr[,-10], traindatafinaltr[,10],ntree=450, stepFactor = 1.5)
+```
+<br>
+
+Get variable importance.
+```{r}
+importance    <- importance(rf_model,type=2)
+importance
+
+
+varImportance <- data.frame(Variables = row.names(importance), 
+                            Importance = round(importance[ ,'MeanDecreaseGini'],2))
+
+```
+<br>
+
+Create a rank variable based on importance.
+```{r}
+rankImportance <- varImportance %>%
+  mutate(Rank = paste0(dense_rank(desc(Importance))))
+```
+<br>
+Use ggplot2 to visualize the relative importance of variables.
+```{r}
+ggplot(rankImportance, aes(x = reorder(Variables, Importance), 
+                           y = Importance, fill = Importance)) +
+  geom_bar(stat='identity') + 
+  geom_text(aes(x = Variables, y = 0.2, label = Rank),
+            hjust=0, vjust=0.55, size = 7, colour = 'green') +
+  labs(x = 'Variables') +
+  coord_flip() 
+```
+<br>
+
+It seems that not ignoring the age and deck variable was worth the time spent.
+Lets check the performance of the model.
+```{r}
+predictiont1 <- predict(rf_model, traindatafinaltes, type="prob")[,2]
+
+
+library(pROC)
+library(ROCR)
+library(caret)
+
+preds <- prediction(as.numeric(predictiont1), traindatafinaltes$Survived)
+perf <- performance(preds,"tpr","fpr")
+performance(preds,"auc")@y.values
+
+plot(perf,col='red',lwd=3)
+abline(a=0,b=1,lwd=2,lty=2,col="gray")
+```
+<br>
+The AUC of 88.89% is quite high.
+We will try again though with mtry=2.
+
+```{r}
+rf_model2 <- randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch +  Fare + Embarked + Title + Deck , ntree=450, mtry=2, data = traindatafinaltr)
+predictiont2 <- predict(rf_model2, traindatafinaltes, type="prob")[,2]
+preds2 <- prediction(as.numeric(predictiont2), traindatafinaltes$Survived)
+perf <- performance(preds2,"tpr","fpr")
+performance(preds2,"auc")@y.values
+
+plot(perf,col='red',lwd=3)
+abline(a=0,b=1,lwd=2,lty=2,col="gray")
+```
+<br>
+Hence we will keep this model.
+
+Confusion matrix
+```{r}
+predictiont2 <- predict(rf_model2, traindatafinaltes)
+confusionMatrix(predictiont2, traindatafinaltes$Survived)
+```
+<br><br>
+
+####Predictions
+
+We are now ready to use the model for the prediction of the test data.
+
+Predict using the test set.
+```{r}
+prediction <- predict(rf_model2, testdatafinal)
+```
+
+

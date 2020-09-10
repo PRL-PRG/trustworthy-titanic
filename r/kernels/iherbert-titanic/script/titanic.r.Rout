@@ -1,0 +1,443 @@
+
+R version 3.6.1 (2019-07-05) -- "Action of the Toes"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> ## Importing packages
+> 
+> # This R environment comes with all of CRAN and many other helpful packages preinstalled.
+> # You can see which packages are installed by checking out the kaggle/rstats docker image: 
+> # https://github.com/kaggle/docker-rstats
+> 
+> library(tidyverse) # metapackage with lots of helpful functions
+── [1mAttaching packages[22m ────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+[32m✓[39m [34mggplot2[39m 3.3.2     [32m✓[39m [34mpurrr  [39m 0.3.4
+[32m✓[39m [34mtibble [39m 3.0.1     [32m✓[39m [34mdplyr  [39m 1.0.2
+[32m✓[39m [34mtidyr  [39m 1.1.0     [32m✓[39m [34mstringr[39m 1.4.0
+[32m✓[39m [34mreadr  [39m 1.3.1     [32m✓[39m [34mforcats[39m 0.5.0
+── [1mConflicts[22m ───────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+[31mx[39m [34mdplyr[39m::[32mfilter()[39m masks [34mstats[39m::filter()
+[31mx[39m [34mdplyr[39m::[32mlag()[39m    masks [34mstats[39m::lag()
+Warning messages:
+1: package ‘ggplot2’ was built under R version 3.6.2 
+2: package ‘tibble’ was built under R version 3.6.2 
+3: package ‘tidyr’ was built under R version 3.6.2 
+4: package ‘purrr’ was built under R version 3.6.2 
+5: package ‘dplyr’ was built under R version 3.6.2 
+> 
+> ## Running code
+> 
+> # In a notebook, you can run a single code cell by clicking in the cell and then hitting 
+> # the blue arrow to the left, or by clicking in the cell and pressing Shift+Enter. In a script, 
+> # you can run code by highlighting the code you want to run and then clicking the blue arrow
+> # at the bottom of this window.
+> 
+> ## Reading in files
+> 
+> # You can access files from datasets you've added to this kernel in the "../input/" directory.
+> # You can see the files added to this kernel by running the code below. 
+> 
+> list.files(path = "../input")
+[1] "gender_submission.csv" "test.csv"              "train.csv"            
+> 
+> ## Saving data
+> 
+> # If you save any files or images, these will be put in the "output" directory. You 
+> # can see the output directory by committing and running your kernel (using the 
+> # Commit & Run button) and then checking out the compiled version of your kernel.
+> 
+> 
+> 
+> train <- read_csv("../input/train.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> test <-read_csv("../input/test.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Pclass = [32mcol_double()[39m,
+  Name = [31mcol_character()[39m,
+  Sex = [31mcol_character()[39m,
+  Age = [32mcol_double()[39m,
+  SibSp = [32mcol_double()[39m,
+  Parch = [32mcol_double()[39m,
+  Ticket = [31mcol_character()[39m,
+  Fare = [32mcol_double()[39m,
+  Cabin = [31mcol_character()[39m,
+  Embarked = [31mcol_character()[39m
+)
+> gender<-read_csv("../input/gender_submission.csv")
+Parsed with column specification:
+cols(
+  PassengerId = [32mcol_double()[39m,
+  Survived = [32mcol_double()[39m
+)
+> 
+> str(train)
+tibble [891 × 12] (S3: spec_tbl_df/tbl_df/tbl/data.frame)
+ $ PassengerId: num [1:891] 1 2 3 4 5 6 7 8 9 10 ...
+ $ Survived   : num [1:891] 0 1 1 1 0 0 0 0 1 1 ...
+ $ Pclass     : num [1:891] 3 1 3 1 3 3 1 3 3 2 ...
+ $ Name       : chr [1:891] "Braund, Mr. Owen Harris" "Cumings, Mrs. John Bradley (Florence Briggs Thayer)" "Heikkinen, Miss. Laina" "Futrelle, Mrs. Jacques Heath (Lily May Peel)" ...
+ $ Sex        : chr [1:891] "male" "female" "female" "female" ...
+ $ Age        : num [1:891] 22 38 26 35 35 NA 54 2 27 14 ...
+ $ SibSp      : num [1:891] 1 1 0 1 0 0 0 3 0 1 ...
+ $ Parch      : num [1:891] 0 0 0 0 0 0 0 1 2 0 ...
+ $ Ticket     : chr [1:891] "A/5 21171" "PC 17599" "STON/O2. 3101282" "113803" ...
+ $ Fare       : num [1:891] 7.25 71.28 7.92 53.1 8.05 ...
+ $ Cabin      : chr [1:891] NA "C85" NA "C123" ...
+ $ Embarked   : chr [1:891] "S" "C" "S" "S" ...
+ - attr(*, "spec")=
+  .. cols(
+  ..   PassengerId = [32mcol_double()[39m,
+  ..   Survived = [32mcol_double()[39m,
+  ..   Pclass = [32mcol_double()[39m,
+  ..   Name = [31mcol_character()[39m,
+  ..   Sex = [31mcol_character()[39m,
+  ..   Age = [32mcol_double()[39m,
+  ..   SibSp = [32mcol_double()[39m,
+  ..   Parch = [32mcol_double()[39m,
+  ..   Ticket = [31mcol_character()[39m,
+  ..   Fare = [32mcol_double()[39m,
+  ..   Cabin = [31mcol_character()[39m,
+  ..   Embarked = [31mcol_character()[39m
+  .. )
+> head(train)
+[90m# A tibble: 6 x 12[39m
+  PassengerId Survived Pclass Name  Sex     Age SibSp Parch Ticket  Fare Cabin
+        [3m[90m<dbl>[39m[23m    [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m
+[90m1[39m           1        0      3 Brau… male     22     1     0 A/5 2…  7.25 [31mNA[39m   
+[90m2[39m           2        1      1 Cumi… fema…    38     1     0 PC 17… 71.3  C85  
+[90m3[39m           3        1      3 Heik… fema…    26     0     0 STON/…  7.92 [31mNA[39m   
+[90m4[39m           4        1      1 Futr… fema…    35     1     0 113803 53.1  C123 
+[90m5[39m           5        0      3 Alle… male     35     0     0 373450  8.05 [31mNA[39m   
+[90m6[39m           6        0      3 Mora… male     [31mNA[39m     0     0 330877  8.46 [31mNA[39m   
+[90m# … with 1 more variable: Embarked [3m[90m<chr>[90m[23m[39m
+> No_cabin<-train%>%filter(is.na(Cabin))%>%summarize(count = n())
+> No_cabin
+[90m# A tibble: 1 x 1[39m
+  count
+  [3m[90m<int>[39m[23m
+[90m1[39m   687
+> 
+> useful<- train[,c("PassengerId", "Survived", "Pclass", "Sex", "Age", "SibSp", "Parch", "Fare", "Embarked")]
+> head(useful)
+[90m# A tibble: 6 x 9[39m
+  PassengerId Survived Pclass Sex      Age SibSp Parch  Fare Embarked
+        [3m[90m<dbl>[39m[23m    [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m   
+[90m1[39m           1        0      3 male      22     1     0  7.25 S       
+[90m2[39m           2        1      1 female    38     1     0 71.3  C       
+[90m3[39m           3        1      3 female    26     0     0  7.92 S       
+[90m4[39m           4        1      1 female    35     1     0 53.1  S       
+[90m5[39m           5        0      3 male      35     0     0  8.05 S       
+[90m6[39m           6        0      3 male      [31mNA[39m     0     0  8.46 Q       
+> 
+> #Generate counts for NA in each of the remaining fields
+> length(which(is.na(useful$Pclass)))
+[1] 0
+> length(which(is.na(useful$Sex)))
+[1] 0
+> length(which(is.na(useful$Age)))
+[1] 177
+> length(which(is.na(useful$SibSp)))
+[1] 0
+> length(which(is.na(useful$Parch)))
+[1] 0
+> length(which(is.na(useful$Fare)))
+[1] 0
+> length(which(is.na(useful$Embarked)))
+[1] 2
+> 
+> #Find the most common embarkation point, in case it will be sensible to replace missing values with it. 
+> useful%>%group_by(Embarked)%>%summarize(n())
+`summarise()` ungrouping output (override with `.groups` argument)
+[90m# A tibble: 4 x 2[39m
+  Embarked `n()`
+  [3m[90m<chr>[39m[23m    [3m[90m<int>[39m[23m
+[90m1[39m C          168
+[90m2[39m Q           77
+[90m3[39m S          644
+[90m4[39m [31mNA[39m           2
+> 
+> range(useful$Age, na.rm=TRUE) #it looks like there are a wide range of ages, including a baby of around 5 months
+[1]  0.42 80.00
+> useful%>%filter(Age==0.42) #phew,the baby survived!
+[90m# A tibble: 1 x 9[39m
+  PassengerId Survived Pclass Sex     Age SibSp Parch  Fare Embarked
+        [3m[90m<dbl>[39m[23m    [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m   
+[90m1[39m         804        1      3 male   0.42     0     1  8.52 C       
+> 
+> median(useful$Age, na.rm=TRUE)
+[1] 28
+> mean(useful$Age, na.rm=TRUE)
+[1] 29.69912
+> 
+> 
+> 
+> ggplot(useful, aes(x=Age))+geom_histogram(binwidth=5)
+Warning message:
+Removed 177 rows containing non-finite values (stat_bin). 
+> 
+> 
+> #Replace NA is Embarked with Southampton
+> useful_no_na<-useful
+> useful_no_na$Embarked[which(is.na(useful_no_na$Embarked))]<-"S"
+> 
+> #Replace NA in Age with mean age of other passengers
+> useful_no_na$Age[which(is.na(useful_no_na$Age))]<-mean(useful_no_na$Age, na.rm=TRUE)
+> 
+> 
+> model1 <-glm(Survived ~ ., family = "binomial", data = useful_no_na)
+> 
+> 
+> length(which(is.na(test$Age))) #=86, which isn't great
+[1] 86
+> 
+> mean(test$Age, na.rm=1) 
+[1] 30.27259
+> #but the mean is also around 30, so replacing the missing ages with the mean here doesn't make the test distribution too far from the training one
+> 
+> test_no_na <- test
+> test_no_na$Age[which(is.na(test$Age))]<-mean(test$Age, na.rm=1)
+> 
+> 
+> test_pred1<- predict(model1, newdata= test_no_na, type = "response")
+> 
+> #Check how many rows in the test data were missing the other fields we chose to use
+> 
+> length(which(is.na(test_pred1))) #looks like we're just missing data for 1 point. Let's see what it is. 
+[1] 1
+> 
+> 
+> which(is.na(test_pred1))
+153 
+153 
+> test_no_na[153,]
+[90m# A tibble: 1 x 11[39m
+  PassengerId Pclass Name    Sex     Age SibSp Parch Ticket  Fare Cabin Embarked
+        [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m   [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m   
+[90m1[39m        [4m1[24m044      3 Storey… male   60.5     0     0 3701      [31mNA[39m [31mNA[39m    S       
+> 
+> class3fare<-test_no_na%>%filter(Pclass==3)%>%summarize(median(Fare, na.rm=1))
+> test_no_na[153,"Fare"]<- class3fare
+> test_no_na[153,]
+[90m# A tibble: 1 x 11[39m
+  PassengerId Pclass Name    Sex     Age SibSp Parch Ticket  Fare Cabin Embarked
+        [3m[90m<dbl>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m   [3m[90m<chr>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m  [3m[90m<dbl>[39m[23m [3m[90m<chr>[39m[23m [3m[90m<chr>[39m[23m   
+[90m1[39m        [4m1[24m044      3 Storey… male   60.5     0     0 3701    7.90 [31mNA[39m    S       
+> 
+> test_pred1<- predict(model1, newdata= test_no_na, type = "response")
+> head(test_pred1)
+        1         2         3         4         5         6 
+0.1100789 0.3625325 0.1114303 0.1022216 0.5845262 0.1603544 
+> 
+> submission<-test["PassengerId"]
+> submission<-submission%>%mutate(Survived = as.integer(test_pred1>=0.5))
+> head(submission)
+[90m# A tibble: 6 x 2[39m
+  PassengerId Survived
+        [3m[90m<dbl>[39m[23m    [3m[90m<int>[39m[23m
+[90m1[39m         892        0
+[90m2[39m         893        0
+[90m3[39m         894        0
+[90m4[39m         895        0
+[90m5[39m         896        1
+[90m6[39m         897        0
+> 
+> 
+> submission%>%filter(Survived ==1)%>%summarize(Test_survive_pct = n()/nrow(submission))
+[90m# A tibble: 1 x 1[39m
+  Test_survive_pct
+             [3m[90m<dbl>[39m[23m
+[90m1[39m            0.380
+> 
+> train%>%filter(Survived==1)%>%summarize(Train_survive_pct = n()/nrow(train))
+[90m# A tibble: 1 x 1[39m
+  Train_survive_pct
+              [3m[90m<dbl>[39m[23m
+[90m1[39m             0.384
+> 
+> 
+> 
+> submission<-submission%>%mutate(PassengerId = as.integer(PassengerId))
+> write_csv(submission, "submission1.csv")
+> 
+> #Look at a summary of the model we started with
+> 
+> summary(model1)
+
+Call:
+glm(formula = Survived ~ ., family = "binomial", data = useful_no_na)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6415  -0.5848  -0.4210   0.6249   2.4464  
+
+Coefficients:
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  5.245e+00  5.851e-01   8.963  < 2e-16 ***
+PassengerId  9.491e-05  3.488e-04   0.272  0.78553    
+Pclass      -1.101e+00  1.437e-01  -7.664 1.80e-14 ***
+Sexmale     -2.731e+00  2.011e-01 -13.579  < 2e-16 ***
+Age         -3.968e-02  7.838e-03  -5.063 4.12e-07 ***
+SibSp       -3.251e-01  1.096e-01  -2.966  0.00302 ** 
+Parch       -9.702e-02  1.192e-01  -0.814  0.41554    
+Fare         1.969e-03  2.388e-03   0.824  0.40974    
+EmbarkedQ   -3.141e-02  3.822e-01  -0.082  0.93450    
+EmbarkedS   -4.138e-01  2.370e-01  -1.746  0.08076 .  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  784.71  on 881  degrees of freedom
+AIC: 804.71
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> 
+> model2<-glm(Survived~Pclass+Sex+Age+SibSp, family = "binomial", data = useful_no_na)
+> summary(model2)
+
+Call:
+glm(formula = Survived ~ Pclass + Sex + Age + SibSp, family = "binomial", 
+    data = useful_no_na)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.6869  -0.6055  -0.4169   0.6111   2.4547  
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  5.191976   0.478346  10.854  < 2e-16 ***
+Pclass      -1.172391   0.119725  -9.792  < 2e-16 ***
+Sexmale     -2.739806   0.194142 -14.112  < 2e-16 ***
+Age         -0.039793   0.007755  -5.131 2.88e-07 ***
+SibSp       -0.357788   0.104033  -3.439 0.000583 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  790.84  on 886  degrees of freedom
+AIC: 800.84
+
+Number of Fisher Scoring iterations: 5
+
+> 
+> test_pred2 = predict(model2, newdata= test_no_na, type = "response")
+> head(test_pred2)
+         1          2          3          4          5          6 
+0.08033032 0.36510740 0.08629086 0.10532416 0.60863186 0.16491443 
+> 
+> 
+> submission2<-test["PassengerId"]
+> submission2<-submission2%>%mutate(PassengerId = as.integer(PassengerId))%>%mutate(Survived = as.integer(test_pred2>=0.5))
+> head(submission2)
+[90m# A tibble: 6 x 2[39m
+  PassengerId Survived
+        [3m[90m<int>[39m[23m    [3m[90m<int>[39m[23m
+[90m1[39m         892        0
+[90m2[39m         893        0
+[90m3[39m         894        0
+[90m4[39m         895        0
+[90m5[39m         896        1
+[90m6[39m         897        0
+> 
+> submission2%>%filter(Survived==1)%>%summarize(Test_survive_pct = n()/nrow(submission2))
+[90m# A tibble: 1 x 1[39m
+  Test_survive_pct
+             [3m[90m<dbl>[39m[23m
+[90m1[39m            0.388
+> 
+> write_csv(submission2, "submission2.csv")
+> 
+> model3<-glm(Survived~Pclass+Sex+SibSp, family = "binomial", data = useful_no_na)
+> summary(model3)
+
+Call:
+glm(formula = Survived ~ Pclass + Sex + SibSp, family = "binomial", 
+    data = useful_no_na)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-2.2689  -0.6735  -0.4747   0.6189   2.5148  
+
+Coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  3.43357    0.30543  11.242  < 2e-16 ***
+Pclass      -0.93896    0.10647  -8.819  < 2e-16 ***
+Sexmale     -2.74314    0.19027 -14.417  < 2e-16 ***
+SibSp       -0.24812    0.09453  -2.625  0.00867 ** 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1186.66  on 890  degrees of freedom
+Residual deviance:  819.32  on 887  degrees of freedom
+AIC: 827.32
+
+Number of Fisher Scoring iterations: 4
+
+> test_pred3<-predict(model3, newdata = test_no_na, type= "response")
+> head(test_pred3)
+        1         2         3         4         5         6 
+0.1065529 0.5911129 0.2337090 0.1065529 0.5911129 0.1065529 
+> 
+> submission3<-test["PassengerId"]%>%mutate(PassengerId = as.integer(PassengerId))%>%mutate(Survived = as.integer(test_pred3>=0.50))
+> submission3%>%filter(Survived ==1)%>%summarize(Test_survive_pct = n()/nrow(submission3))
+[90m# A tibble: 1 x 1[39m
+  Test_survive_pct
+             [3m[90m<dbl>[39m[23m
+[90m1[39m            0.356
+> write_csv(submission3, "submission3.csv")
+> 
+> # Create new data frames with "none" category for unknown ages. 
+> useful_na_age<-useful
+> useful_na_age[which(is.na(useful$Age)), "Age"]<-"none"
+Error: Assigned data `"none"` must be compatible with existing data.
+[34mℹ[39m Error occurred for column `Age`.
+[31mx[39m Can't convert <character> to <double>.
+Backtrace:
+[90m    [39m█
+[90m 1. [39m├─base::`[<-`(`*tmp*`, which(is.na(useful$Age)), "Age", value = "none")
+[90m 2. [39m└─tibble:::`[<-.tbl_df`(...)
+[90m 3. [39m  └─tibble:::tbl_subassign(x, i, j, value, i_arg, j_arg, substitute(value))
+[90m 4. [39m    └─tibble:::tbl_subassign_row(xj, i, value, value_arg)
+[90m 5. [39m      └─base::tryCatch(...)
+[90m 6. [39m        └─base:::tryCatchList(expr, classes, parentenv, handlers)
+[90m 7. [39m          └─base:::tryCatchOne(expr, names, parentenv, handlers[[1L]])
+[90m 8. [39m            └─value[[3L]](cond)
+Execution halted
