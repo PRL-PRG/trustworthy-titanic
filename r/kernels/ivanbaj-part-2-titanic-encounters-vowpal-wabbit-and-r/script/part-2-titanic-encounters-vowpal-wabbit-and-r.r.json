@@ -1,1 +1,1 @@
-{"c(\"package:rstatix\", \"package:plotly\", \"package:MASS\", \"package:dplyr\")":["select"],"c(\"package:rstatix\", \"package:plyr\", \"package:plotly\", \"package:ggpubr\", \"package:dplyr\")":["mutate"],"package:base":["library"],"package:dplyr":["tbl_df"],"package:utils":["read.csv","write.csv"]}
+{"package:base":["library"],"package:dplyr":["mutate","select","tbl_df"],"package:utils":["read.csv","write.csv"]}

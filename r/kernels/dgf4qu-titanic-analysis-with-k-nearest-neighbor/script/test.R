@@ -1,0 +1,6 @@
+library(rpart)
+library(stringr) 
+library(class)
+library(caret)
+library(knncat)
+library(dummies)

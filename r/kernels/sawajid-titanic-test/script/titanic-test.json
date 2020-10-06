@@ -1,1 +1,1 @@
-{"c(\"package:urca\", \"package:RPostgreSQL\", \"package:RMySQL\", \"package:rgdal\", \"package:quantmod\", \"package:sp\", \"package:hexbin\", \"package:flexmix\", \"package:flexclust\", \"package:stats4\", \"package:spam\", \"package:diffobj\", \"package:biclust\", \"package:arules\", \"package:Matrix\", \"package:base\")":["summary"],"package:base":["data.frame","library","rep"],"package:utils":["read.csv","write.csv"]}
+{"package:base":["data.frame","library","rep","summary"],"package:utils":["read.csv","write.csv"]}

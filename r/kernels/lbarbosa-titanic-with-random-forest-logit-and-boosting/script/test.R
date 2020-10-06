@@ -1,0 +1,12 @@
+library(data.table)
+library(stargazer)
+library(stringr)
+library(ggplot2)
+library(plyr)
+library(dplyr)
+library(dtplyr)
+library(randomForest)
+library(QuantPsyc) # Has the MASS package, which has stepAIC
+library(lmtest)
+library(xgboost)
+library(Matrix)

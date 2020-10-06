@@ -1,1 +1,1 @@
-{"c(\"package:OpenMx\", \"package:MatrixModels\", \"package:spam\", \"package:timeSeries\", \"package:Matrix\", \"package:base\")":["print"],"package:base":["library","system"],"package:utils":["read.csv"]}
+{"package:base":["library","print","system"],"package:utils":["read.csv"]}

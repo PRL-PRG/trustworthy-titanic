@@ -1,1 +1,1 @@
-{"c(\"package:git2r\", \"package:spam\", \"package:timeSeries\", \"package:diffobj\", \"package:rJava\", \"package:arules\", \"package:Matrix\", \"package:utils\")":["head"],"package:base":["c","library"],"package:utils":["read.csv"]}
+{"package:base":["c","library"],"package:utils":["head","read.csv"]}

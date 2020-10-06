@@ -1,1 +1,1 @@
-{"c(\"package:generics\", \"package:base\")":["as.factor"],"c(\"package:timeSeries\", \"package:rJava\", \"package:utils\")":["str"],"package:base":["data.frame","library","list.files","prop.table","table"],"package:utils":["read.csv"]}
+{"package:base":["as.factor","data.frame","library","list.files","prop.table","table"],"package:utils":["read.csv","str"]}

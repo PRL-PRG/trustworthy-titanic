@@ -1,1 +1,1 @@
-{"c(\"package:kernlab\", \"package:flexmix\", \"package:flexclust\", \"package:arules\", \"package:stats\")":["predict"],"package:base":["c","gsub","ifelse","is.na","lapply","library","sapply","table"],"package:dplyr":["bind_rows"],"package:rpart":["rpart"],"package:utils":["read.csv","write.csv"]}
+{"package:base":["c","gsub","ifelse","is.na","lapply","library","sapply","table"],"package:dplyr":["bind_rows"],"package:rpart":["rpart"],"package:stats":["predict"],"package:utils":["read.csv","write.csv"]}

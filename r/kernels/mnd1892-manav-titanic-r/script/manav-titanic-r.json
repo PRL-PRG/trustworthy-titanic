@@ -1,1 +1,1 @@
-["str","library","read.csv"]
+{"package:base":["library"],"package:utils":["read.csv","str"]}

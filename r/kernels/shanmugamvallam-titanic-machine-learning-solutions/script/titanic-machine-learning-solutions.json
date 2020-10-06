@@ -1,1 +1,1 @@
-{"c(\"package:kernlab\", \"package:flexmix\", \"package:flexclust\", \"package:arules\", \"package:stats\")":["predict"],"package:base":["c","ifelse","library","table"],"package:graphics":["mosaicplot"],"package:grDevices":["dev.off","png"],"package:stats":["glm"],"package:utils":["read.csv"]}
+{"package:base":["c","ifelse","library","table"],"package:graphics":["mosaicplot"],"package:grDevices":["dev.off","png"],"package:stats":["glm","predict"],"package:utils":["read.csv"]}

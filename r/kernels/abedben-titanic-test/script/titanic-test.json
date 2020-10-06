@@ -1,1 +1,1 @@
-{"c(\"package:flexmix\", \"package:rJava\", \"package:arules\", \"package:base\")":["unique"],"package:base":["dim","library","typeof"],"package:dplyr":["bind_rows"],"package:utils":["read.csv"]}
+{"package:base":["dim","library","typeof","unique"],"package:dplyr":["bind_rows"],"package:utils":["read.csv"]}

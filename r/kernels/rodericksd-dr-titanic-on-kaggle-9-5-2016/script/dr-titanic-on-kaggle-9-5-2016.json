@@ -1,1 +1,1 @@
-{"c(\"package:timeSeries\", \"package:rJava\", \"package:utils\")":["str"],"package:base":["library","prop.table","table"],"package:rpart":["rpart"],"package:rpart.plot":["rpart.plot"],"package:utils":["read.csv"]}
+{"package:base":["library","prop.table","table"],"package:rpart":["rpart"],"package:rpart.plot":["rpart.plot"],"package:utils":["read.csv","str"]}

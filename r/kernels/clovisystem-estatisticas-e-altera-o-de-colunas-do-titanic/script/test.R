@@ -1,0 +1,5 @@
+library(readr)
+library(titanic)
+library(magrittr)
+library(dplyr)
+library(stringr)

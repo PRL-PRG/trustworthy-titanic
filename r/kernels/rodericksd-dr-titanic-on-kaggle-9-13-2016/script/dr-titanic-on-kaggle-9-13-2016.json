@@ -1,1 +1,1 @@
-{"c(\"package:generics\", \"package:base\")":["as.factor"],"c(\"package:kernlab\", \"package:flexmix\", \"package:flexclust\", \"package:arules\", \"package:stats\")":["predict"],"c(\"package:mice\", \"package:spam\", \"package:base\")":["rbind"],"package:base":["library","table"],"package:rpart":["rpart"],"package:utils":["read.csv"]}
+{"package:base":["as.factor","library","rbind","table"],"package:rpart":["rpart"],"package:stats":["predict"],"package:utils":["read.csv"]}

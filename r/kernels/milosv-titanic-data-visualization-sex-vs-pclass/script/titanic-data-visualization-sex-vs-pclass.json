@@ -1,1 +1,1 @@
-{"c(\"package:flexmix\", \"package:rJava\", \"package:arules\", \"package:base\")":["unique"],"c(\"package:gsubfn\", \"package:base\")":["list"],"c(\"package:mice\", \"package:lattice\")":["xyplot"],"package:base":["as.hexmode","c","dim","factor","ifelse","library"],"package:stats":["runif"],"package:utils":["read.table"]}
+{"package:base":["as.hexmode","c","dim","factor","ifelse","library","list","unique"],"package:lattice":["xyplot"],"package:stats":["runif"],"package:utils":["read.table"]}

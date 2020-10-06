@@ -1,0 +1,13 @@
+library(dplyr)
+library(stringr)
+library(ggplot2)
+library(rowr)
+library(corrplot)
+library(ROCR)
+library(caret)
+library(rpart)
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+library(randomForest)
+library(e1071)#Naive Bayes

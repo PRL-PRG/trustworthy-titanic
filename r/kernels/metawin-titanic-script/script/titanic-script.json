@@ -1,1 +1,1 @@
-{"c(\"package:R.utils\", \"package:base\")":["cat"],"package:base":["c","factor","gsub","library","list.files","nlevels","paste","sapply","strsplit","table"],"package:dplyr":["bind_rows"],"package:utils":["read.csv"]}
+{"package:base":["c","cat","factor","gsub","library","list.files","nlevels","paste","sapply","strsplit","table"],"package:dplyr":["bind_rows"],"package:utils":["read.csv"]}
