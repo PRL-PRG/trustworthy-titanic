@@ -1,1 +1,0 @@
-{"package:base":["as.factor","c","data.frame","factor","is.na","library","nrow","prop.table","set.seed","table"],"package:graphics":["plot","text"],"package:randomForest":["randomForest","varImpPlot"],"package:rattle":["fancyRpartPlot"],"package:rpart":["rpart","rpart.control"],"package:stats":["median","predict"],"package:utils":["read.csv","str"]}

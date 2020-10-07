@@ -1,1 +1,0 @@
-{"package:base":["data.frame","is.na","library","set.seed","summary","system","table"],"package:caret":["createDataPartition"],"package:nnet":["class.ind","nnet"],"package:stats":["predict"],"package:utils":["head","read.csv","str","write.csv"]}

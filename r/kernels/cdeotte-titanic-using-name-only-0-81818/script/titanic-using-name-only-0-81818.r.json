@@ -1,1 +1,0 @@
-{"package:base":["abs","c","cat","data.frame","factor","is.na","library","order","rbind","regexpr","rep","sample","sprintf","substring","sum","table","unique","which"],"package:ggplot2":["aes","annotate","geom_histogram","geom_jitter","geom_rect","ggplot","labs","xlim","ylim"],"package:stats":["ave"],"package:utils":["read.csv","write.csv"]}

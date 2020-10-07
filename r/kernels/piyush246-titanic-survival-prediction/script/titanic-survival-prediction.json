@@ -1,1 +1,0 @@
-{"package:base":["is.na","length","library","names","ncol","nrow","order","rbind","round","summary","table","which"],"package:rpart":["rpart"],"package:rpart.plot":["rpart.plot"],"package:stats":["lm","median","predict","runif"],"package:utils":["read.csv","tail","View","write.csv"]}

@@ -1,1 +1,0 @@
-{"c(\"package:mice\", \"package:base\")":["rbind"],"package:base":["as.data.frame","as.factor","c","colSums","factor","gsub","is.na","library","names","set.seed","setdiff","subset","summary","table"],"package:caTools":["sample.split"],"package:e1071":["svm"],"package:mice":["complete","mice"],"package:stats":["lm","predict"],"package:utils":["read.csv","str"]}

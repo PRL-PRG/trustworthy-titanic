@@ -1,1 +1,0 @@
-{"package:base":["as.factor","data.frame","factor","is.na","library","mean"],"package:e1071":["naiveBayes"],"package:ggplot2":["aes","geom_bar","ggplot"],"package:stats":["predict"],"package:utils":["head","read.csv"]}

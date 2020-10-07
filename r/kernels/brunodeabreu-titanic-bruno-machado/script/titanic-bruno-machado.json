@@ -1,1 +1,0 @@
-{"package:base":["as.character","c","data.frame","diag","dim","factor","is.na","library","mean","subset","sum","summary","table"],"package:ggplot2":["aes","geom_bar","ggplot"],"package:stats":["glm","predict"],"package:utils":["head","read.csv"]}

@@ -1,1 +1,0 @@
-{"package:base":["as.factor","c","cut","data.frame","factor","ifelse","levels","library","summary"],"package:dplyr":["mutate","select"],"package:graphics":["mosaicplot","plot","text"],"package:grDevices":["dev.off","png"],"package:rpart":["rpart"],"package:stats":["predict"],"package:utils":["read.csv"]}

@@ -1,1 +1,0 @@
-{"character(0)":["getmode"],"package:Amelia":["missmap"],"package:base":["attach","is.na","library","match","mean","sapply","sum","summary","tabulate","unique","which.max"],"package:readr":["read_csv"],"package:stats":["binomial","glm","step"],"package:utils":["head"]}

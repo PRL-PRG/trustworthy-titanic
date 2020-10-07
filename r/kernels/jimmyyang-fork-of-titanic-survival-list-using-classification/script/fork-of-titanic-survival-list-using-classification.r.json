@@ -1,1 +1,0 @@
-{"character(0)":["cabin_no","mean_class"],"package:base":["as.character","as.numeric","c","data.frame","factor","ifelse","is.na","length","library","mean","names","nrow","rbind","replace","return","sapply","strsplit","subset","sum","summary","system"],"package:ggplot2":["aes","geom_bar","ggplot","position_dodge"],"package:stats":["glm","predict"],"package:utils":["write.csv"]}

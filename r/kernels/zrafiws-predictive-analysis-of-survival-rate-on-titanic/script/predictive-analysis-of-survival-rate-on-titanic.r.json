@@ -1,1 +1,0 @@
-{"package:base":["c","cut","data.frame","factor","is.na","length","library","names","nchar","options","rbind","rep","sample","set.seed","strsplit","table","tapply"],"package:ggplot2":["aes","geom_histogram","ggplot"],"package:graphics":["barplot","hist","par"],"package:stats":["na.omit"],"package:utils":["head","read.csv","str"]}

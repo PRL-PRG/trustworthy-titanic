@@ -1,1 +1,0 @@
-{"c(\"package:dplyr\", \"package:stats\")":["filter"],"package:base":["class","close","duplicated","factor","file","is.na","library","max","min","readLines","summary","system"],"package:dplyr":["count","group_by","n","summarise"],"package:readr":["read_csv"],"package:stringr":["str_length"]}

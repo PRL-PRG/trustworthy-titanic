@@ -1,1 +1,0 @@
-{"package:base":["as.matrix","as.numeric","c","cbind","colnames","dim","factor","ifelse","is.na","library","max","mean","min","sapply","set.seed","sum"],"package:graphics":["plot"],"package:keras":["compile","evaluate","fit","keras_model_sequential","layer_dense","layer_dropout","optimizer_rmsprop"],"package:stats":["predict"],"package:utils":["read.csv","write.table"]}

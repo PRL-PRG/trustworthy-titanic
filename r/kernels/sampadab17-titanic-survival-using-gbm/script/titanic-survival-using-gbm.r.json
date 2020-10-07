@@ -1,1 +1,0 @@
-{"package:Amelia":["missmap"],"package:base":["as.factor","as.numeric","data.frame","ifelse","is.na","library","list.files","mean","set.seed","summary","table","which"],"package:caret":["train","trainControl"],"package:stats":["predict"],"package:utils":["head","read.csv","str"]}

@@ -1,1 +1,0 @@
-{"character(0)":["skim"],"package:base":["is.na","library","list.files","sum"],"package:dplyr":["arrange","case_when","count","desc","mutate","n_distinct","na_if","select","select_if"],"package:ggplot2":["aes","geom_bar","ggplot"],"package:purrr":["map_df"],"package:readr":["read_csv"],"package:tidyr":["gather"],"package:utils":["head"]}

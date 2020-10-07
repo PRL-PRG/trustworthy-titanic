@@ -1,1 +1,0 @@
-{"c(\"package:stats4\", \"package:base\")":["summary"],"c(\"package:stats4\", \"package:graphics\")":["plot"],"package:base":["as.factor","c","dim","droplevels","factor","length","library","names","table","which"],"package:graphics":["barplot","hist","par"],"package:party":["ctree"],"package:stats":["predict"],"package:utils":["read.csv","str"]}

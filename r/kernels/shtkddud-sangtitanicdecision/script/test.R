@@ -1,5 +1,0 @@
-library(randomForest)
-library(rattle)
-library(rpart.plot)
-library(RColorBrewer)
-library(tree)

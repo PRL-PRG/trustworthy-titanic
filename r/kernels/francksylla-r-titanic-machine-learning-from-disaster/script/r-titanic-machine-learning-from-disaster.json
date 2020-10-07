@@ -1,1 +1,0 @@
-{"package:base":["as.factor","c","is.na","lapply","library","nrow","paste","print","rbind","summary"],"package:rpart":["rpart"],"package:stats":["predict"],"package:utils":["read.csv"]}

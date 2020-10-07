@@ -1,1 +1,0 @@
-{"package:base":["as.factor","as.numeric","c","cbind","library","summary","table"],"package:graphics":["barplot","box"],"package:utils":["read.csv"]}

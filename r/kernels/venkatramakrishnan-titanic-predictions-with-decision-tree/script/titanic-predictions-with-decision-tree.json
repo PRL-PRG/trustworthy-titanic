@@ -1,1 +1,0 @@
-{"character(0)":["asc"],"package:base":["as.character","as.factor","charToRaw","ifelse","is.na","library","nrow","print","strtoi","substr","sum","summary"],"package:rpart":["rpart"],"package:stats":["median","predict"],"package:utils":["read.csv"]}

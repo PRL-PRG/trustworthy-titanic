@@ -1,6 +1,0 @@
-library(readr) # CSV file I/O, e.g. the read_csv function
-library(tidyverse) # ggplot and others
-library(tree)
-library(rpart)
-library(randomForest)
-library(gbm)

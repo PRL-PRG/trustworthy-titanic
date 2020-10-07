@@ -1,1 +1,0 @@
-{"package:base":["as.factor","library","list.files","round","summary"],"package:ggplot2":["aes","facet_wrap","geom_bar","ggplot","labs"],"package:gridExtra":["grid.arrange"],"package:sqldf":["sqldf"],"package:utils":["head","read.csv"]}

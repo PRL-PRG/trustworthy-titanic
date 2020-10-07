@@ -1,1 +1,0 @@
-{"package:base":["c","cat","factor","gsub","library","nlevels","paste","sapply","strsplit","table"],"package:dplyr":["bind_rows"],"package:ggplot2":["aes","geom_bar","ggplot","labs","scale_x_continuous"],"package:ggthemes":["theme_few"],"package:utils":["read.csv","str"]}

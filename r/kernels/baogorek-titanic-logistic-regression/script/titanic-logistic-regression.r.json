@@ -1,1 +1,0 @@
-{"package:base":["as.numeric","c","cat","ifelse","is.na","library","list.files","nrow","print","sum","summary","with"],"package:mice":["mice"],"package:stats":["glm","predict"],"package:utils":["head","read.csv","write.csv"]}

@@ -1,1 +1,0 @@
-{"c(\"package:dplyr\", \"package:stats\")":["filter"],"package:base":["grepl","ifelse","library","mean","nrow","system"],"package:dplyr":["arrange","count","desc","ends_with","group_by","mutate","n","one_of","select","starts_with","summarise"],"package:utils":["head","read.csv","tail"]}

@@ -1,1 +1,0 @@
-{"package:base":["as.factor","c","factor","gsub","is.na","library","mean","system","table"],"package:dplyr":["bind_rows"],"package:ggplot2":["aes","facet_grid","geom_bar","geom_boxplot","ggplot","labs","scale_x_continuous"],"package:readr":["read_csv"],"package:rpart":["rpart"],"package:rpart.plot":["rpart.plot"],"package:stats":["complete.cases","formula","predict"]}

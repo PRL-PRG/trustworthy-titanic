@@ -1,1 +1,0 @@
-{"package:base":["as.factor","c","colMeans","data.frame","is.na","library","mean","set.seed","subset"],"package:caret":["confusionMatrix","createDataPartition","train","trainControl"],"package:graphics":["hist","par","plot"],"package:stats":["predict"],"package:utils":["read.csv"]}

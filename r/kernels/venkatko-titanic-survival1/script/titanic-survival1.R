@@ -1,142 +1,58 @@
-# This R environment comes with all of CRAN preinstalled, as well as many other helpful packages
-# The environment is defined by the kaggle/rstats docker image: https://github.com/kaggle/docker-rstats
-# For example, here's several helpful packages to load in 
-
-library('ggplot2') # visualization
-library('ggthemes') # visualization
-library('scales') # visualization
-library('dplyr') # data manipulation
-library('mice') # imputation
-library('randomForest') # classification algorithm
-
-# Input data files are available in the "../input/" directory.
-# For example, running this (by clicking run or pressing Shift+Enter) will list the files in the input directory
-
+library("ggplot2")
+library("ggthemes")
+library("scales")
+library("dplyr")
+library("mice")
+library("randomForest")
 system("ls ../input")
-
-# Any results you write to the current directory are saved as output.
-
-train <- read.csv('../input/train.csv', stringsAsFactors = F)
-test  <- read.csv('../input/test.csv', stringsAsFactors = F)
-
-full  <- bind_rows(train, test) # bind training & test data
-
-# check data
+train <- read.csv("../input/train.csv", stringsAsFactors = F)
+test <- read.csv("../input/test.csv", stringsAsFactors = F)
+full <- bind_rows(train, test)
 str(full)
-
-# Grab title from passenger names
-full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
-
-# Titles with very low cell counts to be combined to "rare" level
-rare_title <- c('Dona', 'Lady', 'the Countess','Capt', 'Col', 'Don', 
-                'Dr', 'Major', 'Rev', 'Sir', 'Jonkheer')
-
-# Also reassign mlle, ms, and mme accordingly
-full$Title[full$Title == 'Mlle']        <- 'Miss' 
-full$Title[full$Title == 'Ms']          <- 'Miss'
-full$Title[full$Title == 'Mme']         <- 'Mrs' 
-full$Title[full$Title %in% rare_title]  <- 'Rare Title'
-
-# Finally, grab surname from passenger name
-full$Surname <- sapply(full$Name,  
-                      function(x) strsplit(x, split = '[,.]')[[1]][1])
-
-# Create a family size variable including the passenger themselves
+full$Title <- gsub("(.*, )|(\\..*)", "", full$Name)
+rare_title <- c("Dona", "Lady", "the Countess", "Capt", "Col", "Don", "Dr", "Major", "Rev", "Sir", "Jonkheer")
+full$Title[full$Title == "Mlle"] <- "Miss"
+full$Title[full$Title == "Ms"] <- "Miss"
+full$Title[full$Title == "Mme"] <- "Mrs"
+full$Title[full$Title %in% rare_title] <- "Rare Title"
+full$Surname <- sapply(full$Name, function(x) strsplit(x, split = "[,.]")[[1]][1])
 full$Fsize <- full$SibSp + full$Parch + 1
-
-# Create a family variable 
-full$Family <- paste(full$Surname, full$Fsize, sep='_')
-
-# Discretize family size
-full$FsizeD[full$Fsize == 1] <- 'singleton'
-full$FsizeD[full$Fsize < 5 & full$Fsize > 1] <- 'small'
-full$FsizeD[full$Fsize > 4] <- 'large'
-
-# This variable appears to have a lot of missing values
+full$Family <- paste(full$Surname, full$Fsize, sep = "_")
+full$FsizeD[full$Fsize == 1] <- "singleton"
+full$FsizeD[full$Fsize < 5 & full$Fsize > 1] <- "small"
+full$FsizeD[full$Fsize > 4] <- "large"
 full$Cabin[1:28]
-
-# The first character is the deck. For example:
 strsplit(full$Cabin[2], NULL)[[1]]
-
-# Create a Deck variable. Get passenger deck A - F:
-full$Deck<-factor(sapply(full$Cabin, function(x) strsplit(x, NULL)[[1]][1]))
-
-# Passengers 62 and 830 are missing Embarkment
-full[c(62, 830), 'Embarked']
-
-# Get rid of our missing passenger IDs
-embark_fare <- full %>%
-  filter(PassengerId != 62 & PassengerId != 830)
-
-# Since their fare was $80 for 1st class, they most likely embarked from 'C'
-full$Embarked[c(62, 830)] <- 'C'
-
-# Show row 1044
+full$Deck <- factor(sapply(full$Cabin, function(x) strsplit(x, NULL)[[1]][1]))
+full[c(62, 830), "Embarked"]
+embark_fare <- full %>% filter(PassengerId != 62 & PassengerId != 830)
+full$Embarked[c(62, 830)] <- "C"
 full[1044, ]
-
-# Replace missing fare value with median fare for class/embarkment
-full$Fare[1044] <- median(full[full$Pclass == '3' & full$Embarked == 'S', ]$Fare, na.rm = TRUE)
-
-# Show number of missing Age values
+full$Fare[1044] <- median(full[full$Pclass == "3" & full$Embarked == "S", ]$Fare, na.rm = TRUE)
 sum(is.na(full$Age))
-
-# Make variables factors into factors
-factor_vars <- c('PassengerId','Pclass','Sex','Embarked',
-                 'Title','Surname','Family','FsizeD')
-
+factor_vars <- c("PassengerId", "Pclass", "Sex", "Embarked", "Title", "Surname", "Family", "FsizeD")
 full[factor_vars] <- lapply(full[factor_vars], function(x) as.factor(x))
-
-# Set a random seed
 set.seed(129)
-
-# Perform mice imputation, excluding certain less-than-useful variables:
-mice_mod <- mice(full[, !names(full) %in% c('PassengerId','Name','Ticket','Cabin','Family','Surname','Survived')], method='rf') 
-
-# Save the complete output 
+mice_mod <- mice(full[, !names(full) %in% c("PassengerId", "Name", "Ticket", "Cabin", "Family", "Surname", "Survived")], method = "rf")
 mice_output <- complete(mice_mod)
-
-# Replace Age variable from the mice model.
 full$Age <- mice_output$Age
-
-# Create the column child, and indicate whether child or adult
-full$Child[full$Age < 18] <- 'Child'
-full$Child[full$Age >= 18] <- 'Adult'
-
-# Adding Mother variable
-full$Mother <- 'Not Mother'
-full$Mother[full$Sex == 'female' & full$Parch > 0 & full$Age > 18 & full$Title != 'Miss'] <- 'Mother'
-
-# Finish by factorizing our two new factor variables
-full$Child  <- factor(full$Child)
+full$Child[full$Age < 18] <- "Child"
+full$Child[full$Age >= 18] <- "Adult"
+full$Mother <- "Not Mother"
+full$Mother[full$Sex == "female" & full$Parch > 0 & full$Age > 18 & full$Title != "Miss"] <- "Mother"
+full$Child <- factor(full$Child)
 full$Mother <- factor(full$Mother)
-
 md.pattern(full)
-
-# Split the data back into a train set and a test set
-train <- full[1:891,]
-test <- full[892:1309,]
-
-# Set a random seed
+train <- full[1:891, ]
+test <- full[892:1309, ]
 set.seed(754)
-
 str(full)
-
-temp <- full[,c(3, 5, 6, 7, 8, 10, 12, 13, 17, 18, 19, 20)]
+temp <- full[, c(3, 5, 6, 7, 8, 10, 12, 13, 17, 18, 19, 20)]
 str(temp)
 X <- as.matrix(sapply(temp, as.numeric))
 str(X)
-write.csv(X, file = 'test.csv', row.names = F)
-# Build the model (note: not all possible variables are used)
-rf_model <- randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + 
-                                            Fare + Embarked + Title + 
-                                            FsizeD + Child + Mother,
-                                            data = train)
-
-# Predict using the test set
+write.csv(X, file = "test.csv", row.names = F)
+rf_model <- randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare + Embarked + Title + FsizeD + Child + Mother, data = train)
 prediction <- predict(rf_model, test)
-
-# Save the solution to a dataframe with two columns: PassengerId and Survived (prediction)
 solution <- data.frame(PassengerID = test$PassengerId, Survived = prediction)
-
-# Write the solution to file
-write.csv(solution, file = 'rf_mod_Solution.csv', row.names = F)
+write.csv(solution, file = "rf_mod_Solution.csv", row.names = F)

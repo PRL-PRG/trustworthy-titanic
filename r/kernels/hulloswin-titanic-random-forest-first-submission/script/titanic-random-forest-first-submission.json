@@ -1,1 +1,0 @@
-{"package:base":["as.data.frame","as.factor","is.na","library","names","ncol","nrow","rbind","setwd","table"],"package:randomForest":["randomForest"],"package:stats":["as.formula","median","predict"],"package:utils":["read.csv"]}

@@ -1,94 +1,53 @@
-library('Amelia')
-library('dplyr')
-library('stringr')
-library('randomForest')
-library('caret')
-
-#setwd('~/sandbox/kaggle/titanic')
+library("Amelia")
+library("dplyr")
+library("stringr")
+library("randomForest")
+library("caret")
 d <- read.csv("../input/train.csv")
 t <- read.csv("../input/test.csv")
-
-
 d$Pclass <- as.factor(d$Pclass)
 t$Pclass <- as.factor(t$Pclass)
-
-d$Fare <- pmax(log(d$Fare),0)
-t$Fare <- pmax(log(t$Fare),0)
-
-#create feature from family size - was suggested
+d$Fare <- pmax(log(d$Fare), 0)
+t$Fare <- pmax(log(t$Fare), 0)
 d$FamSize <- d$Parch + d$SibSp + 1
 t$FamSize <- t$Parch + t$SibSp + 1
-
-#create feature based on name
-basic.titles <- c('Mr','Mrs','Master','Miss','Ms','Mlle','Mdm')
-
-extract.title <- function(n)
-{
-  (str_split(str_split(n,', ')[[1]][2],'\\.')[[1]][1])
+basic.titles <- c("Mr", "Mrs", "Master", "Miss", "Ms", "Mlle", "Mdm")
+extract.title <- function(n) {
+    (str_split(str_split(n, ", ")[[1]][2], "\\.")[[1]][1])
 }
-
-d$Title <- sapply(as.character(d$Name),extract.title)
+d$Title <- sapply(as.character(d$Name), extract.title)
 d$Noble <- !(d$Title %in% basic.titles)
-
-t$Title <- sapply(as.character(t$Name),extract.title)
+t$Title <- sapply(as.character(t$Name), extract.title)
 t$Noble <- !(t$Title %in% basic.titles)
-
 d$Title <- as.factor(d$Title)
 t$Title <- as.factor(t$Title)
-
 missmap(d)
-
-#infer missing age - use average age for title
-#select title, avg(age) group by title, join to data and coalesce age, avg(age)
-
 titles <- group_by(d, Title)
 title.age.avg <- summarise(titles, avg.age = mean(Age, na.rm = TRUE))
-
-d <- inner_join(by = "Title" ,d,title.age.avg)
-t <- left_join(by = "Title" ,t,title.age.avg) #we could observe a rare title.
-
+d <- inner_join(by = "Title", d, title.age.avg)
+t <- left_join(by = "Title", t, title.age.avg)
 d$HadAge <- !is.na(d$Age)
-d$InferredAge <- coalesce(d$Age,d$avg.age)
-
+d$InferredAge <- coalesce(d$Age, d$avg.age)
 t$HadAge <- !is.na(t$Age)
-t$InferredAge <- coalesce(t$Age,t$avg.age)
-#split and train and test
-
-d.s <- select(d,Survived,InferredAge,HadAge,Pclass,Sex,Parch,Embarked,Fare,SibSp,Noble,FamSize)
+t$InferredAge <- coalesce(t$Age, t$avg.age)
+d.s <- select(d, Survived, InferredAge, HadAge, Pclass, Sex, Parch, Embarked, Fare, SibSp, Noble, FamSize)
 d.s.a <- (d.s) %>% na.omit()
-d.s.a$Survived<- factor(d.s.a$Survived)
-
-# define an 80%/20% train/test split of the dataset
+d.s.a$Survived <- factor(d.s.a$Survived)
 d.s.a$id <- 1:nrow(d.s.a)
-train.ix <- sample_frac(d.s.a,0.8)
-d.train <- d.s.a[train.ix$id,]
-d.test <- d.s.a[-train.ix$id,]
-
-rf <- randomForest(Survived ~ ., select(d.train,Survived,Pclass,Sex,Fare,Noble,SibSp,Parch,HadAge,InferredAge,FamSize), ntree=50, norm.votes=FALSE)
+train.ix <- sample_frac(d.s.a, 0.8)
+d.train <- d.s.a[train.ix$id, ]
+d.test <- d.s.a[-train.ix$id, ]
+rf <- randomForest(Survived ~ ., select(d.train, Survived, Pclass, Sex, Fare, Noble, SibSp, Parch, HadAge, InferredAge, FamSize), ntree = 50, norm.votes = FALSE)
 varImpPlot(rf)
-
-#peel off low perfomers
-rf <- randomForest(Survived ~ ., select(d.train,Survived,Pclass,Sex,Fare,InferredAge,FamSize), ntree=50, norm.votes=FALSE)
-
-y.test <- select(d.test,Survived)
-p <- predict(rf,select(d.test,Pclass,Sex,Fare,Noble,InferredAge,FamSize))
-
-#evaluate
+rf <- randomForest(Survived ~ ., select(d.train, Survived, Pclass, Sex, Fare, InferredAge, FamSize), ntree = 50, norm.votes = FALSE)
+y.test <- select(d.test, Survived)
+p <- predict(rf, select(d.test, Pclass, Sex, Fare, Noble, InferredAge, FamSize))
 confusionMatrix(p, y.test$Survived)
-
-#make output for kaggle
-
-
-
-df.submit <- data.frame(matrix(nrow = 418,ncol = 2))
-names(df.submit) <- c('PassengerId','Survived')
+df.submit <- data.frame(matrix(nrow = 418, ncol = 2))
+names(df.submit) <- c("PassengerId", "Survived")
 df.submit$PassengerId <- t$PassengerId
-
-rf <- randomForest(Survived ~ ., select(d.s.a,Survived,Pclass,Sex,Fare,InferredAge,FamSize), ntree=50, norm.votes=FALSE)
-
-p2 <- predict(rf,select(t,Pclass,Sex,Fare,InferredAge,FamSize))
+rf <- randomForest(Survived ~ ., select(d.s.a, Survived, Pclass, Sex, Fare, InferredAge, FamSize), ntree = 50, norm.votes = FALSE)
+p2 <- predict(rf, select(t, Pclass, Sex, Fare, InferredAge, FamSize))
 df.submit$Survived <- p2
-
-df.submit[153,2] <- 0 #clean up one NA
-
-write.table(df.submit,'submit.csv',sep=',',row.names=FALSE,quote = FALSE)
+df.submit[153, 2] <- 0
+write.table(df.submit, "submit.csv", sep = ",", row.names = FALSE, quote = FALSE)

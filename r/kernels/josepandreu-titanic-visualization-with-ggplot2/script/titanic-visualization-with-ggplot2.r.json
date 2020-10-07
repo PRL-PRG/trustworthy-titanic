@@ -1,1 +1,0 @@
-{"c(\"package:git2r\", \"package:spam\", \"package:timeSeries\", \"package:diffobj\", \"package:rJava\", \"package:arules\", \"package:Matrix\", \"package:utils\")":["head"],"package:base":["data.frame","factor","require"],"package:ggplot2":["aes","facet_grid","geom_jitter","ggplot","theme_dark","theme_light"],"package:utils":["install.packages","read.csv"]}

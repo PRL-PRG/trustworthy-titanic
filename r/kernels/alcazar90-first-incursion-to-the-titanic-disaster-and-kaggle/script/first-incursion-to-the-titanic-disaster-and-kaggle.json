@@ -1,1 +1,0 @@
-{"character(0)":["kable"],"package:base":["as.character","library","names","sum","tolower"],"package:dplyr":["count","group_by","mutate","n","recode","select","summarize"],"package:readr":["read_csv"],"package:stringr":["str_detect"],"package:tidyr":["unite"],"package:utils":["str"]}

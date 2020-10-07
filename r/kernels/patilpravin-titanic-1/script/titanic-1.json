@@ -1,1 +1,0 @@
-{"package:base":["as.factor","as.numeric","c","data.frame","factor","levels","library","nrow","rbind","rep","summary","table"],"package:ggplot2":["aes","geom_histogram","ggplot","labs","xlab","ylab"],"package:utils":["read.csv","str"]}

@@ -1,1 +1,0 @@
-{"c(\"package:dplyr\", \"package:tibble\")":["glimpse"],"package:base":["c","cat","colnames","data.frame","dim","factor","is.na","length","library","mean","round","sapply","summary","table"],"package:dplyr":["group_by","select","summarise"],"package:readr":["read_csv"],"package:stats":["glm","median","predict"],"package:stringr":["str_split"],"package:utils":["head","write.csv"]}

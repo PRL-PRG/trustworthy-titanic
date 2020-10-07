@@ -1,1 +1,0 @@
-{"package:base":["c","cut","data.frame","factor","levels","library","names","ncol","print","prop.table","summary","table"],"package:ggplot2":["aes","geom_bar","ggplot","ggtitle","labs","scale_y_continuous"],"package:graphics":["mosaicplot"],"package:utils":["read.csv"]}

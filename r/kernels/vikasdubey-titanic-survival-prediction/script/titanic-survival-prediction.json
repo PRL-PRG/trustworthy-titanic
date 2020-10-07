@@ -1,1 +1,0 @@
-{"package:base":["as.factor","cbind","colSums","ifelse","is.na","levels","library","mean","sum","summary"],"package:ggplot2":["aes","facet_grid","geom_bar","geom_jitter","ggplot"],"package:randomForest":["randomForest","varImpPlot"],"package:stats":["predict"],"package:utils":["read.csv","write.csv"]}

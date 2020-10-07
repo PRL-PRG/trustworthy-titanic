@@ -1,1 +1,0 @@
-{"package:base":["apply","as.factor","colnames","data.frame","is.na","library","names","nrow","rbind","rep","summary","table"],"package:ggplot2":["aes","geom_bar","geom_histogram","geom_point","ggplot"],"package:graphics":["boxplot"],"package:utils":["read.csv"]}

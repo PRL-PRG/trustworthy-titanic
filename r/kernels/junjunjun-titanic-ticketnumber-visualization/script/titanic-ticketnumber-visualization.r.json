@@ -1,1 +1,0 @@
-{"package:base":["as.character","factor","ifelse","library","sapply"],"package:ggplot2":["aes","geom_point","geom_text","ggplot"],"package:stringr":["str_detect","str_split"],"package:utils":["read.csv"]}

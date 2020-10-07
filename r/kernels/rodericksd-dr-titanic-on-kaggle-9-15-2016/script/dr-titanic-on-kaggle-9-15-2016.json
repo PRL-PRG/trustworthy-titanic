@@ -1,1 +1,0 @@
-{"package:base":["as.character","as.factor","c","data.frame","factor","is.na","library","paste","rbind","sapply","strsplit","sub","table","which"],"package:rpart":["rpart"],"package:rpart.plot":["rpart.plot"],"package:stats":["median","predict"],"package:utils":["read.csv"]}

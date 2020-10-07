@@ -1,1 +1,0 @@
-{"package:base":["any","as.factor","as.numeric","class","data.frame","dim","factor","is.na","library","rbind","sapply","set.seed","sum","table"],"package:randomForest":["randomForest"],"package:rpart":["rpart"],"package:stats":["median","predict"],"package:utils":["read.csv","str","write.csv"]}

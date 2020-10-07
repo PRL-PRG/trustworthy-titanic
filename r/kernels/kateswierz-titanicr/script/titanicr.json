@@ -1,1 +1,0 @@
-{"package:base":["as.factor","attach","c","cbind","is.na","library","nrow","rbind","subset","summary"],"package:caret":["confusionMatrix","createDataPartition","train"],"package:plyr":["rename"],"package:randomForest":["randomForest"],"package:stats":["lm","predict"],"package:utils":["read.csv"]}

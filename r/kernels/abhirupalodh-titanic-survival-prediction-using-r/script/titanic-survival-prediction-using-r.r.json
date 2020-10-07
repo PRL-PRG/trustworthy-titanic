@@ -1,1 +1,0 @@
-{"package:base":["as.factor","c","class","colnames","data.frame","is.na","library","mean","ncol","nrow","paste","print","summary"],"package:graphics":["boxplot","hist"],"package:randomForest":["randomForest"],"package:stats":["predict"],"package:utils":["head","read.csv","write.csv"]}

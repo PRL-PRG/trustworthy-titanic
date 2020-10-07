@@ -1,1 +1,0 @@
-{"package:base":["as.factor","c","colSums","factor","is.na","levels","library","summary"],"package:graphics":["mosaicplot"],"package:grDevices":["dev.off","png"],"package:utils":["read.csv"]}

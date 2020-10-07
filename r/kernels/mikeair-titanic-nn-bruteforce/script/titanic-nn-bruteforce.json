@@ -1,1 +1,0 @@
-{"package:base":["as.data.frame","as.integer","as.numeric","c","cbind","colnames","is.na","length","library","list","mean","names","ncol","nrow","order","print","rbind","round","rownames","sample"],"package:neuralnet":["compute","neuralnet"],"package:pROC":["roc"],"package:stats":["model.matrix"],"package:utils":["head","read.csv","str"]}

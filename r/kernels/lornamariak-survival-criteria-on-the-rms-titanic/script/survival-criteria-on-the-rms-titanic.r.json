@@ -1,1 +1,0 @@
-{"package:base":["as.factor","library"],"package:ggplot2":["aes","facet_grid","geom_bar","geom_histogram","geom_point","ggplot"],"package:utils":["read.csv"]}

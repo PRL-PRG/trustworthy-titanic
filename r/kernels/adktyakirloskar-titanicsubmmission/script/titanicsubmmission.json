@@ -1,1 +1,0 @@
-{"c(\"package:stats4\", \"package:base\")":["summary"],"c(\"package:stats4\", \"package:graphics\")":["plot"],"package:Amelia":["missmap"],"package:base":["c","ifelse","is.na","library","mean","names","nrow","paste","print","sample","set.seed"],"package:party":["ctree","ctree_control"],"package:stats":["binomial","glm","pchisq","predict"],"package:utils":["head","read.csv"]}

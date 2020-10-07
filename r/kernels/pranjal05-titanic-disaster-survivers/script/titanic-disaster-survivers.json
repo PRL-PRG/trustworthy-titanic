@@ -1,1 +1,0 @@
-{"c(\"package:dplyr\", \"package:stats\")":["filter"],"package:base":["as.integer","ifelse","is.na","library","max","mean","min","names","which"],"package:dplyr":["group_by","mutate","n","select","summarise"],"package:ggplot2":["aes","geom_boxplot","ggplot","ggtitle"],"package:stats":["median","sd"],"package:utils":["read.csv","str"]}

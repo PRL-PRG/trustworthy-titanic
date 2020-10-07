@@ -1,1 +1,0 @@
-{"package:base":["array","as.factor","c","cat","factor","gsub","levels","library","paste","print","summary","table"],"package:dplyr":["bind_rows"],"package:ggplot2":["aes","geom_bar","ggplot","labs","scale_x_continuous"],"package:ggthemes":["theme_few"],"package:graphics":["mosaicplot"],"package:grDevices":["dev.off","png"],"package:utils":["read.csv","str"]}

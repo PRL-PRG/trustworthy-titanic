@@ -1,1 +1,0 @@
-{"package:base":["as.integer","c","factor","ifelse","is.na","is.nan","is.null","lapply","length","library","list.files","sapply","subset","sum","summary","table","unique","which"],"package:ggplot2":["aes","geom_bar","geom_boxplot","ggplot","theme_classic","theme_gray"],"package:graphics":["barplot","boxplot","hist","plot"],"package:utils":["head","read.delim","str"]}

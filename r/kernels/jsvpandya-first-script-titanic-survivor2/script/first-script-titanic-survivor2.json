@@ -1,1 +1,0 @@
-{"package:base":["c","is.na","library","rbind","rm","which","within"],"package:ggplot2":["aes","facet_grid","geom_point","geom_smooth","ggplot","labs","xlim"],"package:rpart":["rpart"],"package:stats":["median","predict"],"package:utils":["read.csv"]}

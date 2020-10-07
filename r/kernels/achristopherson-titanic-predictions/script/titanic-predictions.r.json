@@ -1,1 +1,0 @@
-{"package:base":["as.factor","as.numeric","c","gsub","is.na","library","mean","nrow","set.seed","table"],"package:caret":["createDataPartition","train","trainControl"],"package:dplyr":["bind_rows"],"package:stats":["predict"],"package:utils":["read.csv","str"]}

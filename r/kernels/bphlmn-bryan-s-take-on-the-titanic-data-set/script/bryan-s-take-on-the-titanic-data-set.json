@@ -1,1 +1,0 @@
-{"character(0)":["set"],"package:base":["c","factor","is.na","length","library","sum","table"],"package:dplyr":["bind_rows"],"package:ggplot2":["aes","facet_wrap","geom_bar","geom_histogram","ggplot","labs","scale_x_continuous","scale_x_discrete","theme_minimal"],"package:utils":["head","read.csv","str"]}

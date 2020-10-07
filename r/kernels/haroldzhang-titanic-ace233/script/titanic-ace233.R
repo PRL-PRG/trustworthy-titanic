@@ -1,258 +1,175 @@
-library('randomForest')
-
-#重组数据
-reAssembleVariable = function(trainDataList,type){
-    tmpNames = names(trainDataList);
-    for(i in 1:length(tmpNames)){
-      if(tmpNames[i]=="Survived"){
-        survivedList = trainDataList[i];
-      }
-      #乘客编号
-      if(tmpNames[i]=="PassengerId"){
-        passengerList = trainDataList[i]; 
-      }
-      #乘客分层级别，从高到低分别为1、2、3
-      if(tmpNames[i]=="Pclass"){
-        pClassList = trainDataList[i]; 
-      }
-      #乘客姓名难以作为模型变量，但是可以用于补全缺失数据
-      if(tmpNames[i]=="Name"){
-        nameList = trainDataList[i]; 
-      }
-      #将性别映射为逻辑变量，0为女1为男
-      if(tmpNames[i]=="Sex"){
-        sexList = trainDataList[i]; 
-        
-        maleVector = vector("double",length(sexList[,1]));
-        maleIndex = which(sexList=="male");
-        maleVector[maleIndex] = 1;
-        maleList = list(Sex = maleVector);
-      }
-      #年龄数据存在缺失，需补全（或者不做处理）
-      if(tmpNames[i]=="Age"){
-        ageList = trainDataList[i]; 
-      }
-      #同辈亲属在船上的数量，包括兄弟姐妹丈夫妻子
-      if(tmpNames[i]=="SibSp"){
-        sibspList = trainDataList[i]; 
-      }
-      #非同辈亲属数量在船上的数量，包括父母子女
-      if(tmpNames[i]=="Parch"){
-        parchList = trainDataList[i]; 
-      }
-      #票号，难以处理
-      if(tmpNames[i]=="Ticket"){
-        ticketList = trainDataList[i]; 
-      }
-      #票价
-      if(tmpNames[i]=="Fare"){
-        fareList = trainDataList[i]; 
-      }
-      #船舱，大量的缺失数据，似乎并不具备什么意义，但是也许跟其他变量存在很强的相关性？
-      if(tmpNames[i]=="Cabin"){
-        cabinList = trainDataList[i]; 
-        #船舱编号，难以处理
-      }
-      #登船港口，存在极少量的缺失，考虑补全数据，或不进行补全。由于登船港口有3个，因此可以使用2个逻辑变量代替
-      if(tmpNames[i]=="Embarked"){
-        embarkedList = trainDataList[i]; 
-        newEmbarkedList = fullfillEmbark(embarkedList);
-        
-        #接下来处理登船港口，因为有3个港口C、Q、S，所以用两个逻辑变量来替代
-        isCEList = vector("double",length(newEmbarkedList[,1]));
-        isQEList = vector("double",length(newEmbarkedList[,1]));
-        ceIndex = which(newEmbarkedList=="C");
-        qeIndex = which(newEmbarkedList=="Q");
-
-        isCEList[ceIndex] = 1;
-        isQEList[qeIndex] = 1;
-        
-        isCEList = list(C = isCEList);
-        isQEList = list(Q = isQEList);
-      }
-      
+library("randomForest")
+reAssembleVariable = function(trainDataList, type) {
+    tmpNames = names(trainDataList)
+    for (i in 1:length(tmpNames)) {
+        if (tmpNames[i] == "Survived") {
+            survivedList = trainDataList[i]
+        }
+        if (tmpNames[i] == "PassengerId") {
+            passengerList = trainDataList[i]
+        }
+        if (tmpNames[i] == "Pclass") {
+            pClassList = trainDataList[i]
+        }
+        if (tmpNames[i] == "Name") {
+            nameList = trainDataList[i]
+        }
+        if (tmpNames[i] == "Sex") {
+            sexList = trainDataList[i]
+            maleVector = vector("double", length(sexList[, 1]))
+            maleIndex = which(sexList == "male")
+            maleVector[maleIndex] = 1
+            maleList = list(Sex = maleVector)
+        }
+        if (tmpNames[i] == "Age") {
+            ageList = trainDataList[i]
+        }
+        if (tmpNames[i] == "SibSp") {
+            sibspList = trainDataList[i]
+        }
+        if (tmpNames[i] == "Parch") {
+            parchList = trainDataList[i]
+        }
+        if (tmpNames[i] == "Ticket") {
+            ticketList = trainDataList[i]
+        }
+        if (tmpNames[i] == "Fare") {
+            fareList = trainDataList[i]
+        }
+        if (tmpNames[i] == "Cabin") {
+            cabinList = trainDataList[i]
+        }
+        if (tmpNames[i] == "Embarked") {
+            embarkedList = trainDataList[i]
+            newEmbarkedList = fullfillEmbark(embarkedList)
+            isCEList = vector("double", length(newEmbarkedList[, 1]))
+            isQEList = vector("double", length(newEmbarkedList[, 1]))
+            ceIndex = which(newEmbarkedList == "C")
+            qeIndex = which(newEmbarkedList == "Q")
+            isCEList[ceIndex] = 1
+            isQEList[qeIndex] = 1
+            isCEList = list(C = isCEList)
+            isQEList = list(Q = isQEList)
+        }
     }
-    #通过KNN补全缺失数据，效果存疑虑。如果子女和父母数量能分离出来可能有更好的表现。
-    newAgeList = fullfillAgeData(ageList[1],nameList[1],sibspList[1],parchList[1],7);
-    newFareList = fullfillFare(fareList);
-    if(type==1){
-      newDataList = data.frame(survivedList,passengerList,pClassList,maleList,newAgeList,
-                               sibspList,parchList,newFareList,cabinList,isCEList,isQEList);
-    }else{
-      newDataList = data.frame(passengerList,pClassList,maleList,newAgeList,
-                               sibspList,parchList,newFareList,cabinList,isCEList,isQEList);
+    newAgeList = fullfillAgeData(ageList[1], nameList[1], sibspList[1], parchList[1], 7)
+    newFareList = fullfillFare(fareList)
+    if (type == 1) {
+        newDataList = data.frame(survivedList, passengerList, pClassList, maleList, newAgeList, sibspList, parchList, newFareList, cabinList, isCEList, isQEList)
     }
-    
-    return(newDataList);
-}
-
-fullfillAgeData = function(ageList,nameList,sibspList,parchList,type){
-  noneAgeIndex = which(is.na(ageList));
-  nAgeIndex = which(!is.na(ageList));
-  #最简单的处理方式是假设所有未列出年龄的乘客拥有相同的年龄——平均年龄。
-  #但是这是非常不负责任的做法，这降低了年龄的波动率，使本该具有高度代表性的参数变得相对不具备价值
-  if(type==1){
-    noneAgeIndex = which(is.na(ageList));
-    nAgeIndex = which(!is.na(ageList));
-    meanAge = mean(ageList[nAgeIndex,1]);
-    ageList[noneAgeIndex,1] = meanAge;
-    return(ageList);
-  }
-  #中位数，这种粗砺方式几乎平均数一样不负责任
-  if(type==2){
-    noneAgeIndex = which(is.na(ageList));
-    nAgeIndex = which(!is.na(ageList));
-    medianAge = median(ageList[nAgeIndex,1]);
-    ageList[noneAgeIndex,1] = medianAge;
-    return(ageList);
-  }
-  
-  #众数是一个相对上两个来说略微好一点的方式
-  if(type==3){
-    noneAgeIndex = which(is.na(ageList));
-    nAgeIndex = which(!is.na(ageList));
-    modeAge = which.max(table(ageList[nAgeIndex,1]));
-    modeName = as.numeric(names(modeAge));
-    ageList[noneAgeIndex,1] = modeName;
-    return(ageList);
-  }
-  
-  #随机数，在最大年龄和最小年龄之间取均匀分布
-  if(type==4){
-    noneAgeIndex = which(is.na(ageList));
-    nAgeIndex = which(!is.na(ageList));
-    nAgeList = ageList[nAgeIndex,1];
-    minAge = nAgeList[which.min(nAgeList)];
-    maxAge = nAgeList[which.max(nAgeList)];
-    rand =  runif(length(noneAgeIndex),minAge, maxAge );
-    ageList[noneAgeIndex,1] = rand;
-    return(ageList);
-  }
-  
-  #正态分布
-  if(type==5){
-    noneAgeIndex = which(is.na(ageList));
-    nAgeIndex = which(!is.na(ageList));
-    nAgeList = ageList[nAgeIndex,1];
-    meanAge = mean(nAgeList);
-    std4age = sd(nAgeList)
-    rand =  rnorm(length(noneAgeIndex),meanAge, std4age );
-    ageList[noneAgeIndex,1] = rand;
-    return(ageList);
-  }
-  
-  #家庭平均年龄
-  #假设拥有相同姓氏的人出自同一个家族。女方在出嫁前的姓氏可能会将两个不同的家族联系在一起
-  #文本的处理繁琐而枯燥，暂时不做。如果数据能将姓氏单独作为分类就好多了。外国人的命名规则可能也是一个考虑的要点。
-  #基本思路是根据姓氏将可能的家族成员加入一个集合，计算他们的平均年龄
-  if(type==6){
-    
-    
-  }
-  
-  #KNN
-  #拥有相似同辈人和非同辈人数量的人，年龄可能也存在一定的相似之处。
-  #将年龄进行分段，每5年作为一个阶段。归类入该年龄段的人，使用年龄段的中值作为年龄
-  #可能会非常不准确
-  if(type==7){
-    noneAgeIndex = which(is.na(ageList));
-    nAgeIndex = which(!is.na(ageList));
-    for(i in 1:length(noneAgeIndex)){
-      dist1 = vector();
-      for(j in 1:length(nAgeIndex)){
-        ni = noneAgeIndex[i];
-        nj = nAgeIndex[j];
-        
-        #tryCatch ({
-          ma = matrix(c(sibspList[nj,1]-sibspList[ni,1],parchList[nj,1]-parchList[ni,1]),1);
-          dist1[j] = norm(ma,"2");
-        #}, error = function ( e ) {
-          #print(ni);
-          #print(nj);
-        #})
-        
-      }
-      distIndex = order(dist1);
-      #newDist = dist(distIndex[1:20]);
-      count1 = 0;
-      count2 = 0;
-      targetAge = 0;
-      lastAge = 0;
-      tAgeList = vector();
-      for(k in 1:20){
-        age = nAgeIndex[distIndex[k]];
-        age = floor(age/5)*5 + 2.5;
-        tAgeList[k] = age;
-      }
-      modeAge = which.max(table(tAgeList));
-      modeName = as.numeric(names(modeAge));
-      tmpIndex = noneAgeIndex[i];
-
-      #tryCatch ({
-      ageList[tmpIndex,1] = modeName;
-      #}, error = function ( e ) {
-      #print(tAgeList);
-      #print(modeName);
-      #print(modeName);
-      #print(i);
-      #})
-      
-      
+    else {
+        newDataList = data.frame(passengerList, pClassList, maleList, newAgeList, sibspList, parchList, newFareList, cabinList, isCEList, isQEList)
     }
-    return(ageList);
-  }
+    return(newDataList)
 }
-
-#登船港口缺失数据较少，直接使用众数填充。其实找出同姓氏的登船港口似乎更好，不过很遗憾的缺失数据的两位并没有亲属在船上
-fullfillEmbark = function(embarkedList){
-  noneEmbarkAgeIndex = which(embarkedList=="");
-  nEmbarkAgeIndex = which(embarkedList!="");
-  modeEmbark = which.max(table(embarkedList[nEmbarkAgeIndex,1]));
-  embarkName = names(modeEmbark);
-  embarkedList[noneEmbarkAgeIndex,1] = embarkName;
-  return(embarkedList);
+fullfillAgeData = function(ageList, nameList, sibspList, parchList, type) {
+    noneAgeIndex = which(is.na(ageList))
+    nAgeIndex = which(!is.na(ageList))
+    if (type == 1) {
+        noneAgeIndex = which(is.na(ageList))
+        nAgeIndex = which(!is.na(ageList))
+        meanAge = mean(ageList[nAgeIndex, 1])
+        ageList[noneAgeIndex, 1] = meanAge
+        return(ageList)
+    }
+    if (type == 2) {
+        noneAgeIndex = which(is.na(ageList))
+        nAgeIndex = which(!is.na(ageList))
+        medianAge = median(ageList[nAgeIndex, 1])
+        ageList[noneAgeIndex, 1] = medianAge
+        return(ageList)
+    }
+    if (type == 3) {
+        noneAgeIndex = which(is.na(ageList))
+        nAgeIndex = which(!is.na(ageList))
+        modeAge = which.max(table(ageList[nAgeIndex, 1]))
+        modeName = as.numeric(names(modeAge))
+        ageList[noneAgeIndex, 1] = modeName
+        return(ageList)
+    }
+    if (type == 4) {
+        noneAgeIndex = which(is.na(ageList))
+        nAgeIndex = which(!is.na(ageList))
+        nAgeList = ageList[nAgeIndex, 1]
+        minAge = nAgeList[which.min(nAgeList)]
+        maxAge = nAgeList[which.max(nAgeList)]
+        rand = runif(length(noneAgeIndex), minAge, maxAge)
+        ageList[noneAgeIndex, 1] = rand
+        return(ageList)
+    }
+    if (type == 5) {
+        noneAgeIndex = which(is.na(ageList))
+        nAgeIndex = which(!is.na(ageList))
+        nAgeList = ageList[nAgeIndex, 1]
+        meanAge = mean(nAgeList)
+        std4age = sd(nAgeList)
+        rand = rnorm(length(noneAgeIndex), meanAge, std4age)
+        ageList[noneAgeIndex, 1] = rand
+        return(ageList)
+    }
+    if (type == 6) {
+    }
+    if (type == 7) {
+        noneAgeIndex = which(is.na(ageList))
+        nAgeIndex = which(!is.na(ageList))
+        for (i in 1:length(noneAgeIndex)) {
+            dist1 = vector()
+            for (j in 1:length(nAgeIndex)) {
+                ni = noneAgeIndex[i]
+                nj = nAgeIndex[j]
+                ma = matrix(c(sibspList[nj, 1] - sibspList[ni, 1], parchList[nj, 1] - parchList[ni, 1]), 1)
+                dist1[j] = norm(ma, "2")
+            }
+            distIndex = order(dist1)
+            count1 = 0
+            count2 = 0
+            targetAge = 0
+            lastAge = 0
+            tAgeList = vector()
+            for (k in 1:20) {
+                age = nAgeIndex[distIndex[k]]
+                age = floor(age/5) * 5 + 2.5
+                tAgeList[k] = age
+            }
+            modeAge = which.max(table(tAgeList))
+            modeName = as.numeric(names(modeAge))
+            tmpIndex = noneAgeIndex[i]
+            ageList[tmpIndex, 1] = modeName
+        }
+        return(ageList)
+    }
 }
-
-#补充票价数据
-fullfillFare = function(fareList){
-  nonefareIndex = which(is.na(fareList));
-  nfareIndex = which(!is.na(fareList));
-  medianFare = median(fareList[nfareIndex,1]);
-  fareList[nonefareIndex,1] = medianFare;
-  return(fareList);
+fullfillEmbark = function(embarkedList) {
+    noneEmbarkAgeIndex = which(embarkedList == "")
+    nEmbarkAgeIndex = which(embarkedList != "")
+    modeEmbark = which.max(table(embarkedList[nEmbarkAgeIndex, 1]))
+    embarkName = names(modeEmbark)
+    embarkedList[noneEmbarkAgeIndex, 1] = embarkName
+    return(embarkedList)
 }
-
-train_data =  read.csv("../input/train.csv",header = T)
-test_data =  read.csv("../input/test.csv",header = T)
-#ans_data = read.csv("C://Users//dell//Desktop//ka//gender_submission.csv",header = T)
-
-#meta_ans = ans_data[,2];
-
-newTrainData = reAssembleVariable(train_data,1);
-newTestData = reAssembleVariable(test_data,2);
-
-lm1_model = lm(Survived~Pclass + Sex + Age + SibSp + Parch + Fare,newTrainData);
-rf1_model = randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare,newTrainData);
-
-lm1_ans = predict(lm1_model,newTestData);
-rf1_ans = predict(rf1_model,newTestData)
-
-passedCoune = 0;
-for(i in 1:length(lm1_ans)){
-  if(lm1_ans[i]>=0.5 
-     & rf1_ans[i]==1
-     ){
-    lm1_ans[i] = 1;
-  }else{
-    lm1_ans[i] = 0;
-  }
-  
-  #if(meta_ans[i]==lm1_ans[i]){
-  #  passedCoune = passedCoune + 1;
-  #}
+fullfillFare = function(fareList) {
+    nonefareIndex = which(is.na(fareList))
+    nfareIndex = which(!is.na(fareList))
+    medianFare = median(fareList[nfareIndex, 1])
+    fareList[nonefareIndex, 1] = medianFare
+    return(fareList)
 }
-
-#passedCoune/length(lm1_ans)
+train_data = read.csv("../input/train.csv", header = T)
+test_data = read.csv("../input/test.csv", header = T)
+newTrainData = reAssembleVariable(train_data, 1)
+newTestData = reAssembleVariable(test_data, 2)
+lm1_model = lm(Survived ~ Pclass + Sex + Age + SibSp + Parch + Fare, newTrainData)
+rf1_model = randomForest(factor(Survived) ~ Pclass + Sex + Age + SibSp + Parch + Fare, newTrainData)
+lm1_ans = predict(lm1_model, newTestData)
+rf1_ans = predict(rf1_model, newTestData)
+passedCoune = 0
+for (i in 1:length(lm1_ans)) {
+    if (lm1_ans[i] >= 0.5 & rf1_ans[i] == 1) {
+        lm1_ans[i] = 1
+    }
+    else {
+        lm1_ans[i] = 0
+    }
+}
 testAns = data.frame(PassengerId = newTestData$PassengerId, Survived = lm1_ans)
-
-write.csv(testAns,"ans.csv",row.names = FALSE);
+write.csv(testAns, "ans.csv", row.names = FALSE)

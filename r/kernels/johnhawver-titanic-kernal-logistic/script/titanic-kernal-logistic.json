@@ -1,1 +1,0 @@
-{"character(0)":["fAccuracy","fMCC","fmR2"],"package:base":["c","colSums","data.frame","diag","ifelse","is.na","library","mean","nchar","nrow","return","round","sqrt","subset","sum","summary"],"package:graphics":["abline","grid","plot","points"],"package:stats":["anova","binomial","ftable","glm","predict"],"package:utils":["head","read.csv","str","write.csv"]}

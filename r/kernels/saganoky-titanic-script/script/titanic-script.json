@@ -1,1 +1,0 @@
-{"package:base":["c","data.frame","expand.grid","factor","gsub","ifelse","is.na","library","nchar","seq","strtrim","subset","which"],"package:caret":["train","trainControl"],"package:dplyr":["bind_rows"],"package:mice":["complete","mice"],"package:randomForest":["randomForest"],"package:rpart":["rpart"],"package:stats":["glm","predict"],"package:utils":["read.csv","write.csv"]}

@@ -1,1 +1,0 @@
-{"package:base":["factor","is.na","library","ncol","rbind","table"],"package:ggplot2":["aes","facet_grid","geom_histogram","ggplot","labs","theme_minimal"],"package:graphics":["boxplot"],"package:grDevices":["boxplot.stats"],"package:utils":["read.csv","str"]}

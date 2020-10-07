@@ -1,1 +1,0 @@
-{"c(\"package:Matrix\", \"package:base\")":["as.matrix","print","summary"],"package:base":["as.numeric","c","cbind","colnames","data.frame","is.na","library","list","ncol","table"],"package:stats":["predict"],"package:utils":["read.csv","str","write.csv"],"package:xgboost":["xgboost"]}

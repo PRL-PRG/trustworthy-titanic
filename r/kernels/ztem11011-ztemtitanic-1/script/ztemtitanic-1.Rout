@@ -1,141 +1,0 @@
-
-R version 3.6.1 (2019-07-05) -- "Action of the Toes"
-Copyright (C) 2019 The R Foundation for Statistical Computing
-Platform: x86_64-apple-darwin15.6.0 (64-bit)
-
-R is free software and comes with ABSOLUTELY NO WARRANTY.
-You are welcome to redistribute it under certain conditions.
-Type 'license()' or 'licence()' for distribution details.
-
-  Natural language support but running in an English locale
-
-R is a collaborative project with many contributors.
-Type 'contributors()' for more information and
-'citation()' on how to cite R or R packages in publications.
-
-Type 'demo()' for some demos, 'help()' for on-line help, or
-'help.start()' for an HTML browser interface to help.
-Type 'q()' to quit R.
-
-> # The train and test data is stored in the ../input directory
-> train <- read.csv("../input/train.csv")
-> test  <- read.csv("../input/test.csv")
-> library(rpart)
-> library(RGtk2)
-Error in dyn.load(file, DLLpath = DLLpath, ...) : 
-  unable to load shared object '/Library/Frameworks/R.framework/Versions/3.6/Resources/library/RGtk2/libs/RGtk2.so':
-  dlopen(/Library/Frameworks/R.framework/Versions/3.6/Resources/library/RGtk2/libs/RGtk2.so, 6): Library not loaded: /Library/Frameworks/GTK+.framework/Versions/2.24.X11/Resources/lib/libgtk-x11-2.0.0.dylib
-  Referenced from: /Library/Frameworks/R.framework/Versions/3.6/Resources/library/RGtk2/libs/RGtk2.so
-  Reason: image not found
-Please install GTK+ from http://r.research.att.com/libs/GTK_2.24.17-X11.pkg
-If the package still does not load, please ensure that GTK+ is installed and that it is on your PATH environment variable
-IN ANY CASE, RESTART R BEFORE TRYING TO LOAD THE PACKAGE AGAIN
-Warning message:
-Failed to load RGtk2 dynamic library, attempting to install it. 
-> library(RGtk2)
-> library(rattle)
-Loading required package: tibble
-Loading required package: bitops
-Rattle: A free graphical interface for data science with R.
-Version 5.4.0 Copyright (c) 2006-2020 Togaware Pty Ltd.
-Type 'rattle()' to shake, rattle, and roll your data.
-Warning messages:
-1: package ‘rattle’ was built under R version 3.6.2 
-2: package ‘tibble’ was built under R version 3.6.2 
-> library(rpart.plot)
-> library(RColorBrewer)
-> library(party)
-Loading required package: grid
-Loading required package: mvtnorm
-Loading required package: modeltools
-Loading required package: stats4
-Loading required package: strucchange
-Loading required package: zoo
-
-Attaching package: ‘zoo’
-
-The following objects are masked from ‘package:base’:
-
-    as.Date, as.Date.numeric
-
-Loading required package: sandwich
-Warning messages:
-1: package ‘party’ was built under R version 3.6.2 
-2: package ‘zoo’ was built under R version 3.6.2 
-> test$Survived <- NA
-> combi <- rbind(train, test)
-> combi$Name <- as.character(combi$Name)
-> combi$Title <- sapply(combi$Name, FUN=function(x) {strsplit(x, split='[,.]')[[1]][2]})
-> combi$Title <- sub(' ', '', combi$Title)
-> combi$Title[combi$Title %in% c('Dona', 'Lady', 'the Countess')] <- 'Lady'
-> combi$Title[combi$Title %in% c('Capt', 'Don', 'Major')] <- 'Sir'
-> combi$Title[combi$Title %in% c('Miss', 'Mlle')] <- 'Ms'
-> combi$Title[combi$Title %in% c('Jonkheer', 'Mr')] <- 'Mr'
-> combi$Title[combi$Title == 'Mme'] <- 'Mrs'
-> combi$Title <- factor(combi$Title)
-> 
-> #create family tags
-> combi$Name <- as.character(combi$Name)
-> combi$Surname <- sapply(combi$Name, FUN=function(x) {strsplit(x, split='[,.]')[[1]][1]})
-> combi$FamilySize <- combi$Parch + combi$SibSp +1
-> combi$FamilyID <- paste(as.character(combi$FamilySize), combi$Surname, '')
-> combi$FamilyID[combi$FamilySize <= 2] <- 'Small'
-> FamId <- data.frame(table(combi$FamilyID))
-> FamId <- FamId[FamId$Freq <= 2,]
-> combi$FamilyID[combi$FamilyID %in% FamId$Var1] <- 'Small'
-> combi$FamilyID <- gsub(' ', '', combi$FamilyID)
-> combi$FamilyID <- factor(combi$FamilyID)
-> 
-> #create family survived factor (might not help, but don't think it will hurt)
-> combi$FamSurvived <- 'None'
-> FamId <- data.frame(table(combi$FamilyID[combi$Survived == 1]))
-> FamId <- FamId[FamId$Freq > 0,]
-> FamId <- FamId[FamId$Freq < 200,]
-> combi$FamSurvived[combi$FamilyID %in% FamId$Var1] <- 'yes'
-> 
-> combi$FamSurvived <- factor(combi$FamSurvived)
-> 
-> #cabin Deck tag (still not sure how to extrapolate...)
-> combi$Deck <- sapply(as.character(combi$Cabin), FUN=function(x) {strsplit(x, "")[[1]][1]})
-> #deckid <- data.frame('FamilyID' = combi$FamilyID[!is.na(combi$Deck) & combi$FamilyID != 'Small'], 'Deck' = as.character(combi$Deck[!is.na(combi$Deck) & combi$FamilyID != 'Small']))
-> #deckid <- deckid[!duplicated(deckid),]
-> #combi$Deck[combi$FamilyID %in% deckid$FamilyID] <- sapply(combi$FamilyID[combi$FamilyID %in% deckid$FamilyID & is.na(combi$Deck)], FUN=function(x) {deckid$Deck[deckid$FamilyID == x]})
-> combi$Deck <- factor(combi$Deck)
-> #combi$Deck[!is.na(combi$Deck) & combi$FamilyID == x]
-> #summary(combi$Deck)
-> 
-> Dfit <- rpart(as.factor(Deck) ~ Pclass + Fare + Title + Embarked + FamilySize + Survived,
-+                data=combi[!is.na(combi$Deck),], 
-+                method="class",
-+                control=rpart.control(minsplit = 5, cp = .015))
-> combi$Deck <- factor(combi$Deck)
-> combi$Deck[is.na(combi$Deck)] <- predict(Dfit, combi[is.na(combi$Deck),])
-Warning messages:
-1: In `[<-.factor`(`*tmp*`, is.na(combi$Deck), value = c(NA, 3L, NA,  :
-  invalid factor level, NA generated
-2: In x[...] <- m :
-  number of items to replace is not a multiple of replacement length
-> 
-> 
-> #cabin number tag
-> combi$rmnmbr <- sapply(as.character(combi$Cabin), FUN=function(x){substring(x,2,5)})
-> combi$rmnmbr <- gsub('[^0-9]', '', combi$rmnmbr)
-> combi$rmnmbr <- as.integer(as.character(combi$rmnmbr))
-> 
-> rmfit <- rpart(rmnmbr ~ Deck + Pclass + Fare + Title + Embarked + FamilySize + Survived, data=combi[!is.na(combi$rmnmbr),], method="anova", control=rpart.control(minsplit = 5, cp = .008))
-> combi$rmnmbr[is.na(combi$rmnmbr)] <- predict(rmfit, combi[is.na(combi$rmnmbr),])
-> 
-> 
-> train <- combi[1:891,]
-> test <- combi[892:1309,]
-> 
-> #set.seed(27)
-> fit <- cforest(as.factor(Survived) ~ Pclass + Sex + Age + Fare + Embarked + Title + FamilySize + FamilyID + FamSurvived + rmnmbr + Deck, data=train, controls=cforest_unbiased(trace = TRUE, ntree=100, mtry=3))
-
-[>                                                  ]   0% completed[=>                                                 ]   2% completed[=>                                                 ]   2% completed[==>                                                ]   4% completed[==>                                                ]   4% completed[===>                                               ]   6% completed[===>                                               ]   6% completed[====>                                              ]   8% completed[====>                                              ]   8% completed[=====>                                             ]  10% completed[=====>                                             ]  10% completed[======>                                            ]  12% completed[======>                                            ]  12% completed[=======>                                           ]  14% completed[=======>                                           ]  14% completed[========>                                          ]  16% completed[========>                                          ]  16% completed[=========>                                         ]  18% completed[=========>                                         ]  18% completed[==========>                                        ]  20% completed[==========>                                        ]  20% completed[===========>                                       ]  22% completed[===========>                                       ]  22% completed[============>                                      ]  24% completed[============>                                      ]  24% completed[=============>                                     ]  26% completed[=============>                                     ]  26% completed[==============>                                    ]  28% completed[==============>                                    ]  28% completed[===============>                                   ]  30% completed[===============>                                   ]  30% completed[================>                                  ]  32% completed[================>                                  ]  32% completed[=================>                                 ]  34% completed[=================>                                 ]  34% completed[==================>                                ]  36% completed[==================>                                ]  36% completed[===================>                               ]  38% completed[===================>                               ]  38% completed[====================>                              ]  40% completed[====================>                              ]  40% completed[=====================>                             ]  42% completed[=====================>                             ]  42% completed[======================>                            ]  44% completed[======================>                            ]  44% completed[=======================>                           ]  46% completed[=======================>                           ]  46% completed[========================>                          ]  48% completed[========================>                          ]  48% completed[=========================>                         ]  50% completed[=========================>                         ]  50% completed[==========================>                        ]  52% completed[==========================>                        ]  52% completed[===========================>                       ]  54% completed[===========================>                       ]  54% completed[============================>                      ]  56% completed[============================>                      ]  56% completed[=============================>                     ]  58% completed[=============================>                     ]  58% completed[==============================>                    ]  60% completed[==============================>                    ]  60% completed[===============================>                   ]  62% completed[===============================>                   ]  62% completed[================================>                  ]  64% completed[================================>                  ]  64% completed[=================================>                 ]  66% completed[=================================>                 ]  66% completed[==================================>                ]  68% completed[==================================>                ]  68% completed[===================================>               ]  70% completed[===================================>               ]  70% completed[====================================>              ]  72% completed[====================================>              ]  72% completed[=====================================>             ]  74% completed[=====================================>             ]  74% completed[======================================>            ]  76% completed[======================================>            ]  76% completed[=======================================>           ]  78% completed[=======================================>           ]  78% completed[========================================>          ]  80% completed[========================================>          ]  80% completed[=========================================>         ]  82% completed[=========================================>         ]  82% completed[==========================================>        ]  84% completed[==========================================>        ]  84% completed[===========================================>       ]  86% completed[===========================================>       ]  86% completed[============================================>      ]  88% completed[============================================>      ]  88% completed[=============================================>     ]  90% completed[=============================================>     ]  90% completed[==============================================>    ]  92% completed[==============================================>    ]  92% completed[===============================================>   ]  94% completed[===============================================>   ]  94% completed[================================================>  ]  96% completed[================================================>  ]  96% completed[=================================================> ]  98% completed[=================================================> ]  98% completed[==================================================>] 100% completed
-> 
-> Prediction <- predict(fit, test, OOB=TRUE, type = "response")
-> submit <- data.frame(PassengerId = test$PassengerId, Survived = Prediction)
-Error in data.frame(PassengerId = test$PassengerId, Survived = Prediction) : 
-  arguments imply differing number of rows: 418, 891
-Execution halted

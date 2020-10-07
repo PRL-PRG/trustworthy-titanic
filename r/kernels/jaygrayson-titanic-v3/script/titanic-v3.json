@@ -1,1 +1,0 @@
-{"c(\"package:mice\", \"package:base\")":["rbind"],"character(0)":["impute.default"],"package:base":["as.factor","as.numeric","c","library","ls","nrow","rm","sample","set.seed","setwd","subset"],"package:mice":["md.pattern"],"package:randomForest":["randomForest"],"package:stats":["na.exclude"],"package:utils":["read.csv"]}

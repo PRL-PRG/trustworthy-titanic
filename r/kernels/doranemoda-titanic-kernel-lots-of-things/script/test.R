@@ -1,7 +1,0 @@
-library(stringr)
-library(caret)
-library(C50)
-library(gmodels)
-library(randomForest)
-library(e1071)
-library(e1071)

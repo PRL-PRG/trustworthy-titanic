@@ -1,5 +1,0 @@
-# Grab title from passenger names
-full$Title <- gsub('(.*, )|(\\..*)', '', full$Name)
-
-# Show title counts by sex
-table(full$Sex, full$Title)

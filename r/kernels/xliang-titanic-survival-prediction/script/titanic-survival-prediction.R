@@ -1,107 +1,50 @@
-## ----message=FALSE, warning=FALSE------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-library(randomForest) # random Forest
-library(party)        # conditional inference trees and forests
-library(e1071)        # support vector machine
-library(mice)         # multiple imputation
-library(ggplot2)      # nice plots
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-trainData <- read.csv('../input/train.csv')
-testData <- read.csv('../input/test.csv')
-allData <- rbind(trainData[,-2],testData)
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+library(randomForest)
+library(party)
+library(e1071)
+library(mice)
+library(ggplot2)
+trainData <- read.csv("../input/train.csv")
+testData <- read.csv("../input/test.csv")
+allData <- rbind(trainData[, -2], testData)
 str(allData)
-nrow(allData[!complete.cases(allData),])
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+nrow(allData[!complete.cases(allData), ])
 md.pattern(allData)
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-# correlation
-cor(allData[!is.na(allData$Fare),]$Pclass,allData[!is.na(allData$Fare),]$Fare)
-# boxplot
-ggplot(data = allData,aes(x=factor(Pclass),y=Fare,fill=factor(Pclass))) + geom_boxplot(notch = FALSE)
-# replace missing
-allData[is.na(allData$Fare),]$Fare <-  median(allData[allData$Pclass==3,]$Fare,na.rm = TRUE)
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-allData$Title <- sub('.*, (\\w+)\\. .*','\\1',allData$Name)
-allData[!(allData$Title %in% c('Miss','Mr','Mrs','Master')),]$Title <- 'Respected'
-table(allData$Sex,allData$Title)
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-for (ttl in levels(factor(allData$Title))){
-  allData[(is.na(allData$Age)) & (allData$Title == ttl),]$Age <- 
-    median(allData[allData$Title==ttl,]$Age,na.rm = TRUE)
+cor(allData[!is.na(allData$Fare), ]$Pclass, allData[!is.na(allData$Fare), ]$Fare)
+ggplot(data = allData, aes(x = factor(Pclass), y = Fare, fill = factor(Pclass))) + geom_boxplot(notch = FALSE)
+allData[is.na(allData$Fare), ]$Fare <- median(allData[allData$Pclass == 3, ]$Fare, na.rm = TRUE)
+allData$Title <- sub(".*, (\\w+)\\. .*", "\\1", allData$Name)
+allData[!(allData$Title %in% c("Miss", "Mr", "Mrs", "Master")), ]$Title <- "Respected"
+table(allData$Sex, allData$Title)
+for (ttl in levels(factor(allData$Title))) {
+    allData[(is.na(allData$Age)) & (allData$Title == ttl), ]$Age <- median(allData[allData$Title == ttl, ]$Age, na.rm = TRUE)
 }
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 sum(is.na(allData))
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-allData$FamilySize <- allData$Parch + allData$SibSp +1
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-myfeatures <- c('Pclass','Sex','Age','Fare','Embarked','Title','FamilySize')
-allData$Pclass <- factor(allData$Pclass) # as factor
-allData$Title <- factor(allData$Title)   # as factor
-train <- cbind(allData[1:nrow(trainData),myfeatures],trainData['Survived'])
-test <- allData[(nrow(trainData)+1):nrow(allData),myfeatures]
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+allData$FamilySize <- allData$Parch + allData$SibSp + 1
+myfeatures <- c("Pclass", "Sex", "Age", "Fare", "Embarked", "Title", "FamilySize")
+allData$Pclass <- factor(allData$Pclass)
+allData$Title <- factor(allData$Title)
+train <- cbind(allData[1:nrow(trainData), myfeatures], trainData["Survived"])
+test <- allData[(nrow(trainData) + 1):nrow(allData), myfeatures]
 set.seed(66)
-fit.tune <- tune.randomForest(factor(Survived)~.,data = train,mtry=c(2:5),ntree = c(500,1000,1500,2000))
+fit.tune <- tune.randomForest(factor(Survived) ~ ., data = train, mtry = c(2:5), ntree = c(500, 1000, 1500, 2000))
 summary(fit.tune)
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 fit.rf <- fit.tune$best.model
-mean(fit.rf$predicted==train$Survived)
+mean(fit.rf$predicted == train$Survived)
 varImpPlot(fit.rf)
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 set.seed(66)
-fit.cf <- cforest(factor(Survived)~., data=train,
-                   controls = cforest_unbiased(ntree=2000, mtry=3))
+fit.cf <- cforest(factor(Survived) ~ ., data = train, controls = cforest_unbiased(ntree = 2000, mtry = 3))
 fit.cf
 pred.cf <- predict(fit.cf)
-mean(pred.cf==train$Survived)
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+mean(pred.cf == train$Survived)
 set.seed(66)
-#fit.tune <- tune.svm(factor(Survived)~.,data=train, kernel="radial",
-#                      gamma=10^(-2:2),cost=10^(-2:4))
-#fit.svm <- fit.tune$best.model
-fit.svm <- svm(factor(Survived)~.,data=train,
-               kernel="radial",gamma=0.1,cost=1)
+fit.svm <- svm(factor(Survived) ~ ., data = train, kernel = "radial", gamma = 0.1, cost = 1)
 summary(fit.svm)
-mean(fit.svm$fitted==train$Survived)
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kagglePred <- function(myfit,test,filename,...){
-  mypred <- predict(myfit,test,...)
-  myresult <- data.frame(PassengerID = testData$PassengerId,
-                        Survived = mypred)
-  write.csv(myresult,file=filename,row.names=FALSE)
+mean(fit.svm$fitted == train$Survived)
+kagglePred <- function(myfit, test, filename, ...) {
+    mypred <- predict(myfit, test, ...)
+    myresult <- data.frame(PassengerID = testData$PassengerId, Survived = mypred)
+    write.csv(myresult, file = filename, row.names = FALSE)
 }
-
-
-## --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-kagglePred(fit.rf,test,'rf.csv')
-kagglePred(fit.cf,test,'cf.csv',OOB=TRUE,type="response")
-kagglePred(fit.svm,test,'svm.csv')
-
+kagglePred(fit.rf, test, "rf.csv")
+kagglePred(fit.cf, test, "cf.csv", OOB = TRUE, type = "response")
+kagglePred(fit.svm, test, "svm.csv")

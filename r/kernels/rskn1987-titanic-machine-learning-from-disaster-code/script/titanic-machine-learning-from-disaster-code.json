@@ -1,1 +1,0 @@
-{"c(\"package:mice\", \"package:base\")":["cbind","rbind"],"package:base":["as.character","as.data.frame","c","colnames","data.frame","factor","gsub","levels","library","paste","sapply","set.seed","strsplit","subset"],"package:mice":["complete","mice"],"package:randomForest":["randomForest"],"package:stats":["predict"],"package:utils":["read.csv","write.csv"]}
