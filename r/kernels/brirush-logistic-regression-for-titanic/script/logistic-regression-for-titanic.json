@@ -1,1 +1,1 @@
-{"c(\"package:Matrix\", \"package:stats4\", \"package:base\")":["summary"],"c(\"package:mice\", \"package:base\")":["cbind"],"package:base":["colnames","data.frame","round"],"package:stats":["glm","predict"],"package:utils":["read.csv","write.csv"]}
+{"package:base":["cbind","colnames","data.frame","round","summary"],"package:stats":["glm","predict"],"package:utils":["read.csv","write.csv"]}

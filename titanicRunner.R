@@ -36,7 +36,8 @@ get.libs <- function(filepath){
     {
       if (grepl('^library', ln)) pack = c(pack, ln)
     }
-  return(pack)
+  
+  return(c('base', pack))
 }
 
 
@@ -58,8 +59,10 @@ for (dir in dirs)
       f.name <- list.files(path = ".", pattern = "\\.R$", full.names = TRUE, recursive = TRUE, ignore.case = TRUE)
       libs = get.libs(f.name)
       lapply(libs, write, "test.R", append=TRUE)
+      lapply(libs, write, "libraries.txt", append=TRUE)
       sys.source("test.R")
       file.remove("test.R")
+      file.remove("test.txt")
       lst <- list.functions.in.file(f.name, alphabetic = TRUE)
       exportJSON <- toJSON(lst)
       write(exportJSON, paste(str_remove(f.name, ".R"), ".json", sep=""))
@@ -95,3 +98,42 @@ for (dir in dirs)
 
 setwd("~/~/titanic/notebooks")
 write.csv(names, file ="timesDirs.csv", row.names=F)
+
+#-------------clean code--------
+
+setwd("~/trustworthy_titanic")
+dirs = list.dirs(path = './r/kernels', full.names = FALSE, recursive = FALSE)
+
+for (dir in dirs)
+  {
+  d = paste("~/trustworthy_titanic/r/kernels/",dir, sep="")
+  d = paste(d, "/script", sep="")
+  print(d)
+  setwd(d)
+  f.name <- list.files(path = ".", pattern = "\\.R$", full.names = TRUE, recursive = TRUE, ignore.case = TRUE)
+  try(writeLines(as.character(parse(f.name)), f.name))
+}
+
+#-----------remove RData
+
+for (dir in dirs)
+{
+  d = paste("~/trustworthy_titanic/r/kernels/",dir, sep="")
+  d = paste(d, "/script", sep="")
+  print(d)
+  setwd(d)
+  rm('./.RData')
+}
+
+
+
+
+
+
+rm('.RData')
+
+
+
+
+
+

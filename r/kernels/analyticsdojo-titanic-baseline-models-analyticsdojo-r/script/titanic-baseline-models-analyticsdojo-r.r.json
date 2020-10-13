@@ -1,1 +1,1 @@
-{"c(\"package:Matrix\", \"package:utils\")":["head"],"package:base":["c","names"],"package:utils":["read.csv","write.csv"]}
+{"package:base":["c","names"],"package:utils":["head","read.csv","write.csv"]}

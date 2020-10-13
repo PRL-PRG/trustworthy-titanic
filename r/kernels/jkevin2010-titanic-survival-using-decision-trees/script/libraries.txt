@@ -1,0 +1,7 @@
+library(ggplot2)
+library(readr)
+library(rpart)
+library(rattle)
+library(rpart.plot)
+library(RColorBrewer)
+library(base)

@@ -1,0 +1,8 @@
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(GGally)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(base)

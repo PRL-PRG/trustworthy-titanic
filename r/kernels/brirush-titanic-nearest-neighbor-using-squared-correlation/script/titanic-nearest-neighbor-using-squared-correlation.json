@@ -1,1 +1,1 @@
-{"c(\"package:OpenMx\", \"package:base\")":["nrow"],"character(0)":["corsquaredist","survivalguess","TotalSurvival"],"package:base":["as.numeric","as.vector","c","colnames","is.na","matrix","order","return","sapply","scale"],"package:stats":["cor"],"package:utils":["read.csv","str","write.csv"]}
+{"character(0)":["corsquaredist","survivalguess","TotalSurvival"],"package:base":["as.numeric","as.vector","c","colnames","is.na","matrix","nrow","order","return","sapply","scale"],"package:stats":["cor"],"package:utils":["read.csv","str","write.csv"]}
