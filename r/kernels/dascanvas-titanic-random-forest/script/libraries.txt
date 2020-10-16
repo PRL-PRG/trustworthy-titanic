@@ -1,6 +1,7 @@
 library(plyr)
 library(stringr)
 library(Amelia)
+require(Amelia)
 library(mice)
 library(caTools)
 library(randomForest)

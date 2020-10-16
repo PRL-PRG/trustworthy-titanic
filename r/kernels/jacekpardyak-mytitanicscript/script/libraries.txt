@@ -1,2 +1,4 @@
 library(randomForest)
+require(randomForest)
+require(randomForest)
 library(base)
