@@ -27,19 +27,23 @@ detach.packages <- function() {
 }
 
 
-#-----------get libы
+#-----------get libs
 
 get.libs <- function(filepath){
   pack = c()
   f.l = readLines(filepath)
     for (ln in f.l)
     {
-      if (grepl('^library', ln)) pack = c(pack, ln)
+      print(ln)
+      if (grepl('^library', ln)) {
+        pack = c(pack, ln)
+      }
+      else if (grepl('^require', ln)) {
+        pack = c(pack, ln)
+      }
     }
-  
-  return(c('base', pack))
+  return(pack)
 }
-
 
 #-------------get function calls____Version2
 
@@ -54,23 +58,44 @@ for (dir in dirs)
       library(stringr)
       d = paste("~/trustworthy_titanic/r/kernels/",dir, sep="")
       d = paste(d, "/script", sep="")
-      print(d)
+      #print(d)
       setwd(d)
+      try(file.remove("libraries.txt"))
       f.name <- list.files(path = ".", pattern = "\\.R$", full.names = TRUE, recursive = TRUE, ignore.case = TRUE)
       libs = get.libs(f.name)
+      libs = c(libs, 'library(base)')
       lapply(libs, write, "test.R", append=TRUE)
       lapply(libs, write, "libraries.txt", append=TRUE)
-      sys.source("test.R")
-      file.remove("test.R")
-      file.remove("test.txt")
+      try(sys.source("test.R"))
+      try(file.remove("test.R"))
+      try(file.remove("test.txt"))
       lst <- list.functions.in.file(f.name, alphabetic = TRUE)
       exportJSON <- toJSON(lst)
       write(exportJSON, paste(str_remove(f.name, ".R"), ".json", sep=""))
+      
       #rm(list=setdiff(ls(), "dirs")) #will clear all objects includes hidden objects.
       #gc()
     }
   )
 }
+
+#_-----------
+
+f.name = 'titanic-r-randomforest.R'
+
+libs = get.libs('titanic-r-randomforest.R')
+libs = c(libs, 'library(base)')
+lapply(libs, write, "test.R", append=TRUE)
+lapply(libs, write, "libraries.txt", append=TRUE)
+try(sys.source("test.R"))
+try(file.remove("test.R"))
+try(file.remove("test.txt"))
+lst <- list.functions.in.file(f.name, alphabetic = TRUE)
+exportJSON <- toJSON(lst)
+write(exportJSON, paste(str_remove(f.name, ".R"), ".json", sep=""))
+
+
+list.functions.in.file('titanic-prediction-using-logistic-regression.R', alphabetic = TRUE)
 
 
 #----------get runtimes
