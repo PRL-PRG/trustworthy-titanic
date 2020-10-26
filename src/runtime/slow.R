@@ -112,8 +112,17 @@ full[factor_vars]
 
 set.seed(129)
 
+#_____________
+start_time <- Sys.time()
+
+
 # Perform mice imputation, excluding certain less-than-useful variables:
-mice_mod <- mice(full[, !names(full) %in% c('PassengerId','Name','Ticket','Cabin','Family','Surname','Survived')], method='rf') 
+mice_mod <- mice(full[, !names(full) %in% c('PassengerId','Name','Ticket','Cabin','Family','Surname','Survived')], method='rf')
+
+
+end_time <- Sys.time()
+t = end_time - start_time;
+t = as.numeric(t, units = "secs")
 
 mice_output <- complete(mice_mod)
 
@@ -125,6 +134,9 @@ hist(mice_output$Age, freq=F, main='Age: MICE Output',
 
 
 full$Age <- mice_output$Age
+
+
+#__________
 
 ggplot(full[1:891,], aes(Age, fill = factor(Survived))) + 
   geom_histogram() + 
@@ -222,3 +234,4 @@ solution <- data.frame(PassengerID = test$PassengerId, Survived = prediction)
 write.csv(solution, file = 'vikram_rf_mod_Solution.csv', row.names = F)
 
 
+print(t)

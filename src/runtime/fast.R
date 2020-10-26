@@ -30,9 +30,19 @@ full[factor_vars] <- lapply(full[factor_vars], function(x) as.factor(x))
 # Set a random seed
 set.seed(129)
 
+#_______________
+
+start_time <- Sys.time()
+
 # Perform mice imputation, excluding certain less-than-useful variables:
 mice_mod <- mice(full[, !names(full) %in% c('PassengerId','Name','Ticket',
-                                            'Cabin','Survived')], method='rf') 
+                                            'Cabin','Survived')], method='rf')
+
+end_time <- Sys.time()
+t = end_time - start_time;
+t = as.numeric(t, units = "secs")
+
+
 mice_output <- complete(mice_mod)
 
 head(mice_output)
@@ -46,6 +56,8 @@ hist(mice_output$Age, freq=F, main='Age: MICE Output',
 
 # Replace Age variable from the mice model.
 full$Age <- mice_output$Age
+
+#_________________________
 
 # Show new number of missing Age values
 sum(is.na(full$Age))
@@ -95,3 +107,6 @@ solution <- data.frame(PassengerID = test$PassengerId, Survived = prediction)
 
 # Write the solution to file
 write.csv(solution, file = 'rf_mod_Solution.csv', row.names = F)
+
+
+print(t)
